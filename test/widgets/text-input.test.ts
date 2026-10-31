@@ -1623,6 +1623,6 @@ describe("a word motion takes time linear in the word it crosses", () => {
     ["deleteWordBack", (t: TextInput) => t.deleteWordBack(), "end"],
     ["deleteWordForward", (t: TextInput) => t.deleteWordForward(), "start"],
   ] as const)("%s", (_, motion, from) => {
-    expectLinearTime(across(motion, from), 4000);
+    expectLinearTime(across(motion, from), 256_000);
   });
 });

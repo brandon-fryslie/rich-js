@@ -21,15 +21,21 @@ const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)} s`;
 beforeEach(({ task, onTestFailed }) => {
   const started = performance.now();
   const cpu = process.cpuUsage();
+  const read = (): string => {
+    const { user, system } = process.cpuUsage(cpu);
+    return (
+      `In ${seconds(performance.now() - started)} this worker used ${seconds((user + system) / 1000)} of CPU ` +
+      `(not counting its child processes), at load average ${loadavg()[0]!.toFixed(1)} on ${availableParallelism()} cores.`
+    );
+  };
   // Read when the budget runs out, not when the failure is reported: by then
   // the after-hooks have run, on the clock and on the CPU, and the abandoned
-  // test body may still be running beside them.
+  // test body may still be running beside them. A failure with no such reading
+  // is read as it is reported, the nearest there is: a synchronous test holds
+  // the thread this timer needs, and a hook can run out a shorter budget.
   let reading: string | undefined;
   const budget = setTimeout(() => {
-    const { user, system } = process.cpuUsage(cpu);
-    reading =
-      `In ${seconds(performance.now() - started)} this worker used ${seconds((user + system) / 1000)} of CPU ` +
-      `(not counting its child processes), at load average ${loadavg()[0]!.toFixed(1)} on ${availableParallelism()} cores.`;
+    reading = read();
   }, task.timeout);
   onTestFailed(({ task }) => {
     // [LAW:parse-dont-validate] The runner's own error is what says the time ran
@@ -38,7 +44,7 @@ beforeEach(({ task, onTestFailed }) => {
     const timeout = task.result!.errors!.filter((error) => VITEST_TIMEOUT.test(error.message)).at(-1);
     if (timeout === undefined) return;
     timeout.message +=
-      `\n${reading!} ` +
+      `\n${reading ?? `${read()} Read as the failure was reported, so after-hooks are in it.`} ` +
       `CPU near the elapsed time: it was computing the whole time. A load above the cores: the machine was too busy to run it. ` +
       `Neither: it was waiting, on an event, a child process or I/O.`;
   });

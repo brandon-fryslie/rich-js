@@ -27,14 +27,14 @@
  * sixteen when it is quadratic; the bar sits between them, at eight. A size
  * small enough that fixed costs swamp the work reads as no growth at all and
  * would pass quadratic work silently, so a smaller run that finishes under a
- * floor is not a measurement. Load only lengthens a run, so it cannot trip
- * the floor; a faster machine can, and the fix is a larger size — which the
- * helper takes itself, four times larger each time, rather than leaving a
- * size picked on one runner to fail on the next one that is faster. It
- * returns the size it measured at, so a test whose premise is that size can
- * say so. Work still under the floor after that many tries fails as
- * unmeasurable: either it does not grow with its size, or the size it was
- * given is too small even for that, and the fix is again a larger size.
+ * floor is not a measurement. A faster machine can trip the floor, and the
+ * fix is a larger size — which the helper takes itself, four times larger each
+ * time, rather than leaving a size picked on one runner to fail on the next
+ * one that is faster. It returns the size it measured at, so a test whose
+ * premise is that size can say so. Work still under the floor after that many
+ * tries fails as unmeasurable: either it does not grow with its size, or the
+ * size it was given is too small even for that, and the fix is again a larger
+ * size.
  */
 import { expect } from "vitest";
 
@@ -49,32 +49,40 @@ const FLOOR_MS = 5;
 /** How many times a size under the floor is made `FACTOR` times larger before the work fails as unmeasurable. */
 const GROWTHS = 3;
 
+/** How many milliseconds `work` takes. */
+type Stopwatch = (work: () => void) => number;
+
 /**
  * The milliseconds of CPU time this thread spends on `work`. Node has had
  * `process.threadCpuUsage` since 22.19 and 23.9, which is why
  * `package.json#devEngines` asks for those.
  */
-function timed(work: () => void): number {
+const threadCpuTime: Stopwatch = (work) => {
   const started = process.threadCpuUsage();
   work();
   const { user, system } = process.threadCpuUsage(started);
   return (user + system) / 1000;
-}
+};
 
 /**
  * Fails unless `run(FACTOR * size)` takes less than `BAR` times as long as `run(size)`,
  * at the first of `size`, `FACTOR * size`, … whose smaller run clears the floor, and
  * returns that size.
  */
-export function expectLinearTime(run: (size: number) => void, size: number): number {
+export function expectLinearTime(run: (size: number) => void, size: number, stopwatch: Stopwatch = threadCpuTime): number {
   for (let growths = 0; ; growths++, size *= FACTOR) {
     const pairs = Array.from({ length: PAIRS }, () => {
-      const small = timed(() => run(size));
-      return { small, large: timed(() => run(FACTOR * size)) };
+      const small = stopwatch(() => run(size));
+      return { small, large: stopwatch(() => run(FACTOR * size)) };
     });
     const timings = `${size} vs ${FACTOR * size}: ${pairs.map((p) => `${p.small.toFixed(1)}/${p.large.toFixed(1)} ms`).join(", ")}`;
     if (Math.min(...pairs.map((p) => p.small)) < FLOOR_MS) {
-      if (growths < GROWTHS) continue;
+      if (growths < GROWTHS) {
+        // [LAW:nothing-unseen] Growth costs at least four times as much and no verdict
+        // says it happened; a size that clears the floor keeps this line rare enough to mean something.
+        console.warn(`expectLinearTime: under the ${FLOOR_MS} ms floor, growing; ${timings}`);
+        continue;
+      }
       expect.fail(`too fast to measure growth even ${FACTOR ** GROWTHS} times larger, pass a larger size; ${timings}`);
     }
     const ratios = pairs.map((p) => p.large / p.small).sort((a, b) => a - b);
