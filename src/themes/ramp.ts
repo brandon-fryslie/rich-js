@@ -185,7 +185,7 @@ export class ColorRamp {
    * [LAW:one-source-of-truth] When it next changes is `Animation.all`'s
    * answer over the two parts; nothing here says it a second time. Whether
    * the depth it is drawn at can show the move is decided where it is drawn
-   * (`gradient`, through `stillOnSlots`).
+   * (`gradient`, through `stillWhereNothingMoves`).
    */
   moving(motion: RampMotion): Animation<ColorRamp> {
     const still = Animation.constant(0);

@@ -233,6 +233,15 @@ describe("where a seam finds the cells beside it", () => {
     expect(standsOffAsDrawn(whole!)).toBe(true);
   });
 
+  it("tells the effect a neighbour the frame does not draw is the pair the seam read, its terminal slots included", () => {
+    const [a, b] = [item("a", "#e0e0e0 on #1d4ed8"), item("c", "default on #b91c1c")];
+    const cut: Renderable = { render: (options: RenderOptions) => Segment.adjustLineLength(Segment.splitLines(new Strip([a, b], JOINERS.powerline).render(options))[0]!, 5, undefined, false) };
+    const handed: { fg: boolean; bg: boolean }[] = [];
+    const record: Effect = () => Animation.constant<EffectFrame>((look, cell) => (handed.push(cell.pair.terminal), look));
+    [...effected(cut, record).render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })];
+    expect(handed).toContainEqual({ fg: true, bg: false });
+  });
+
   it("lifts a seam at the depth the effect writes, whatever depth its strip was drawn at", () => {
     const items = trio();
     // Drawn once at truecolor, then held and drawn again under an effect at 256 colours.

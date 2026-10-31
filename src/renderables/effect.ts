@@ -17,9 +17,10 @@
  * (`JoinedCell`, `../core/strip.ts`), the way the joiner drew it. Shimmer,
  * pulse, fade, dissolve and a blinking attribute are all this one shape,
  * differing by what the function does with its inputs
- * [LAW:one-type-per-behavior]; two effects stack by nesting one
- * wrapper in another, which is the same as calling one after the other but
- * for what the outer one measures: the inner one's output.
+ * [LAW:one-type-per-behavior]; two effects stack as layers of one effect
+ * (`layered`, `./effects.ts`), each moving what the last left and recognising
+ * a cell by what the element drew (`EffectCell.pair`), or by nesting one
+ * wrapper in another, which measures the inner one's output instead.
  *
  * A cell's look is one value, its colours and its attributes together
  * (`CellLook`), rather than an attribute stage beside the colour one, so
@@ -109,21 +110,21 @@ export interface CellLook extends CellColors {
  * Where a cell is in the output of the renderable an effect wraps, its seed:
  * a number in [0, 1) that is the same for that cell on every frame, for an
  * effect that varies cell by cell (a per-cell offset in time, a sparkle) —
- * and which of its on-screen colours are the terminal's.
+ * and what the element drew it in.
  */
 export interface EffectCell {
   readonly row: number;
   readonly col: number;
   readonly seed: number;
   /**
-   * Whether the glyph's colour and the colour behind it, as the screen shows
-   * them, are the terminal's own: a slot the element's style leaves unset or
-   * sets to `default`. Such a colour is resolved through the theme, so its
-   * hex can equal one the element wrote; this is what tells them apart.
+   * The ink and ground the element drew the cell in: what the cell is, where
+   * the `CellLook` beside it is what is there now. Under one effect they are
+   * the same colours; under `layered` (`./effects.ts`) the look is what the
+   * layers beneath left, so an effect recognises a cell by its pair and moves
+   * its look. [LAW:one-source-of-truth] A pair's `terminal` is what tells a
+   * colour the terminal resolved from one the element wrote at the same hex.
    */
-  readonly terminal: { readonly fg: boolean; readonly bg: boolean };
-  /** Whether the cell's style swaps its two slots, as `Pair.reverse` says: with `colors` and `terminal`, the cell's `Pair`. */
-  readonly reverse: boolean;
+  readonly pair: Pair;
   /**
    * Who drew the cell, and where it sits in their output, as
    * `Segment.anchorAt` reads it off a frame: what tells one owner's cells
@@ -156,7 +157,13 @@ export interface ListedCell extends Placed {
  * is handed for that cell.
  */
 export interface Pair extends CellColors {
-  readonly terminal: EffectCell["terminal"];
+  /**
+   * Whether the glyph's colour and the colour behind it, as the screen shows
+   * them, are the terminal's own: a slot the element's style leaves unset or
+   * sets to `default`. Such a colour is resolved through the theme, so its
+   * hex can equal one the element wrote; this is what tells them apart.
+   */
+  readonly terminal: { readonly fg: boolean; readonly bg: boolean };
   /**
    * Whether the ink is written in the style's ground slot and the ground in
    * its ink slot. Below truecolor the slot decides what a moved colour can
@@ -220,11 +227,12 @@ export type EffectFrame = (look: CellLook, cell: EffectCell) => CellLook;
  *
  * Its `nextChange` is when the frame next changes: a stepped effect its next
  * step's start, a transition `t` until it is done and `Infinity` after, a
- * loop that holds every cell still at the frame's depth `Infinity` there, and
- * a loop that moves `t` (`Animation.continuous`). [LAW:types-are-the-program]
- * The answer is a fact about the frame, so the animation is made from
- * everything the frame is drawn from; one made from `t` alone could not say
- * that a frame is still because of its depth.
+ * loop that holds every cell still, at the frame's depth or with nothing in
+ * it to move, `Infinity` there, and a loop that moves `t`
+ * (`Animation.continuous`). [LAW:types-are-the-program] The answer is a fact
+ * about the frame, so the animation is made from everything the frame is drawn
+ * from; one made from `t` alone could not say that a frame is still because of
+ * its depth.
  */
 export type Effect = (drawn: Drawn) => Animation<EffectFrame>;
 
@@ -304,8 +312,7 @@ export class Recolored implements Renderable, Measurable {
       const joined = joinedCell(look.style.anchor);
       if (joined?.follows === true) return { joined };
       const from: CellLook = { fg: look.pair.fg, bg: look.pair.bg, attributes: look.attributes };
-      const { terminal, reverse } = look.pair;
-      return { painted: glyphs.map(({ cell }) => (cell === undefined ? from : returned(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), terminal, reverse })))) };
+      return { painted: glyphs.map(({ cell }) => (cell === undefined ? from : returned(frame(from, { ...cell, seed: cellSeed(this.key, cell.row, cell.col), pair: look.pair })))) };
     });
     const beside = edgesBeside(walked, drawings);
     for (const [i, { segment, look, glyphs }] of walked.entries()) {
@@ -397,7 +404,7 @@ export class Recolored implements Renderable, Measurable {
       const wire = edge.drawnColors(depth);
       const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
       const terminal = { fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true };
-      return moved(slots, returned(frame({ ...slots, attributes: cellAttributes(edge) }, { ...at, seed: cellSeed(this.key, at.row, at.col), terminal, reverse: false })));
+      return moved(slots, returned(frame({ ...slots, attributes: cellAttributes(edge) }, { ...at, seed: cellSeed(this.key, at.row, at.col), pair: { ...slots, terminal, reverse: false } })));
     };
     const moveOf = (side: "left" | "right"): EdgeMove | undefined => {
       const read = joined.reads[side];
@@ -696,7 +703,7 @@ function drawsLines(style: Style): boolean {
 /**
  * What `looked` draws: `Drawn`'s measure, taken once per frame. Its `all`
  * and `cells` are listed off `walked` the first time either is asked for,
- * since only an effect spread over the element or turning its runs asks, and
+ * since an effect on attributes alone never asks, and
  * a glyph walk is what measuring the words alone, a segment at a time, is
  * spared (`drawnOf`).
  */
@@ -747,7 +754,11 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
     return false;
   };
   // The frame as the effect sees it: the owners' cells alone. [LAW:one-source-of-truth] One narrowing, handed to both stages.
-  const narrowed = (drawn: Drawn): Drawn => ({ ...drawn, all: () => drawn.all().filter(owned), cells: () => drawn.cells().filter(owned) });
+  const narrowed = (drawn: Drawn): Drawn => {
+    let all: readonly ListedCell[] | undefined;
+    let cells: readonly ListedCell[] | undefined;
+    return { ...drawn, all: () => (all ??= drawn.all().filter(owned)), cells: () => (cells ??= drawn.cells().filter(owned)) };
+  };
   // The owners' cells change when the effect's frame does.
   return (drawn) => Animation.map(effect(narrowed(drawn)), (frame): EffectFrame => (look, cell) => (owned(cell) ? frame(look, cell) : look));
 }
