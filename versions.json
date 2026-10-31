@@ -4,15 +4,22 @@
     {
       "version": "pr-522",
       "ref": "refs/pull/522/merge",
-      "sha": "5c5d703ff4790e90bead5d5a75af42d569595418",
-      "timestamp": "2026-10-31T06:50:42.579Z",
+      "sha": "bfeac8835a4621e89040b8aa07eb0a1a9dbb6f9f",
+      "timestamp": "2026-10-31T07:01:00.352Z",
       "commits": [
         {
-          "sha": "5c5d703ff4790e90bead5d5a75af42d569595418",
+          "sha": "bfeac8835a4621e89040b8aa07eb0a1a9dbb6f9f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T00:48:37-06:00",
-          "message": "Merge eb62e662f2768997230ccc5bd139a4a391327b8b into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
+          "timestamp": "2026-10-31T06:58:54Z",
+          "message": "Merge d5520b2d7dd7d3816a69062ea4191c3e6184edba into b7d62e39232f05d870e3036d154fa3af754a26ea\n"
+        },
+        {
+          "sha": "d5520b2d7dd7d3816a69062ea4191c3e6184edba",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-31T00:58:45-06:00",
+          "message": "TerminalColors is proved, and the base roles are read once (rich-unfiled-791c.32i2)\n\n`TerminalColors` was a `Pick`, so an object literal with a short ANSI table\npassed where a `TerminalTheme` had been required. It is now the class that does\nthe check, branded so an object of the same shape is not one, and exported as a\ntype so a consumer still reaches it through `TerminalTheme`.\n\n`statedRoles` is now the one reader of the base colours, which also makes\n\"the eight base roles are always known\" true of `background`. `markdown-h6-color`\nreads `text-muted`: Textual's translucent `foreground-muted` is that, and this\nlibrary's opaque one is 2.2:1. `rgbToLab` uses `core/oklch`'s sRGB curves.\n"
         },
         {
           "sha": "eb62e662f2768997230ccc5bd139a4a391327b8b",
