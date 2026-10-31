@@ -539,7 +539,9 @@ export class Progress implements Renderable {
 
   /** Rich's `Progress.finished`: every task finished, and so true with none. */
   get finished(): boolean {
-    return this._tasks.get().every((task) => finished(taskAt(task.get(), this._host.frameNow().time)));
+    // [LAW:one-source-of-truth] One moment, so every task is judged at it.
+    const now = this._host.frameNow().time;
+    return this._tasks.get().every((task) => finished(taskAt(task.get(), now)));
   }
 
   static getDefaultColumns(): ProgressColumn[] {

@@ -409,11 +409,10 @@ export class TextInput extends ThemedWidget {
 
   @observableRef private accessor _value: string;
   @observableRef private accessor _cursor: CodePoint;
-  // When the field last took focus, a click, or a key it handled, on the
-  // frame's clock (each event's `time`): where the caret's blink restarts.
-  // The blink itself is a function of this and the time a frame is drawn
-  // for, so nothing about it is kept.
-  @observableRef private accessor _blinkFrom = 0;
+  // The caret's blink, restarted (`caretBlink`) when the field last took
+  // focus, a click, or a key it handled, at that event's `time` on the
+  // frame's clock. Built at the event, so a frame only reads it.
+  @observableRef private accessor _blink: Animation<boolean> = caretBlink(0);
 
   // [LAW:single-enforcer] Every write to either half of the pair passes
   // `graphemeBoundary`, so the cursor is a cluster boundary inside `value`
@@ -511,7 +510,7 @@ export class TextInput extends ThemedWidget {
   handleKey(event: KeyEvent): void {
     this._edit(event);
     if (!event.stopped) return;
-    this._blinkFrom = event.time;
+    this._blink = caretBlink(event.time);
     // An edit on the cursor's row moves no followed range, so the row is
     // brought into view here too: typing after the wheel scrolled away scrolls
     // back. The rows are the edited value's, at the width last drawn.
@@ -524,7 +523,7 @@ export class TextInput extends ThemedWidget {
   @action
   override handleFocus(event: WidgetFocusEvent): void {
     super.handleFocus(event);
-    this._blinkFrom = event.time;
+    this._blink = caretBlink(event.time);
   }
 
   private _edit(event: KeyEvent): void {
@@ -614,7 +613,7 @@ export class TextInput extends ThemedWidget {
   override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
     if (event.type !== "mouse_down") return;
-    this._blinkFrom = event.time;
+    this._blink = caretBlink(event.time);
 
     // [LAW:no-silent-failure] Every cell the field draws carries its frame's
     // layout, so a press without one did not come off a frame it drew.
@@ -1101,7 +1100,7 @@ export class TextInput extends ThemedWidget {
   // cursor's; dark, it is drawn as the text around it, since the cursor is a
   // colour pair and no attribute hides it.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    return placed(caretBlink(this._blinkFrom), options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
+    return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 
   // Whether `rows` visual rows draw a scroll arrow in the last cell of a row.

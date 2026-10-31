@@ -257,8 +257,9 @@ export class CoverageRenderable implements Renderable {
     // Exercise Progress + all column types as a still. A Progress is timed
     // on the host that draws it and a render reads no clock, so it is made
     // for a host standing still at 0 — any object with a `frameNow()` is one —
-    // drawn once in that host's frame, and decoded back to text: a still, so
-    // no hold from that host's clock enters this app's frame.
+    // drawn once in that host's frame, for the terminal this frame is drawn
+    // for, and decoded back to text: a still, so no hold from that host's
+    // clock enters this app's frame.
     const still: FrameHost = { frameNow: () => ({ time: 0, host: still }) };
     const progress = new Progress(
       new TextColumn("[progress.description]{task.description}"),
@@ -274,7 +275,18 @@ export class CoverageRenderable implements Renderable {
     progress.updateTask(t1, { completed: 42 });
     const t2 = progress.addTask("Processing", { total: 200 });
     progress.updateTask(t2, { completed: 200 });
-    items.push(decodeAnsi(renderToString(progress, { width: options.maxWidth, frame: still.frameNow() })));
+    items.push(
+      decodeAnsi(
+        renderToString(progress, {
+          width: options.maxWidth,
+          frame: still.frameNow(),
+          asciiOnly: options.asciiOnly,
+          theme: options.theme,
+          reducedMotion: options.reducedMotion,
+          colorSystem: options.colorSystem,
+        }),
+      ),
+    );
 
     // ── 16. Status (construction + renderable output) ────────────────
     items.push(new Rule("[bold cyan]Status (construction)", { style: "bold cyan" }));
