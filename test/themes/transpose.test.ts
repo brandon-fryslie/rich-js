@@ -6,6 +6,7 @@ import {
   Oklch,
   type ThemeKey,
 } from "../../src/core/oklch.js";
+import { PALETTE_ROLES } from "../../src/themes/buildPalette.js";
 import { Palette, type AccentRole } from "../../src/themes/palette.js";
 import { getThemePalette } from "../../src/themes/registry.js";
 import {
@@ -27,28 +28,14 @@ describe("ANCHORED_ROOTS / isAnchored", () => {
     expect(ANCHORED_ROOTS).toEqual(new Set(["error", "success", "warning"]));
   });
 
-  it("anchors bare roots and their hyphen-prefixed variants", () => {
-    expect(isAnchored("error")).toBe(true);
-    expect(isAnchored("error-darken-1")).toBe(true);
-    expect(isAnchored("error-lighten-3")).toBe(true);
-    expect(isAnchored("success")).toBe(true);
-    expect(isAnchored("warning-darken-2")).toBe(true);
-    expect(isAnchored("error-muted")).toBe(true);
-    expect(isAnchored("text-error")).toBe(true);
-    expect(isAnchored("on-success")).toBe(true);
-    expect(isAnchored("text-warning")).toBe(true);
+  it("anchors exactly the palette roles that name an anchored root", () => {
+    for (const role of PALETTE_ROLES) {
+      expect(isAnchored(role), role).toBe(role.split("-").some((segment) => ANCHORED_ROOTS.has(segment)));
+    }
   });
 
-  it("leaves decorative roles unlocked", () => {
-    expect(isAnchored("primary")).toBe(false);
-    expect(isAnchored("accent")).toBe(false);
-    expect(isAnchored("secondary-lighten-1")).toBe(false);
-    expect(isAnchored("background")).toBe(false);
-    expect(isAnchored("boost")).toBe(false);
-  });
-
-  it("does not anchor merely-contains matches (root prefix only)", () => {
-    // A var named "no-error" should NOT anchor — only literal `error*` does.
+  it("does not anchor a name that merely contains a root", () => {
+    // `no-` draws nothing, so this name's root is `no`.
     expect(isAnchored("no-error")).toBe(false);
     // Defensive: an "errors" plural would not match the strict root set.
     expect(isAnchored("errors")).toBe(false);
@@ -146,17 +133,32 @@ describe("transposePalette — anchor hue is locked", () => {
     }
   });
 
-  it.each<AccentRole>(["primary", "secondary", "accent", "success", "warning", "error"])(
-    "text-%s turns as far as its role does",
-    (role) => {
+  // Keyed by the type so a new accent does not compile until it states its turn.
+  const TURN: Record<AccentRole, number> = {
+    primary: 120,
+    secondary: 120,
+    accent: 120,
+    success: 0,
+    warning: 0,
+    error: 0,
+  };
+
+  it.each(Object.entries(TURN) as [AccentRole, number][])(
+    "what is drawn on %s turns %d° at a 120° key",
+    (role, turn) => {
+      // Bundled themes draw `on-*` near grey, where hue says nothing, so both
+      // forms take the accent's own colour.
       const gruv = getThemePalette("gruvbox");
-      const after = transposePalette(gruv, { ...IDENTITY, hueShift: 120 });
-      const turned = (name: "text-" | "") => {
-        const drawn = `${name}${role}` as const;
-        return Oklch.fromRgba(after.get(drawn)).h - Oklch.fromRgba(gruv.get(drawn)).h;
-      };
-      // Within the round-trip quantization the tests above allow.
-      expect(hueDelta(turned("text-"), turned(""))).toBeLessThan(2);
+      const colour = gruv.get(role);
+      const before = new Palette("drawn-on", true, {
+        ...gruv.mapRoles((c) => c),
+        [`text-${role}`]: colour,
+        [`on-${role}`]: colour,
+      });
+      const after = transposePalette(before, { ...IDENTITY, hueShift: 120 });
+      for (const drawn of [`text-${role}`, `on-${role}`] as const) {
+        expect(hueDelta(Oklch.fromRgba(after.get(drawn)).h, Oklch.fromRgba(colour).h + turn)).toBeLessThan(2);
+      }
     },
   );
 });
