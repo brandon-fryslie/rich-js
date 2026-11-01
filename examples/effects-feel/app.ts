@@ -19,6 +19,7 @@
  */
 
 import {
+  render,
   Animation,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
@@ -186,7 +187,8 @@ interface Scene {
   readonly curves: Settings["curves"];
 }
 
-function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings["curves"]): Scene {
+function scene(theme: TerminalTheme, drawnAt: RenderOptions, curves: Settings["curves"]): Scene {
+  const drawnWith = { ...drawnAt, terminal: theme };
   const ink = ColorSpec.fromRgba(theme.foregroundColor);
   const paper = ColorSpec.fromRgba(theme.backgroundColor);
   const quiet = Style.fromColor(ColorSpec.fromRgba(paletteRgba(theme, "foreground-muted")));
@@ -220,13 +222,18 @@ function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings[
     const rest = ratio(yield* worstContrast(subjects, (s) => s.renderable.render(s.options), [0], theme));
     for (const loop of LOOPS) {
       const under = (s: DrawnSubject, at: number) =>
-        new Effected(s.renderable, loops[loop](s), { key: seedKey(loop, s), theme }).at(at).render(s.options);
+        new Effected(s.renderable, loops[loop](s), { key: seedKey(loop, s) }).at(at).render(s.options);
       const worst = yield* worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
       contrast[loop] = `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
     }
   }
   return { theme, ink, paper, quiet, heading, subjects, loops, transitions, contrast, measure, curves };
 }
+
+/** `renderable` drawn on `terminal`: how one app shows the terminal the keys chose, where a program names its terminal once on its `App`. */
+const drawnOn = (terminal: TerminalTheme, renderable: Renderable): Renderable => ({
+  render: (options) => render(renderable, { ...options, terminal }),
+});
 
 /**
  * The demo's own time: a `Timeline` over the frame count, `step` designed
@@ -345,7 +352,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
 
   const row = (t: number, name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
     new RichText(`${describe(name, shown.curves[name])}   ${status}`, { style: shown.quiet, noWrap: true }),
-    ...shown.subjects.map((s) => new Effected(s.renderable, effect(s), { key: seedKey(name, s), theme: shown.theme }).at(t)),
+    ...shown.subjects.map((s) => new Effected(s.renderable, effect(s), { key: seedKey(name, s) }).at(t)),
     new RichText(""),
   ];
 
@@ -364,7 +371,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const view = Animation.map(Animation.time(), (frame): Renderable => {
     const { t, cycle: nth, began } = pace.at(frame);
     const { theme, loops, contrast } = shown;
-    return new Padding(
+    return drawnOn(theme, new Padding(
       new Group(
         new RichText(
           `effects feel · ${fps.perSecond} fps · rate ×${rate}${pace.paused ? " (paused)" : ""} · magnitude ×${magnitude} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · cycle ${nth + 1} · frame ${pace.framesIn(frame)} of ${pace.frames}`,
@@ -378,7 +385,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
       ),
       [1, 2],
       { style: Style.fromColor(shown.ink, shown.paper) },
-    );
+    ));
   });
 
   const app = new App({ host, surface: "alternate", view, clock: frames, rate: fps });

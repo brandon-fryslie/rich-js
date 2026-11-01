@@ -102,7 +102,7 @@ const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(),
   colors: own,
   fills,
   depth: ColorDepth.TRUECOLOR,
-  theme: CATPPUCCIN_MOCHA,
+  terminal: CATPPUCCIN_MOCHA,
 });
 /** A frame of `cells` whose element sets no colours of its own: one a loop reads only the cells of. */
 const NOTHING = frame(new Set());
@@ -125,7 +125,7 @@ const at = (effect: Effect, t: number): CellColors[] => {
 };
 
 function bytes(renderable: Renderable): string {
-  return renderToString(renderable, { width: 60 });
+  return renderToString(renderable, { width: 60, terminal: CATPPUCCIN_MOCHA });
 }
 
 const subject = new RichText("a run of text under an effect", {
@@ -133,7 +133,7 @@ const subject = new RichText("a run of text under an effect", {
   noWrap: true,
 });
 const drawn = (effect: Effect, t: number): string =>
-  bytes(new Effected(subject, effect, { key: "test", theme: CATPPUCCIN_MOCHA }).at(t));
+  bytes(new Effected(subject, effect, { key: "test" }).at(t));
 
 describe("each curve at rest draws the cells as they were, byte for byte", () => {
   const untouched = bytes(subject);
@@ -572,7 +572,7 @@ describe("the catalogue makes every effect one way, by name", () => {
     const { attribute, off, on } = ATTRIBUTE_DEFAULTS[name as AttributeLoopName];
     const effect = make(element);
     expect([0, off / 2, off + on, off + on + off / 2].map((t) => drawn(effect, t))).toEqual([untouched, untouched, untouched, untouched]);
-    const lit = [...new Effected(subject, effect, { key: "test", theme: CATPPUCCIN_MOCHA }).at(off + on / 2).render({ maxWidth: 60, colorSystem: ColorDepth.TRUECOLOR })];
+    const lit = [...new Effected(subject, effect, { key: "test" }).at(off + on / 2).render({ maxWidth: 60, colorSystem: ColorDepth.TRUECOLOR, terminal: CATPPUCCIN_MOCHA })];
     // A line break is no cell, so nothing sets it.
     expect(lit.filter((segment) => segment.text !== "\n").every((segment) => segment.style?.[attribute] === true)).toBe(true);
   });
@@ -588,7 +588,7 @@ describe("the catalogue makes every effect one way, by name", () => {
 
 describe("the transitions run start to end", () => {
   /** The ground of the terminal every frame here is drawn on: what a cell arrives from and leaves to. */
-  const terminalGround = NOTHING.theme.backgroundColor;
+  const terminalGround = NOTHING.terminal.backgroundColor;
 
   it("a fade-in starts with every cell's ink on its ground", () => {
     expect(at(fadeIn(curve(2, 1), 0).effect, 0).every((c) => sameColor(c.fg, c.bg))).toBe(true);
@@ -622,7 +622,7 @@ describe("the transitions run start to end", () => {
   });
 
   it("the ground a cell arrives from and leaves to is that of the terminal the frame is drawn on", () => {
-    const latte = { ...NOTHING, theme: CATPPUCCIN_LATTE };
+    const latte = { ...NOTHING, terminal: CATPPUCCIN_LATTE };
     const ground = CATPPUCCIN_LATTE.backgroundColor.hex;
     const arriving = fadeIn(curve(2, 1), 0).effect(latte).at(0)(colors, cells[0]!);
     const gone = dissolveOut(curve(2, 1), 0).effect(latte).at(2)(colors, cells[0]!);
@@ -651,7 +651,7 @@ describe("the transitions run start to end", () => {
   const onGround = (ground: string) => {
     const theme = new TerminalTheme(ColorSpec.parse(ground).getTruecolor(), CATPPUCCIN_MOCHA.foregroundColor, CATPPUCCIN_MOCHA.ansiColors, CATPPUCCIN_MOCHA.palette);
     return (renderable: Renderable, effect: Effect, t: number): string =>
-      renderToString(new Effected(renderable, effect, { key: "p", theme }).at(t), { width: 40, colorSystem: ColorDepth.TRUECOLOR });
+      renderToString(new Effected(renderable, effect, { key: "p" }).at(t), { width: 40, colorSystem: ColorDepth.TRUECOLOR, terminal: theme });
   };
 
   it.each([
@@ -895,11 +895,11 @@ describe("on a sixteen-colour terminal a loop holds still", () => {
     "%s on %s at %s writes every cell on its slot at every second of its period",
     (name, _theme, _depth, make, theme, colorSystem) => {
       const seconds = EFFECT_CURVES[name as LoopName].seconds;
-      const write = (renderable: Renderable): string => renderToString(renderable, { width: 20, colorSystem });
+      const write = (renderable: Renderable): string => renderToString(renderable, { width: 20, colorSystem, terminal: theme });
       const moved = elements.flatMap((element, e) => {
         const effect = make({ z: 7 });
         const rest = write(element);
-        const t = Array.from({ length: seconds + 1 }, (_, t) => t).find((t) => write(new Effected(element, effect, { key: "k", theme }).at(t)) !== rest);
+        const t = Array.from({ length: seconds + 1 }, (_, t) => t).find((t) => write(new Effected(element, effect, { key: "k" }).at(t)) !== rest);
         return t === undefined ? [] : [`element ${e} at t=${t}`];
       });
       expect(moved).toEqual([]);
@@ -959,7 +959,7 @@ describe("a cell under light still reads", () => {
 describe("a loop lit on what Effected draws", () => {
   const AA = 4.5;
   const theme = CATPPUCCIN_MOCHA;
-  const options = new Console({ width: 120, colorSystem: "truecolor" }).options;
+  const options = new Console({ width: 120, colorSystem: "truecolor", terminal: theme }).options;
   const keys = ["primary", "secondary", "accent", "success"];
   const items = keys.map(
     (key) =>
@@ -990,7 +990,7 @@ describe("a loop lit on what Effected draws", () => {
     const lit = onColors(shimmer({ ...EFFECT_CURVES.shimmer, swing: 1 }, SHIMMER_WIDTH, sun, 0));
     let moved = 0;
     for (let t = 0; t < 4 * EFFECT_CURVES.shimmer.seconds; t += 3) {
-      const now = cellsOf(new Effected(strip, lit, { key: "strip", theme }).at(t));
+      const now = cellsOf(new Effected(strip, lit, { key: "strip" }).at(t));
       expect(now.map((c) => c.glyph).join("")).toBe(rest.map((c) => c.glyph).join(""));
       now.forEach((cell, i) => {
         const was = rest[i]!;
@@ -1007,7 +1007,7 @@ describe("a loop lit on what Effected draws", () => {
     const blank = new RichText("   ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-secondary")!), ColorSpec.fromRgba(fill)), end: "", noWrap: true });
     const bare = new Strip([words, blank], JOINERS.powerline);
     const lit = onColors({ touch: light(sun), field: () => () => 1 }, new Set([fill.hex]));
-    const cells = [...new Effected(bare, lit, { key: "bare", theme }).at(0).render(options)].flatMap((segment) =>
+    const cells = [...new Effected(bare, lit, { key: "bare" }).at(0).render(options)].flatMap((segment) =>
       segment.style?.bgcolor === undefined ? [] : [segment.style.bgcolor.getTruecolor(theme, false)],
     );
     expect(cells.some((bg) => !sameColor(bg, fill) && sameColor(bg, light(sun)(fill, 1)))).toBe(true);
@@ -1016,7 +1016,7 @@ describe("a loop lit on what Effected draws", () => {
   it("the wheel turns each seam's ink with the fill of the cell it points out of, read off the strip", () => {
     const round = wheel(EFFECT_CURVES.wheel, 0);
     for (const t of [150, 400, 700]) {
-      const now = cellsOf(new Effected(strip, round, { key: "strip", theme }).at(t));
+      const now = cellsOf(new Effected(strip, round, { key: "strip" }).at(t));
       // A seam between two cells: the glyph whose ink, at rest, is the fill before it.
       const seams = rest.flatMap((was, i) => (i > 0 && !was.lettered && was.glyph.trim() !== "" && sameColor(was.fg, rest[i - 1]!.bg) ? [i] : []));
       // Three seams between the four cells, and the tail after the last.
@@ -1033,7 +1033,7 @@ describe("a loop lit on what Effected draws", () => {
     const lit = onColors(loop);
     const touchesAt = (t: number): number => {
       touches = 0;
-      cellsOf(new Effected(strip, lit, { key: "strip", theme }).at(t));
+      cellsOf(new Effected(strip, lit, { key: "strip" }).at(t));
       return touches;
     };
     const first = touchesAt(0);
@@ -1076,13 +1076,13 @@ describe("a loop lit reads as the wire writes it", () => {
   it.each(touches.flatMap(([t, touch]) => themes.flatMap(([name, theme]) => depths.map(([d, depth, system, slack]) => [t, name, d, touch, theme, depth, system, slack] as const))))(
     "%s on %s at %s colours: no word cell falls below its resting contrast or AA",
     (_t, _name, _d, touch, theme, depth, system, slack) => {
-      const options = new Console({ width: 40, colorSystem: system }).options;
+      const options = new Console({ width: 40, colorSystem: system, terminal: theme }).options;
       const strengths = Array.from({ length: 12 }, (_, i) => (i + 1) / 12);
       const failures = words(100).flatMap((style) => {
         const word = new RichText("ab", { style, end: "", noWrap: true });
         const floor = Math.min(worst(word.render(options), depth, theme), AA) - slack;
         return strengths.flatMap((w) => {
-          const lit = new Effected(word, onColors({ touch, field: () => () => w }), { key: "word", theme }).at(0);
+          const lit = new Effected(word, onColors({ touch, field: () => () => w }), { key: "word" }).at(0);
           const now = worst(lit.render(options), depth, theme);
           return now < floor ? [`${style} at ${w.toFixed(2)}: ${now.toFixed(3)} under ${floor.toFixed(3)}`] : [];
         });
@@ -1109,7 +1109,7 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
 
   /** Each cell `renderable` draws as the screen shows it at `colorSystem` on `theme`, and whether it is a word cell as `Drawn` counts one. */
   function screen(renderable: Renderable, colorSystem: (typeof depths)[number][0], theme: TerminalTheme): { fg: ColorRgba; bg: ColorRgba; word: boolean }[] {
-    const options = new Console({ width: 80, colorSystem }).options;
+    const options = new Console({ width: 80, colorSystem, terminal: theme }).options;
     const depth = options.colorSystem!;
     return [...renderable.render(options)].flatMap((segment) => {
       if (segment.isControl) return [];
@@ -1130,7 +1130,7 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
       const rest = screen(element, depth, theme);
       const effect = make({ z: 7 });
       for (let t = 0; t <= seconds; t++) {
-        const now = screen(new Effected(element, effect, { key: label, theme }).at(t), depth, theme);
+        const now = screen(new Effected(element, effect, { key: label }).at(t), depth, theme);
         const under = rest.findIndex((was, i) => was.word && contrastRatio(now[i]!.fg, now[i]!.bg) < Math.min(contrastRatio(was.fg, was.bg), AA) - slack);
         if (under >= 0) return [`${label} at t=${t}: ${now[under]!.fg.hex} on ${now[under]!.bg.hex}, rested ${rest[under]!.fg.hex} on ${rest[under]!.bg.hex}`];
       }
@@ -1147,7 +1147,7 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
     const theme = DEFAULT_TERMINAL_THEME;
     const failures = elements.flatMap(([label, element]) => {
       const effect = EFFECT_CATALOGUE.loops.wheel({ z: 7 });
-      const at = (t: number) => screen(new Effected(element, effect, { key: label, theme }).at(t), "truecolor", theme);
+      const at = (t: number) => screen(new Effected(element, effect, { key: label }).at(t), "truecolor", theme);
       let last = at(0);
       for (let t = 1; t <= EFFECT_CURVES.wheel.seconds; t++) {
         const now = at(t);
@@ -1235,10 +1235,10 @@ describe("gradient: a ramp laid across an element", () => {
     const rule = new Rule(new RichText("status", { style: Style.parse("#cdd6f4") }), { style: lineSpec });
     const panel = new Panel(new RichText("body", { style: Style.parse("#cdd6f4") }), { borderStyle: lineSpec, width: 20 });
     const draw = (element: Renderable, t: number, colorSystem: ColorDepth | null) =>
-      renderToString(new Effected(element, gradient(scrolling, lit), { key: "k", theme: CATPPUCCIN_MOCHA }).at(t), { width: 20, colorSystem });
+      renderToString(new Effected(element, gradient(scrolling, lit), { key: "k" }).at(t), { width: 20, colorSystem, terminal: CATPPUCCIN_MOCHA });
 
     it.each([["rule", rule], ["panel", panel]] as const)("the %s's line moves and its words do not", (_, element) => {
-      const segments = [...inFrame(new Effected(element, gradient(scrolling, lit), { key: "k", theme: CATPPUCCIN_MOCHA }), 1).render({ maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR })];
+      const segments = [...inFrame(new Effected(element, gradient(scrolling, lit), { key: "k" }), 1).render({ maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR, terminal: CATPPUCCIN_MOCHA })];
       const plain = [...element.render({ maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR })];
       const word = (all: readonly Segment[]) => all.find((s) => /status|body/.test(s.text))?.style?.color?.value?.hex;
       expect(word(plain)).toBe("#cdd6f4");

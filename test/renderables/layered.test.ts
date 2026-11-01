@@ -57,7 +57,7 @@ const element = (styles: readonly Style[], text = "words here "): Renderable => 
 const options = (depth: ColorDepth): RenderOptions => ({ maxWidth: 80, colorSystem: depth });
 
 const drawn = (subject: Renderable, effect: Effect, t: number, depth: ColorDepth, theme: TerminalColors): Segment[] =>
-  [...render(new Recolored(subject, effect, { t, key: "layered", theme }), options(depth))];
+  [...render(new Recolored(subject, effect, { t, key: "layered" }), { ...options(depth), terminal: theme })];
 
 const bytes = (segments: readonly Segment[], depth: ColorDepth): string[] =>
   segments.map(({ text, style }) => `${text}|${style?.drawnColors(depth).color?.getAnsiCodes(true).join(";")}|${style?.drawnColors(depth).color?.getAnsiCodes(false).join(";")}|${style?.drawnColors(depth).bgcolor?.getAnsiCodes(false).join(";")}|${style?.reverse}|${style?.blink}|${style?.bold}`);

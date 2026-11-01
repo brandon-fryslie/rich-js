@@ -13,7 +13,6 @@ import { tween } from "../../src/core/tween.js";
 import type { View } from "../../src/core/view.js";
 import { App } from "../../src/host/app.js";
 import { frameRate } from "../../src/core/clock.js";
-import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { crossfade } from "../../src/renderables/change.js";
 import { Effected } from "../../src/renderables/effect.js";
 import { dissolveOut, fadeIn, onColors, pulse } from "../../src/renderables/effects.js";
@@ -36,7 +35,6 @@ import { drawnAt, inFrame } from "../renderables/in-frame.js";
 // [LAW:behavior-not-structure] What is asserted is what a reader sees and
 // what a host does: the bytes drawn, and whether it is told to look again.
 
-const theme = DEFAULT_TERMINAL_THEME;
 const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 const FULL: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 const REDUCED: RenderOptions = { ...FULL, reducedMotion: true };
@@ -107,11 +105,11 @@ describe("an animation reduced", () => {
   it("a transition is its new state, an arrival arrived and an exit gone", () => {
     const building = new RichText("building", { end: "" });
     const done = new RichText("done", { end: "" });
-    expect(still(crossfade(curve).effect({ from: building, to: done, theme }))).toBe(done);
+    expect(still(crossfade(curve).effect({ from: building, to: done }))).toBe(done);
     // A fade-in reduced is the element as drawn; a dissolve-out reduced is the ground.
     const word = new RichText("[#ff8800 on #202020]word[/]", { end: "" });
-    expect(bytes(new Effected(word, fadeIn(curve, 0).effect, { key: "w", theme }).at(0), REDUCED)).toBe(bytes(word, FULL));
-    expect(bytes(new Effected(word, dissolveOut(curve, 0).effect, { key: "w", theme }).at(0), REDUCED)).not.toBe(bytes(word, FULL));
+    expect(bytes(new Effected(word, fadeIn(curve, 0).effect, { key: "w" }).at(0), REDUCED)).toBe(bytes(word, FULL));
+    expect(bytes(new Effected(word, dissolveOut(curve, 0).effect, { key: "w" }).at(0), REDUCED)).not.toBe(bytes(word, FULL));
     // A typewriter reduced has typed everything.
     const typed = new GlyphEffected(new RichText("hello world", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { key: "t" }).at(0);
     expect(plain(typed, REDUCED)).toBe("hello world");
@@ -127,7 +125,7 @@ describe("an animation reduced", () => {
 
   it("an element is there from when it entered until it is told to leave, with no arrival or exit, and wakes only for those", () => {
     const element = new RichText("line", { end: "" });
-    const options = { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" };
+    const options = { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(curve, 0)), key: "line" };
     expect(still(lifecycle(element, options, -1))).toBe(element);
     const life = lifecycle(element, options, 2).leave(5);
     const reduced = life.reduced();
@@ -145,8 +143,8 @@ describe("an animation reduced", () => {
 function everything(): Animation<Renderable> {
   const bar = Animation.map(tween(0, 20, { seconds: 3, ease: EASES.linear }), (w) => new RichText("#".repeat(Math.round(w)), { end: "" }));
   const marquee = scroll(new RichText("a long line that scrolls past", { end: "" }), { width: 10, height: 1, col: Animation.continuous((t) => (t * 4) % 20) });
-  const change = Timeline.run(Timeline.play(0), crossfade(curve).effect({ from: new RichText("old", { end: "" }), to: new RichText("new", { end: "" }), theme }));
-  const life = lifecycle(new RichText("arriving", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "l" }, 0);
+  const change = Timeline.run(Timeline.play(0), crossfade(curve).effect({ from: new RichText("old", { end: "" }), to: new RichText("new", { end: "" }) }));
+  const life = lifecycle(new RichText("arriving", { end: "" }), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(curve, 0)), key: "l" }, 0);
   const cascade = Animation.map(Timeline.stagger([frames("1", "2"), frames("3", "4"), frames("5", "6")], 0.1), (shown) => new Group(...shown));
   return Animation.map(Animation.all([bar, marquee, change, life, cascade]), (parts) => new Group(...parts));
 }
@@ -155,11 +153,11 @@ function everything(): Animation<Renderable> {
 function builtForTheTime(t: number): Renderable {
   const glow = new ColorRgba(255, 255, 255);
   return new Group(
-    new Effected(new RichText("[#5080ff]pulsing[/]", { end: "" }), onColors(pulse({ seconds: 2, ease: EASES.sine, swing: 1 }, glow, 0)), { key: "p", theme }).at(t),
+    new Effected(new RichText("[#5080ff]pulsing[/]", { end: "" }), onColors(pulse({ seconds: 2, ease: EASES.sine, swing: 1 }, glow, 0)), { key: "p" }).at(t),
     new GlyphEffected(new RichText("typing out", { end: "" }), typewriter({ seconds: 2, ease: EASES.linear }).effect, { key: "g" }).at(t),
     frames("◐", "◓", "◑", "◒"),
     new Spinner("dots", "working"),
-    lifecycle(new RichText("entering", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "e" }, 0),
+    lifecycle(new RichText("entering", { end: "" }), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(curve, 0)), key: "e" }, 0),
   );
 }
 
@@ -193,7 +191,7 @@ describe("a host under reduced motion", () => {
   });
 
   it("a view reduced still shows and drops content on time, and wakes for exactly that", () => {
-    const life = lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "toast" }, 2).leave(5);
+    const life = lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(curve, 0)), key: "toast" }, 2).leave(5);
     expect([1, 3, 6].map((t) => text(drawnAt(life, t, REDUCED)).trim())).toEqual(["", "toast", ""]);
     expect([1, 3, 8].map((t) => drawnAt(life, t, REDUCED).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
   });

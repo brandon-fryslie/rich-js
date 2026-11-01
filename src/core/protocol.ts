@@ -6,7 +6,7 @@
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, Style, type Hold, type StyleSyntaxError, type Theme } from "./style.js";
-import { ColorDepth, type ColorSpec } from "./color.js";
+import { ColorDepth, type ColorSpec, type TerminalColors } from "./color.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
 // `RichText` is itself rendered under these options, is a recursion in the
@@ -107,6 +107,15 @@ export interface RenderOptions {
    * handed. Absent means truecolor.
    */
   colorSystem?: ColorDepth | null;
+  /**
+   * The terminal the output is drawn on: the colours a cell that sets none is
+   * drawn in, and the sixteen an ANSI colour names. The terminal's own palette
+   * is never queried, so the program says what it is, once, where the output
+   * is decided; a renderable reads it here (`Effected`, `ProgressBar`) and
+   * nothing hands it down to one. Absent is the terminal the depth assumes
+   * (`resolveTerminal`).
+   */
+  terminal?: TerminalColors;
   /**
    * The names a style string may use. A `Console` passes its own; absent, the
    * built-in defaults apply. Read it through `getStyle` rather than directly.

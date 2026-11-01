@@ -227,7 +227,7 @@ The catalogue, `GLYPH_EFFECT_CATALOGUE`, has four transitions, which run once an
 A transition moves every frame until it is done, then never. A loop moves in steps, because a cell shows one glyph or another, and its `nextChange` is when its next step begins. A glyph effect and a colour effect compose by nesting: the outer wrapper is drawn over what the inner one drew, so here a wave of capitals crosses a line that is turning red:
 
 ```typescript
-import { Animation, ColorRgba, DEFAULT_TERMINAL_THEME, Effected, GlyphEffected, RichText, caseWave, type Effect } from "@promptctl/rich-js";
+import { Animation, ColorRgba, Effected, GlyphEffected, RichText, caseWave, type Effect } from "@promptctl/rich-js";
 
 const red = new ColorRgba(220, 38, 38);
 const reddening: Effect = () => Animation.continuous((t) => (look) => ({ ...look, fg: t >= 1 ? red : look.fg }));
@@ -235,7 +235,7 @@ const wave = caseWave({ step: 0.25, width: 3 }, 0);
 
 for (const t of [0.6, 1.1, 1.6]) {
   const glyphs = new GlyphEffected(new RichText("a wave of capitals"), wave, { key: "wave" }).at(t);
-  console.print(new Effected(glyphs, reddening, { key: "wave", theme: DEFAULT_TERMINAL_THEME }).at(t));
+  console.print(new Effected(glyphs, reddening, { key: "wave" }).at(t));
 }
 ```
 
@@ -250,13 +250,12 @@ Every cell goes through the terminal's ground on its way. Until it is halfway it
 The change is drawn at the new renderable's size from its first frame. The old one is cut or padded to the new one's rows, so what sits beside it moves once, at the cut, and never while the change runs. It moves every frame until it is done, then it is the new renderable itself, byte for byte, and never changes again. A change shorter than the gap between frames is seen at its end:
 
 ```typescript
-import { DEFAULT_TERMINAL_THEME, EASES, RichText, wipe } from "@promptctl/rich-js";
+import { EASES, RichText, wipe } from "@promptctl/rich-js";
 
 const change = wipe({ seconds: 2, ease: EASES.linear, swing: 1 });
 const moving = change.effect({
   from: new RichText("building the project", { style: "yellow" }),
   to: new RichText("done: 1,204 tests passed", { style: "green" }),
-  theme: DEFAULT_TERMINAL_THEME,
 });
 
 for (const t of [0, 0.5, 1, 1.5, 2]) {
@@ -269,7 +268,7 @@ To watch both run, run `npm run transitions` in a checkout of this repository.
 
 ## Enter and exit: an element arriving, staying and leaving
 
-A row added to a table, a line appended to a log, a panel closing: each is one element that arrives, stays, and leaves, and whoever holds it must know when it is gone so it can drop it. `lifecycle(element, { enter, exit, key }, entered)` is that element on the host's clock, as an `Animation` of what it draws. `enter` and `exit` are its two halves, each a `Half`: handed the element and its `key`, it gives an `Animation` of the element as the half draws it, from `t = 0` on the half's own clock, in the shape a `Change` has. The half is done from the first moment its animation says it never changes again (`Animation.done`): an arrival is the element from then, and an exit is gone. `throughColors(transition, theme)` makes one from a colour transition, drawn on the terminal whose ground it arrives from and leaves to, and `throughGlyphs(transition)` from a [glyph](#a-glyph-effect-text-typed-scrambled-and-rained-on) one, which needs no theme and is written with no colour output too; each lends the transition's schedule to the frames, which is the one word on when they change that an `Effected` on its own lacks until it is drawn, so an `Effected` or `GlyphEffected` handed in bare is refused when the lifecycle is made: a half must end. An arrival starts from nothing — `fadeIn`, `typewriter`, `scramble` — and an exit ends at nothing — `dissolveOut`, `backspace`, `scrambleOut` — so the element is already out of sight when it is dropped. The two kinds mix, so a line can type itself in and dissolve out, and a half written by hand is any function of that shape: `(element) => Animation.sequence(Animation.continuous((t) => new Padding(element, [0, 0, 0, Math.round(8 * (1 - t))])), 1, Animation.constant(element))` slides the element in from the right, which no effect draws. `key` names the element for both halves' seeds. `entered` is the host time it arrived. `lifecycle.leave(at)` is the same element told to leave at host time `at`, a new value like a timeline operation's. Until it is told, its `left` is `Infinity`.
+A row added to a table, a line appended to a log, a panel closing: each is one element that arrives, stays, and leaves, and whoever holds it must know when it is gone so it can drop it. `lifecycle(element, { enter, exit, key }, entered)` is that element on the host's clock, as an `Animation` of what it draws. `enter` and `exit` are its two halves, each a `Half`: handed the element and its `key`, it gives an `Animation` of the element as the half draws it, from `t = 0` on the half's own clock, in the shape a `Change` has. The half is done from the first moment its animation says it never changes again (`Animation.done`): an arrival is the element from then, and an exit is gone. `throughColors(transition)` makes one from a colour transition, arriving from and leaving to the ground of the terminal the frame is drawn on, and `throughGlyphs(transition)` from a [glyph](#a-glyph-effect-text-typed-scrambled-and-rained-on) one, which is written with no colour output too; each lends the transition's schedule to the frames, which is the one word on when they change that an `Effected` on its own lacks until it is drawn, so an `Effected` or `GlyphEffected` handed in bare is refused when the lifecycle is made: a half must end. An arrival starts from nothing — `fadeIn`, `typewriter`, `scramble` — and an exit ends at nothing — `dissolveOut`, `backspace`, `scrambleOut` — so the element is already out of sight when it is dropped. The two kinds mix, so a line can type itself in and dissolve out, and a half written by hand is any function of that shape: `(element) => Animation.sequence(Animation.continuous((t) => new Padding(element, [0, 0, 0, Math.round(8 * (1 - t))])), 1, Animation.constant(element))` slides the element in from the right, which no effect draws. `key` names the element for both halves' seeds. `entered` is the host time it arrived. `lifecycle.leave(at)` is the same element told to leave at host time `at`, a new value like a timeline operation's. Until it is told, its `left` is `Infinity`.
 
 Both times are handed in, never read, so a host that says "leave at 5" and asks for the frame at 6 gets the element one second into leaving. At host time `t` it draws:
 
@@ -282,11 +281,11 @@ Both times are handed in, never read, so a host that says "leave at 5" and asks 
 While it arrives or leaves it changes when its half does — every frame for a fade, once a hold for one on a beat (`onBeat(fadeIn(curve, 0), beat([0.25]))` arrives a quarter of a second at a time, and a host wakes on those quarters) — and it holds still while it stays and once it is gone, so a host still holding a gone element wakes for nothing. A half says when its frame changes whatever the element draws, so this holds even with no colour output, where a colour half writes nothing. Placed, the lifecycle stamps its frame with that hold:
 
 ```typescript
-import { DEFAULT_TERMINAL_THEME, EASES, RichText, dissolveOut, lifecycle, throughColors, throughGlyphs, typewriter } from "@promptctl/rich-js";
+import { EASES, RichText, dissolveOut, lifecycle, throughColors, throughGlyphs, typewriter } from "@promptctl/rich-js";
 
 const typing = { seconds: 1, ease: EASES.linear };
 const line = new RichText("compiling 214 modules", { style: "bold cyan" });
-const halves = { enter: throughGlyphs(typewriter(typing)), exit: throughColors(dissolveOut({ ...typing, swing: 1 }, 0), DEFAULT_TERMINAL_THEME), key: "line" };
+const halves = { enter: throughGlyphs(typewriter(typing)), exit: throughColors(dissolveOut({ ...typing, swing: 1 }, 0)), key: "line" };
 const shown = lifecycle(line, halves, 0).leave(3);
 
 for (const t of [0, 0.5, 1, 2, 3.5, 4]) {

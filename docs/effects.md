@@ -12,7 +12,7 @@ type Effect = (drawn: Drawn) => Animation<EffectFrame>;
 `Effected` makes the animation and asks it for the frame at `t` once a frame, then calls that frame once for each cell, so whatever holds for the whole frame, such as where a band of light stands at `t`, is worked out once rather than once a cell. The animation's `nextChange` is when the frame next changes, and since the animation is made from what the element draws, a loop that holds every cell still on a sixteen-colour terminal can say its frame never changes there. A loop that moves every frame is `Animation.continuous`:
 
 ```typescript
-import { Animation, CATPPUCCIN_MOCHA, ColorRgba, Effected, RichText, type Effect } from "@promptctl/rich-js";
+import { Animation, CATPPUCCIN_MOCHA, ColorRgba, Console, Effected, RichText, type Effect } from "@promptctl/rich-js";
 
 // The ink brightens toward white across one second, then starts again.
 const brighten: Effect = () =>
@@ -22,8 +22,9 @@ const brighten: Effect = () =>
     return { ...look, fg: new ColorRgba(toward(look.fg.red), toward(look.fg.green), toward(look.fg.blue)) };
   });
 
+const console = new Console({ terminal: CATPPUCCIN_MOCHA });
 for (const t of [0, 0.5, 0.9]) {
-  console.print(new Effected(new RichText("brightening", { style: "#5f87d7" }), brighten, { key: "brighten", theme: CATPPUCCIN_MOCHA }).at(t));
+  console.print(new Effected(new RichText("brightening", { style: "#5f87d7" }), brighten, { key: "brighten" }).at(t));
 }
 ```
 
@@ -57,7 +58,7 @@ const line = new RichText(words, { style: Style.fromColor(ColorSpec.fromRgba(ink
 const lit = EFFECT_CATALOGUE.loops.shimmer({ z: 0 });
 
 for (const t of [0, 60, 100]) {
-  console.print(new Effected(line, lit, { key: "status", theme }).at(t));
+  console.print(new Effected(line, lit, { key: "status" }).at(t));
 }
 ```
 
@@ -82,9 +83,9 @@ The rest describes the cells the element draws words in: those whose glyph is no
 
 - `pairs` is every distinct ink and ground of those cells as the screen shows them, each with the `terminal` flags a cell carries and `reverse`, whether its style writes the ink in the ground's slot.
 - `colors` is the colours the element sets itself in those cells, by hex. `fills` is those of them that are a cell's ground.
-- `depth` and `theme` are what the frame is written at and drawn on.
+- `depth` and `terminal` are what the frame is written at and drawn on.
 
-`drawnOf(segments, depth, theme)` takes the same measurement of any rendered output. Measure an element under an effect to read the contrast its words are left at.
+`drawnOf(segments, depth, terminal)` takes the same measurement of any rendered output. Measure an element under an effect to read the contrast its words are left at.
 
 ### One element of many
 
@@ -93,7 +94,7 @@ The rest describes the cells the element draws words in: those whose glyph is no
 A strip's seams follow its items. A cell a `CellJoiner` paints from the items beside it is no item's, so no effect is handed it; once the effect has painted the items, each such cell is drawn again from the item cells beside it, the way its joiner drew it. A cell painted from a style name alone, such as `plain`'s separator or `metro`'s rail, follows no item: an effect paints it as it paints any cell, and one confined to the items leaves it as drawn, since no item drew it. Where the frame does not show a neighbour, as when a narrower container cuts the strip short, the effect is handed that neighbour's edge at the seam's own cell, so an effect over the whole element moves it with everything else, and one confined to the items leaves it as drawn. A powerline arrow keeps the fill it points out of as its ink and the fill it points into as its ground, wherever the effect took them:
 
 ```typescript
-import { CATPPUCCIN_MOCHA, EFFECT_CURVES, EFFECT_LIGHTS, Effected, JOINERS, RichText, Strip, Style, confined, onColors, pulse } from "@promptctl/rich-js";
+import { EFFECT_CURVES, EFFECT_LIGHTS, Effected, JOINERS, RichText, Strip, Style, confined, onColors, pulse } from "@promptctl/rich-js";
 
 const fill = Style.parse("#1e1e2e on #89b4fa");
 const items = ["main", "ctx 61%", "ok"].map((label) => new RichText(` ${label} `, { style: fill, end: "", noWrap: true }));
@@ -103,7 +104,7 @@ const strip = new Strip(items, JOINERS.powerline);
 const breathing = confined(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, 0)), items[1]!);
 
 for (const t of [0, 10, 20]) {
-  console.print(new Effected(strip, breathing, { key: "status", theme: CATPPUCCIN_MOCHA }).at(t));
+  console.print(new Effected(strip, breathing, { key: "status" }).at(t));
 }
 ```
 
@@ -116,7 +117,7 @@ To move every item but one, name all the others in one call: `confined(onColors(
 `layered(...effects)` is one effect built from several, placed wherever an `Effect` goes, so `Effected` and `confined` take it unchanged. Each layer moves what the last one left, later layers on top, and when the frame next changes is when the soonest layer's does, so a composition of loops that hold still lets the host sleep.
 
 ```typescript
-import { CATPPUCCIN_MOCHA, EFFECT_CATALOGUE, Effected, RichText, Style, layered } from "@promptctl/rich-js";
+import { EFFECT_CATALOGUE, Effected, RichText, Style, layered } from "@promptctl/rich-js";
 
 const element = { z: 3 };
 const bar = new RichText(" main  +3 ~2  opus ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
@@ -125,7 +126,7 @@ const bar = new RichText(" main  +3 ~2  opus ", { style: Style.parse("#1e1e2e on
 const both = layered(EFFECT_CATALOGUE.loops.wheel(element), EFFECT_CATALOGUE.loops.shimmer(element));
 
 for (const t of [0, 40, 80]) {
-  console.print(new Effected(bar, both, { key: "bar", theme: CATPPUCCIN_MOCHA }).at(t));
+  console.print(new Effected(bar, both, { key: "bar" }).at(t));
 }
 ```
 
@@ -148,7 +149,7 @@ const leaving = EFFECT_CATALOGUE.transitions.dissolve({ z: 0 });
 console.print([10, 29.9, 30].map((t) => `${t}s: ${leaving.done(t) ? "gone" : "leaving"}`).join(" · "));
 ```
 
-Both blend toward the background of the `theme` given to `Effected`, the terminal the frame is drawn on: the library never asks the terminal what that is.
+Both blend toward the background of the [terminal the frame is drawn on](/console#the-terminal-a-frame-is-drawn-on): the library never asks the terminal what that is.
 
 A transition's frame [changes](/frames#when-the-frame-next-changes) every frame until it is done and never after: the [animation](/animation) its effect returns answers `nextChange` with `t` before `done` and `Infinity` from it, so a host drawing the element can stop waking for it without asking `done` itself.
 
@@ -161,9 +162,8 @@ The loops are ambience, and nothing in them jumps. `steppedInk` is a signal, and
 The ground stays as the cell draws it, and the words stay readable on it. Each step's ink is written as the colour nearest the step's that the output's depth can draw and that reads on the cell's ground at the floor every loop here keeps: the cell's resting contrast, or WCAG AA if it rested above that, measured on the colours the terminal is sent. In truecolor that is the step itself, or its hue at the lightness nearest it that clears the floor. Below truecolor it is the nearest colour the depth has an index for, so on a sixteen-colour terminal the ink steps from slot to slot, where the loops hold still. The search runs once for each ink, ground and step, so every frame inside a step costs what any frame does, and the frame says it [next changes](/frames#when-the-frame-next-changes) when the step ends.
 
 ```typescript live
-import { CATPPUCCIN_MOCHA, ColorRgba, Effected, FrameSequence, Live, RichText, Style, steppedInk } from "@promptctl/rich-js";
+import { ColorRgba, Effected, FrameSequence, Live, RichText, Style, steppedInk } from "@promptctl/rich-js";
 
-const theme = CATPPUCCIN_MOCHA;
 const chevrons = new FrameSequence(["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #313244") }), seconds: 1 })));
 const signal = steppedInk([
   { color: new ColorRgba(255, 85, 85), seconds: 1 },
@@ -171,7 +171,7 @@ const signal = steppedInk([
   { color: new ColorRgba(80, 250, 123), seconds: 1 },
 ]);
 
-const live = new Live(new Effected(chevrons, signal, { key: "effort", theme }), { console });
+const live = new Live(new Effected(chevrons, signal, { key: "effort" }), { console });
 live.start();
 try {
   await new Promise((resolve) => setTimeout(resolve, 6000));
@@ -187,7 +187,7 @@ try {
 Lit cells are those whose ink is one of `colors`, named as a style names them and matched as the screen shows them at the output's depth, or by default every colour the element sets itself. A named colour must be opaque, and a misspelt or translucent one is refused when the gradient is made. Below truecolor, every ink that lands on the same palette colour as a named one is lit with it. A terminal-supplied ink is never lit. Naming a rule's line colour paints the line and leaves its title, and naming a panel's border colour paints the border and leaves its body. A ramp colour that would not read on the cell's ground is written as the nearest colour that does, the same check `steppedInk` makes. On a sixteen-colour terminal, or with no colour, a gradient holds every cell as drawn, as the loops do.
 
 ```typescript
-import { Animation, CATPPUCCIN_MOCHA, ColorRamp, ColorRgba, EASES, Effected, Panel, Phase, RichText, gradient } from "@promptctl/rich-js";
+import { Animation, ColorRamp, ColorRgba, EASES, Effected, Panel, Phase, RichText, gradient } from "@promptctl/rich-js";
 
 const hues = new ColorRamp(EASES.linear, [
   { at: 0, color: new ColorRgba(255, 120, 100) },
@@ -198,7 +198,7 @@ const flowing = gradient(hues.moving({ scroll: Animation.continuous(Phase.loop(4
 const panel = new Panel(new RichText("the words keep their own colour", { style: "#cdd6f4" }), { borderStyle: "#a6e3a1", width: 40 });
 
 for (const t of [0, 1, 2]) {
-  console.print(new Effected(panel, flowing, { key: "status", theme: CATPPUCCIN_MOCHA }).at(t));
+  console.print(new Effected(panel, flowing, { key: "status" }).at(t));
 }
 ```
 
@@ -211,14 +211,13 @@ To watch a gradient move on a rule and a panel border, run `npm run gradient-eff
 `onBeat(transition, beat)` steps a transition the same way, its schedule with it: `onBeat(fadeIn(curve, 0), beat([0.25]))` fades in a quarter of a second at a time and is done at the first hold that starts once the fade is, so an element [arriving](/animation#enter-and-exit-an-element-arriving-staying-and-leaving) through it wakes its host on the quarters, not every frame.
 
 ```typescript
-import { CATPPUCCIN_MOCHA, EASES, EFFECT_CATALOGUE, Effected, RichText, Style, beat, onBeat } from "@promptctl/rich-js";
+import { EASES, EFFECT_CATALOGUE, Effected, RichText, Style, beat, onBeat } from "@promptctl/rich-js";
 
-const theme = CATPPUCCIN_MOCHA;
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa") });
 const walk = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
 
 for (const t of [0, 0.5, 1, 2.5]) {
-  console.print(new Effected(label, walk, { key: "brand", theme }).at(t));
+  console.print(new Effected(label, walk, { key: "brand" }).at(t));
 }
 ```
 
@@ -237,7 +236,7 @@ const pulsing = EFFECT_CATALOGUE.attributes.boldPulse({ z: 0 });
 const word = new RichText("ready");
 
 for (const t of [0, 0.69, 0.7, 0.99, 1]) {
-  const drawn = renderToString(new Effected(word, pulsing, { key: "ready", theme: DEFAULT_TERMINAL_THEME }).at(t), { colorSystem: ColorDepth.TRUECOLOR });
+  const drawn = renderToString(new Effected(word, pulsing, { key: "ready" }).at(t), { colorSystem: ColorDepth.TRUECOLOR, terminal: DEFAULT_TERMINAL_THEME });
   console.print(`t=${t}s  ${drawn.includes("\x1b[1m") ? "bold" : "as drawn"}`);
 }
 ```
@@ -249,7 +248,7 @@ No effect is handed a seam painted from the items beside it, so it keeps the att
 `Effected` is any renderable under an effect over time: an [animation](/animation#placing-one) whose value at `t` is the element with its cells' looks — colours and attributes — passed through the effect at that moment. Placed in a view, it draws at the frame's time and stamps its cells with exactly when the effect's frame next changes at the output's depth, so a loop that cannot move at sixteen colours lets the host sleep. Here it is drawn at one moment, `.at(t)`:
 
 ```typescript
-import { Animation, ColorRgba, ColorRamp, DEFAULT_TERMINAL_THEME, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";
+import { Animation, ColorRgba, ColorRamp, EASES, Effected, Phase, RichText, type Effect } from "@promptctl/rich-js";
 
 const highlight = new ColorRgba(255, 214, 102);
 const sweep = Phase.loop(1.5);
@@ -269,7 +268,7 @@ const shimmer: Effect = () =>
   });
 
 for (const t of [0, 0.5, 1]) {
-  console.print(new Effected(new RichText(label), shimmer, { key: "thinking", theme: DEFAULT_TERMINAL_THEME }).at(t));
+  console.print(new Effected(new RichText(label), shimmer, { key: "thinking" }).at(t));
 }
 ```
 
@@ -292,6 +291,6 @@ An effect changes how cells look, never which cells exist or who drew them. Text
 
 With no colour output at all, an effect has nothing to change, and the wrapped renderable draws as it would without it.
 
-A colour an effect moves is written as the nearest colour the output's depth can draw on the `theme` terminal: the RGB value itself in truecolor; otherwise the nearest of the terminal's default colour, the theme's sixteen and, at 256 colours, the cube and grey ramp. A translucent colour is laid on what is beneath it first, as every translucent colour the library writes is: the ground on black, since a terminal cannot say what lies under its cells, and the glyph on that ground. So below truecolor a colour moved a little off an ANSI slot or the default colour is still drawn as that one. On a sixteen-colour terminal a move that does show is a jump to another slot, so there a loop — `wheel`, and any lit by `onColors`, every one in the catalogue among them — holds every cell still rather than flickering between slots. A transition still runs, from slot to slot, since it moves once and is done, and so does `steppedInk`, since stepping is what a signal is for.
+A colour an effect moves is written as the nearest colour the output's depth can draw on the frame's terminal: the RGB value itself in truecolor; otherwise the nearest of the terminal's default colour, the theme's sixteen and, at 256 colours, the cube and grey ramp. A translucent colour is laid on what is beneath it first, as every translucent colour the library writes is: the ground on black, since a terminal cannot say what lies under its cells, and the glyph on that ground. So below truecolor a colour moved a little off an ANSI slot or the default colour is still drawn as that one. On a sixteen-colour terminal a move that does show is a jump to another slot, so there a loop — `wheel`, and any lit by `onColors`, every one in the catalogue among them — holds every cell still rather than flickering between slots. A transition still runs, from slot to slot, since it moves once and is done, and so does `steppedInk`, since stepping is what a signal is for.
 
 [`layered`](#several-at-once) is the way to run several effects on one element. Nesting is the other: `new Effected(new Effected(child, a, options), b, options)` draws each cell in the colours that applying `a` and then `b` gives it. The bytes can differ from one effect that calls `a` then `b`: the outer layer sees the inner layer's output as written, so a colour the inner layer changed reaches the outer one already rounded to the output's depth, and stays written as that even where the outer one moves it back. The outer layer's `drawn` is measured on the inner layer's output too, so a loop lit by `onColors` on the outside settles its shares against colours that move every frame.

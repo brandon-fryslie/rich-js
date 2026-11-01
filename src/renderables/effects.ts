@@ -114,7 +114,7 @@ const SIDES: readonly Side[] = ["fg", "bg"];
  * How much of `touch` each of `colors` (hex) can take: the largest share in
  * [0, 1] at which every pair `drawn` shows it in, touched at the same
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
- * lower, in the colours `Effected` writes it in at `drawn`'s depth and theme.
+ * lower, in the colours `Effected` writes it in at `drawn`'s depth and terminal.
  * A colour in a pair but not in `colors` takes none, and so does one
  * the terminal supplies, whatever its hex, as in `onColors`. One of `colors`
  * no pair writes has nothing to be measured against, and takes it all.
@@ -126,7 +126,7 @@ const SIDES: readonly Side[] = ["fg", "bg"];
  * the fill room to glow — and a darker colour left as it is always holds,
  * because its lighter partner was settled against exactly that.
  */
-export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
+export function shares({ pairs, depth, terminal }: Drawn, colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
   // [LAW:one-source-of-truth] A slot shows a subject colour, by hex, only
   // where the element writes it: the reading `onColors` lights by.
   const own = (pair: Pair, side: Side): string | undefined => (pair.terminal[side] ? undefined : pair[side].hex);
@@ -153,7 +153,7 @@ export function shares({ pairs, depth, theme }: Drawn, colors: ReadonlySet<strin
         const floor = floorOf(pair, depth);
         const at = (side: Side, w: number): ColorRgba => touchedAt(touch, pair[side], (side === mine ? share : theirs) * w);
         return STRENGTHS.every((w) => {
-          const shown = Effected.shows(pair, { fg: at("fg", w), bg: at("bg", w) }, depth, theme);
+          const shown = Effected.shows(pair, { fg: at("fg", w), bg: at("bg", w) }, depth, terminal);
           return contrastRatio(shown.fg, shown.bg) >= floor;
         });
       });
@@ -190,7 +190,7 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
   const settle = (drawn: Drawn): ReadonlyMap<string, number> => {
     const lit = litIn(drawn);
     const key = [drawnKey(drawn), "|", ...lit].join(" ");
-    return settled.get(drawn.theme, () => new Memo()).get(key, () => shares(drawn, lit, loop.touch));
+    return settled.get(drawn.terminal, () => new Memo()).get(key, () => shares(drawn, lit, loop.touch));
   };
   return stillWhereNothingMoves(SIDES, litIn, atShares(loop, settle));
 }
@@ -241,8 +241,8 @@ export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[])
   // [LAW:one-source-of-truth] A colour named as a style spells it is lit
   // wherever a cell shows it, so it is resolved as `Effected` resolves a
   // cell's ink: drawn at the frame's depth, then read on its terminal.
-  const shown = (spec: ColorSpec, { depth, theme }: Drawn): string =>
-    (Style.fromColor(spec).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(theme, true).hex;
+  const shown = (spec: ColorSpec, { depth, terminal }: Drawn): string =>
+    (Style.fromColor(spec).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(terminal, true).hex;
   const litIn = (drawn: Drawn): ReadonlySet<string> => (named === undefined ? drawn.colors : new Set(named.map((spec) => shown(spec, drawn))));
   return stillWhereNothingMoves(["fg"], litIn, (drawn, lit) => {
     const inkOn = legible(drawn);
@@ -701,7 +701,7 @@ export type Visibility = (t: number, drawn: Drawn) => (cell: EffectCell) => numb
 
 /**
  * A cell mixed toward the ground of the terminal the frame is drawn on
- * (`Drawn.theme`) by how hidden it is: its fill toward the ground, and its ink
+ * (`Drawn.terminal`) by how hidden it is: its fill toward the ground, and its ink
  * toward that fill, so an element with fills of its own — a powerline strip —
  * arrives and leaves whole, fill and words together, never as bare coloured
  * blocks. Invisible is ink and fill equal to the ground. `swing` scales the
@@ -710,7 +710,7 @@ export type Visibility = (t: number, drawn: Drawn) => (cell: EffectCell) => numb
 export function veiled(visibility: Visibility, swing: number): Effect {
   return (drawn) => {
     // [LAW:one-source-of-truth] The ground is the terminal `Effected` draws on, never a second one handed here.
-    const ground = Oklch.fromRgba(drawn.theme.backgroundColor);
+    const ground = Oklch.fromRgba(drawn.terminal.backgroundColor);
     return Animation.continuous((t): EffectFrame => {
       const shows = visibility(t, drawn);
       return (look, cell) => {
@@ -1116,7 +1116,7 @@ export function wheel(curve: Curve, z: number): Effect {
   // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
   const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalColors>();
   return stillWhereNothingMoves(SIDES, ({ colors }) => colors, (drawn) => {
-    const { colors, fills, depth, theme } = drawn;
+    const { colors, fills, depth, terminal } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
     const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
     // The colour an own colour is bounded with, under which its bounds are
@@ -1125,7 +1125,7 @@ export function wheel(curve: Curve, z: number): Effect {
     const boundWith = (color: ColorRgba, other: ColorRgba, theirs: boolean): string => (fills.has(color.hex) || !theirs ? color.hex : other.hex);
     // The bounds a colour turns within, by the colour it is bounded with: one bound for every place a frame writes it at.
     const keyOf = (color: ColorRgba, bound: string): string => `${color.hex} ${bound}`;
-    const bounds = settled.get(theme, () => new Memo()).get(drawnKey(drawn), () =>
+    const bounds = settled.get(terminal, () => new Memo()).get(drawnKey(drawn), () =>
       turnedBounds(drawn.pairs, depth, (pair, side) => {
         const other = side === "fg" ? "bg" : "fg";
         return own(pair.terminal[side], pair[side]) ? keyOf(pair[side], boundWith(pair[side], pair[other], own(pair.terminal[other], pair[other]))) : undefined;
@@ -1133,7 +1133,7 @@ export function wheel(curve: Curve, z: number): Effect {
     );
     // 256 colours writes a turned colour as one it has an index for; truecolor
     // as one of the two either side of its luminance.
-    const indexed = measuredIndexed(depth, theme);
+    const indexed = measuredIndexed(depth, terminal);
     // Where each cell's colours turn, read off the frame's listing once.
     const placeOf = segmentsOf(drawn);
     return Animation.continuous((t): EffectFrame => {
@@ -1275,10 +1275,10 @@ interface Measured {
 }
 const measured = (color: ColorRgba): Measured => ({ color, looks: Oklch.fromRgba(color), stop: stop(color) });
 
-/** `ColorSpec.indexed`'s colours, measured once for each theme and depth. */
+/** `ColorSpec.indexed`'s colours, measured once for each terminal and depth. */
 const measuredMemo = new WeakMemo<readonly Measured[], readonly (readonly [ColorSpec, ColorRgba])[]>();
-function measuredIndexed(depth: ColorDepth, theme: TerminalColors): readonly Measured[] {
-  return measuredMemo.get(ColorSpec.indexed(depth, theme), (indexed) => indexed.map(([, color]) => measured(color)));
+function measuredIndexed(depth: ColorDepth, terminal: TerminalColors): readonly Measured[] {
+  return measuredMemo.get(ColorSpec.indexed(depth, terminal), (indexed) => indexed.map(([, color]) => measured(color)));
 }
 
 /**
@@ -1308,10 +1308,10 @@ const MEASURE = 1e-9;
 /**
  * The stops a colour written at `depth` can land on: everything between black
  * and white in truecolor, and otherwise what the depth has an index for, so a
- * sixteen-colour terminal's reach is its theme's slots.
+ * sixteen-colour terminal's reach is its slots.
  */
-function reachOf(depth: ColorDepth, theme: TerminalColors): readonly [bottom: number, top: number] {
-  return depth === ColorDepth.TRUECOLOR ? [0, Math.log(21)] : extent(measuredIndexed(depth, theme).map((candidate) => candidate.stop));
+function reachOf(depth: ColorDepth, terminal: TerminalColors): readonly [bottom: number, top: number] {
+  return depth === ColorDepth.TRUECOLOR ? [0, Math.log(21)] : extent(measuredIndexed(depth, terminal).map((candidate) => candidate.stop));
 }
 
 /**
@@ -1320,11 +1320,11 @@ function reachOf(depth: ColorDepth, theme: TerminalColors): readonly [bottom: nu
  * at the floor below the lightest the depth writes, a dark one bars it from the
  * floor above the darkest. Where a ground rests is always within: a depth also
  * writes the terminal's own colour, which at sixteen colours lies past its
- * theme's reach, and a ground no layer moved comes back as it was. These are
+ * terminal's reach, and a ground no layer moved comes back as it was. These are
  * what the depth's reach leaves, so a ground any one effect moves is inside them.
  */
-function groundBounds(pairs: readonly Pair[], depth: ColorDepth, theme: TerminalColors): ReadonlyMap<string, Bounds> {
-  const [bottom, top] = reachOf(depth, theme);
+function groundBounds(pairs: readonly Pair[], depth: ColorDepth, terminal: TerminalColors): ReadonlyMap<string, Bounds> {
+  const [bottom, top] = reachOf(depth, terminal);
   const bounds = new Map<string, Bounds>();
   for (const pair of pairs) {
     const [gap, rests] = [Math.log(floorOf(pair, depth)), stop(pair.bg)];
@@ -1365,10 +1365,10 @@ function groundBounds(pairs: readonly Pair[], depth: ColorDepth, theme: Terminal
 export function layered(...effects: readonly Effect[]): Effect {
   const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalColors>();
   return (drawn) => {
-    const { depth, theme } = drawn;
-    const grounds = settled.get(theme, () => new Memo()).get(drawnKey(drawn), () => groundBounds(drawn.pairs, depth, theme));
+    const { depth, terminal } = drawn;
+    const grounds = settled.get(terminal, () => new Memo()).get(drawnKey(drawn), () => groundBounds(drawn.pairs, depth, terminal));
     const words = new Set(drawn.pairs.map(pairKey));
-    const offered = depth === ColorDepth.TRUECOLOR ? undefined : measuredIndexed(depth, theme);
+    const offered = depth === ColorDepth.TRUECOLOR ? undefined : measuredIndexed(depth, terminal);
     // `color` as itself if it is within the first of `bounds`, else the nearest
     // colour the depth writes there, else the same of the next; as itself where
     // none has any. In truecolor that is its hue at the bound's luminance, or a
@@ -1391,8 +1391,8 @@ export function layered(...effects: readonly Effect[]): Effect {
       // [LAW:single-enforcer] Every measure below reads the colours as `Effected`
       // writes them: rounded to the depth, and a translucent one laid on what is
       // beneath it, so a colour that passes here cannot draw as one that fails.
-      const ground = landing(Effected.shows(pair, moved, depth, theme).bg, pair.bg, grounds.get(pair.bg.hex) ?? UNBOUNDED);
-      const { fg } = Effected.shows(pair, { fg: moved.fg, bg: ground }, depth, theme);
+      const ground = landing(Effected.shows(pair, moved, depth, terminal).bg, pair.bg, grounds.get(pair.bg.hex) ?? UNBOUNDED);
+      const { fg } = Effected.shows(pair, { fg: moved.fg, bg: ground }, depth, terminal);
       const floor = floorOf(pair, depth);
       if (!words.has(pairKey(pair)) || contrastRatio(fg, ground) >= floor) return { fg, bg: ground };
       const gap = Math.log(floor);
@@ -1476,16 +1476,16 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
  */
 function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, pair: Pair) => ColorRgba {
   const settled = new WeakMemo<{ readonly inks: Memo<ColorRgba>; readonly readable: Memo<readonly Measured[]> }, TerminalColors>();
-  return ({ depth, theme }) => {
-    const memo = settled.get(theme, () => ({ inks: new Memo(), readable: new Memo() }));
+  return ({ depth, terminal }) => {
+    const memo = settled.get(terminal, () => ({ inks: new Memo(), readable: new Memo() }));
     return (ink, pair) => {
       const key = `${depth} ${pairKey(pair)}`;
-      const legibleOf = (offered: readonly Measured[]): readonly Measured[] => legibleAmong(pair, offered, depth, theme);
+      const legibleOf = (offered: readonly Measured[]): readonly Measured[] => legibleAmong(pair, offered, depth, terminal);
       return memo.inks.get(`${key} ${ink.hex}`, () => {
         const offered =
           depth === ColorDepth.TRUECOLOR
             ? legibleOf([ink, ensureContrast(ink, pair.bg, floorOf(pair, depth))].map(measured))
-            : memo.readable.get(key, () => legibleOf(measuredIndexed(depth, theme)));
+            : memo.readable.get(key, () => legibleOf(measuredIndexed(depth, terminal)));
         return nearestOf(ink, offered)?.color ?? pair.fg;
       });
     };
@@ -1498,10 +1498,10 @@ function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, pair: Pair) => ColorR
  * way `shares` and `wheel` measure: the written colours, at the catalogue's
  * floor. An ink none of them is nearest stays `pair`'s own.
  */
-function legibleAmong(pair: Pair, offered: readonly Measured[], depth: ColorDepth, theme: TerminalColors): readonly Measured[] {
+function legibleAmong(pair: Pair, offered: readonly Measured[], depth: ColorDepth, terminal: TerminalColors): readonly Measured[] {
   const floor = floorOf(pair, depth);
   return offered.filter(({ color }) => {
-    const shown = Effected.shows(pair, { fg: color, bg: pair.bg }, depth, theme);
+    const shown = Effected.shows(pair, { fg: color, bg: pair.bg }, depth, terminal);
     return contrastRatio(shown.fg, shown.bg) >= floor;
   });
 }

@@ -11,7 +11,6 @@ import { RichText } from "../../src/core/text.js";
 import { Effected, type Effect, type EffectFrame } from "../../src/renderables/effect.js";
 import { GlyphEffected, type GlyphCell, type GlyphEffect, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
 import { Panel } from "../../src/renderables/panel.js";
-import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { inFrame } from "./in-frame.js";
 
 const identity: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => cell.glyph);
@@ -140,7 +139,7 @@ describe("GlyphEffected — under a colour effect", () => {
   it("has its changed glyphs drawn in the colours the colour effect moves them to", () => {
     const red: Effect = () => Animation.constant<EffectFrame>((colors) => ({ ...colors, fg: new ColorRgba(255, 0, 0) }));
     const upper: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => cell.glyph.toUpperCase());
-    const both = new Effected(glyphed(fixed(new Segment("ab")), upper), red, { key: "k", theme: DEFAULT_TERMINAL_THEME }).at(0);
+    const both = new Effected(glyphed(fixed(new Segment("ab")), upper), red, { key: "k" }).at(0);
     expect(renderToString(both, { colorSystem: "truecolor" })).toBe(renderToString(fixed(new Segment("AB", Style.parse("#ff0000"))), { colorSystem: "truecolor" }));
   });
 });

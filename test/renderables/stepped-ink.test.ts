@@ -61,9 +61,9 @@ const subjects: readonly (readonly [string, Style])[] = [
 ];
 
 const word = (style: Style): RichText => new RichText("›››", { style, end: "", noWrap: true });
-const render = (renderable: Renderable, depth: ColorDepth): Segment[] => [...renderable.render({ maxWidth: 40, colorSystem: depth })];
+const render = (renderable: Renderable, depth: ColorDepth, terminal: TerminalTheme = CATPPUCCIN_MOCHA): Segment[] => [...renderable.render({ maxWidth: 40, colorSystem: depth, terminal })];
 const lit = (subject: Renderable, t: number, depth: ColorDepth, theme: TerminalTheme): Segment[] =>
-  render(new Effected(subject, signal, { key: "k", theme }).at(t), depth);
+  render(new Effected(subject, signal, { key: "k" }).at(t), depth, theme);
 /** The one pair the word cells of `segments` draw, as the screen shows them at `depth`. */
 const pairOf = (segments: Segment[], depth: ColorDepth, theme: TerminalTheme): Pair => {
   const { pairs } = drawnOf(segments, depth, theme);
@@ -123,7 +123,7 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
 
   it("on a sixteen-colour terminal it steps from slot to slot", () => {
     const chevrons = word(Style.parse("bold #cdd6f4 on #313244"));
-    const written = [0, 1, 2].map((t) => renderToString(new Effected(chevrons, signal, { key: "k", theme: DEFAULT_TERMINAL_THEME }).at(t), { width: 10, colorSystem: ColorDepth.STANDARD }));
+    const written = [0, 1, 2].map((t) => renderToString(new Effected(chevrons, signal, { key: "k" }).at(t), { width: 10, terminal: CATPPUCCIN_MOCHA, colorSystem: ColorDepth.STANDARD }));
     expect(new Set(written).size).toBe(3);
     // Each step's ink is one of the sixteen: an SGR 30–37 or 90–97, never a 38;5 or 38;2.
     for (const bytes of written) {
@@ -138,7 +138,7 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
   it("composes with a frame sequence by nesting: the glyphs turn and the ink steps, and no glyph changes", () => {
     const sequence = new FrameSequence(["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #1e1e2e") }), seconds: 1 })));
     for (const [t, glyphs] of [[0, "›"], [1, "››"], [2.5, "›››"], [3, "›"]] as const) {
-      const segments = render(inFrame(new Effected(sequence, signal, { key: "k", theme: CATPPUCCIN_MOCHA }), t), ColorDepth.TRUECOLOR);
+      const segments = render(inFrame(new Effected(sequence, signal, { key: "k" }), t), ColorDepth.TRUECOLOR);
       expect(segments.map((s) => s.text).join("").trimEnd()).toBe(glyphs);
       expect(pairOf(segments, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex).toBe(BRIGHT[Math.floor(t) % 3]!.hex);
     }
@@ -155,7 +155,7 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
     steps.pop();
     steps[1] = { color: new ColorRgba(139, 233, 253), seconds: 9 };
     const inkAt = (t: number): string =>
-      pairOf(render(new Effected(word(Style.parse("bold #cdd6f4 on #1e1e2e")), kept, { key: "k", theme: CATPPUCCIN_MOCHA }).at(t), ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex;
+      pairOf(render(new Effected(word(Style.parse("bold #cdd6f4 on #1e1e2e")), kept, { key: "k" }).at(t), ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex;
     expect([0, 1, 2].map(inkAt)).toEqual(BRIGHT.map((color) => color.hex));
   });
 });
@@ -166,7 +166,7 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
   // On Mocha's base every step reads as itself, so the ink written is the step's own colour.
   const chevrons = word(Style.parse("bold #cdd6f4 on #1e1e2e"));
   const inkAt = (effect: ReturnType<typeof steppedInk>, t: number): string =>
-    pairOf(render(new Effected(chevrons, effect, { key: "k", theme: CATPPUCCIN_MOCHA }).at(t), ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex;
+    pairOf(render(new Effected(chevrons, effect, { key: "k" }).at(t), ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex;
 
   it("sampled every 1/60 s over 3 s, each colour is drawn for exactly 60 consecutive samples", () => {
     const samples = Array.from({ length: 180 }, (_, i) => inkAt(signal, i / 60));
@@ -197,7 +197,7 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     const weighed = vi.spyOn(Effected, "shows");
     const searched = (effect: Effect, t: number): boolean => {
       weighed.mockClear();
-      renderToString(new Effected(row, effect, { key: "row", theme: CATPPUCCIN_MOCHA }).at(t), { width: 120, colorSystem: ColorDepth.EIGHT_BIT });
+      renderToString(new Effected(row, effect, { key: "row" }).at(t), { width: 120, colorSystem: ColorDepth.EIGHT_BIT, terminal: CATPPUCCIN_MOCHA });
       return weighed.mock.calls.length > 0;
     };
     for (const base of [0, 1e6]) {

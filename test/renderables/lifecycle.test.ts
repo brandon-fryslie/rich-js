@@ -8,7 +8,6 @@ import { render, type Renderable, type RenderOptions } from "../../src/core/prot
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
-import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { Effected } from "../../src/renderables/effect.js";
 import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
 import { drawnAt, inFrame } from "./in-frame.js";
@@ -19,7 +18,6 @@ import { lifecycle, throughColors, throughGlyphs, type Half, type Lifecycle } fr
 import { Padding } from "../../src/renderables/padding.js";
 import { fakeClock } from "../core/fake-clock.js";
 
-const theme = DEFAULT_TERMINAL_THEME;
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 const PLAIN: RenderOptions = { maxWidth: 40, colorSystem: null };
 const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
@@ -34,7 +32,7 @@ const sampled = (rate: number, from: number, to: number): number[] => Array.from
 
 /** A line entering at 1 through a 2 s fade-in, told to leave at 5 through a 2 s dissolve: gone at 7. */
 const made = (element: Renderable = line, entered = 1): Lifecycle =>
-  lifecycle(element, { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" }, entered);
+  lifecycle(element, { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(curve, 0)), key: "line" }, entered);
 
 describe("a lifecycle", () => {
   it("draws the same bytes for the same t at one frame a second and sixty", () => {
@@ -77,7 +75,7 @@ describe("a lifecycle", () => {
   });
 
   it("is never gone before it was told to leave, whatever its exit steps on", () => {
-    const stepped = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(onBeat(dissolveOut(curve, 0), beat([0.25])), theme), key: "x" }, 1);
+    const stepped = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(onBeat(dissolveOut(curve, 0), beat([0.25]))), key: "x" }, 1);
     expect([0, 5, 1e6].some((t) => stepped.gone(t))).toBe(false);
     const leaving = stepped.leave(5);
     expect(leaving.gone(leaving.lastChange(100))).toBe(true);
@@ -93,7 +91,7 @@ describe("a lifecycle", () => {
     };
     const exit = { seconds: 0.7, ease: EASES.linear, swing: 1 };
     for (const left of [0.1, 0.2, 0.3, 1.1, 12345.678, 1e6 + 0.3]) {
-      const life = lifecycle(line, { enter: throughColors(fadeIn(curve, 0), theme), exit: throughColors(dissolveOut(exit, 0), theme), key: "line" }, 0).leave(left);
+      const life = lifecycle(line, { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(exit, 0)), key: "line" }, 0).leave(left);
       const goneAt = life.lastChange(left + 10);
       const before = below(goneAt);
       expect([life.gone(before), life.gone(goneAt)]).toEqual([false, true]);
@@ -213,10 +211,10 @@ describe("a lifecycle through glyph transitions", () => {
   });
 
   it("can type itself in and dissolve out: the exit's colours veil the glyphs the arrival left", () => {
-    const life = typed(throughColors(dissolveOut(curve, 0), theme));
+    const life = typed(throughColors(dissolveOut(curve, 0)));
     expect(shown(life, 2)).toBe("a line append");
     // Told to leave mid-type, it goes on typing under the dissolve: the exit veils whatever the arrival draws.
-    const early = lifecycle(line, { enter: throughGlyphs(typewriter(timing)), exit: throughColors(dissolveOut(curve, 0), theme), key: "line" }, 1).leave(2);
+    const early = lifecycle(line, { enter: throughGlyphs(typewriter(timing)), exit: throughColors(dissolveOut(curve, 0)), key: "line" }, 1).leave(2);
     expect(shown(early, 2.5)).toBe("a line appended to");
     expect(bytes(draw(inFrame(early, 2.5)))).not.toBe(bytes(draw(inFrame(typed(), 2.5))));
     expect(shown(life, 6)).toBe(line.plain);
@@ -317,7 +315,7 @@ describe("a lifecycle through halves written by hand", () => {
 
   it("refuses a half that never ends when made, by the element's key and the half's role: a bare Effected as either half", () => {
     // [LAW:no-silent-failure] An Effected's own word on when it changes is "now" at every time, so it is never done.
-    const bare: Half = (element, key) => new Effected(element, fadeIn(curve, 0).effect, { key, theme });
+    const bare: Half = (element, key) => new Effected(element, fadeIn(curve, 0).effect, { key });
     expect(() => lifecycle(line, { enter: bare, exit: slidOut(4), key: "hand" }, 1)).toThrow(/lifecycle "hand": the enter half never ends/);
     expect(() => lifecycle(line, { enter: slidIn(4), exit: bare, key: "hand" }, 1)).toThrow(/lifecycle "hand": the exit half never ends/);
   });
@@ -325,7 +323,7 @@ describe("a lifecycle through halves written by hand", () => {
 
 describe("a half reduced", () => {
   it("cuts to the transition's end at 0, frames and hold alike, so there is nothing to wake for after", () => {
-    const half = throughColors(fadeIn(curve, 0), theme)(line, "k").reduced();
+    const half = throughColors(fadeIn(curve, 0))(line, "k").reduced();
     expect(bytes(draw(half.at(0)))).toBe(bytes(draw(half.at(5))));
     expect([half.lastChange(0), half.nextChange(0), half.nextChange(-1)]).toEqual([0, Number.POSITIVE_INFINITY, 0]);
   });

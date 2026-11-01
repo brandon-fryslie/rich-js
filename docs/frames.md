@@ -82,9 +82,9 @@ A `Progress` draws its table in a frame for the moment its tasks are drawn at, a
 An effect wraps whatever is up: `Effected` around a `FrameSequence` lights the frame in progress and still changes no glyph.
 
 ```typescript live
-import { CATPPUCCIN_MOCHA, EFFECT_CATALOGUE, Effected, FrameSequence, Live, RichText, Style } from "@promptctl/rich-js";
+import { CATPPUCCIN_MOCHA, Console, EFFECT_CATALOGUE, Effected, FrameSequence, Live, RichText, Style } from "@promptctl/rich-js";
 
-const theme = CATPPUCCIN_MOCHA;
+const console = new Console({ terminal: CATPPUCCIN_MOCHA });
 const frames = new FrameSequence(
   ["loading", "loading.", "loading..", "loading..."].map((text) => ({
     text: new RichText(text, { style: Style.parse("bold") }),
@@ -93,7 +93,7 @@ const frames = new FrameSequence(
 );
 const lit = EFFECT_CATALOGUE.loops.pulse({ z: 3 });
 
-const live = new Live(new Effected(frames, lit, { key: "loading", theme }), { console });
+const live = new Live(new Effected(frames, lit, { key: "loading" }), { console });
 live.start();
 try {
   await new Promise((resolve) => setTimeout(resolve, 4000));

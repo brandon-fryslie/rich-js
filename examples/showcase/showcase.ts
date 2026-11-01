@@ -24,6 +24,7 @@ import {
   Effected,
   FrameSequence,
   Layout,
+  Console,
   Live,
   Panel,
   Progress,
@@ -144,7 +145,7 @@ const STEPS = 1000;
 
 // The one display every frame is drawn on, made first: the jobs' Progress is
 // drawn in its frames, and so is timed on them.
-const live = new Live(undefined, { altScreen: true, autoRefresh: false });
+const live = new Live(undefined, { console: new Console({ terminal: DEFAULT_TERMINAL_THEME }), altScreen: true, autoRefresh: false });
 
 const jobs = new Progress(
   new SpinnerColumn("dots"),
@@ -185,7 +186,6 @@ const CURSOR = new FrameSequence([
   { text: new RichText("▌", { style: Style.parse("dim") }), seconds: 0.5 },
   { text: new RichText(" "), seconds: 0.5 },
 ]);
-const THEME = DEFAULT_TERMINAL_THEME;
 
 /**
  * A flash over an effect: for the first 0.3 s of every 10 s the ground
@@ -228,8 +228,8 @@ heading.addColumn();
 heading.addColumn();
 heading.addColumn();
 heading.addRow(
-  new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { key: "brand", theme: THEME }),
-  new Effected(CHEVRONS, SIGNAL, { key: "effort", theme: THEME }),
+  new Effected(new RichText("rich-js ", { style: Style.parse("bold #1e1e2e on #cba6f7"), end: "" }), BRAND, { key: "brand" }),
+  new Effected(CHEVRONS, SIGNAL, { key: "effort" }),
   new RichText(" · beautiful terminal output for TypeScript ", { style: Style.parse("dim"), end: "" }),
   CURSOR,
 );

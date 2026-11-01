@@ -183,7 +183,7 @@ describe("a strip under a pulse", () => {
 
   /** Each cell's two colours by hex, `"ground"` where the terminal's shows. */
   function colorsByCell(renderable: Renderable, theme: TerminalTheme): [string, string][] {
-    return [...renderable.render(options)].flatMap((segment) => {
+    return [...renderable.render({ ...options, terminal: theme })].flatMap((segment) => {
       const drawn = (segment.style ?? Style.null()).drawnColors(options.colorSystem ?? undefined);
       const fg = drawn.color?.getTruecolor(theme, true).hex ?? "ground";
       const bg = drawn.bgcolor?.getTruecolor(theme, false).hex ?? "ground";
@@ -226,7 +226,7 @@ describe("a strip under a pulse", () => {
       const share = shares(drawn, colors, loop.touch);
       const before = colorsByCell(strip.renderable, theme);
       // Two breaths, a frame each tenth of a second: a cell can be resting at any one moment.
-      const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { key: "strip", theme }).at(i / 10), theme));
+      const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { key: "strip" }).at(i / 10), theme));
       frames.forEach((after) => expect(after).toHaveLength(before.length));
 
       // Every colour the strip sets moves, but for one whose cells have no
@@ -268,7 +268,7 @@ describe("a strip under a pulse", () => {
       const oklch = (hex: string) => Oklch.fromRgba(ColorSpec.parse(hex).getTruecolor());
       const seen = (a: string, b: string) => (Math.max(oklch(a).l, oklch(b).l) < 0.2 ? 0 : oklch(a).deltaE(oklch(b)));
       for (let t = 0; t < pulseCurve.seconds; t += 0.5) {
-        const after = colorsByCell(new Effected(strip.renderable, lit, { key: "strip", theme }).at(t), theme);
+        const after = colorsByCell(new Effected(strip.renderable, lit, { key: "strip" }).at(t), theme);
         // A seam between two fills: a cap on the terminal's ground has nothing to be lifted off.
         const lifted = (k: number): boolean =>
           joins[k]! && ![after[k - 1]![1], after[k]![1]].includes("ground") && oklch(after[k - 1]![1]).deltaE(oklch(after[k]![1])) < SEAM_MIN_DELTA_E;
@@ -297,11 +297,11 @@ describe("every loop keeps the words readable", () => {
   it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth, system]) => lights.map((loop) => [loop, g, d, theme, depth, system] as const))))(
     "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",
     (loop, _g, _d, theme, depth, system) => {
-      const at = new Console({ width: 200, colorSystem: system }).options;
+      const at = new Console({ width: 200, colorSystem: system, terminal: theme }).options;
       for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at))) {
         const effect = EFFECT_CATALOGUE.loops[loop](subject, { ...curves[loop], swing: 1 });
         const contrasts = (t: number | undefined): number[] => {
-          const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { key: loop, theme }).at(t).render(subject.options);
+          const drawn = t === undefined ? subject.renderable.render(subject.options) : new Effected(subject.renderable, effect, { key: loop }).at(t).render(subject.options);
           const out: number[] = [];
           for (const segment of drawn) {
             if (segment.isControl) continue;

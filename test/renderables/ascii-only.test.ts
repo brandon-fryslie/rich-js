@@ -29,7 +29,6 @@ import {
   JOINERS,
   Columns,
   Constrain,
-  DEFAULT_TERMINAL_THEME,
   Effected,
   GLYPH_DEFAULTS,
   GlyphEffected,
@@ -113,7 +112,6 @@ const ROWS: Record<string, Row> = {
     make: () =>
       new Effected(panel(), () => Animation.constant<EffectFrame>((c) => c), {
         key: "panel",
-        theme: DEFAULT_TERMINAL_THEME,
       }).at(0),
   },
   Align: { draws: "glyphs", make: () => new Align(panel()) },

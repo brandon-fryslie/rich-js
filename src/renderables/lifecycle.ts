@@ -29,9 +29,8 @@
  *
  * A half draws the element through a colour transition (`throughColors`, a
  * `fadeIn`) or a glyph one (`throughGlyphs`, a `typewriter`): each binds its
- * transition to the one wrapper that draws it, and to what that wrapper
- * needs — a theme for colours, nothing for glyphs — so nothing here asks which
- * kind a half is, and a line can type itself in and dissolve out. A half
+ * transition to the one wrapper that draws it, so nothing here asks which kind
+ * a half is, and a line can type itself in and dissolve out. A half
  * written by hand is any function of that shape — an arrival that slides the
  * element in, which no effect draws. An exit is a half that ends with nothing
  * drawn — `dissolveOut`, `backspace`, `scrambleOut` — so the element has
@@ -44,7 +43,6 @@
  */
 
 import { Animation } from "../core/animation.js";
-import type { TerminalTheme } from "../core/color.js";
 import { firstReaching } from "../core/easing.js";
 import type { Measurable, Renderable } from "../core/protocol.js";
 import { Timeline } from "../core/timeline.js";
@@ -66,9 +64,9 @@ import type { GlyphTransition } from "./glyph-effects.js";
  */
 export type Half = (element: Renderable, key: string) => Animation<Renderable>;
 
-/** `transition`'s colours drawn over an element on `theme`, whose ground it arrives from and leaves to. */
-export function throughColors(transition: Transition, theme: TerminalTheme): Half {
-  return (element, key) => scheduled(new Effected(element, transition.effect, { key, theme }), transition.schedule);
+/** `transition`'s colours drawn over an element, arriving from and leaving to the ground of the terminal the frame is drawn on. */
+export function throughColors(transition: Transition): Half {
+  return (element, key) => scheduled(new Effected(element, transition.effect, { key }), transition.schedule);
 }
 
 /** `transition`'s glyphs drawn over an element, at every depth, with no colour too. */
@@ -95,7 +93,7 @@ function scheduled(placed: Animation<Renderable>, schedule: Animation<unknown>):
 
 /** How an element arrives and leaves, and what it is named for their seeds. */
 export interface LifecycleOptions {
-  /** The half it arrives through — `throughColors(fadeIn(curve, z), theme)`. */
+  /** The half it arrives through — `throughColors(fadeIn(curve, z))`. */
   readonly enter: Half;
   /** The half it leaves through — `throughGlyphs(scrambleOut(timing, z))`. */
   readonly exit: Half;
@@ -164,7 +162,7 @@ function doneAt(half: Animation<Renderable>, start: number): number {
 function ending(half: Animation<Renderable>, role: "enter" | "exit", key: string): Animation<Renderable> {
   if (doneAt(half, 0) === Number.POSITIVE_INFINITY) {
     throw new RangeError(
-      `lifecycle "${key}": the ${role} half never ends: its animation never says it has stopped changing (Animation.done). An Effected or GlyphEffected on its own does not; throughColors(transition, theme) and throughGlyphs(transition) lend one the transition's schedule`,
+      `lifecycle "${key}": the ${role} half never ends: its animation never says it has stopped changing (Animation.done). An Effected or GlyphEffected on its own does not; throughColors(transition) and throughGlyphs(transition) lend one the transition's schedule`,
     );
   }
   return half;
