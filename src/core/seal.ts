@@ -15,7 +15,7 @@
 
 import { advance, closersOf, withoutExplicit } from "./bidi.js";
 import { Segment } from "./segment.js";
-import type { LogicalStamp, TextOrder } from "./text-order.js";
+import type { LogicalStamp, ParagraphLevel, TextOrder } from "./text-order.js";
 
 const LRI = "\u2066";
 const RLI = "\u2067";
@@ -33,9 +33,8 @@ function balanced(text: string, open: string[]): string {
  * character at column 0, initiator included, and a PDI matching nothing there
  * closes nothing.
  */
-function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Iterable<Segment> {
-  const stack = [...opens];
-  yield new Segment((level === 1 ? RLI : LRI) + opens);
+function* isolated(run: readonly Segment[], level: ParagraphLevel, stack: string[]): Iterable<Segment> {
+  yield new Segment((level === 1 ? RLI : LRI) + stack.join(""));
   for (const segment of run) {
     const text = balanced(segment.text, stack);
     yield text === segment.text ? segment : new Segment(text, segment.style, segment.control);
@@ -47,8 +46,15 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
 export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
   let run: Segment[] = [];
   let stamp: LogicalStamp | undefined;
+  // What each row left open where something spliced into it: the stamp knows
+  // only the row's start, and the row's next fragment goes on from here.
+  const left = new Map<LogicalStamp, string>();
   const flush = function* (): Iterable<Segment> {
-    if (stamp !== undefined) yield* isolated(run, stamp);
+    if (stamp !== undefined) {
+      const stack = [...(left.get(stamp) ?? stamp.opens)];
+      yield* isolated(run, stamp.level, stack);
+      left.set(stamp, stack.join(""));
+    }
     run = [];
     stamp = undefined;
   };

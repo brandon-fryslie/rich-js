@@ -310,7 +310,8 @@ function isolatingRunSequences(
       const pdi = isIsolateInitiator(original[last]!) ? pdiOf.get(last) : undefined;
       const next = pdi === undefined ? undefined : runStartingAt.get(pdi);
       if (next === undefined) break;
-      sequence.push(...next);
+      // One push at a time: a run can be longer than a call's arguments may be.
+      for (const index of next) sequence.push(index);
     }
     sequences.push(sequence);
   }

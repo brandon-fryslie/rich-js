@@ -107,7 +107,9 @@ export function shownOn(segment: Segment, destination: Destination): Segment {
 
 /**
  * Encodes one segment as ANSI bytes for `destination`: the reference's
- * `Style.render` for that segment, and nothing for a control segment.
+ * `Style.render` for that segment, and nothing for a control segment. It seals
+ * the segment alone, and a `logical` row's isolate spans its segments, so a row
+ * goes through `segmentsToString` whole.
  */
 export function segmentToString(segment: Segment, destination: Destination): string {
   return segmentsToString([segment], destination);

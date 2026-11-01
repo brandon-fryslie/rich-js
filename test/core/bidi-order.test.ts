@@ -13,6 +13,7 @@ import { resolveDestination } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
+import { Markdown } from "../../src/renderables/markdown.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { Syntax } from "../../src/renderables/syntax.js";
@@ -57,6 +58,10 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     ["an assembly of strings", () => RichText.assemble([`${RLO}abc`, ` ${after}`])],
     ["an assembly of styled strings", () => RichText.assemble([[`${RLO}abc`, "red"], [` ${after}`, "blue"]])],
     ["a paragraph separator ends nothing", () => new RichText(`${RLO}abc\u2029`).append(new RichText(` ${after}`))],
+    ["a string between Texts", () => new RichText("x").append(new RichText("y")).append(`${RLO}abc`).append(new RichText(` ${after}`))],
+    ["tokens", () => new RichText("").appendTokens([[`${RLO}abc`, "red"], [` ${after}`]])],
+    ["a Markdown span", () => new Markdown(`**${RLO}abc** ${after}`)],
+    ["Markdown inline code", () => new Markdown(`see \`${RLO}abc\` ${after}`)],
     ["a symbol in Pretty", () => new Pretty([Symbol(`${RLO}abc`), after])],
     ["a function's name in Pretty", () => new Pretty([Object.defineProperty(() => 0, "name", { value: `${RLO}abc` }), after])],
     ["a thrown message in Pretty", () => new Pretty([{ get a(): number { throw new Error(`${RLO}abc`); } }, after])],
@@ -97,6 +102,26 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     const row = segmentsToString([...cropped, new Segment("after")], destination);
     expect(balancedControls(row)).toBe(true);
     expect(implicit(row).endsWith("after")).toBe(true);
+  });
+
+  test("a row spliced into goes on from what it left open", () => {
+    const segments = [...new RichText(`a${RLO}bc`, { end: "" }).render({ maxWidth: 40, textOrder: "logical" })];
+    const [before, rest] = Segment.divide(segments, [2, 3]);
+    const destination = { ...resolveDestination(null, { isTTY: false }), textOrder: "logical" as const };
+    const row = segmentsToString([...before!, new Segment("X"), ...rest!], destination);
+    expect(row.slice(row.indexOf("X"))).toContain(`${RLO}c`);
+    expect(balancedControls(row)).toBe(true);
+  });
+
+  test("inline code deletes what a code block deletes", () => {
+    expect(plainBytes(new Markdown(`see \`${RLO}abc\``), "logical")).not.toContain(RLO);
+  });
+
+  test("a line too long to spread into a call still resolves", () => {
+    const line = `a\u2067b\u2069${"c".repeat(200_000)}`;
+    for (const order of ["logical", "visual"] as const) {
+      expect(plainBytes(new RichText(line, { end: "", noWrap: true, overflow: "ignore" }), order, 80)).toContain("ccc");
+    }
   });
 
   test("content cannot end the isolate around it", () => {

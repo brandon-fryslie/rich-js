@@ -17,8 +17,6 @@ import { Segment } from "./segment.js";
 import { NULL_STYLE, type Style } from "./style.js";
 import type { BidiStamp, ParagraphLevel, TextOrder } from "./text-order.js";
 
-const plainOf = (line: readonly Segment[]): string => line.map((segment) => segment.text).join("");
-
 /** `line` with `keep` applied to each segment's text. */
 function rewritten(line: readonly Segment[], keep: (text: string) => string): Segment[] {
   return line.map((segment) => {
@@ -73,7 +71,7 @@ interface Cluster {
 
 /** L1, L2 and L4 on a row: its grapheme clusters in display order, each carrying its style. */
 function displayed(shown: readonly Segment[], levels: readonly number[], paragraphLevel: ParagraphLevel): Segment[] {
-  const text = plainOf(shown);
+  const text = Segment.plainOf(shown);
   const finished = lineLevels(text, levels, paragraphLevel);
   // Clusters are found in the whole row, because a span edge inside one is no
   // place to cut it: reversed apart, a mark lands on another letter.
@@ -114,10 +112,10 @@ function mirroredCluster(cluster: string): string {
 
 /** What `order` does with `line`, one logical line of drawn segments. */
 export function directed(line: readonly Segment[], order: TextOrder): Directed {
-  if (!isBidi(plainOf(line))) return UNTOUCHED(line);
+  if (!isBidi(Segment.plainOf(line))) return UNTOUCHED(line);
   if (order === "plain") return UNTOUCHED(rewritten(line, withoutExplicit));
 
-  const text = plainOf(line);
+  const text = Segment.plainOf(line);
   const { level, levels } = paragraph(text);
   if (order === "logical") {
     const openersAt = openersAlong(text);
@@ -132,7 +130,7 @@ export function directed(line: readonly Segment[], order: TextOrder): Directed {
   // work once levels are resolved, and L2 would move a trailing one to a row's
   // first cell, where xterm.js advances for it.
   const consumed = rewritten(line, (piece) => withoutMarks(withoutExplicit(piece)));
-  const kept = plainOf(consumed);
+  const kept = Segment.plainOf(consumed);
   const keptLevels: number[] = [];
   let at = 0;
   for (let unit = 0; unit < text.length; unit += 1) {
@@ -146,7 +144,7 @@ export function directed(line: readonly Segment[], order: TextOrder): Directed {
     oriented: true,
     orient: (shown, start, source) => {
       const own = keptLevels.slice(start, start + source.length);
-      return withStamp(displayed(shown, alignedLevels(plainOf(shown), source, own, level), level), VISUAL_STAMP);
+      return withStamp(displayed(shown, alignedLevels(Segment.plainOf(shown), source, own, level), level), VISUAL_STAMP);
     },
   };
 }
@@ -173,7 +171,7 @@ export function edges(text: string, order: TextOrder): { readonly left: number; 
  */
 export function labelled(before: string, label: string, after: string, style: Style | undefined, order: TextOrder | undefined): Segment[] {
   const { line, oriented, orient } = directed([new Segment(label, style)], order ?? "plain");
-  const text = plainOf(line);
+  const text = Segment.plainOf(line);
   if (!oriented) return [new Segment(before + text + after, style)];
   return [new Segment(before, style), ...orient(line, 0, text), new Segment(after, style)].filter((segment) => segment.text !== "");
 }

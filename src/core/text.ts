@@ -39,17 +39,6 @@ export function stripControlChars(text: string): string {
 const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
 
 /**
- * The plain text of one line of segments, in the coordinate system
- * `divideLine` and `Segment.divide` share: cell offsets into the styled line
- * are cell offsets into this string. [LAW:one-source-of-truth] for that
- * correspondence — the offsets are found in this text and applied to the
- * segments it came from.
- */
-function plainOf(line: readonly Segment[]): string {
-  return line.map((segment) => segment.text).join("");
-}
-
-/**
  * The cells of trailing whitespace on a wrapped line.
  *
  * A wrap cuts before a word, so the line it closes ends with the whitespace
@@ -70,7 +59,7 @@ function plainOf(line: readonly Segment[]): string {
  * there.
  */
 function hangingWhitespace(line: Segment[]): number {
-  return cellLen(TRAILING_WHITESPACE_RE.exec(withoutExplicit(plainOf(line)))?.[0] ?? "");
+  return cellLen(TRAILING_WHITESPACE_RE.exec(withoutExplicit(Segment.plainOf(line)))?.[0] ?? "");
 }
 
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
@@ -219,6 +208,9 @@ export class RichText implements Renderable, Measurable {
   // `RichText` is the most-made object in the library.
   private readonly _text: State<string>;
   private readonly _spans = new ListState<Span>();
+  // The text as `append` last left it, closed: a run of appends need not read
+  // what it already closed, and any other write misses this and is read again.
+  private readonly _closedText = new State("");
   private readonly _format: State<TextFormat>;
   private readonly _tabSize: TabSize;
 
@@ -374,11 +366,13 @@ export class RichText implements Renderable, Measurable {
       // [LAW:single-enforcer] Reached only when separate Texts are set on one
       // line, so here direction state ends with the content holding it. The
       // string arm below builds one content, and an embedding spans it.
-      const own = closed(this._text.get());
+      const text = this._text.get();
+      const own = text === this._closedText.get() ? text : closed(text);
       const offset = own.length;
       // Read before anything is appended, so a text appended to itself takes its spans as they were.
       const moved = content._spans.get().map((span) => span.move(offset));
       this._text.set(own + closed(content._text.get()));
+      this._closedText.set(this._text.get());
       // Its base style becomes a span under its own spans, as the reference's
       // `append` does, so appended text looks as it did alone.
       this._addSpan(offset, this._text.get().length, content._format.get().style);
@@ -787,8 +781,9 @@ export class RichText implements Renderable, Measurable {
   // --- Token Appending ---
 
   appendTokens(tokens: Array<[string, TextStyle?]>): this {
+    // Each token is its own content, as `assemble`'s parts are.
     for (const [text, style] of tokens) {
-      this.append(text, style);
+      this.append(new RichText(text, { style }));
     }
     return this;
   }
@@ -898,13 +893,13 @@ export class RichText implements Renderable, Measurable {
       // Wrap first, overflow last — the reference's order, and the reason a
       // long sentence grows a table row while an unbreakable word in the same
       // column still ellipsizes.
-      const cuts = divideLine(plainOf(line), wrapAt, { fold: overflow === "fold" });
+      const cuts = divideLine(Segment.plainOf(line), wrapAt, { fold: overflow === "fold" });
 
       const wrapped = Segment.divide(line, cuts);
       let start = 0;
       const placed = this._justifyLines(
         wrapped.map((piece, at) => {
-          const source = plainOf(piece);
+          const source = Segment.plainOf(piece);
           const from = start;
           start += source.length;
           return {
@@ -1142,7 +1137,7 @@ export class RichText implements Renderable, Measurable {
    * blocks respectively.
    */
   private _fillLine(line: Segment[], maxWidth: number, base: Style): Segment[] {
-    const plain = plainOf(line);
+    const plain = Segment.plainOf(line);
     const words = plain.split(" ");
     if (withoutExplicit(plain).endsWith(" ")) words.pop();
 

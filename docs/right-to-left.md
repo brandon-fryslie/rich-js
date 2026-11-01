@@ -73,14 +73,15 @@ PDI) as characters, and their effect ends with the content that holds them:
 - A control in a segment no `RichText` drew is deleted in every order, so a raw
   `Segment` cannot carry one to the terminal.
 - Separate contents do not share state: `console.print(a, b)`, a `RichText`
-  appended to another, and `RichText.assemble` all close what each one left open.
+  appended to another, `RichText.assemble`, `appendTokens` and each inline piece
+  of `Markdown` all close what each one left open.
 
 Appending a string builds one content, so an override in it reaches the end of
 its line. To keep untrusted text apart, hand it in as its own `RichText`.
 
 `JSONRenderable` shows an explicit control as its `\u` escape, so the output
-stays valid JSON. `Syntax` deletes them, because a control held in source code
-is the Trojan Source attack.
+stays valid JSON. `Syntax` and Markdown's inline code delete them, because a
+control held in source code is the Trojan Source attack.
 
 ## Wrapping and truncation
 
