@@ -285,20 +285,20 @@ export class Recolored implements Renderable, Measurable {
     if (options.colorSystem === null) return { segments, hold: UNMOVED };
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
-    // [LAW:single-enforcer] The one read of the frame's terminal: every colour
-    // below resolves on it, so two effects in a frame cannot disagree.
+    // [LAW:one-source-of-truth] Every colour below resolves on the frame's
+    // terminal, so two effects in a frame cannot disagree.
     const terminal = resolveTerminal(options.terminal, depth);
     // [LAW:one-source-of-truth] The frame is measured before any cell is
     // handed to the effect, off the same looks its cells are drawn from, and
     // the one measure is what the effect's animation is made from.
     const looked = looks(segments, depth, terminal);
     const walked = walk(looked);
-    const animation = this.effect(measured(looked, () => walked, depth, terminal));
-    const shown = shownAt(animation, this.t, options);
-    return { segments: this._recolored(walked, shown.value, depth, terminal), hold: holdOf(shown, this.t) };
+    const drawn = measured(looked, () => walked, depth, terminal);
+    const shown = shownAt(this.effect(drawn), this.t, options);
+    return { segments: this._recolored(walked, shown.value, drawn), hold: holdOf(shown, this.t) };
   }
 
-  private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth, terminal: TerminalColors): Iterable<Segment> {
+  private *_recolored(walked: readonly Walked[], frame: EffectFrame, drawn: Drawn): Iterable<Segment> {
     // [LAW:one-source-of-truth] Every cell but a join cell that follows its
     // neighbours is painted first, so that cell is resolved from the cells
     // beside it as the effect left them, wherever in the frame they fall.
@@ -313,13 +313,13 @@ export class Recolored implements Renderable, Measurable {
     for (const [i, { segment, look, glyphs }] of walked.entries()) {
       const drawing = drawings[i];
       if (look === undefined || drawing === undefined) yield segment;
-      else if ("joined" in drawing) yield this._rejoined(segment, look, drawing.joined, glyphs, beside, frame, depth, terminal);
-      else yield* this._repainted(segment, look, glyphs, drawing.painted, depth, terminal);
+      else if ("joined" in drawing) yield this._rejoined(segment, look, drawing.joined, glyphs, beside, frame, drawn);
+      else yield* this._repainted(segment, look, glyphs, drawing.painted, drawn);
     }
   }
 
   /** `segment`'s cells drawn in the looks the effect painted them. */
-  private *_repainted(segment: Segment, look: Look, glyphs: readonly WalkedGlyph[], moved: readonly CellLook[], depth: ColorDepth, terminal: TerminalColors): Iterable<Segment> {
+  private *_repainted(segment: Segment, look: Look, glyphs: readonly WalkedGlyph[], moved: readonly CellLook[], drawn: Drawn): Iterable<Segment> {
     const { style: base, wire, slots, pair, attributes } = look;
     // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
     // cell is drawn at the output depth first and merged on the colours that
@@ -332,7 +332,7 @@ export class Recolored implements Renderable, Measurable {
       // Back from the screen to the style's slots: the same swap undoes itself.
       const colors = onScreen(now, pair.reverse);
       const last = runs[runs.length - 1];
-      const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth, terminal);
+      const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, drawn);
       if (last !== undefined && writesAlike(last.drawn, writes) && sameAttributes(last.attributes, now.attributes)) {
         last.text += glyph;
         last.cells += cellLen(glyph);
@@ -362,7 +362,8 @@ export class Recolored implements Renderable, Measurable {
    * nothing of keeps the edge the cell was drawn from, so with neither moved
    * the cell is as it was drawn.
    */
-  private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, frame: EffectFrame, depth: ColorDepth, terminal: TerminalColors): Segment {
+  private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, frame: EffectFrame, measure: Drawn): Segment {
+    const { depth, terminal } = measure;
     const cells = glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell]));
     // A join cell that draws no cell shows nothing an effect could move.
     const [at] = cells;
@@ -422,7 +423,7 @@ export class Recolored implements Renderable, Measurable {
     const was = joined.style;
     const drawn = colors.drawnColors(depth);
     const { wire, slots } = look;
-    const rounded = this.respec(wire, slots, { fg: colors.color?.getTruecolor(terminal, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(terminal, false) ?? slots.bg }, depth, terminal);
+    const rounded = this.respec(wire, slots, { fg: colors.color?.getTruecolor(terminal, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(terminal, false) ?? slots.bg }, measure);
     const written = (now: ColorSpec | undefined, before: ColorSpec | undefined, wrote: ColorSpec | undefined, drew: ColorSpec | undefined, round: ColorSpec | undefined): ColorSpec | undefined => {
       if (sameSpec(now, before)) return wrote;
       // [LAW:no-silent-failure] Unreachable: a move only fills an edge in, so
@@ -446,7 +447,7 @@ export class Recolored implements Renderable, Measurable {
    * `from` with `wire`: each moved slot in the spec `movedSpecs` writes it
    * in, the rest as `wire` wrote them.
    */
-  private respec(wire: DrawnColors, from: CellColors, to: CellColors, depth: ColorDepth, terminal: TerminalColors): DrawnColors {
+  private respec(wire: DrawnColors, from: CellColors, to: CellColors, { depth, terminal }: Drawn): DrawnColors {
     const moved = movedSpecs(from, to, depth, terminal);
     return { color: moved.fg ?? wire.color, bgcolor: moved.bg ?? wire.bgcolor };
   }
@@ -757,12 +758,14 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
 
 /**
  * What `segments`, drawn at `depth` on `terminal`, draw their words in, measured
- * as `Effected` measures its child for every frame. Measure an element's
- * output under an effect to read the contrast its words are left at.
+ * as `Effected` measures its child for every frame, so `options.terminal` means
+ * here what it means on a frame. Measure an element's output under an effect to
+ * read the contrast its words are left at.
  */
-export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, terminal: TerminalColors): Drawn {
-  const looked = looks(segments, depth, terminal);
-  return measured(looked, () => walk(looked), depth, terminal);
+export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, terminal?: TerminalColors): Drawn {
+  const on = resolveTerminal(terminal, depth);
+  const looked = looks(segments, depth, on);
+  return measured(looked, () => walk(looked), depth, on);
 }
 
 /**

@@ -3,7 +3,7 @@
  */
 
 import { cellCount } from "../core/cells.js";
-import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, type TerminalColors } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal } from "../core/color.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import type {
@@ -121,20 +121,23 @@ export class ProgressBar implements Renderable, Measurable {
     // [LAW:no-ambient-temporal-coupling] The moment is the frame's; the bar
     // only says what it looks like then. An empty track, lit by the shimmer.
     const track: Renderable = { render: (o) => this.track(o, width, 0, back) };
-    yield* render(new Effected(track, this.pulseEffect(options, back, depth, terminal), { key: "progress-bar" }), options);
+    yield* render(new Effected(track, this.pulseEffect(options, back), { key: "progress-bar" }), options);
   }
 
   /**
-   * The shimmer over this bar's back colour as `Effected` sees it drawn at
-   * `depth`, toward `bar.pulse`. A bar has no words to keep legible, so its
-   * back takes the whole of the light.
+   * The shimmer over this bar's back colour as `Effected` sees it drawn,
+   * toward `bar.pulse`. A bar has no words to keep legible, so its back takes
+   * the whole of the light.
    */
-  private pulseEffect(options: RenderOptions, back: Style, depth: ColorDepth, terminal: TerminalColors): Effect {
-    const ink = back.drawnColors(depth).color ?? ColorSpec.default();
-    const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
-    const loop = shimmer(PULSE_CURVE, PULSE_REACH, glow.getTruecolor(terminal, true), 0);
-    const whole = new Map([[ink.getTruecolor(terminal, true).hex, 1]]);
-    return atShares(loop, () => whole);
+  private pulseEffect(options: RenderOptions, back: Style): Effect {
+    return (drawn) => {
+      const { depth, terminal } = drawn;
+      const ink = back.drawnColors(depth).color ?? ColorSpec.default();
+      const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
+      const loop = shimmer(PULSE_CURVE, PULSE_REACH, glow.getTruecolor(terminal, true), 0);
+      const whole = new Map([[ink.getTruecolor(terminal, true).hex, 1]]);
+      return atShares(loop, () => whole)(drawn);
+    };
   }
 
   /** Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and a total of zero is a bar already full. */

@@ -85,7 +85,7 @@ The rest describes the cells the element draws words in: those whose glyph is no
 - `colors` is the colours the element sets itself in those cells, by hex. `fills` is those of them that are a cell's ground.
 - `depth` and `terminal` are what the frame is written at and drawn on.
 
-`drawnOf(segments, depth, terminal)` takes the same measurement of any rendered output. Measure an element under an effect to read the contrast its words are left at.
+`drawnOf(segments, depth, terminal)` takes the same measurement of any rendered output, on the terminal the depth assumes where `terminal` is absent, as a frame is. Measure an element under an effect to read the contrast its words are left at.
 
 ### One element of many
 
@@ -162,7 +162,7 @@ The loops are ambience, and nothing in them jumps. `steppedInk` is a signal, and
 The ground stays as the cell draws it, and the words stay readable on it. Each step's ink is written as the colour nearest the step's that the output's depth can draw and that reads on the cell's ground at the floor every loop here keeps: the cell's resting contrast, or WCAG AA if it rested above that, measured on the colours the terminal is sent. In truecolor that is the step itself, or its hue at the lightness nearest it that clears the floor. Below truecolor it is the nearest colour the depth has an index for, so on a sixteen-colour terminal the ink steps from slot to slot, where the loops hold still. The search runs once for each ink, ground and step, so every frame inside a step costs what any frame does, and the frame says it [next changes](/frames#when-the-frame-next-changes) when the step ends.
 
 ```typescript live
-import { ColorRgba, Effected, FrameSequence, Live, RichText, Style, steppedInk } from "@promptctl/rich-js";
+import { CATPPUCCIN_MOCHA, ColorRgba, Console, Effected, FrameSequence, Live, RichText, Style, steppedInk } from "@promptctl/rich-js";
 
 const chevrons = new FrameSequence(["›", "››", "›››"].map((glyphs) => ({ text: new RichText(glyphs, { style: Style.parse("bold on #313244") }), seconds: 1 })));
 const signal = steppedInk([
@@ -171,6 +171,7 @@ const signal = steppedInk([
   { color: new ColorRgba(80, 250, 123), seconds: 1 },
 ]);
 
+const console = new Console({ terminal: CATPPUCCIN_MOCHA });
 const live = new Live(new Effected(chevrons, signal, { key: "effort" }), { console });
 live.start();
 try {
@@ -280,8 +281,8 @@ Nothing in an effect reads a clock. Whoever draws frames builds the view for eac
 
 - `row` and `col` count from the top-left of what the wrapped renderable drew, so a sweep crosses the element, not the screen. A wide glyph is one cell to the effect, at the column of its first half, and is never cut.
 - `seed` is a number in `[0, 1)` that stays the same for that cell on every frame, for effects that vary cell by cell. It is derived from the `key` option and the cell's position, so two elements showing the same text under different keys do not move in lockstep.
-- The look's `fg` and `bg` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the `theme` option, a `TerminalTheme`. The terminal's real palette is never queried, so the caller supplies it.
-- `pair` is the ink and ground the element drew the cell in, the shape `drawn.pairs` lists: what the cell is, where the look beside it is what is there now. Under one effect they are the same colours; under [`layered`](#several-at-once) the look is what the layers beneath left, so a frame recognises a cell by its `pair` and moves its look. `pair.terminal` says, for each of the two as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the theme, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies. `pair.reverse` says whether the cell's style swaps its two slots, so the ink is written in the ground's slot.
+- The look's `fg` and `bg` are what the screen shows: the glyph's colour and the colour behind it, so under `reverse` they are the style's two colours swapped. A cell that sets no colour of its own, or names one of the sixteen ANSI colours, is handed that colour from the [terminal the frame is drawn on](/console#the-terminal-a-frame-is-drawn-on).
+- `pair` is the ink and ground the element drew the cell in, the shape `drawn.pairs` lists: what the cell is, where the look beside it is what is there now. Under one effect they are the same colours; under [`layered`](#several-at-once) the look is what the layers beneath left, so a frame recognises a cell by its `pair` and moves its look. `pair.terminal` says, for each of the two as the screen shows them, whether that colour is the terminal's own: one the style leaves unset or sets to `default`. Resolved through the terminal, it can have the same hex as a colour the element wrote; `terminal` is what tells the two apart. `onColors` and `wheel` never move a colour the terminal supplies. `pair.reverse` says whether the cell's style swaps its two slots, so the ink is written in the ground's slot.
 - The look's `attributes` are the cell's text attributes as its style sets them: each `true`, `false` or `undefined`, and an unset one lets a style laid beneath show through, as it does with no effect. `reverse` is not among them: whether the two colours are swapped is what decides which one the screen shows as ink, so an effect swaps them by moving the colours.
 - `anchor` is who drew the cell, and where it sits in their output, as `Segment.anchorAt` reads it off a frame, or `undefined` for a cell no owner stamped. `confined` reads it.
 

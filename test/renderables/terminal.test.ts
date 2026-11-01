@@ -17,7 +17,7 @@ import { renderToString } from "../../src/core/render.js";
 import { RichText } from "../../src/core/text.js";
 import { App } from "../../src/host/app.js";
 import { crossfade } from "../../src/renderables/change.js";
-import { Effected, type Effect, type EffectFrame } from "../../src/renderables/effect.js";
+import { Effected, drawnOf, type Effect, type EffectFrame } from "../../src/renderables/effect.js";
 import { fadeIn } from "../../src/renderables/effects.js";
 import { Group } from "../../src/renderables/group.js";
 import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
@@ -83,6 +83,12 @@ describe("what fades, fades toward the ground of the frame's terminal", () => {
   ])("%s", (_, renderable) => {
     expect(on(renderable, CATPPUCCIN_MOCHA)).toContain(ground(CATPPUCCIN_MOCHA));
     expect(on(renderable, CATPPUCCIN_LATTE)).toContain(ground(CATPPUCCIN_LATTE));
+  });
+});
+
+describe("drawnOf", () => {
+  it("measures on the terminal the depth assumes where a frame names none", () => {
+    expect(drawnOf([], ColorDepth.WINDOWS, undefined).terminal).toBe(resolveTerminal(undefined, ColorDepth.WINDOWS));
   });
 });
 

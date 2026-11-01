@@ -1118,7 +1118,7 @@ export function wheel(curve: Curve, z: number): Effect {
   return stillWhereNothingMoves(SIDES, ({ colors }) => colors, (drawn) => {
     const { colors, fills, depth, terminal } = drawn;
     // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
-    const own = (terminal: boolean, color: ColorRgba): boolean => !terminal && colors.has(color.hex);
+    const own = (supplied: boolean, color: ColorRgba): boolean => !supplied && colors.has(color.hex);
     // The colour an own colour is bounded with, under which its bounds are
     // kept: itself if a fill or beside no own colour, else the ground beside
     // it. Where it turns is `segmentsOf`'s, not this.

@@ -99,7 +99,7 @@ describe("a seam under an effect drawn on a terminal of its own", () => {
       for (let r = 1; r <= 6; r++) {
         const [a, b] = [item("a", "#e0e0e0 on #1d4ed8"), item("c", "#e0e0e0 on #b91c1c")];
         const slots: Effect = () => Animation.constant<EffectFrame>((look, cell) => ({ ...look, bg: theme.ansiColors.get(drawnBy(cell.anchor, a) ? l : r) }));
-        const frame = [...inFrame(new Effected(new Strip([a, b], JOINERS.powerline), confined(slots, a, b), { key: "slots" }), 0).render({ maxWidth: 80, colorSystem })];
+        const frame = [...inFrame(new Effected(new Strip([a, b], JOINERS.powerline), confined(slots, a, b), { key: "slots" }), 0).render({ maxWidth: 80, colorSystem, terminal: theme })];
         const ground = (owner: object): ColorSpec | undefined => frame.find((s) => drawnBy(s.style?.anchor, owner))!.style!.drawnColors(colorSystem).bgcolor;
         const [arrow] = seamOf(frame, a, b);
         const { color: ink, bgcolor: under } = arrow!.style!.drawnColors(colorSystem);
@@ -119,7 +119,7 @@ describe("a seam under an effect drawn on a terminal of its own", () => {
     for (let n = 0; n < 16; n++) {
       const [a, b] = [item("a", "#e0e0e0 on #1d4ed8"), item("c", "#e0e0e0 on #b91c1c")];
       const slot: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: theme.ansiColors.get(n) }));
-      const frame = [...inFrame(new Effected(new Strip([a, b], JOINERS.powerline), confined(slot, a, b), { key: "slots" }), 0).render({ maxWidth: 80, colorSystem })];
+      const frame = [...inFrame(new Effected(new Strip([a, b], JOINERS.powerline), confined(slot, a, b), { key: "slots" }), 0).render({ maxWidth: 80, colorSystem, terminal: theme })];
       const right = frame.find((s) => drawnBy(s.style?.anchor, b))!.style!.drawnColors(colorSystem).bgcolor;
       const { color: ink, bgcolor: under } = seamOf(frame, a, b)[0]!.style!.drawnColors(colorSystem);
       if (written(ink) === written(under) || written(under) !== written(right)) failures.push(`${n}: ${written(ink)} on ${written(under)} | ${written(right)}`);
@@ -141,7 +141,7 @@ describe("a seam under an effect drawn on a terminal of its own", () => {
         for (let r = 0; r < 16; r++) {
           const [a, b] = [item("a", "#e0e0e0 on #1d4ed8"), item("c", "#e0e0e0 on #b91c1c")];
           const slots: Effect = () => Animation.constant<EffectFrame>((look, cell) => ({ ...look, bg: theme.ansiColors.get(drawnBy(cell.anchor, a) ? l : r) }));
-          for (const { style } of inFrame(new Effected(new Strip([a, b], JOINERS[name]), confined(slots, a, b), { key: "slots" }), 0).render({ maxWidth: 80, colorSystem })) {
+          for (const { style } of inFrame(new Effected(new Strip([a, b], JOINERS[name]), confined(slots, a, b), { key: "slots" }), 0).render({ maxWidth: 80, colorSystem, terminal: theme })) {
             // A cell on the terminal's ground, or reversed out of it, has a side nobody knows.
             const measured = joinedCell(style?.anchor)?.follows === true && style !== undefined && !style.reverse && style.color !== undefined && style.bgcolor !== undefined;
             if (measured && !standsOffAsDrawn(style, colorSystem)) failures.push(`${themeName} ${l}|${r}: ${style.toString()}`);

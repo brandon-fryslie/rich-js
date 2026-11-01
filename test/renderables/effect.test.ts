@@ -56,7 +56,7 @@ describe("Effected — the identity effect", () => {
 
   it("leaves an unstyled cell unstyled though it saw the default colours", () => {
     const seen: CellLook[] = [];
-    const segments = [...effected(fixed(new Segment("ab")), () => Animation.continuous(() => (c) => (seen.push(c), c))).render({ maxWidth: 10 })];
+    const segments = [...effected(fixed(new Segment("ab")), () => Animation.continuous(() => (c) => (seen.push(c), c))).render({ maxWidth: 10, terminal: THEME })];
     expect(seen).toEqual([DEFAULTS, DEFAULTS]);
     expect(segments).toHaveLength(1);
     // Written as it was: no byte but the glyphs. What the segment gains is
@@ -65,11 +65,11 @@ describe("Effected — the identity effect", () => {
     expect(segments[0]!.style?.hold.nextChange).toBe(0);
   });
 
-  it("hands a cell the colours on screen: an ANSI colour from the theme, swapped under reverse", () => {
+  it("hands a cell the colours on screen: an ANSI colour from the terminal, swapped under reverse", () => {
     const seen: CellLook[] = [];
     const record: Effect = () => Animation.continuous(() => (c) => (seen.push(c), c));
     const red = THEME.ansiColors.get(1);
-    [...effected(fixed(new Segment("a", Style.parse("red")), new Segment("b", Style.parse("reverse red"))), record).render({ maxWidth: 10 })];
+    [...effected(fixed(new Segment("a", Style.parse("red")), new Segment("b", Style.parse("reverse red"))), record).render({ maxWidth: 10, terminal: THEME })];
     expect(seen).toEqual([
       { fg: red, bg: THEME.backgroundColor, attributes: PLAIN },
       { fg: THEME.backgroundColor, bg: red, attributes: PLAIN },
@@ -113,7 +113,7 @@ describe("Effected — the identity effect", () => {
     const seen: CellLook[] = [];
     const record: Effect = () => Animation.continuous(() => (c) => (seen.push(c), c));
     const style = Style.parse("#ff8800");
-    [...effected(fixed(new Segment("a", style)), record).render({ maxWidth: 10, colorSystem: ColorDepth.STANDARD })];
+    [...effected(fixed(new Segment("a", style)), record).render({ maxWidth: 10, colorSystem: ColorDepth.STANDARD, terminal: THEME })];
     expect(seen[0]!.fg).toEqual(style.drawnColors(ColorDepth.STANDARD).color!.getTruecolor(THEME, true));
     expect(seen[0]!.fg).not.toEqual(new ColorRgba(255, 136, 0));
   });
