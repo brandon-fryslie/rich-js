@@ -4,15 +4,22 @@
     {
       "version": "pr-530",
       "ref": "refs/pull/530/merge",
-      "sha": "e9902eee6833ef7817a1d4b73a3239ffcbb72102",
-      "timestamp": "2026-11-01T13:44:03.239Z",
+      "sha": "1dcfa6509cb4ee3a945b3993c35fca479ecdb1e2",
+      "timestamp": "2026-11-01T13:54:46.237Z",
       "commits": [
         {
-          "sha": "e9902eee6833ef7817a1d4b73a3239ffcbb72102",
+          "sha": "1dcfa6509cb4ee3a945b3993c35fca479ecdb1e2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T13:42:23Z",
-          "message": "Merge b619283493a5861f006f4fc028e9c5fd305bd65c into 41a520a89f566eff663cdb9c968bd940ff56d1a2\n"
+          "timestamp": "2026-11-01T06:52:40-07:00",
+          "message": "Merge bec0d14ce4e0553108bdb30cfefcc0273ba679cc into 41a520a89f566eff663cdb9c968bd940ff56d1a2\n"
+        },
+        {
+          "sha": "bec0d14ce4e0553108bdb30cfefcc0273ba679cc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T06:52:28-07:00",
+          "message": "A held effect holds for good, and a measurement reports no drawing (rich-animation-27tq.vmc)\n"
         },
         {
           "sha": "b619283493a5861f006f4fc028e9c5fd305bd65c",
