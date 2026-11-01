@@ -66,14 +66,13 @@ describe("the sanitizer and the measure", () => {
     expect(disagreeing.map(name)).toEqual([]);
   });
 
-  // Between `a` and `b`, which join nothing. Between joined emoji the two rightly
-  // differ: a raw ESC reaches the wire and breaks the join, and the sanitized
-  // string has no ESC to break it, so each number is what its bytes draw.
+  // Between `a` and `b`, which join nothing. Between joined emoji a raw string
+  // and its sanitized form rightly differ: a raw ESC reaches the wire and breaks
+  // the join, and the sanitized string has no ESC to break it.
   it("gives no width to what it strips", () => {
-    const disagreeing = CENSUS.filter((codePoint) => {
-      const content = `a${String.fromCodePoint(codePoint)}b`;
-      return cellLen(content) !== cellLen(stripControlChars(content));
-    });
-    expect(disagreeing.map(name)).toEqual([]);
+    const widened = CENSUS.filter(
+      (codePoint) => dispositionOf(codePoint) === "strip" && cellLen(`a${String.fromCodePoint(codePoint)}b`) !== 2,
+    );
+    expect(widened.map(name)).toEqual([]);
   });
 });

@@ -38,6 +38,7 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   keep(0x09, 0x0a),
   strip(0x0b, 0x1f),
   // DEL and the C1 controls: a terminal reads U+009B as CSI and U+009D as OSC.
+  // `TextInput` refuses them for the same reason.
   strip(0x7f, 0x9f),
   // SOFT HYPHEN.
   keep(0xad, 0xad),
@@ -86,7 +87,7 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   keep(0xe0020, 0xe007f),
 ];
 
-/** What happens to `codePoint`. One in no row is a printing character, and is kept. */
+/** What happens to `codePoint`. One in no row is kept. */
 export function dispositionOf(codePoint: number): Disposition {
   let low = 0;
   let high = CONTROL_CODES.length - 1;
