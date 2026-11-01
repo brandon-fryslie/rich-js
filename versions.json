@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-533",
+      "ref": "refs/pull/533/merge",
+      "sha": "ad681cb8ab6e349bd2388f089cfb958c13f9194c",
+      "timestamp": "2026-11-01T16:09:47.650Z",
+      "commits": [
+        {
+          "sha": "ad681cb8ab6e349bd2388f089cfb958c13f9194c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T09:08:07-07:00",
+          "message": "Merge 0139452a3326361bd1d8c2deec9bd04d6d19221b into 57dd684fcaedfb6e5999f81c5f85a2a5a408cb48\n"
+        },
+        {
+          "sha": "0139452a3326361bd1d8c2deec9bd04d6d19221b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T09:07:49-07:00",
+          "message": "Every control and format code point has one disposition, read by the sanitizer and the width measure (rich-control-codes-xh4n.xt7)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "57dd684fcaedfb6e5999f81c5f85a2a5a408cb48",
