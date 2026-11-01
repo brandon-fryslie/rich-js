@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba, TerminalTheme, blendRgb, contrastRatio } from "../../src/core/color.js";
 import { IDENTITY } from "../../src/core/oklch.js";
-import { PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
+import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
 import type { Palette } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
 import { transposePalette } from "../../src/themes/transpose.js";
+import { derivedFrom } from "./derived-palette.js";
 
 const authored = listThemePalettes().map((name) => getThemePalette(name));
-const derived = Object.values(terminalThemes)
-  .filter((value) => value instanceof TerminalTheme)
-  .map((theme) => theme.palette);
+const derived = authored.map(derivedFrom);
+const terminals = Object.values(terminalThemes).filter((value) => value instanceof TerminalTheme);
 const base = {
   primary: new ColorRgba(80, 140, 200),
   secondary: new ColorRgba(120, 90, 200),
@@ -52,6 +52,16 @@ describe("every palette has the same roles", () => {
     const tokyo = getThemePalette("tokyo-night");
     expect(tokyo.get("background-muted")).toBeInstanceOf(ColorRgba);
     expect(tokyo.get("on-primary")).toBeInstanceOf(ColorRgba);
+  });
+});
+
+describe("a bundled theme's name means one palette", () => {
+  it("every registry theme has a TerminalTheme", () => {
+    expect(terminals.map((theme) => theme.palette.name).sort()).toEqual([...listThemePalettes()].sort());
+  });
+
+  it.each(terminals.map((theme) => [theme.palette.name, theme] as const))("%s", (name, theme) => {
+    expect(theme.palette).toBe(getThemePalette(name));
   });
 });
 
@@ -128,13 +138,12 @@ describe("what a role is drawn on decides it", () => {
 describe("a derived ladder continues the authored ones", () => {
   // Textual's generator drew these rungs from each theme's own colours, so the
   // rule run on a theme's bases lands on the authored rung.
-  const ROOTS = ["primary", "secondary", "accent", "success", "warning", "error", "background", "foreground"] as const;
   const RUNGS = ["darken-1", "darken-2", "darken-3", "lighten-1", "lighten-2", "lighten-3"] as const;
 
   it.each(["textual-dark", "textual-light", "nord", "dracula"])("%s", (name) => {
     const theme = getThemePalette(name)!;
-    const rederived = buildPalette(name, theme.dark, Object.fromEntries(ROOTS.map((root) => [root, theme.get(root)])) as typeof base);
-    for (const root of ROOTS) {
+    const rederived = derivedFrom(theme);
+    for (const root of BASE_KEYS) {
       for (const rung of RUNGS) {
         const role = `${root}-${rung}` as const;
         const [was, is] = [theme.get(role), rederived.get(role)];

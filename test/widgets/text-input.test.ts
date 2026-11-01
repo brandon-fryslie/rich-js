@@ -16,7 +16,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { expectLinearTime } from "../suite/linear-time.js";
 
 // What every widget draws a disabled cell in.
-const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
+const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string, character = ""): KeyEvent => new KeyEvent({
@@ -425,10 +425,10 @@ describe("TextInput", () => {
       expect(cursorSeg!.text.length).toBe(1);
     });
 
-    it("renders in the palette's muted foreground when disabled", () => {
+    it("renders in the palette's disabled foreground when disabled", () => {
       const t = new TextInput({ value: "ab", disabled: true });
       const segments = Segment.splitLines(t.render(RENDER))[0]!;
-      expect(segments.map((s) => s.style?.color)).toEqual(segments.map(() => MUTED));
+      expect(segments.map((s) => s.style?.color)).toEqual(segments.map(() => DISABLED));
     });
 
     it("pads a short multiline row in the caller's contentStyle", () => {

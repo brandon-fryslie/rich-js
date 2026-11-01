@@ -1135,8 +1135,8 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // --- Internal fallback terminals ---
 //
 // [LAW:one-way-deps] Preset themes (DEFAULT_TERMINAL_THEME, MONOKAI, NORD, ...)
-// live in `src/themes/terminalThemes.ts` because they need `buildPalette` from
-// `themes/`. Keeping them out of `core/color.ts` makes the dependency strictly
+// live in `src/themes/terminalThemes.ts` because they hold the registry's
+// palettes. Keeping them out of `core/color.ts` makes the dependency strictly
 // `themes/* -> core/color`, with no runtime back-edge.
 //
 // `getTruecolor()` retains a fallback for callers that omit `theme`: the

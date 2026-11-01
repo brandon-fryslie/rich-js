@@ -88,9 +88,8 @@ export function section4ThemeRegistry(out: Console): void {
   out.print(blank());
 
   // For each theme: header in (bg, fg), then a 6-var swatch strip. The
-  // header colors come from `getThemeBaseColors` (the cheap 8-color path
-  // that doesn't hydrate the full ~150-var palette); the swatches come
-  // from `getThemePalette` (which does).
+  // header colors come from `getThemeBaseColors`, the eight base colours;
+  // the swatches come from `getThemePalette`, the full ~150-var palette.
   // The name column is as wide as the longest name, so the swatches line up
   // under each other and no cell goes to padding past it.
   const nameWidth = Math.max(...names.map((name) => name.length));
