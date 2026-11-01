@@ -131,7 +131,8 @@ describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("a w
   it("gives each Button variant its own ground", () => {
     const grounds = VARIANTS.map((variant) => {
       const [label] = cells(() => new Button({ label: "Save", variant, theme }).render(RENDER));
-      return resolveLook(label!.style ?? NULL_STYLE, theme).background;
+      const { background } = resolveLook(label!.style ?? NULL_STYLE, theme);
+      return background === "canvas" ? background : background.hex;
     });
     expect(new Set(grounds).size).toBe(VARIANTS.length);
   });
