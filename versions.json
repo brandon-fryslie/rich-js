@@ -4,15 +4,29 @@
     {
       "version": "pr-535",
       "ref": "refs/pull/535/merge",
-      "sha": "cf2cd3fea7798f1fb01e50a91e26dd871b268536",
-      "timestamp": "2026-11-01T20:54:03.373Z",
+      "sha": "8ebb45e21af370f2c1b71de890941c3b4bb74c21",
+      "timestamp": "2026-11-01T21:17:30.322Z",
       "commits": [
         {
-          "sha": "cf2cd3fea7798f1fb01e50a91e26dd871b268536",
+          "sha": "8ebb45e21af370f2c1b71de890941c3b4bb74c21",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T13:51:49-07:00",
-          "message": "Merge 9091edcf9991a48f8261453e019c3ee9ef4272f2 into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
+          "timestamp": "2026-11-01T21:15:12Z",
+          "message": "Merge 0d74461040020f9f468280a6d0596f69c5e8a5dc into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
+        },
+        {
+          "sha": "0d74461040020f9f468280a6d0596f69c5e8a5dc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T14:15:02-07:00",
+          "message": "The hanging whitespace test renders the text itself, since print sets its own overflow and justify (rich-control-codes-xh4n.5do)\n"
+        },
+        {
+          "sha": "bc9d0f8eca6c397dde93c9a169fcde0dec047604",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T14:13:07-07:00",
+          "message": "A break, a measure and a document each read what is drawn (rich-control-codes-xh4n.5do)\n\nHigh review of #535. A run's start is no break, a mark with no text before it\nneither; a zero-width code point after a wrap's whitespace is not content; a\ntext's edge is the last thing drawn; a value's own separator lays out as an LF;\nJSON has one escape pass over the census; the two per-render fast paths return.\n"
         },
         {
           "sha": "9091edcf9991a48f8261453e019c3ee9ef4272f2",
