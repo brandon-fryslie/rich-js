@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-535",
+      "ref": "refs/pull/535/merge",
+      "sha": "cf2cd3fea7798f1fb01e50a91e26dd871b268536",
+      "timestamp": "2026-11-01T20:54:03.373Z",
+      "commits": [
+        {
+          "sha": "cf2cd3fea7798f1fb01e50a91e26dd871b268536",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T13:51:49-07:00",
+          "message": "Merge 9091edcf9991a48f8261453e019c3ee9ef4272f2 into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
+        },
+        {
+          "sha": "9091edcf9991a48f8261453e019c3ee9ef4272f2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T13:51:35-07:00",
+          "message": "Format characters keep their meaning in content, and their abuse is contained (rich-control-codes-xh4n.5do)\n\nThe census gains two dispositions. `line-break` turns U+2028 and U+2029 into an\nLF at the content boundary, code unit for code unit, so every reader of a Text\nfinds one line ending. `withheld` covers the soft hyphen, tag characters and\nvariation selectors: content keeps them, and `replaceWithheld` decides from their\nneighbours what reaches the wire. It runs in `sealed`, on text nothing cuts again,\nso a rule that reads context cannot move an offset. `cellLen` measures what it\nleaves, and a deletion keeps every cluster boundary the text had, so a cut stays\nexact.\n\nThe wrapper breaks where a word's own text says it may: after ZWSP, at a soft\nhyphen, which draws as `-` only at a break it took, and between the words of Thai,\nLao, Khmer and Burmese. U+FEFF stops counting as a space, which was JavaScript's\n`\\s` departing from Rich by accident. JSON escapes whatever content or the wire\nwould drop, so it parses back to its data.\n\nDepartures from Rich: a soft hyphen measures 0 rather than 1, and a U+2028 in a\nJSON string prints as an escape. docs/control-codes.md records each family and\nwhat tmux, Terminal.app, iTerm2 and xterm.js were measured doing.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c8ae6eaac9af60ccc503b47619a5fd65c263e3d1",
