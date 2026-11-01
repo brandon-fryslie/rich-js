@@ -264,7 +264,7 @@ describe("Slider", () => {
       expect(text).not.toContain("─");
     });
 
-    it("renders in the palette's muted foreground when disabled", () => {
+    it("renders in the palette's disabled foreground when disabled", () => {
       const s = new Slider({ value: 50, disabled: true });
       const segs = Segment.splitLines(s.render(RENDER))[0]!;
       expect(segs.map((s) => s.style?.color)).toEqual(segs.map(() => DISABLED));

@@ -371,7 +371,7 @@ describe("Dropdown", () => {
       expect(distinct.size).toBeGreaterThan(1);
     });
 
-    it("renders in the palette's muted foreground when disabled (collapsed)", () => {
+    it("renders in the palette's disabled foreground when disabled (collapsed)", () => {
       const d = new Dropdown({ options: ["a"], disabled: true });
       const segs = Segment.splitLines(d.render(RENDER))[0]!;
       expect(segs.map((s) => s.style?.color)).toEqual(segs.map(() => DISABLED));

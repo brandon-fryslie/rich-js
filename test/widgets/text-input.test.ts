@@ -425,7 +425,7 @@ describe("TextInput", () => {
       expect(cursorSeg!.text.length).toBe(1);
     });
 
-    it("renders in the palette's muted foreground when disabled", () => {
+    it("renders in the palette's disabled foreground when disabled", () => {
       const t = new TextInput({ value: "ab", disabled: true });
       const segments = Segment.splitLines(t.render(RENDER))[0]!;
       expect(segments.map((s) => s.style?.color)).toEqual(segments.map(() => DISABLED));
