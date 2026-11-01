@@ -4,15 +4,22 @@
     {
       "version": "pr-534",
       "ref": "refs/pull/534/merge",
-      "sha": "bacd2c937995dfdc09800fa5f92a02d8738fafdb",
-      "timestamp": "2026-11-01T18:50:14.825Z",
+      "sha": "3fe72eb48d76207b824cb4a3bfa4d1d6eed14916",
+      "timestamp": "2026-11-01T19:05:44.124Z",
       "commits": [
         {
-          "sha": "bacd2c937995dfdc09800fa5f92a02d8738fafdb",
+          "sha": "3fe72eb48d76207b824cb4a3bfa4d1d6eed14916",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T18:48:20Z",
-          "message": "Merge 74f3370d54f66d3e290e799689f0133832ffe336 into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
+          "timestamp": "2026-11-01T19:03:31Z",
+          "message": "Merge 74af2c157fd3afca67dc11c5ced9a2f415656d56 into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
+        },
+        {
+          "sha": "74af2c157fd3afca67dc11c5ced9a2f415656d56",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T12:03:21-07:00",
+          "message": "Long lines resolve, Markdown spans and tokens are their own content, and appends stay linear (rich-unfiled-791c.zzmy)\n\nMedium review of #534. A level run no longer spreads into a call, which threw\non a 200,000 character line holding one isolate. Each inline node of Markdown\nand each token closes what it left open, and inline code deletes the controls\na code block does. append remembers the text it closed, so a run of appends\nreads nothing twice. A row spliced into goes on from what it left open.\n\nplainOf has one home on Segment, and segmentToString says a row is encoded\nwhole.\n"
         },
         {
           "sha": "74f3370d54f66d3e290e799689f0133832ffe336",
