@@ -38,6 +38,8 @@ const ZWSP = "\u200b";
 const UNSPACED = "[\\p{Script_Extensions=Thai}\\p{Script_Extensions=Lao}\\p{Script_Extensions=Khmer}\\p{Script_Extensions=Myanmar}]+";
 const BREAKABLE = pattern(new RegExp(`[${SOFT_HYPHEN}${ZWSP}]|${UNSPACED}`, "u"));
 const WORD_SEGMENTER = new Intl.Segmenter(undefined, { granularity: "word" });
+// A word's opening: no text in it yet, so nothing to break away from or to hyphenate.
+const OPENING = pattern(new RegExp(`^[\\s${SOFT_HYPHEN}${ZWSP}]*`, "u"));
 
 /** One place a line of text was cut. */
 export interface LineBreak {
@@ -87,16 +89,19 @@ function widthOf(word: string): number {
   return cellLen(word.trimEnd());
 }
 
-/** The offsets inside `word`, ascending, that it may break at: never its first or past its last glyph. */
+/** The offsets inside `word`, ascending, that it may break at: never before its first glyph's end or past its last glyph. */
 function breaksIn(word: string): number[] {
   if (word.match(BREAKABLE) === null) return [];
   const found = new Set<number>();
   for (const { 0: mark, index } of word.matchAll(new RegExp(`[${SOFT_HYPHEN}${ZWSP}]`, "gu"))) found.add(index + mark.length);
   for (const { 0: run, index } of word.matchAll(new RegExp(UNSPACED, "gu"))) {
-    for (const { index: at } of WORD_SEGMENTER.segment(run)) found.add(index + at);
+    // A run's start is where the segmenter's input began, not a boundary it found:
+    // UAX #14 has these scripts break as letters do against what comes before them.
+    for (const { index: at } of WORD_SEGMENTER.segment(run)) if (at > 0) found.add(index + at);
   }
+  const start = OPENING.exec(word)![0].length;
   const end = word.trimEnd().length;
-  return [...found].filter((at) => at > 0 && at < end).sort((a, b) => a - b);
+  return [...found].filter((at) => at > start && at < end).sort((a, b) => a - b);
 }
 
 /** `text` as what wraps: its words, tiled further wherever one may break. */

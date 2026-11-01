@@ -36,12 +36,14 @@ const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
  * empty segment also looks like — and a crop leaves one behind. A styled line
  * whose last cells were cropped therefore reported no hanging whitespace at
  * all and was centred as though it were content to the edge, so a span landing
- * anywhere in a wrap's whitespace un-centred the line it closed. A bidi control
- * after the whitespace is no content either, and `closed` writes one exactly
- * there.
+ * anywhere in a wrap's whitespace un-centred the line it closed. What draws no
+ * cell after the whitespace is no content either: `closed` writes a bidi control
+ * exactly there, and a cut leaves a zero-width code point that opened the next
+ * word on the row before it.
  */
 export function hangingWhitespace(line: Segment[]): number {
-  return cellLen(TRAILING_WHITESPACE_RE.exec(withoutExplicit(Segment.plainOf(line)))?.[0] ?? "");
+  const drawn = Array.from(Segment.plainOf(line)).filter((character) => cellLen(character) > 0).join("");
+  return cellLen(TRAILING_WHITESPACE_RE.exec(drawn)?.[0] ?? "");
 }
 
 /**
@@ -204,10 +206,22 @@ export function measured(text: string, order: TextOrder): string {
   return isBidi(text) ? REMOVALS[order](text) : text;
 }
 
-/** The offsets in `text`, one row, of the characters `order` shows at its left and right edges: a control draws no cell. */
+/** The offsets in `text` of the code points that take a cell. */
+function drawnOffsets(text: string): Set<number> {
+  const drawn = new Set<number>();
+  let unit = 0;
+  for (const character of text) {
+    if (cellLen(character) > 0) drawn.add(unit);
+    unit += character.length;
+  }
+  return drawn;
+}
+
+/** The offsets in `text`, one row, of the characters `order` shows at its left and right edges. */
 export function edges(text: string, order: TextOrder): { readonly left: number; readonly right: number } {
   const units = order === "plain" || !isBidi(text) ? Array.from({ length: text.length }, (_, unit) => unit) : ordered(text);
-  const drawn = units.filter((unit) => REMOVALS.visual(text[unit]!) !== "");
+  const offsets = drawnOffsets(text);
+  const drawn = units.filter((unit) => offsets.has(unit));
   return { left: drawn[0] ?? 0, right: drawn.at(-1) ?? 0 };
 }
 

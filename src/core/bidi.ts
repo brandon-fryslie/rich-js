@@ -85,17 +85,12 @@ const ACTIVE = pattern(
 );
 
 // LRE, RLE, PDF, LRO, RLO, LRI, RLI, FSI, PDI.
-const EXPLICIT = pattern(/[\u202a-\u202e\u2066-\u2069]/);
+export const EXPLICIT = pattern(/[\u202a-\u202e\u2066-\u2069]/);
 const MARKS = pattern(/[\u200e\u200f\u061c]/);
 
 /** `text` with every explicit formatting character gone. */
 export function withoutExplicit(text: string): string {
   return text.match(EXPLICIT) === null ? text : text.replace(new RegExp(EXPLICIT.source, "g"), "");
-}
-
-/** `json` with every explicit formatting character as its JSON escape: visible, lossless, and still JSON. */
-export function withExplicitEscaped(json: string): string {
-  return json.replace(new RegExp(EXPLICIT.source, "g"), (control) => `\\u${control.codePointAt(0)!.toString(16).padStart(4, "0")}`);
 }
 
 /** `text` with LRM, RLM and ALM gone. */

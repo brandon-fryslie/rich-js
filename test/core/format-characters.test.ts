@@ -330,3 +330,63 @@ describe("the measure is the width of what the wire holds", () => {
     }
   });
 });
+
+describe("what a break leaves behind", () => {
+  it("does not break where a run of an unspaced script starts", () => {
+    const thai = "ภาษาไทย";
+    expect(rows(`(${thai})`, 4)[0]).not.toBe("(");
+    expect(rows(`abc${thai}`, 6)[0]).not.toBe("abc");
+  });
+
+  it("gives a soft hyphen that opens a word nothing to hyphenate", () => {
+    expect(rows(`foo ${SHY}bar`, 6)).toEqual(["foo", "bar"]);
+    expect(rows(`  ${SHY}foo`, 3)).toEqual(rows("  foo", 3));
+  });
+
+  it("does not count a zero-width code point after a wrap's whitespace as content", () => {
+    for (const opener of [ZWSP, SHY, WJ]) {
+      expect(rows(new RichText(`foo ${opener}bar`, { overflow: "ellipsis" }), 3)[0]).toMatch(/^foo/);
+      const placed = (text: string): string => wire(new RichText(text, { justify: "right" }), 5).split("\n")[0]!;
+      expect(placed(`foo ${opener}bar`).indexOf("f")).toBe(placed("foo bar").indexOf("f"));
+    }
+  });
+});
+
+describe("a line separator a value wrote", () => {
+  class Named {
+    constructor(private readonly name: string) {}
+    toString(): string {
+      return this.name;
+    }
+  }
+
+  it("lays out as an LF does, guides and hang included", () => {
+    const shown = (name: string): string[] => rows(new Pretty({ a: new Named(name), b: "after-after-after-after-after" }, { indentGuides: true }), 24);
+    expect(shown(`x${LS}y`)).toEqual(shown("x\ny"));
+    expect(shown(`x${PS}y`)).toEqual(shown("x\ny"));
+  });
+
+  it("is measured and expanded as an LF is", () => {
+    const options = new Console({ width: 80 }).options;
+    expect(new Pretty(new Named(`aaaa${LS}bbbb`)).measure(options)).toEqual(new Pretty(new Named("aaaa\nbbbb")).measure(options));
+    const map = (key: string): Map<Named, string> => new Map([[new Named(key), "v"]]);
+    expect(rows(new Pretty(map(`k${LS}ey`)), 40)).toEqual(rows(new Pretty(map("k\ney")), 40));
+  });
+});
+
+describe("the edge of a text", () => {
+  it("is the last thing drawn, past what the wire withholds", () => {
+    const options = new Console({ width: 80 }).options;
+    const painted = (text: string): RichText => new RichText(text).stylize("on red", 0, 2);
+    const right = (text: string): unknown => painted(text).edgeStyle("right", options).toString();
+    expect(right(`ab${SHY}`)).toBe(right("ab"));
+    expect(right(`ab${HIDDEN}`)).toBe(right("ab"));
+  });
+});
+
+describe("JSON", () => {
+  it("escapes every hidden family in one document and parses back", () => {
+    const data = { k: `a\u202e${SHY}${HIDDEN}\u007f\u{e0001}${LS}${VS1}${VS1}b` };
+    expect(JSON.parse(wire(JSONRenderable.fromData(data), 200))).toEqual(data);
+  });
+});

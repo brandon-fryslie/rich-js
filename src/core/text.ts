@@ -19,7 +19,7 @@ import { ListState, State } from "./state.js";
 // sanitizer does with it: a variant this missed would reach the wire.
 const DELETED: Readonly<Record<Disposition, boolean>> = { strip: true, keep: false, "line-break": false, withheld: false };
 
-const STRIPPED = pattern(new RegExp(controlClass((disposition) => DELETED[disposition]), "u"));
+export const STRIPPED = pattern(new RegExp(controlClass((disposition) => DELETED[disposition]), "u"));
 const LINE_BREAKS = pattern(new RegExp(controlClass((disposition) => disposition === "line-break"), "u"));
 
 // [LAW:single-enforcer] Single place where control chars are sanitized: every
@@ -41,7 +41,7 @@ export function stripControlChars(text: string): string {
  */
 export function sanitized(text: string): string {
   const stripped = stripControlChars(text);
-  return stripped.split(LINE_BREAKS).join("\n");
+  return stripped.match(LINE_BREAKS) === null ? stripped : stripped.split(LINE_BREAKS).join("\n");
 }
 
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
@@ -1250,12 +1250,17 @@ const NEVER_FREE = (): boolean => false;
  * still reads the logical line `orient` was built from.
  */
 function hyphenated(line: readonly Segment[], breaks: readonly LineBreak[]): Segment[] {
-  const taken = new Set<number>(breaks.flatMap(({ hyphen }) => hyphen ?? []));
-  let offset = 0;
+  const taken = breaks.flatMap(({ hyphen }) => hyphen ?? []);
+  let next = 0;
+  let end = 0;
   return line.map((segment) => {
-    const start = offset;
-    offset += segment.text.length;
-    const text = Array.from({ length: segment.text.length }, (_, at) => (taken.has(start + at) ? "-" : segment.text[at]!)).join("");
+    const start = end;
+    end += segment.text.length;
+    let text = segment.text;
+    for (; next < taken.length && taken[next]! < end; next += 1) {
+      const at = taken[next]! - start;
+      text = text.slice(0, at) + "-" + text.slice(at + 1);
+    }
     return text === segment.text ? segment : new Segment(text, segment.style, segment.control);
   });
 }

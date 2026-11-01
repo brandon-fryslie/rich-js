@@ -7,7 +7,12 @@
  * order, so a raw `new Segment(text)` is contained and merely shows no effect.
  * What the census withholds goes here too (`wireText`), a segment at a time, on
  * text nothing cuts again, which is why a rule that reads neighbours can live here
- * and not in the sanitizer. A flag cut by a span edge loses its tags and stays a flag.
+ * and not in the sanitizer. A span edge is therefore where that reading stops. A
+ * flag cut by one loses its tags and stays a flag; a selector after one is kept;
+ * a ZWJ before one is not taken with a deletion past it, so a join can form that
+ * `cellLen`, which reads the whole string, did not measure. Segments have always
+ * been measured apart and written together, so the same edge in the same text with
+ * nothing deleted draws the same row.
  *
  * This runs on the way out, below every cut, because a row is cut after it is
  * drawn: `scroll` divides it, `mergeHorizontal` and a viewport crop it, an
