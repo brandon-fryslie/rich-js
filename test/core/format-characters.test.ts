@@ -10,7 +10,7 @@ import { Console } from "../../src/core/console.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
-import type { Renderable } from "../../src/core/protocol.js";
+import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { JSONRenderable } from "../../src/core/json.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Syntax } from "../../src/renderables/syntax.js";
@@ -344,10 +344,12 @@ describe("what a break leaves behind", () => {
   });
 
   it("does not count a zero-width code point after a wrap's whitespace as content", () => {
+    const drawn = (text: string, width: number, options: Partial<RenderOptions>): string[] =>
+      Array.from(new RichText(text).render({ ...new Console({ width }).options, ...options }), (segment) => segment.text).join("").split("\n");
     for (const opener of [ZWSP, SHY, WJ]) {
-      expect(rows(new RichText(`foo ${opener}bar`, { overflow: "ellipsis" }), 3)[0]).toMatch(/^foo/);
-      const placed = (text: string): string => wire(new RichText(text, { justify: "right" }), 5).split("\n")[0]!;
-      expect(placed(`foo ${opener}bar`).indexOf("f")).toBe(placed("foo bar").indexOf("f"));
+      expect(drawn(`foo ${opener}bar`, 3, { overflow: "ellipsis" })[0]).toMatch(/^foo/);
+      const [row] = drawn(`foo ${opener}bar`, 5, { justify: "right" });
+      expect(row!.indexOf("f")).toBe(2);
     }
   });
 });
