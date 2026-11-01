@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-528",
+      "ref": "refs/pull/528/merge",
+      "sha": "257574936f652fc9556963152096800f75ba8b03",
+      "timestamp": "2026-11-01T11:13:32.829Z",
+      "commits": [
+        {
+          "sha": "257574936f652fc9556963152096800f75ba8b03",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T04:11:23-07:00",
+          "message": "Merge 132ceebbc73b344031087fb5f45c041c7424e4e9 into 6e41f29145f132d0e804708e52148a1a98cd8ef2\n"
+        },
+        {
+          "sha": "132ceebbc73b344031087fb5f45c041c7424e4e9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T04:11:15-07:00",
+          "message": "reducedMotion's comment points at the shownAt that exists (rich-animation-27tq.1mt)\n\nThe ticket named three stale comments; AppOptions.view and the one above\nApp.tick were already rewritten by rich-animation-27tq.wrw.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6e41f29145f132d0e804708e52148a1a98cd8ef2",
