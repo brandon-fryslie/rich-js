@@ -8,6 +8,10 @@
  * included, may leave the terminal's background showing through, and every
  * visible glyph of an enabled widget has to clear the contrast floor on a dark
  * terminal and on a light one.
+ *
+ * Given a theme it is drawn in that theme's colours, so each state is also
+ * checked on every bundled theme, at full colour: the floor is a fact about the
+ * palette, not about the slots sixteen colours rounds it to.
  */
 import { describe, it, expect } from "vitest";
 import { exportCanvas, resolveLook } from "../../src/core/export-lines.js";
@@ -28,15 +32,14 @@ const RENDER: RenderOptions = { maxWidth: 40 };
 // WCAG AA for body text.
 const FLOOR = 4.5;
 
-// A bundled theme's colours are its own: Solarized's text on its raised ground
-// is 4.1:1 and stays Solarized. So a themed widget is held to WCAG AA for large
-// text, and the theme-less widget above, whose colours are ours, to body text.
-const THEMED_FLOOR = 3;
-
 // Under this a disabled label is not drawn so much as lost in its ground.
 const VISIBLE = 1.5;
 
-const { DEFAULT_TERMINAL_THEME, SOLARIZED_LIGHT, TEXTUAL_LIGHT, CATPPUCCIN_MOCHA } = terminalThemes;
+const { DEFAULT_TERMINAL_THEME, SOLARIZED_DARK, SOLARIZED_LIGHT, TEXTUAL_LIGHT, CATPPUCCIN_MOCHA } = terminalThemes;
+
+// Solarized's own text on its raised ground is 4.1:1, and raising it would make
+// a Solarized that is not Solarized.
+const floorOf = (theme: TerminalTheme): number => (theme === SOLARIZED_DARK || theme === SOLARIZED_LIGHT ? 4 : FLOOR);
 
 const TERMINALS: ReadonlyArray<readonly [string, TerminalTheme]> = [
   ["default (dark)", DEFAULT_TERMINAL_THEME],
@@ -79,8 +82,8 @@ const scenes = (theme?: TerminalTheme): Scene[] => [
   }],
 ];
 
-// WCAG sets no contrast floor for an inactive control, so these are held only
-// to painting their own ground.
+// WCAG sets no contrast floor for an inactive control, so these paint their own
+// ground and, on a bundled theme, stay seen and under the floor for text.
 const disabledScenes = (theme?: TerminalTheme): Scene[] => [
   ["Button disabled", () => new Button({ label: "Save", disabled: true, theme }).render(RENDER)],
   ["Toggle disabled", () => new Toggle({ label: "Wifi", on: true, disabled: true, theme }).render(RENDER)],
@@ -121,7 +124,7 @@ describe("a widget constructed without a theme", () => {
 
 describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("a widget on %s", (_name, theme) => {
   it.each(scenes(theme))("%s keeps every glyph at the theme's floor", (_scene, draw) => {
-    expect(glyphs(draw, theme).filter(({ ratio, dim }) => !dim && ratio < THEMED_FLOOR)).toEqual([]);
+    expect(glyphs(draw, theme).filter(({ ratio, dim }) => !dim && ratio < floorOf(theme))).toEqual([]);
   });
 
   it.each(disabledScenes(theme))("%s is seen and reads as inactive", (_scene, draw) => {
