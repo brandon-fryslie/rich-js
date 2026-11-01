@@ -4,15 +4,22 @@
     {
       "version": "pr-534",
       "ref": "refs/pull/534/merge",
-      "sha": "3fe72eb48d76207b824cb4a3bfa4d1d6eed14916",
-      "timestamp": "2026-11-01T19:05:44.124Z",
+      "sha": "ec12a4a5c52a5e0142bf487811381528b3949fdd",
+      "timestamp": "2026-11-01T19:32:24.328Z",
       "commits": [
         {
-          "sha": "3fe72eb48d76207b824cb4a3bfa4d1d6eed14916",
+          "sha": "ec12a4a5c52a5e0142bf487811381528b3949fdd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T19:03:31Z",
-          "message": "Merge 74af2c157fd3afca67dc11c5ced9a2f415656d56 into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
+          "timestamp": "2026-11-01T19:30:32Z",
+          "message": "Merge f158c195545a3727b8bc7265a10fc0242780be9e into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
+        },
+        {
+          "sha": "f158c195545a3727b8bc7265a10fc0242780be9e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T12:30:14-07:00",
+          "message": "Wrapped right-to-left rows start at their edge, and hostile nesting costs linear time (rich-unfiled-791c.zzmy)\n\nSecond high review of #534. A row a wrap closed loses its hanging whitespace\nbefore it is ordered, since L1 stood it at a right-to-left row's left edge.\nOpeners are read forward and a row reopens at most MAX_DEPTH of them, and an\nisolate count takes the scan out of an unmatched PDI. append carries the tail\nit has not closed, so alternating string and Text appends stay linear.\n\nPretty's non-string class name and JSON's undefined draw as they did on master.\nAn edge is a cell drawn, never a control.\n\nThe row-continuation map in sealed goes: it cost a stale-state bug for a case\nnobody reproduced, and containment does not need it. docs states the limit.\n"
         },
         {
           "sha": "74af2c157fd3afca67dc11c5ced9a2f415656d56",
