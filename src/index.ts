@@ -117,7 +117,7 @@ export type { Beat, Ease, SpringOptions, StepPosition, Timing } from "./core/eas
 export { Animation } from "./core/animation.js";
 // What every animation answers whatever its values — the type a generic
 // animation implements, and what `Animation.of` and `map` take.
-export type { Timed } from "./core/animation.js";
+export type { Moves, Timed } from "./core/animation.js";
 // A number eased from one value to another over seconds, then held: the
 // value animation a fill, a counter or a width moves by instead of jumping.
 export { tween } from "./core/tween.js";

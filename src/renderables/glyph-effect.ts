@@ -52,7 +52,7 @@
  * what the child drew.
  */
 
-import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
+import { Animation, holdOf, placedRender, shownAt, type Moves } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -60,7 +60,7 @@ import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { finiteTime } from "../core/easing.js";
 import { stripControlChars, type RichText } from "../core/text.js";
-import { cellSeed, walkGlyphs, type Moved, type Placed } from "./effect.js";
+import { cellSeed, walkGlyphs, type Placed } from "./effect.js";
 import { pattern } from "../core/pattern.js";
 
 /**
@@ -107,11 +107,11 @@ export interface GlyphEffectedOptions {
 /**
  * A `GlyphEffected` at `t`, or an element through a glyph effect at a time an
  * animation's `at` was handed: `renderable` with its cells' glyphs passed
- * through `effect` at `t`, saying nothing of when that changes, as a
- * `Recolored` is (`./effect.ts`). [LAW:one-type-per-behavior]
+ * through `effect` at `t`, telling the hold it drew in as a `Recolored` does
+ * (`RenderOptions.onMoved`, `./effect.ts`). [LAW:one-type-per-behavior]
  */
 export class Reglyphed implements Renderable, Measurable {
-  readonly t: number;
+  private readonly _t: number;
   readonly key: string;
 
   constructor(
@@ -119,25 +119,18 @@ export class Reglyphed implements Renderable, Measurable {
     readonly effect: GlyphEffect,
     options: GlyphEffectedOptions & { readonly t: number },
   ) {
-    this.t = finiteTime("GlyphEffected", options.t);
+    this._t = finiteTime("GlyphEffected", options.t);
     this.key = options.key;
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return this.moved(options).segments;
-  }
-
-  /** The frame the effect draws at `t`, and the hold it says that is in. */
-  moved(options: RenderOptions): Moved {
     const segments = [...render(this.renderable, options)];
     const { placed, cells } = placeGlyphs(segments, this.key);
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
-    const frame = shownAt(animation, this.t, options);
+    const frame = shownAt(animation, this._t, options);
     const shown = showGlyphs(placed, frame.value);
-    const changed = segments.map((segment, i) =>
-      shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style),
-    );
-    return { segments: changed, hold: holdOf(frame, this.t) };
+    options.onMoved?.(this._t, holdOf(frame, this._t));
+    return segments.map((segment, i) => (shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style)));
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -147,9 +140,10 @@ export class Reglyphed implements Renderable, Measurable {
 
 /**
  * `renderable` under a glyph effect over time, an `Animation<Renderable>`
- * as an `Effected` is (`./effect.ts`): its own answer is `t`, and placed,
- * its cells carry the glyph effect's exact hold at the frame's time and the
- * output's `asciiOnly`, under whatever the element already said.
+ * as an `Effected` is (`./effect.ts`): with nothing drawn its answer is `t`,
+ * and placed, on its own or as a part of any combinator, it says the glyph
+ * effect's exact hold at that time and the output's `asciiOnly`, which the
+ * frame's drawing told (`Moves`).
  */
 export class GlyphEffected implements Animation<Renderable> {
   readonly key: string;
@@ -167,12 +161,12 @@ export class GlyphEffected implements Animation<Renderable> {
     return new Reglyphed(this.renderable, this.effect, { t, key: this.key });
   }
 
-  nextChange(t: number): number {
-    return t;
+  nextChange(t: number, moves?: Moves): number {
+    return moves?.(t)?.nextChange ?? t;
   }
 
-  lastChange(t: number): number {
-    return t;
+  lastChange(t: number, moves?: Moves): number {
+    return moves?.(t)?.lastChange ?? t;
   }
 
   /** The element under the glyph effect with its motion taken out. */
@@ -183,8 +177,7 @@ export class GlyphEffected implements Animation<Renderable> {
 
   /** Drawn at the frame's time, its cells stamped with the glyph effect's exact hold there. */
   render(options: RenderOptions): Iterable<Segment> {
-    const { segments, hold } = this.at(frameTimeOf(options)).moved(options);
-    return stampFrame(segments, hold);
+    return placedRender(this, options);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

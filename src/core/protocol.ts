@@ -167,6 +167,15 @@ export interface RenderOptions {
    * decides the frame's layout, so when it changes, the frame may.
    */
   onHold?: (hold: Hold) => void;
+  /**
+   * Told of the hold a value drawn for a time on its own clock is in: an
+   * effect's frame, which alone knows, since the answer depends on what it
+   * drew. `t` is that clock's, not the frame's, so this cannot be `onHold`:
+   * the animation placed around the value carries the answer back through the
+   * combinators that remapped the time (`Moves`, `./animation.ts`). It reaches
+   * whatever `frame` reaches.
+   */
+  onMoved?: (t: number, hold: Hold) => void;
 }
 
 /** The one field of the render options that says whether the reader wants motion. */

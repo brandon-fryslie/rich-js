@@ -37,7 +37,7 @@
  * [LAW:one-way-deps]
  */
 
-import type { Animation } from "./animation.js";
+import { intersection, type Animation } from "./animation.js";
 import { activePass, render, type HostFrame, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
 import type { Hold } from "./style.js";
@@ -146,7 +146,7 @@ export function drawView(
   const { now: host, timeline } = time;
   let told: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
   const onHold = (hold: Hold): void => {
-    told = { lastChange: Math.max(told.lastChange, hold.lastChange), nextChange: Math.min(told.nextChange, hold.nextChange) };
+    told = intersection(told, hold);
   };
   // Made before the render opens: the one time the frame has.
   const frame = frameNow(drawnBy, time);

@@ -3,12 +3,12 @@
 Anything in rich-js that changes with time is an `Animation`: a value for a time `t` in seconds, the first moment that value may change, the last moment it may have become what it is, and the same animation with its motion taken out. A beat, a sequence of [frames](/frames), a spinner and an [effect](/effects) are all one, and every other kind of motion is built from the same few pieces, so a host can hold a list of them and ask each the same questions.
 
 ```typescript shape
-import type { Measurable, Renderable } from "@promptctl/rich-js";
+import type { Measurable, Moves, Renderable } from "@promptctl/rich-js";
 
 interface Timed<T> {
   at(t: number): T;
-  nextChange(t: number): number;
-  lastChange(t: number): number;
+  nextChange(t: number, moves?: Moves): number;
+  lastChange(t: number, moves?: Moves): number;
   reduced(): Animation<T>;
 }
 
@@ -31,6 +31,8 @@ To watch every kind of motion on this page on one timeline — paused, reversed,
 - `t` itself: it is moving at `t`, so it changes every frame however close together they are drawn.
 
 An answer may be early — a host then draws a frame that looks like the last one — but never late, since a late answer skips a change. So an animation that cannot say when it holds still answers `t`.
+
+Some answers are known only once a frame is drawn. An [effect](/effects) on an element holds still where the output cannot show its motion, and only what the element draws says so. So an `Effected` asked with nothing drawn answers `t`, and asked about a frame already drawn it is handed what that drawing said, the optional `moves` argument. Every combinator here forwards it, on the same time it hands the part, so an effect held still at the output holds still in a `Timeline.run`, a sequence or a repeat too, and the host sleeps. A combinator written by hand that forwards `moves` to its parts does the same; one that does not stays early, which costs frames and nothing else.
 
 `lastChange(t)` is the other end of the same hold: the last moment, never after `t`, at which the value may have become `at(t)` — `-Infinity` if it always was, `t` while it moves. Together the two bound the hold, `[lastChange(t), nextChange(t))`, and an answer may be narrower than the truth and never wider. It is what a host running the animation backwards reads: run down the timeline, the value next changes where it began.
 
@@ -451,7 +453,7 @@ console.print(table);
 
 ## How a host knows when to draw again
 
-Whoever draws an animation's value as cells at a time stamps every cell it draws with the hold the animation is in there: `nextChange` and `lastChange`, on the cell's `Style`. The stamp rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest change with `Segment.nextChange` and the latest start with `Segment.lastChange`, which a host running its timeline backwards needs. A stamp laid over one a value's cells already carry keeps the sooner change and the later start, so a frame's hold is the intersection of its cells': narrower than the truth, never wider. A hold no cell is left to carry — an element not yet entered, which draws none, or the content a scroll crops away — is told instead to the `onHold` of the render options it was drawn under, which reach it wherever the frame's time does; a host intersects what it is told with what the cells say. That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds.
+Whoever draws an animation's value as cells at a time stamps every cell it draws with the hold the animation is in there: `nextChange` and `lastChange`, on the cell's `Style`. The stamp rides up through any container as an anchor does and writes no byte, and whoever holds the composed frame reads the soonest change with `Segment.nextChange` and the latest start with `Segment.lastChange`, which a host running its timeline backwards needs. A stamp laid over one a value's cells already carry keeps the sooner change and the later start, so a frame's hold is the intersection of its cells': narrower than the truth, never wider. A hold no cell is left to carry — an element not yet entered, which draws none, or the content a scroll crops away — is told instead to the `onHold` of the render options it was drawn under, which reach it wherever the frame's time does; a host intersects what it is told with what the cells say. An effect's frame tells the hold it drew in to `onMoved`, on the time it was drawn at, since that may not be the frame's: whatever placed the animation carries it back through the combinators that remapped the time (`moves`, [above](#when-it-next-changes)). That is how a [`Live`](/live#auto-refresh) knows when to wake without asking each piece of its view what it holds.
 
 Every placed animation stamps, choosing its frame where it is drawn, so under [reduced motion](#reduced-motion) it draws its animation reduced and stamps only where content changes. An [`Effected`](/effects), a `GlyphEffected` and a `Spinner` stamp exactly: each knows when it next changes only once it has the output's depth, terminal and `asciiOnly`, so a loop that holds still at the output's depth says it never changes there, and the host sleeps. So does the template [`frames` function](/template-bindings), whose frame is spliced into a line at the time it is handed. Nothing an animation's `at` returns carries a stamp of its own — not a scroll's frame, a change's, a lifecycle's or a spinner's — because the time it is asked for may be one a timeline, a sequence or a lifecycle mapped from the frame's: the placed animation stamps its own answers at the frame's time, which every one of those maps carries back, so a change under a paused timeline says it never changes, and a lifecycle arriving on a beat wakes its host on the beats.
 
