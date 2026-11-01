@@ -4,29 +4,29 @@
     {
       "version": "pr-532",
       "ref": "refs/pull/532/merge",
-      "sha": "c79fda118a74ff4dbc1fcc4cc64481eba2c09ff1",
-      "timestamp": "2026-11-01T15:39:55.532Z",
+      "sha": "bd0fd87d2da95b5577251f0e547856b422514c10",
+      "timestamp": "2026-11-01T15:46:27.492Z",
       "commits": [
         {
-          "sha": "c79fda118a74ff4dbc1fcc4cc64481eba2c09ff1",
+          "sha": "bd0fd87d2da95b5577251f0e547856b422514c10",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T15:37:45Z",
-          "message": "Merge f468405dec90ccfc05cb7d78bf8bf2fda26d85ae into 4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11\n"
+          "timestamp": "2026-11-01T15:44:44Z",
+          "message": "Merge bccbcf5159259b76a14a01fa85ed07aadb11eb3f into 4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11\n"
         },
         {
-          "sha": "f468405dec90ccfc05cb7d78bf8bf2fda26d85ae",
+          "sha": "bccbcf5159259b76a14a01fa85ed07aadb11eb3f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-01T08:21:39-07:00",
           "message": "chore(release): 0.28.0\n\nTicket: rich-unfiled-791c.01dl\n"
         },
         {
-          "sha": "3a4cb5293226a393ed7b1e5e985066627a218e6b",
+          "sha": "ac432ff08a10ea647e65ffdc4c13c6561565c4ee",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-01T08:32:29-07:00",
-          "message": "textual-ansi derives what its data flattened, as 0.27.0's TerminalTheme did (rich-unfiled-791c.01dl)\n\n#531 gave TEXTUAL_ANSI the authored palette and removed the surface ladder its\ngenerator had flattened, but left the rest: every rung of primary, panel and\nthe others was its root, where 0.27.0 derived steps. Those rungs go, and so do\nboost, primary-background and secondary-background, which were opaque or sat\noutside the ladders derived from them. A test holds every bundled palette's\nladders around their root; boost is left out, being a layer.\n"
+          "message": "textual-ansi states only its bases, as 0.27.0's TerminalTheme was built from (rich-unfiled-791c.01dl)\n\n#531 gave TEXTUAL_ANSI the authored palette, whose data its generator had\nflattened: every ladder rung was its root, panel was the background, the input\ncursor was inverted. Removing those a few at a time left the rest to disagree\nwith what they derived, so the file now states the eight bases and buildPalette\nderives every other role. TEXTUAL_ANSI.palette is role for role what 0.27.0\ndrew. A test walks every bundled ladder through its root; boost is left out,\nbeing a layer.\n"
         }
       ]
     },
