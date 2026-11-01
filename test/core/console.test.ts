@@ -685,10 +685,10 @@ describe("Console.print() soft wrapping", () => {
     expect(lines.join("").split("⚠️")).toHaveLength(4);
   });
 
-  it("folds a soft hyphen onto one line only", () => {
+  it("breaks at a soft hyphen, with no hyphen where none fits", () => {
     const { console: c, chunks } = makeConsole({ width: 5, markup: false });
     c.print("hello\u00ADworld", { overflow: "fold" });
-    expect(captured(chunks).split("\u00AD")).toHaveLength(2);
+    expect(captured(chunks)).toBe("hello\nworld\n");
   });
 
   it("folds glyphs of several code points without losing the glyphs after them", () => {

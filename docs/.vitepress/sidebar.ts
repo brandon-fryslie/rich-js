@@ -52,6 +52,7 @@ export const guideSidebar: SidebarGroup[] = [
     items: [
       { text: 'Rich Text', link: '/text' },
       { text: 'Right-to-Left Text', link: '/right-to-left' },
+      { text: 'Control Codes', link: '/control-codes' },
       { text: 'Highlighting', link: '/highlighting' },
       { text: 'Pretty Printing', link: '/pretty' },
     ],

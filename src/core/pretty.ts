@@ -358,7 +358,7 @@ function drawMargins(
 function rowsOf(line: string, stay: number, hangRoom: number): string[] {
   const lead = line.slice(0, line.length - line.trimStart().length);
   const rest = line.slice(stay);
-  const hung = splitAtCells(rest, divideLine(rest, asCellCol(hangRoom - cellLen(lead)), { fold: true }))
+  const hung = splitAtCells(rest, divideLine(rest, asCellCol(hangRoom - cellLen(lead)), { fold: true }).map(({ cell }) => cell))
     .map((row) => row.trim())
     .filter((row) => row !== "")
     .map((row) => lead + row);
@@ -378,7 +378,7 @@ function stayingLength(line: string, room: number, canHang: boolean): number {
   if (cellLen(line.trimEnd()) <= room) return line.length;
   const cut = (fold: boolean): number => {
     const first = divideLine(line, asCellCol(room), { fold })[0];
-    return first === undefined ? line.length : cellColToCodeUnitOffset(line, first);
+    return first === undefined ? line.length : cellColToCodeUnitOffset(line, first.cell);
   };
   const words = cut(false);
   if (cellLen(line.slice(0, words).trimEnd()) <= room) return words;

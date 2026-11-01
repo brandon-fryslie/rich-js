@@ -5,6 +5,9 @@
  * an isolate that accounts for it. The rule has no list of who wrote what: in a
  * segment with no logical stamp every explicit control is deleted, in every
  * order, so a raw `new Segment(text)` is contained and merely shows no effect.
+ * What the census withholds goes here too (`wireText`), a segment at a time, on
+ * text nothing cuts again, which is why a rule that reads neighbours can live here
+ * and not in the sanitizer. A flag cut by a span edge loses its tags and stays a flag.
  *
  * This runs on the way out, below every cut, because a row is cut after it is
  * drawn: `scroll` divides it, `mergeHorizontal` and a viewport crop it, an
@@ -14,6 +17,7 @@
  */
 
 import { advance, closersOf, opened, withoutExplicit, type Open } from "./bidi.js";
+import { wireText } from "./cells.js";
 import { Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
 
@@ -52,7 +56,9 @@ export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable
     run = [];
     stamp = undefined;
   };
-  for (const segment of segments) {
+  for (const raw of segments) {
+    const drawn = wireText(raw.text);
+    const segment = drawn === raw.text ? raw : new Segment(drawn, raw.style, raw.control);
     const own = order === "logical" && !segment.isControl ? segment.style?.bidi : undefined;
     if (own?.order === "logical") {
       if (own !== stamp) yield* flush();

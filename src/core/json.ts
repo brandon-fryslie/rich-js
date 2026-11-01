@@ -10,6 +10,8 @@
 import { withExplicitEscaped } from "./bidi.js";
 import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
+import { replaceWithheld } from "./cells.js";
+import { controlClass } from "./control-codes.js";
 import { JSONHighlighter } from "./highlighter.js";
 import type {
   Renderable,
@@ -25,6 +27,11 @@ export interface JSONOptions {
 }
 
 const highlighter = new JSONHighlighter();
+const STRIPPED = controlClass((disposition) => disposition === "strip");
+
+/** `character` as JSON escapes, a surrogate pair for one past the BMP. */
+const jsonEscape = (character: string): string =>
+  Array.from({ length: character.length }, (_, at) => `\\u${character.charCodeAt(at).toString(16).padStart(4, "0")}`).join("");
 
 export class JSONRenderable implements Renderable, Measurable {
   readonly text: RichText;
@@ -63,8 +70,10 @@ export class JSONRenderable implements Renderable, Measurable {
     // `undefined` for what JSON has no form of, a function or a symbol, whatever its type says.
     const jsonStr = (JSON.stringify(data, replacer, indent) as string | undefined) ?? "";
     // Data on show: one string holds every key and value, so a control left in
-    // one would act on the rest of its line.
-    const text = new RichText(withExplicitEscaped(jsonStr));
+    // one would act on the rest of its line, and what content deletes or the wire
+    // withholds would leave a document that no longer parses back to this data.
+    const escaped = replaceWithheld(withExplicitEscaped(jsonStr), jsonEscape);
+    const text = new RichText(escaped.replace(new RegExp(STRIPPED, "gu"), jsonEscape));
 
     if (doHighlight) {
       highlighter.highlight(text);

@@ -3,14 +3,14 @@ import { cellLen } from "../../src/core/cells.js";
 import { CONTROL_CODES, dispositionOf } from "../../src/core/control-codes.js";
 import { stripControlChars } from "../../src/core/text.js";
 
-const NON_PRINTING = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+const NON_PRINTING = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Variation_Selector}]/u;
 // A row for a code point a newer Unicode assigned is unassigned on an older Node
 // that `engines` admits, and prints nothing there either.
-const ROWABLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Cn}]/u;
+const ROWABLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Variation_Selector}\p{Cn}]/u;
 
 const isSurrogate = (codePoint: number): boolean => codePoint >= 0xd800 && codePoint <= 0xdfff;
 
-/** Every Cc, Cf, Zl and Zp code point, from the running engine's Unicode properties. */
+/** Every Cc, Cf, Zl, Zp and Variation_Selector code point, from the running engine's Unicode properties. */
 function census(): number[] {
   const found: number[] = [];
   for (let codePoint = 0; codePoint <= 0x10ffff; codePoint++) {
@@ -27,7 +27,7 @@ const inARow = (codePoint: number): boolean =>
 const name = (codePoint: number): string => `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`;
 
 describe("CONTROL_CODES", () => {
-  it("has a row for every Cc, Cf, Zl and Zp code point", () => {
+  it("has a row for every Cc, Cf, Zl, Zp and Variation_Selector code point", () => {
     expect(CENSUS.filter((codePoint) => !inARow(codePoint)).map(name)).toEqual([]);
   });
 
@@ -55,6 +55,9 @@ describe("dispositionOf", () => {
     expect(dispositionOf(0x200d)).toBe("keep");
     expect(dispositionOf(0x41)).toBe("keep");
     expect(dispositionOf(0x4e00)).toBe("keep");
+    expect(dispositionOf(0x2028)).toBe("line-break");
+    expect(dispositionOf(0xad)).toBe("withheld");
+    expect(dispositionOf(0xe0100)).toBe("withheld");
   });
 });
 

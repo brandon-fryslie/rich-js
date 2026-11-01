@@ -69,8 +69,8 @@ describe("cellLen", () => {
     expect(cellLen("\u0e01\u0e33")).toBe(2); // Thai sara am
   });
 
-  it("gives Hangul jamo and the soft hyphen Rich's cells", () => {
-    expect(cellLen("a\u00adb")).toBe(3);
+  it("gives Hangul jamo Rich's cells, and a soft hyphen none, which is no cell on any wire", () => {
+    expect(cellLen("a\u00adb")).toBe(2);
     expect(cellLen("\u115fa")).toBe(3); // the choseong filler is wide
     expect(cellLen("a\u1161")).toBe(1); // a jungseong alone adds nothing
     expect(cellLen("\u1100\u1161\u11a8")).toBe(2);
@@ -94,8 +94,8 @@ describe("cellLen", () => {
 
   it("measures a string as the sum of its grapheme clusters", () => {
     const text = "\u0915\u094d\u0937\u093f \u0e01\u0e33 \u0600\u0661 \u1100\u1161\u11a8 a\u00adb";
-    expect(cellLen(text)).toBe(15);
-    expect(graphemes(text).reduce((n, g) => n + cellLen(g), 0)).toBe(15);
+    expect(cellLen(text)).toBe(14);
+    expect(graphemes(text).reduce((n, g) => n + cellLen(g), 0)).toBe(14);
   });
 
   it("returns width >= 1 for emoji characters", () => {
