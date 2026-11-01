@@ -130,10 +130,10 @@ export interface RenderOptions {
   onStyleError?: StyleErrorHandler;
   /**
    * The reader asked for reduced motion — CSS's `prefers-reduced-motion`,
-   * which a terminal has no way to report, so a host is told. Every animation
-   * a frame draws is drawn reduced, its motion taken out and its content kept
-   * on time (`shownAt`, `Animation.reduced`, `./animation.ts`). Absent,
-   * everything moves. Nothing here reads it from the environment.
+   * which a terminal has no way to report, so a host is told. Every placed
+   * animation is drawn reduced, its motion taken out and its content kept on
+   * time (`shownAt`, `Animation.reduced`, `./animation.ts`). Absent, each
+   * moves. Nothing here reads it from the environment.
    */
   reducedMotion?: boolean;
   /**
