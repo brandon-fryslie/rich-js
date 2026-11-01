@@ -102,6 +102,25 @@ describe("an effect held still at the output lets the host sleep, wherever it is
   });
 });
 
+describe("an effect over an element that draws no cell", () => {
+  const empty: Renderable = { render: () => [] };
+  const told = (placed: Renderable): number[] => {
+    const holds: Hold[] = [];
+    [...render(inFrame(placed, 1), { ...OPTIONS, onHold: (hold) => holds.push(hold) })];
+    return holds.map((hold) => hold.nextChange);
+  };
+
+  it("holds for good, moving or not", () => {
+    expect(told(new Effected(empty, drifting, { key: "k" }))).toEqual([NEVER]);
+    expect(told(new GlyphEffected(empty, GLYPH_EFFECT_CATALOGUE.loops.wave({ z: 0 }) as GlyphEffect, { key: "k" }))).toEqual([NEVER]);
+  });
+
+  it("wakes when the element says it will have cells", () => {
+    const entering = Animation.sequence<Renderable>(Animation.constant(empty), 5, Animation.constant(label));
+    expect(Math.min(...told(new Effected(entering, drifting, { key: "k" })))).toBe(5);
+  });
+});
+
 describe("a moving effect still moves under a combinator", () => {
   for (const [name, placed] of combinators(() => colour()).filter(([name]) => name !== "Animation.onBeat")) {
     it(`in ${name}, it answers the frame's time`, () => expect(nextChangeOf(placed, 1.25)).toBe(1.25));

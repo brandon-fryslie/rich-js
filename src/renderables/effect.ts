@@ -71,7 +71,7 @@
  */
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
-import { Animation, holdOf, placedRender, shownAt, type Moves } from "../core/animation.js";
+import { Animation, holdOf, placedRender, shownAt, type Moves, type Shown } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
@@ -80,7 +80,7 @@ import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js"
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, joinedCell, type EdgeMove, type JoinedCell } from "../core/strip.js";
-import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes } from "../core/style.js";
+import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes, type Hold } from "../core/style.js";
 import { finiteTime } from "../core/easing.js";
 
 /**
@@ -246,6 +246,15 @@ export interface EffectedOptions {
 }
 
 /**
+ * The hold an effect drawn at `t` tells: its animation's there, or held for
+ * good over no cell, since it changes how cells look and never which exist.
+ * What drew none says for itself when it will (a lifecycle not yet entered).
+ */
+export function holdOver(anyCell: boolean, shown: Shown<unknown>, t: number): Hold {
+  return anyCell ? holdOf(shown, t) : NEVER_CHANGES;
+}
+
+/**
  * An `Effected` at `t`, or an element through an effect at a time an
  * animation's `at` was handed — a lifecycle's time since it entered: `renderable`
  * with its cells' looks passed through `effect` at `t`. Its cells say nothing
@@ -286,7 +295,7 @@ export class Recolored implements Renderable, Measurable {
     const walked = walk(looked);
     const drawn = measured(looked, () => walked, depth, terminal);
     const shown = shownAt(this.effect(drawn), this._t, options);
-    options.onMoved?.(this._t, this.key, holdOf(shown, this._t));
+    options.onMoved?.(this._t, this.key, holdOver(walked.some(({ glyphs }) => glyphs.some(({ cell }) => cell !== undefined)), shown, this._t));
     return this._recolored(walked, shown.value, drawn);
   }
 

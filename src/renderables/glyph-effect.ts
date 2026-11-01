@@ -52,7 +52,7 @@
  * what the child drew.
  */
 
-import { Animation, holdOf, placedRender, shownAt, type Moves } from "../core/animation.js";
+import { Animation, placedRender, shownAt, type Moves } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -60,7 +60,7 @@ import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { finiteTime } from "../core/easing.js";
 import { stripControlChars, type RichText } from "../core/text.js";
-import { cellSeed, walkGlyphs, type Placed } from "./effect.js";
+import { cellSeed, holdOver, walkGlyphs, type Placed } from "./effect.js";
 import { pattern } from "../core/pattern.js";
 
 /**
@@ -129,7 +129,7 @@ export class Reglyphed implements Renderable, Measurable {
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
     const frame = shownAt(animation, this._t, options);
     const shown = showGlyphs(placed, frame.value);
-    options.onMoved?.(this._t, this.key, holdOf(frame, this._t));
+    options.onMoved?.(this._t, this.key, holdOver(cells.length > 0, frame, this._t));
     return segments.map((segment, i) => (shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style)));
   }
 
