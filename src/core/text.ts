@@ -3,6 +3,7 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
+import { CONTROL_CODES } from "./control-codes.js";
 import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
@@ -12,23 +13,18 @@ import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./pr
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
 
-// Every C0 control and DEL except \t and \n. Rich's `Text` strips only
-// `STRIP_CONTROL_CODES` (BEL, BS, VT, FF, CR); the rest of the set is the
-// port's extension, so no byte of content can start an escape sequence or move
-// the cursor on the wire: the C1 controls (U+0080–U+009F) go as well, since a
-// terminal reads U+009B as CSI and U+009D as OSC (TextInput refuses them for
-// the same reason). So do the format controls that hold state past the text,
-// also the port's extension: the bidi embeddings and overrides with their
-// closer PDF (U+202A–U+202E), the isolates with their closer PDI
-// (U+2066–U+2069), and the deprecated shaping and swapping switches
-// (U+206A–U+206F). An opener left unclosed in content reverses whatever is
-// drawn after it on the line, and a closer whose opener is gone closes
-// nothing of the text's own. The bidi marks (LRM, RLM, ALM) hold no state and
-// pass, since right-to-left text needs them.
+const hex = (codePoint: number): string => `\\u{${codePoint.toString(16)}}`;
+
+const STRIPPED = pattern(new RegExp(
+  `[${CONTROL_CODES.filter((row) => row.disposition === "strip").map((row) => `${hex(row.first)}-${hex(row.last)}`).join("")}]`,
+  "u",
+));
+
 // [LAW:single-enforcer] Single place where control chars are sanitized: every
-// string that becomes part of a Text's characters passes here.
+// string that becomes part of a Text's characters passes here. Which ones, and
+// why, is `CONTROL_CODES`. `split` needs no cursor, so `STRIPPED` can be held.
 export function stripControlChars(text: string): string {
-  return text.replace(/[\x00-\x08\x0B-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u206F]/g, "");
+  return text.split(STRIPPED).join("");
 }
 
 const TRAILING_WHITESPACE_RE = pattern(/\s+$/);

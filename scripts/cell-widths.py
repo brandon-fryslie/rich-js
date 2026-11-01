@@ -21,6 +21,9 @@ RICH = "15.0.0"
 UNICODE = "17.0.0"
 OUT = Path(__file__).resolve().parent.parent / "src/core/cell-widths.ts"
 WIDTH = 120
+# The clause of Rich's get_character_cell_size that answers ahead of its table:
+# none of the cells for a C0 or C1 control. U+0000 is in the table itself.
+CONTROLS = [(0x1, 0x1f, 0), (0x7f, 0x9f, 0)]
 
 HEADER = f"""\
 /**
@@ -45,9 +48,8 @@ const NARROW_TO_WIDE: ReadonlySet<number> = new Set([
 FOOTER = """\
 ]);
 
-/** The cells Rich gives `codePoint` on its own: none for a C0 or C1 control. */
+/** The cells Rich gives `codePoint` on its own. */
 export function codePointWidth(codePoint: number): 0 | 1 | 2 {
-  if (codePoint < 0x20 || (codePoint >= 0x7f && codePoint < 0xa0)) return 0;
   let low = 0;
   let high = RANGES.length - 1;
   while (low <= high) {
@@ -86,7 +88,7 @@ def main() -> None:
         raise SystemExit(f"Rich {RICH} has no Unicode {UNICODE} table, got {table.unicode_version}")
 
     merged: list[list[int]] = []
-    for first, last, cells in sorted(table.widths):
+    for first, last, cells in sorted([*table.widths, *CONTROLS]):
         if cells not in (0, 2):
             raise SystemExit(f"{first:#x}..{last:#x} has width {cells}; RANGES holds only 0 and 2")
         if merged and merged[-1][1] >= first:
