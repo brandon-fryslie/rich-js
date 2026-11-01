@@ -23,6 +23,8 @@
  * than the header. See docs/widgets.md → Dropdown.
  */
 
+import { labelled } from "../core/orient.js";
+import type { TextOrder } from "../core/text-order.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
@@ -265,7 +267,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     const headerLabel = this.headerText(maxLabelLen, caret);
     return [
       new Segment("[", baseStyle),
-      new Segment(`${headerLabel} ${arrowChar}`, baseStyle),
+      ...labelled("", headerLabel, ` ${arrowChar}`, baseStyle, options.textOrder),
       new Segment("]", baseStyle),
     ];
   }
@@ -296,16 +298,17 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     return setCellSize(" " + filterText + caret, asCellCol(maxLabelLen));
   }
 
-  renderOverlay(_options: RenderOptions): Iterable<Segment> | null {
+  renderOverlay(options: RenderOptions): Iterable<Segment> | null {
     if (!this.expanded) return null;
     const maxLabelLen = this.maxLabelLen();
     const fopts = this.filteredOptions;
     if (fopts.length === 0) return this.renderNoMatchRow(maxLabelLen);
+    const order = options.textOrder;
 
     const segments: Segment[] = [];
     for (let i = 0; i < fopts.length; i++) {
       if (i > 0) segments.push(new Segment("\n"));
-      segments.push(...this.renderOptionRow(fopts[i]!, i, maxLabelLen));
+      segments.push(...this.renderOptionRow(fopts[i]!, i, maxLabelLen, order));
     }
     return segments;
   }
@@ -331,6 +334,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     entry: { label: string; idx: number },
     fpos: number,
     maxLabelLen: number,
+    order: TextOrder | undefined,
   ): Segment[] {
     // Row: "  " + label.padEnd(maxLabelLen) + "  "
     // Width = 1 + 1 + maxLabelLen + 1 + 1 = maxLabelLen + 4.
@@ -354,7 +358,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
 
     return [
       new Segment(" ", rowStyle),
-      new Segment(inner, rowStyle),
+      ...labelled("", inner, "", rowStyle, order),
       new Segment(" ", rowStyle),
     ];
   }

@@ -9,6 +9,7 @@
  * not at all.
  */
 
+import { withoutExplicit } from "../core/bidi.js";
 import { cellCount, cellLen } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
@@ -149,7 +150,8 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
   };
   const write = (text: string, styles?: readonly (string | Style)[]): void => {
     const start = result.length;
-    result.append(text);
+    // Each inline node is its own content, so what it holds open ends with it.
+    result.append(new RichText(text));
     paint(start, styles);
   };
   const enter = (styles: readonly (string | Style)[]): (() => void) => {
@@ -197,7 +199,7 @@ function appendInline(result: RichText, inlines: readonly Inline[], settings: In
         write("\n");
         break;
       case "code":
-        write(inline.code, [groundedStyle(options, resolveStyle(options, settings.inlineCodeStyle))]);
+        write(withoutExplicit(inline.code), [groundedStyle(options, resolveStyle(options, settings.inlineCodeStyle))]);
         break;
       case "html":
         kbd(inline.content);

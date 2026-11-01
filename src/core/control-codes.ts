@@ -61,16 +61,15 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   keep(0x200b, 0x200f),
   // LINE SEPARATOR and PARAGRAPH SEPARATOR.
   keep(0x2028, 0x2029),
-  // The bidi embeddings and overrides with their closer PDF. These hold state
-  // past the text: an opener left unclosed in content reverses whatever is
-  // drawn after it on the line, and a closer whose opener is gone closes
-  // nothing of the text's own.
-  strip(0x202a, 0x202e),
+  // The bidi embeddings and overrides with their closer PDF, and the isolates
+  // below. Content holds them; what reaches the wire is `sealed`'s to decide.
+  keep(0x202a, 0x202e),
   // WORD JOINER and the invisible mathematical operators.
   keep(0x2060, 0x2064),
-  // The bidi isolates with their closer PDI, stripped as the embeddings are,
-  // and the deprecated shaping and swapping switches.
-  strip(0x2066, 0x206f),
+  // The bidi isolates with their closer PDI.
+  keep(0x2066, 0x2069),
+  // The deprecated shaping and swapping switches.
+  strip(0x206a, 0x206f),
   // ZERO WIDTH NO-BREAK SPACE, the byte order mark.
   keep(0xfeff, 0xfeff),
   // Interlinear annotation.

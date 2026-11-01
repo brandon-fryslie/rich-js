@@ -8,6 +8,7 @@
  * one class would be a second answer to "what colour is a keyword".
  */
 
+import { withoutExplicit } from "../core/bidi.js";
 import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
@@ -162,7 +163,9 @@ export class Syntax implements Renderable, Measurable {
 
     // Tokenized whole and then sliced, so a block comment or a triple-quoted
     // string that spans lines is one token even when the range starts inside it.
-    const text = new RichText(this._lines.join("\n"), { end: "" });
+    // Code on show: a control held here is the Trojan Source attack, the order
+    // on screen differing from the order the compiler reads.
+    const text = new RichText(withoutExplicit(this._lines.join("\n")), { end: "" });
     for (const match of text.plain.matchAll(new RegExp(GRAMMARS[this.language].source, "g"))) {
       const [token] = Object.entries(match.groups!).find(([, value]) => value !== undefined)!;
       text.stylize(`syntax.${token}`, match.index, match.index + match[0].length);

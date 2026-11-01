@@ -1,0 +1,122 @@
+# Right-to-Left Text
+
+Arabic, Persian, Urdu and Hebrew read right to left, and a terminal draws cells
+left to right. Something has to put the letters in the order a reader expects,
+and only some terminals do it themselves. rich-js finds out what it can about
+the terminal and writes accordingly, and a bidirectional control in your content
+can never reach past the content that holds it.
+
+```typescript
+console.print("مرحبا بالعالم");
+```
+
+The terminal on this page runs in your browser, which orders the row itself:
+
+```typescript live
+import { Console } from "@promptctl/rich-js";
+
+const console = new Console();
+console.print("אבגדה");
+```
+
+Most programs need nothing more. Set `textOrder` when you know your terminal
+better than rich-js can:
+
+```typescript
+import { Console } from "@promptctl/rich-js";
+
+const output = new Console({ textOrder: "logical" });
+output.print("שלום עולם");
+```
+
+## The three text orders
+
+`textOrder` is one of three values, and it says what the destination does with
+direction. `Console`, `App` and `renderToString` all take it.
+
+| Order | The destination | What rich-js writes |
+| --- | --- | --- |
+| `plain` | Is not a display, or nothing is known about it | The characters in logical order, with no bidi control |
+| `logical` | Reorders text itself and takes the controls at zero width | Logical order, each row sealed in an isolate |
+| `visual` | Does not reorder | Rows already reversed, mirrored and shaped, with no controls |
+
+Each order above `plain` is a claim about the terminal. Visual order on a
+terminal that also reorders reverses the text twice. Isolates on a terminal
+whose width table predates them take up cells, which moves a table's border. So
+rich-js uses `plain` unless it has evidence.
+
+## What rich-js detects
+
+The order comes from the environment, and a terminal's own `TERM` outranks a
+variable it may have inherited from the program that started it.
+
+- **`visual`:** Windows Terminal, Alacritty, foot and Ghostty.
+- **`logical`:** VTE terminals, such as GNOME Terminal.
+- **`plain`:** everything else, including pipes, files, tmux, screen, zellij,
+  Emacs, Vim and Neovim terminals, VS Code, xterm.js, kitty, iTerm2, Konsole and
+  Terminal.app.
+
+WezTerm is `plain` because its bidi is a setting the environment cannot show. If
+you have left it off, state `visual` yourself.
+
+`renderToString` never detects. It defaults to `plain`, so the same call gives
+the same bytes everywhere.
+
+## Bidi controls in your content
+
+`RichText` holds the explicit controls (LRE, RLE, LRO, RLO, PDF, LRI, RLI, FSI,
+PDI) as characters, and their effect ends with the content that holds them:
+
+- Under `logical` they reach the terminal, balanced and closed inside the row's
+  isolate. Under `visual` rich-js applies them itself.
+- Under `plain` they are deleted before wrapping.
+- A control in a segment no `RichText` drew is deleted in every order, so a raw
+  `Segment` cannot carry one to the terminal.
+- Separate contents do not share state: `console.print(a, b)`, a `RichText`
+  appended to another, `RichText.assemble`, `appendTokens` and each inline piece
+  of `Markdown` all close what each one left open.
+
+Appending a string builds one content, so an override in it reaches the end of
+its line. To keep untrusted text apart, hand it in as its own `RichText`.
+
+`JSONRenderable` shows an explicit control as its `\u` escape, so the output
+stays valid JSON. `Syntax` and Markdown's inline code delete them, because a
+control held in source code is the Trojan Source attack.
+
+## Wrapping and truncation
+
+rich-js resolves direction over a whole line, then cuts it, then orders each row.
+Cuts fall on logical offsets in every order, so what survives truncation is the
+start of the sentence. In right-to-left text that is its right-hand side, and the
+`…` sits on the left.
+
+Lam-alef stays two cells in `visual`, as two joined letters rather than the
+one-cell ligature, because the ligature would change a line's width after layout.
+
+## Known limits
+
+- **VTE at column 0.** VTE discards zero-width characters at the start of a row,
+  so a bare `console.print` loses its isolate and the terminal resolves the row
+  as left to right. An Arabic sentence keeps its full stop on the wrong side, as
+  it always has here. Containment still holds, and anything after a border or
+  padding, such as a table cell, reads correctly.
+- **Mixed text at a cut.** A terminal resolves one row and cannot see the rest of
+  the paragraph, so under `logical` a neutral or a number right beside a cut can
+  land differently than under `visual`.
+- **A terminal on `plain` that reorders.** Right-to-left text behaves as it always
+  has: two adjacent right-to-left table cells swap, and controls have no effect.
+- **Pointer hits and crops.** A cell's offset is not its screen column in a
+  logical right-to-left row, so a pointer hit or a mid-row crop there lands on
+  different cells than the terminal shows. A row split by an overlay reopens what
+  was open at its start, so a control in the middle of the row stops acting past
+  the split.
+- **`TextInput`.** It draws no right-to-left order yet.
+- **kitty.** It shows right-to-left lines with their words in left-to-right order.
+- **`RichText.plain`.** It holds the controls in every order, so a program writing
+  `text.plain` itself gets no containment.
+- **Export.** `exportText` from a `visual` console holds visual text, as a copy off
+  the screen does. SVG places each chunk at its own column, so a program exporting
+  right-to-left SVG should record under `visual`. A console recording for HTML
+  export should state `logical`.
+- **Highlighting.** It runs before the destination is known, so a control inside a
+  number or a URL splits the highlight there.

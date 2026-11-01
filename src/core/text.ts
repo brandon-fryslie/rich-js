@@ -3,7 +3,9 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
+import { closed, closing, withoutExplicit } from "./bidi.js";
 import { CONTROL_CODES, type Disposition } from "./control-codes.js";
+import { directed, edges, hangingWhitespace, measured } from "./orient.js";
 import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
@@ -32,41 +34,6 @@ const STRIPPED = pattern(new RegExp(
 // string, and has to throw rather than read as `[object Object]`.
 export function stripControlChars(text: string): string {
   return text.match(STRIPPED) === null ? text : text.split(STRIPPED).join("");
-}
-
-const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
-
-/**
- * The plain text of one line of segments, in the coordinate system
- * `divideLine` and `Segment.divide` share: cell offsets into the styled line
- * are cell offsets into this string. [LAW:one-source-of-truth] for that
- * correspondence — the offsets are found in this text and applied to the
- * segments it came from.
- */
-function plainOf(line: Segment[]): string {
-  return line.map((segment) => segment.text).join("");
-}
-
-/**
- * The cells of trailing whitespace on a wrapped line.
- *
- * A wrap cuts before a word, so the line it closes ends with the whitespace
- * that followed *its* last word — padding the break created, not content the
- * author wrote. Measuring it is what lets the overflow method tell "this line
- * was cut" from "this line ends in spaces" and stamp an ellipsis only on the
- * first, and what keeps a centred line from drifting half a space off true.
- *
- * Asked of the line's text rather than walked back through its segments,
- * because where a line ends is a fact about the characters and not about how
- * they were split. Walking the segments made it a fact about both: it read a
- * segment with no trailing whitespace as content and stopped there, which an
- * empty segment also looks like — and a crop leaves one behind. A styled line
- * whose last cells were cropped therefore reported no hanging whitespace at
- * all and was centred as though it were content to the edge, so a span landing
- * anywhere in a wrap's whitespace un-centred the line it closed.
- */
-function hangingWhitespace(line: Segment[]): number {
-  return cellLen(TRAILING_WHITESPACE_RE.exec(plainOf(line))?.[0] ?? "");
 }
 
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
@@ -211,10 +178,14 @@ interface TextFormat {
 export class RichText implements Renderable, Measurable {
   // Rich's `Text` is changed in place — appended to, stylized, padded — so its
   // characters, spans and format are state, and a write to one while
-  // something is drawn throws. Three holders rather than one per field: a
+  // something is drawn throws. Four holders rather than one per field: a
   // `RichText` is the most-made object in the library.
   private readonly _text: State<string>;
   private readonly _spans = new ListState<Span>();
+  // What `append` has added to `text` since it last closed it, so closing reads
+  // no more than that. Any other write leaves `text` naming an older string, and
+  // the whole is read instead.
+  private readonly _closure = new State<{ readonly text: string; readonly tail: string }>({ text: "", tail: "" });
   private readonly _format: State<TextFormat>;
   private readonly _tabSize: TabSize;
 
@@ -230,6 +201,13 @@ export class RichText implements Renderable, Measurable {
       noWrap: options?.noWrap ?? false,
     });
     this._tabSize = parseTabSize(options?.tabSize ?? 8);
+  }
+
+  /** The part of the text whose direction state nothing has closed. */
+  private _unclosed(): string {
+    const text = this._text.get();
+    const closure = this._closure.get();
+    return closure.text === text ? closure.tail : text;
   }
 
   private _reformat(change: Partial<TextFormat>): void {
@@ -349,7 +327,8 @@ export class RichText implements Renderable, Measurable {
   edgeStyle(side: "left" | "right", options: RenderOptions): Style {
     const base = this.resolvedStyle(options);
     if (this._text.get().length === 0) return base;
-    const pos = side === "left" ? 0 : this._text.get().length - 1;
+    const shown = edges(this._text.get(), options.textOrder ?? "plain");
+    const pos = side === "left" ? shown.left : shown.right;
     let result = base;
     for (const span of this._spans.get()) {
       if (span.start <= pos && pos < span.end) {
@@ -366,10 +345,15 @@ export class RichText implements Renderable, Measurable {
       if (style !== undefined) {
         throw new Error("Style argument must not be provided when appending RichText");
       }
-      const offset = this._text.get().length;
+      // [LAW:single-enforcer] Reached only when separate Texts are set on one
+      // line, so here direction state ends with the content holding it. The
+      // string arm below builds one content, and an embedding spans it.
+      const own = this._text.get() + closing(this._unclosed());
+      const offset = own.length;
       // Read before anything is appended, so a text appended to itself takes its spans as they were.
       const moved = content._spans.get().map((span) => span.move(offset));
-      this._text.set(this._text.get() + content._text.get());
+      this._text.set(own + closed(content._text.get()));
+      this._closure.set({ text: this._text.get(), tail: "" });
       // Its base style becomes a span under its own spans, as the reference's
       // `append` does, so appended text looks as it did alone.
       this._addSpan(offset, this._text.get().length, content._format.get().style);
@@ -379,7 +363,9 @@ export class RichText implements Renderable, Measurable {
 
     const sanitized = stripControlChars(content);
     const start = this._text.get().length;
+    const tail = this._unclosed() + sanitized;
     this._text.set(this._text.get() + sanitized);
+    this._closure.set({ text: this._text.get(), tail });
     this._addSpan(start, this._text.get().length, style ?? "");
     return this;
   }
@@ -778,8 +764,9 @@ export class RichText implements Renderable, Measurable {
   // --- Token Appending ---
 
   appendTokens(tokens: Array<[string, TextStyle?]>): this {
+    // Each token is its own content, as `assemble`'s parts are.
     for (const [text, style] of tokens) {
-      this.append(text, style);
+      this.append(new RichText(text, { style }));
     }
     return this;
   }
@@ -791,15 +778,12 @@ export class RichText implements Renderable, Measurable {
     options?: { style?: TextStyle },
   ): RichText {
     const result = new RichText("", { style: options?.style });
+    // Each part is its own content, a string's included, so each takes
+    // `append`'s RichText arm.
     for (const part of parts) {
-      if (typeof part === "string") {
-        result.append(part);
-      } else if (part instanceof RichText) {
-        result.append(part);
-      } else {
-        const [text, style] = part;
-        result.append(text, style);
-      }
+      if (part instanceof RichText) result.append(part);
+      else if (typeof part === "string") result.append(new RichText(part));
+      else result.append(new RichText(part[0], { style: part[1] }));
     }
     return result;
   }
@@ -880,23 +864,35 @@ export class RichText implements Renderable, Measurable {
     const justify = overflow === "ignore" ? undefined : this._format.get().justify ?? options.justify;
     // One cell either way, so the marker's stand-in leaves the cut where it was.
     const ellipsis = drawable(options, "\u2026", ".");
+    const order = options.textOrder ?? "plain";
 
     for (let index = 0; index < logicalLines.length; index += 1) {
-      const line = logicalLines[index]!;
+      // [LAW:dataflow-not-control-flow] Every line runs the same steps; the
+      // order is the value `directed` and `orient` take.
+      const { line, oriented, orient } = directed(logicalLines[index]!, order);
       const free = spanFree[index]!;
       const terminateLine = index < logicalLines.length - 1;
 
       // Wrap first, overflow last — the reference's order, and the reason a
       // long sentence grows a table row while an unbreakable word in the same
       // column still ellipsizes.
-      const cuts = divideLine(plainOf(line), wrapAt, { fold: overflow === "fold" });
+      const cuts = divideLine(Segment.plainOf(line), wrapAt, { fold: overflow === "fold" });
 
       const wrapped = Segment.divide(line, cuts);
+      let start = 0;
       const placed = this._justifyLines(
-        wrapped.map((piece, at) => ({
-          segments: [...this._fitLine(piece, edge, overflow, ellipsis)],
-          free: (cell: number) => free(at === 0 ? cell : cuts[at - 1]! + cell),
-        })),
+        wrapped.map((piece, at) => {
+          const source = Segment.plainOf(piece);
+          const from = start;
+          start += source.length;
+          return {
+            segments: [...this._fitLine(piece, edge, overflow, ellipsis)],
+            // An oriented row's cells are not where `free` counted them, and a
+            // pad joined to one would land inside its isolate.
+            free: oriented ? NEVER_FREE : (cell: number) => free(at === 0 ? cell : cuts[at - 1]! + cell),
+            orient: (segments: Segment[]) => orient(segments, from, source),
+          };
+        }),
         maxWidth,
         base,
         justify,
@@ -922,7 +918,7 @@ export class RichText implements Renderable, Measurable {
   // --- Measurable ---
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const lines = expandTabs(this._text.get(), this._tabSize).text.split("\n");
+    const lines = measured(expandTabs(this._text.get(), this._tabSize).text, options.textOrder ?? "plain").split("\n");
 
     const maxLineWidth = lines.reduce((widest, line) => Math.max(widest, cellLen(line)), 0);
     // [LAW:one-source-of-truth] The minimum is the widest piece the wrapper
@@ -1047,8 +1043,8 @@ export class RichText implements Renderable, Measurable {
     if (justify !== "full") {
       return lines.map((line) => [...this._justifyLine(line, maxWidth, base, justify)]);
     }
-    return lines.map(({ segments }, index) =>
-      index === lines.length - 1 ? segments : this._fillLine(segments, maxWidth, base),
+    return lines.map(({ segments, orient }, index) =>
+      orient(index === lines.length - 1 ? segments : this._fillLine(segments, maxWidth, base)),
     );
   }
 
@@ -1070,7 +1066,7 @@ export class RichText implements Renderable, Measurable {
    * inside the `Text` it justifies: a title "on red" fills its row in red.
    */
   private *_justifyLine(
-    { segments: line, free }: WrappedLine,
+    { segments: line, free, orient }: WrappedLine,
     maxWidth: number,
     base: Style,
     // [LAW:types-are-the-program] `full` is absent rather than ignored: it
@@ -1091,14 +1087,16 @@ export class RichText implements Renderable, Measurable {
         );
         const gap = Math.max(maxWidth - Segment.getLineLength(body), 0);
         const leftPad = justify === "center" ? Math.floor(gap / 2) : gap;
-        yield* padded(body, free, leftPad, gap - leftPad, padStyle);
+        yield* padded(orient(body), free, leftPad, gap - leftPad, padStyle);
         break;
       }
-      case "left":
-        yield* padded(line, free, 0, Math.max(maxWidth - Segment.getLineLength(line), 0), padStyle);
+      case "left": {
+        const row = orient(line);
+        yield* padded(row, free, 0, Math.max(maxWidth - Segment.getLineLength(row), 0), padStyle);
         break;
+      }
       default:
-        yield* line;
+        yield* orient(line);
         break;
     }
   }
@@ -1124,9 +1122,9 @@ export class RichText implements Renderable, Measurable {
    * blocks respectively.
    */
   private _fillLine(line: Segment[], maxWidth: number, base: Style): Segment[] {
-    const plain = plainOf(line);
+    const plain = Segment.plainOf(line);
     const words = plain.split(" ");
-    if (plain.endsWith(" ")) words.pop();
+    if (withoutExplicit(plain).endsWith(" ")) words.pop();
 
     const gaps = words.length - 1;
     const spaces = new Array<number>(gaps).fill(1);
@@ -1231,7 +1229,11 @@ export class RichText implements Renderable, Measurable {
 interface WrappedLine {
   readonly segments: Segment[];
   readonly free: (cell: number) => boolean;
+  /** The line as its destination's order writes it: the last step before padding. */
+  readonly orient: (segments: Segment[]) => Segment[];
 }
+
+const NEVER_FREE = (): boolean => false;
 
 /**
  * For each logical line of a render, whether the cell at an offset is covered

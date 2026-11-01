@@ -39,7 +39,7 @@ After construction, `Console` exposes information about the terminal:
 | `console.height` | Terminal rows (live terminal size) |
 | `console.isTerminal` | `true` when writing to a real TTY |
 | `console.colorSystem` | Detected color depth — a `ColorDepth`, or `null` for no color |
-| `console.destination` | What output is encoded for: `{ colorSystem, hyperlinks, reducedMotion }`, the color depth, whether OSC 8 links are written, and whether blink is taken out, with the constructor options applied — see [Environment variables](#environment-variables) |
+| `console.destination` | What output is encoded for: `{ colorSystem, hyperlinks, reducedMotion, textOrder }`, the color depth, whether OSC 8 links are written, whether blink is taken out, and what the terminal does with [text direction](/right-to-left), with the constructor options applied — see [Environment variables](#environment-variables) |
 
 `width` and `height` reflect the current terminal size — if the user resizes the window they update automatically.
 

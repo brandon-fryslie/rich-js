@@ -24,7 +24,7 @@ const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 
 const line = new RichText("a line appended to the log", { style: "bold cyan" });
 const draw = (renderable: Renderable, options: RenderOptions = OPTIONS): Segment[] => [...render(renderable, options)];
-const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false, textOrder: "plain" });
 const text = (segments: Segment[]): string => segments.map((s) => s.text).join("");
 
 /** `rate` samples a second from `from` to `to`. */

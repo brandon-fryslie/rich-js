@@ -2,9 +2,10 @@
  * Terminal color representation, parsing, downgrading, and ANSI code generation.
  */
 
-import type { Env } from "./env.js";
+import { isDumbTerminal, type Env } from "./env.js";
 import { Memo, WeakMemo } from "./memo.js";
 import { pattern } from "./pattern.js";
+import { detectTextOrder, type TextOrder } from "./text-order.js";
 // A `TerminalTheme` carries a `Palette`; `test/seam/layering.ts` owns why this upward edge stands.
 import type { Palette } from "../themes/palette.js";
 
@@ -381,14 +382,8 @@ function envOf(options: DetectColorOptions): Env {
   return options.env ?? (typeof process !== "undefined" ? process.env : {});
 }
 
-/**
- * A terminal that says it cannot be drawn on: `TERM` is `dumb` or `unknown`,
- * as Emacs' shell mode sets it. It takes no colour and nothing that moves the
- * cursor.
- */
-export function isDumbTerminal(env: Env): boolean {
-  const term = env["TERM"];
-  return term === "dumb" || term === "unknown";
+function isTTYOf(options: DetectColorOptions): boolean {
+  return options.isTTY ?? (typeof process !== "undefined" ? (process.stdout?.isTTY ?? false) : false);
 }
 
 // What the destination can draw, preferences aside: TTY presence,
@@ -396,11 +391,7 @@ export function isDumbTerminal(env: Env): boolean {
 // here means the destination takes no escapes at all.
 function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
   const env = envOf(options);
-  const isTTY =
-    options.isTTY ??
-    (typeof process !== "undefined" ? (process.stdout?.isTTY ?? false) : false);
-
-  if (!isTTY) return null;
+  if (!isTTYOf(options)) return null;
 
   if (isDumbTerminal(env)) return null;
   const term = env["TERM"] ?? "";
@@ -449,6 +440,8 @@ export interface Destination {
    * drawn and how it is encoded take one preference.
    */
   readonly reducedMotion: boolean;
+  /** What the destination does with direction; `./text-order.ts` owns the three. */
+  readonly textOrder: TextOrder;
 }
 
 /**
@@ -459,6 +452,8 @@ export interface Destination {
  */
 export interface DestinationOptions extends DetectColorOptions {
   reducedMotion?: boolean;
+  /** The order the program knows its destination takes. Absent, `detectTextOrder` decides. */
+  textOrder?: TextOrder;
 }
 
 /**
@@ -476,11 +471,14 @@ export function resolveDestination(
   options: DestinationOptions = {},
 ): Destination {
   const reducedMotion = options.reducedMotion ?? false;
+  // Ahead of both arms: a colour spec says nothing about order.
+  const textOrder = options.textOrder ?? detectTextOrder(envOf(options), isTTYOf(options));
   if (spec !== "auto") {
     return {
       colorSystem: typeof spec === "string" ? resolveColorSystem(spec) : spec,
       hyperlinks: true,
       reducedMotion,
+      textOrder,
     };
   }
   return {
@@ -489,6 +487,7 @@ export function resolveDestination(
       (forcedColorSystem(envOf(options)) ?? null) !== null ||
       terminalColorSystem(options) !== null,
     reducedMotion,
+    textOrder,
   };
 }
 

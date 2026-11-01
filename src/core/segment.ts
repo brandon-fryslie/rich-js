@@ -363,6 +363,17 @@ export class Segment {
   }
 
   /**
+   * The plain text of one line of segments, in the coordinate system
+   * `divideLine` and `Segment.divide` share: cell offsets into the styled line
+   * are cell offsets into this string. [LAW:one-source-of-truth] for that
+   * correspondence — the offsets are found in this text and applied to the
+   * segments it came from.
+   */
+  static plainOf(line: readonly Segment[]): string {
+    return line.map((segment) => segment.text).join("");
+  }
+
+  /**
    * Returns total cell width of a line. Ignores control segments.
    */
   static getLineLength(line: Segment[]): number {
@@ -483,10 +494,10 @@ export class Segment {
    * in its length.
    */
   static divide(
-    segments: Segment[],
+    segments: readonly Segment[],
     cuts: number[],
   ): Segment[][] {
-    if (cuts.length === 0) return [segments];
+    if (cuts.length === 0) return [[...segments]];
 
     const sections: Segment[][] = [[]];
     let offset = 0;

@@ -11,6 +11,7 @@ import {
 import { shiftAnchor, type Anchor } from "./anchor.js";
 import { Memo } from "./memo.js";
 import { pattern } from "./pattern.js";
+import type { BidiStamp } from "./text-order.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color`. The substrate
 // a translucent colour is flattened over is `SURFACE_BLACK`, defined beside
@@ -104,6 +105,7 @@ export interface StyleOptions {
   meta?: Record<string, unknown>;
   anchor?: Anchor;
   boxFrame?: object;
+  bidi?: BidiStamp;
   /**
    * The hold the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
@@ -174,6 +176,13 @@ export class Style {
    */
   readonly boxFrame: object | undefined;
   /**
+   * What drawing said of these cells' direction, compared by identity, as a
+   * link is a fact the encoder turns into bytes: `Segment` never holds a control
+   * the library wrote, so no cut of a row can unbalance one, and what survives a
+   * cut still names its stamp (`./seal.ts`). It draws nothing.
+   */
+  readonly bidi: BidiStamp | undefined;
+  /**
    * The hold this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`lastChange`), and
    * when it next changes (`nextChange`) — both `t` for a cell drawn by
@@ -220,6 +229,7 @@ export class Style {
     this.meta = options.meta;
     this.anchor = options.anchor;
     this.boxFrame = options.boxFrame;
+    this.bidi = options.bidi;
   }
 
   get isNull(): boolean {
@@ -243,6 +253,7 @@ export class Style {
       this.meta === undefined &&
       this.anchor === undefined &&
       this.boxFrame === undefined &&
+      this.bidi === undefined &&
       this.hold.nextChange === Number.POSITIVE_INFINITY &&
       this.hold.lastChange === Number.NEGATIVE_INFINITY
     );
@@ -295,6 +306,11 @@ export class Style {
   /** The same look, as the frame of the drawing `boxFrame` names, or of none. */
   withBoxFrame(boxFrame: object | undefined): Style {
     return this.with({ boxFrame });
+  }
+
+  /** The same look, its cells' direction as `bidi` says. */
+  withBidi(bidi: BidiStamp | undefined): Style {
+    return this.with({ bidi });
   }
 
   /** The style's text attributes, each as it sets it. */
@@ -361,6 +377,7 @@ export class Style {
           : other.meta ?? this.meta,
       anchor: other.anchor ?? this.anchor,
       boxFrame: other.boxFrame ?? this.boxFrame,
+      bidi: other.bidi ?? this.bidi,
       // Cells under both change when either does.
       hold: intersection(this.hold, other.hold),
     });
@@ -387,6 +404,7 @@ export class Style {
       this.link === other.link &&
       anchorsEqual(this.anchor, other.anchor) &&
       this.boxFrame === other.boxFrame &&
+      this.bidi === other.bidi &&
       this.hold.nextChange === other.hold.nextChange &&
       this.hold.lastChange === other.hold.lastChange
     );
@@ -446,7 +464,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colours, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `hold` —
+   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `hold` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */

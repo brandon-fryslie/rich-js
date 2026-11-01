@@ -21,6 +21,7 @@ import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, splitAtCells } 
 import { divideLine } from "./wrap.js";
 import { Memo } from "./memo.js";
 import { Segment } from "./segment.js";
+import { closed } from "./bidi.js";
 import { RichText, stripControlChars } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
@@ -547,7 +548,7 @@ function take<T>(source: Iterable<T>, limit: number): T[] {
 function threw(error: unknown): string {
   // An `Error` from any realm carries its `message` as a string.
   const message = (error as { message?: unknown } | null)?.message;
-  return `[Threw: ${typeof message === "string" ? message : String(error)}]`;
+  return `[Threw: ${closed(typeof message === "string" ? message : String(error))}]`;
 }
 
 /**
@@ -830,9 +831,9 @@ export class Pretty implements Renderable, Measurable {
       case "boolean":
         return String(value);
       case "symbol":
-        return value.toString();
+        return closed(value.toString());
       case "function":
-        return `[Function: ${value.name || "anonymous"}]`;
+        return `[Function: ${closed(String(value.name || "anonymous"))}]`;
     }
 
     return null;
@@ -964,9 +965,9 @@ export class Pretty implements Renderable, Measurable {
           })),
         );
       case "opaque":
-        return { kind: "text", text: form.text };
+        return { kind: "text", text: closed(form.text) };
       case "self":
-        return { kind: "text", text: String(value) };
+        return { kind: "text", text: closed(String(value)) };
       case "keys": {
         // No self-description, so the keys are the whole story.
         const { record } = form;

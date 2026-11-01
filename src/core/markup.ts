@@ -18,6 +18,7 @@
  * may not open on one side of a plugin tag and close on the other.
  */
 
+import { closed } from "./bidi.js";
 import { cellLen } from "./cells.js";
 import { Style, StyleSyntaxError } from "./style.js";
 import { RichText, stripControlChars } from "./text.js";
@@ -774,7 +775,7 @@ function walk(tokens: readonly MarkupToken[], source: string, registry: MarkupRe
     const children = compose(takeFrom(out, target.mark));
     const text = handler({ attrs, children, raw: source.slice(target.tag.end, token.start) });
     out.spliced.push({ at: out.length, text });
-    write(out, text.plain);
+    write(out, closed(text.plain));
   }
 
   // Close what is still open, innermost first. The reference pops its stack

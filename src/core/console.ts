@@ -4,7 +4,9 @@
 
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
-import { ColorDepth, isDumbTerminal, resolveDestination } from "./color.js";
+import { ColorDepth, resolveDestination } from "./color.js";
+import { isDumbTerminal } from "./env.js";
+import type { TextOrder } from "./text-order.js";
 import type { ColorSystemName, Destination } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -22,6 +24,7 @@ import type { Highlighter } from "./highlighter.js";
 // rather than being restated here; see `rule()`.
 import { Rule, type RuleOptions } from "../renderables/rule.js";
 import { segmentsToString, shownOn } from "./render.js";
+import { sealed } from "./seal.js";
 import { placeBlock, type Alignment } from "./place.js";
 import type {
   Height,
@@ -98,6 +101,8 @@ export interface ConsoleOptions {
    * TERM=dumb: false). `false` with `colorSystem: null` writes plain text.
    */
   hyperlinks?: boolean;
+  /** What the output's destination does with direction. Default: what `detectTextOrder` finds. */
+  textOrder?: TextOrder;
   /**
    * The terminal can draw only ASCII: boxes, rules, tree guides and widget
    * marks draw with ASCII characters instead of line-drawing glyphs. A
@@ -427,7 +432,7 @@ export class Console {
     // environment rather than the ambient process's.
     const resolved = resolveDestination(
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
-      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion },
+      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion, ...(options?.textOrder === undefined ? {} : { textOrder: options.textOrder }) },
     );
     // [LAW:single-enforcer] The console's one override, an explicit
     // `hyperlinks`, is applied here and nowhere else; every write encodes for
@@ -519,6 +524,7 @@ export class Console {
       theme: this._theme,
       onStyleError: this._onStyleError,
       colorSystem: this._destination.colorSystem,
+      textOrder: this._destination.textOrder,
       terminal: this._terminal,
       markup: this._markup,
       highlight: this._highlight,
@@ -793,7 +799,7 @@ export class Console {
   // --- Export (when record:true) ---
 
   exportText({ clear = true }: { clear?: boolean } = {}): string {
-    const text = this._recorded.get().map((s) => s.text).join("");
+    const text = [...sealed(this._recorded.get(), "plain")].map((s) => s.text).join("");
     if (clear) this._recorded.set([]);
     return text;
   }

@@ -11,6 +11,7 @@
  *   disabled  — dimmed
  */
 
+import { labelled } from "../core/orient.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
@@ -96,19 +97,19 @@ export class Toggle extends ThemedWidget {
 
   // --- Rendering ---
 
-  protected draw(_options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     // Both indicators are exactly 5 cells: "[ON] " and "[OFF]".
     const indicator = this.on ? "[ON] " : "[OFF]";
-    const text = `${indicator} ${this.label}`;
+    const drawn = (style: Style): Segment[] => labelled(`${indicator} `, this.label, "", style, options.textOrder);
 
     if (this.disabled) {
-      return [new Segment(text, new Style(this.disabledInk))];
+      return drawn(new Style(this.disabledInk));
     }
 
     const keys = VARIANT_KEYS[this.variant];
     const colors = this.on ? ink(this.theme, keys.onFg, keys.onBg) : ink(this.theme, keys.offFg, keys.offBg);
 
-    return [new Segment(text, new Style({ ...colors, underline: this.focused }))];
+    return drawn(new Style({ ...colors, underline: this.focused }));
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

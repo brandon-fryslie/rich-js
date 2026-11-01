@@ -50,7 +50,8 @@ describe("dispositionOf", () => {
   it("answers each code point from its row, and keeps a printing character", () => {
     expect(dispositionOf(0x1b)).toBe("strip");
     expect(dispositionOf(0x0a)).toBe("keep");
-    expect(dispositionOf(0x202e)).toBe("strip");
+    expect(dispositionOf(0x202e)).toBe("keep");
+    expect(dispositionOf(0x206a)).toBe("strip");
     expect(dispositionOf(0x200d)).toBe("keep");
     expect(dispositionOf(0x41)).toBe("keep");
     expect(dispositionOf(0x4e00)).toBe("keep");
