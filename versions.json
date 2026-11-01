@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-533",
-      "ref": "refs/pull/533/merge",
-      "sha": "20668339b7e76df98d5d11a0fbd020301757a97a",
-      "timestamp": "2026-11-01T16:29:55.503Z",
-      "commits": [
-        {
-          "sha": "20668339b7e76df98d5d11a0fbd020301757a97a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T16:27:54Z",
-          "message": "Merge 32f495db02ae9fcee5f2e65d879935eda5bc5db4 into 57dd684fcaedfb6e5999f81c5f85a2a5a408cb48\n"
-        },
-        {
-          "sha": "32f495db02ae9fcee5f2e65d879935eda5bc5db4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T09:27:44-07:00",
-          "message": "The width table names the clause it holds, and the strip test asserts the width (rich-control-codes-xh4n.xt7)\n"
-        },
-        {
-          "sha": "255ce57c44146bfa39a547b1b8dd25ca28ce516d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T09:22:35-07:00",
-          "message": "The sanitizer's disposition check is exhaustive, and a clean string costs one match (rich-control-codes-xh4n.xt7)\n\nThe measure's switch bound a new Disposition and the sanitizer's filter did not, so a variant that moved ESC out of `strip` compiled and reached the wire. Both readers now refuse to compile until they say what the variant does.\n\nThe clean check is `match` rather than `test`: `test` coerces, so a template's unlifted scope value read as \"[object Object]\" and rendered as success instead of failing as a template error.\n\nThe reverse census accepts Cn, so a row for a newer Unicode's code point passes on every Node `engines` admits.\n"
-        },
-        {
-          "sha": "0139452a3326361bd1d8c2deec9bd04d6d19221b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T09:07:49-07:00",
-          "message": "Every control and format code point has one disposition, read by the sanitizer and the width measure (rich-control-codes-xh4n.xt7)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "57dd684fcaedfb6e5999f81c5f85a2a5a408cb48",
-      "timestamp": "2026-11-01T15:58:29.044Z",
+      "sha": "d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0",
+      "timestamp": "2026-11-01T16:40:17.627Z",
       "commits": [
         {
-          "sha": "57dd684fcaedfb6e5999f81c5f85a2a5a408cb48",
+          "sha": "d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T08:56:45-07:00",
-          "message": "chore(release): 0.28.0, and textual-ansi states only its bases (rich-unfiled-791c.01dl) (#532)\n\ntextual-ansi states only its bases, as 0.27.0's TerminalTheme was built from.\n#531 gave TEXTUAL_ANSI the authored palette, whose data its generator had\nflattened: every ladder rung was its root, panel was the background, the input\ncursor was inverted. The file now states the eight bases and buildPalette\nderives every other role, so TEXTUAL_ANSI.palette is role for role what 0.27.0\ndrew. A test walks every bundled ladder through its root; boost is left out,\nbeing a layer.\n\nVersion 0.28.0. This commit does not publish; the tag v0.28.0 does."
+          "timestamp": "2026-11-01T09:38:11-07:00",
+          "message": "Every control and format code point has one disposition, read by the sanitizer and the width measure (rich-control-codes-xh4n.xt7) (#533)\n\n* Every control and format code point has one disposition, read by the sanitizer and the width measure (rich-control-codes-xh4n.xt7)\n\n* The sanitizer's disposition check is exhaustive, and a clean string costs one match (rich-control-codes-xh4n.xt7)\n\nThe measure's switch bound a new Disposition and the sanitizer's filter did not, so a variant that moved ESC out of `strip` compiled and reached the wire. Both readers now refuse to compile until they say what the variant does.\n\nThe clean check is `match` rather than `test`: `test` coerces, so a template's unlifted scope value read as \"[object Object]\" and rendered as success instead of failing as a template error.\n\nThe reverse census accepts Cn, so a row for a newer Unicode's code point passes on every Node `engines` admits.\n\n* The width table names the clause it holds, and the strip test asserts the width (rich-control-codes-xh4n.xt7)"
         }
       ]
     }
