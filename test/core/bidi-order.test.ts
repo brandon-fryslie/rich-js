@@ -104,13 +104,15 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     expect(implicit(row).endsWith("after")).toBe(true);
   });
 
-  test("a row spliced into goes on from what it left open", () => {
-    const segments = [...new RichText(`a${RLO}bc`, { end: "" }).render({ maxWidth: 40, textOrder: "logical" })];
-    const [before, rest] = Segment.divide(segments, [2, 3]);
-    const destination = { ...resolveDestination(null, { isTTY: false }), textOrder: "logical" as const };
-    const row = segmentsToString([...before!, new Segment("X"), ...rest!], destination);
-    expect(row.slice(row.indexOf("X"))).toContain(`${RLO}c`);
-    expect(balancedControls(row)).toBe(true);
+  test("a row reopens no more than the algorithm reads", () => {
+    const deep = `${RLO.repeat(1000)}${"abcd ".repeat(20)}`;
+    const [, second] = rows(plainBytes(new RichText(deep, { end: "" }), "logical", 10));
+    expect(second!.match(new RegExp(RLO, "g"))).toHaveLength(125);
+  });
+
+  test("a closer that matches nothing is dropped behind any depth of embeddings", () => {
+    const hostile = `${RLO.repeat(50)}abc\u2069`;
+    expect(balancedControls(plainBytes(new RichText(hostile, { end: "" }), "logical"))).toBe(true);
   });
 
   test("inline code deletes what a code block deletes", () => {
@@ -257,6 +259,28 @@ describe("reading on a terminal that does not reorder", () => {
     expect(shown).toBe("\u05d1\u05d0\u05b0");
   });
 
+  test("a wrapped right-to-left row starts at its edge, and pads to the width", () => {
+    const sentence = "\u05d0\u05d1\u05d2 \u05d3\u05d4\u05d5 \u05d6";
+    const shown = rows(plainBytes(new RichText(sentence, { end: "" }), "visual", 5));
+    expect(shown[0]!.startsWith(" ")).toBe(false);
+    expect(implicit(rows(plainBytes(new RichText(sentence, { end: "" }), "logical", 5))[0]!).startsWith(" ")).toBe(false);
+    const padded = rows(plainBytes(new RichText(sentence, { end: "", justify: "left" }), "visual", 5));
+    expect(cellLen(padded[0]!)).toBe(5);
+  });
+
+  test("the last row keeps the spaces the author wrote", () => {
+    expect(plainBytes(new RichText("\u05d0\u05d1 ", { end: "" }), "visual")).toBe(" \u05d1\u05d0");
+  });
+
+  test("a Text's edge is a cell it draws, never a control", () => {
+    const options = (textOrder: TextOrder) => ({ maxWidth: 40, textOrder });
+    for (const order of ["plain", "logical", "visual"] as const) {
+      const held = new RichText("\u2067\u05d0\u05d1\u2069").stylize("on red", 1, 3);
+      expect(held.edgeStyle("left", options(order)).bgcolor?.name).toBe("red");
+      expect(held.edgeStyle("right", options(order)).bgcolor?.name).toBe("red");
+    }
+  });
+
   test("a Text's edges are the cells it draws at them", () => {
     const options = (textOrder: TextOrder) => ({ maxWidth: 40, textOrder });
     const rtl = new RichText("\u05d0\u05d1", { end: "" }).stylize("on red", 0, 1);
@@ -381,6 +405,20 @@ describe("crops and splices, below every drawing", () => {
     expect(implicit(rows(bytes)[0]!)).toContain("after");
   });
 
+});
+
+describe("values with no text of their own", () => {
+  test("a class whose name is no string still prints", () => {
+    class Named {
+      static name = 7;
+    }
+    expect(plainBytes(new Pretty(Named), "plain")).toContain("[Function: 7]");
+  });
+
+  test("JSON with no form of a value draws a blank line", () => {
+    expect(plainBytes(JSONRenderable.fromData(undefined), "plain")).toBe("\n");
+    expect(plainBytes(JSONRenderable.fromData(() => 1), "plain")).toBe("\n");
+  });
 });
 
 describe("views of data and code", () => {

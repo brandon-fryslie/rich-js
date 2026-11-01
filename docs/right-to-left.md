@@ -107,7 +107,9 @@ one-cell ligature, because the ligature would change a line's width after layout
   has: two adjacent right-to-left table cells swap, and controls have no effect.
 - **Pointer hits and crops.** A cell's offset is not its screen column in a
   logical right-to-left row, so a pointer hit or a mid-row crop there lands on
-  different cells than the terminal shows.
+  different cells than the terminal shows. A row split by an overlay reopens what
+  was open at its start, so a control in the middle of the row stops acting past
+  the split.
 - **`TextInput`.** It draws no right-to-left order yet.
 - **kitty.** It shows right-to-left lines with their words in left-to-right order.
 - **`RichText.plain`.** It holds the controls in every order, so a program writing

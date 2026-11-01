@@ -833,7 +833,7 @@ export class Pretty implements Renderable, Measurable {
       case "symbol":
         return closed(value.toString());
       case "function":
-        return `[Function: ${closed(value.name || "anonymous")}]`;
+        return `[Function: ${closed(String(value.name || "anonymous"))}]`;
     }
 
     return null;

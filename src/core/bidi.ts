@@ -34,17 +34,23 @@ const MAX_DEPTH = 125;
 /** BD16: the bracket pairs one isolating run sequence may hold open. */
 const MAX_OPEN_BRACKETS = 63;
 
-function classOf(codePoint: number): BidiClass {
+/** The value `ranges`, ascending and disjoint, give `codePoint`. */
+function inRanges(ranges: readonly (readonly [number, number, number])[], codePoint: number): number | undefined {
   let low = 0;
-  let high = CLASS_RANGES.length - 1;
+  let high = ranges.length - 1;
   while (low <= high) {
     const mid = (low + high) >> 1;
-    const [first, last, index] = CLASS_RANGES[mid]!;
+    const [first, last, index] = ranges[mid]!;
     if (codePoint < first) high = mid - 1;
     else if (codePoint > last) low = mid + 1;
-    else return BIDI_CLASSES[index as 0]!;
+    else return index;
   }
-  return "L";
+  return undefined;
+}
+
+function classOf(codePoint: number): BidiClass {
+  const index = inRanges(CLASS_RANGES, codePoint);
+  return index === undefined ? "L" : BIDI_CLASSES[index as 0]!;
 }
 
 const CLOSING_OF: ReadonlyMap<number, number> = new Map(BRACKET_PAIRS);
@@ -99,6 +105,19 @@ export function withoutMarks(text: string): string {
 
 const isIsolateOpener = (opener: string): boolean => isIsolateInitiator(classOf(opener.codePointAt(0)!));
 
+/** The openers in force, outermost first, and how many are isolates, so an unmatched PDI costs no scan of them. */
+export interface Open {
+  readonly stack: string[];
+  isolates: number;
+}
+
+/** `openers` in force, as a row's start states them. */
+export function opened(openers = ""): Open {
+  const open: Open = { stack: [], isolates: 0 };
+  for (const character of openers) advance(open, character);
+  return open;
+}
+
 /**
  * `character` applied to `open`, the openers in force, outermost first: an
  * opener joins them, a closer takes what it closes, and a line feed ends them
@@ -108,32 +127,52 @@ const isIsolateOpener = (opener: string): boolean => isIsolateInitiator(classOf(
  * opened since the innermost isolate, and PDI the innermost isolate with every
  * embedding inside it.
  */
-export function advance(open: string[], character: string): boolean {
+export function advance(open: Open, character: string): boolean {
+  const { stack } = open;
   const type = classOf(character.codePointAt(0)!);
-  if (character === "\n") open.length = 0;
-  else if (type === "LRE" || type === "RLE" || type === "LRO" || type === "RLO" || isIsolateInitiator(type)) open.push(character);
-  else if (type === "PDF") {
-    if (open.length === 0 || isIsolateOpener(open.at(-1)!)) return false;
-    open.pop();
+  if (character === "\n") {
+    stack.length = 0;
+    open.isolates = 0;
+  } else if (type === "LRE" || type === "RLE" || type === "LRO" || type === "RLO") stack.push(character);
+  else if (isIsolateInitiator(type)) {
+    stack.push(character);
+    open.isolates += 1;
+  } else if (type === "PDF") {
+    if (stack.length === 0 || isIsolateOpener(stack.at(-1)!)) return false;
+    stack.pop();
   } else if (type === "PDI") {
-    if (!open.some(isIsolateOpener)) return false;
-    while (!isIsolateOpener(open.pop()!));
+    if (open.isolates === 0) return false;
+    while (!isIsolateOpener(stack.pop()!));
+    open.isolates -= 1;
   }
   return true;
 }
 
-/** The openers `text` leaves open at any offset, outermost first, read off one pass over it. */
+/** The openers `text` leaves open at its end, outermost first. */
+export function openersOf(text: string): string {
+  const open = opened();
+  for (const character of text) advance(open, character);
+  return open.stack.join("");
+}
+
+/**
+ * What reopens `text`'s state at an offset: read forwards, since rows ask in
+ * order, and from the start again for one behind. An opener past `MAX_DEPTH` is
+ * one the algorithm ignores, so no row repeats it, or a hostile line's every row
+ * would carry them all. An explicit control is one code unit, so offsets need no
+ * care for surrogates.
+ */
 export function openersAlong(text: string): (offset: number) => string {
-  const steps: { readonly after: number; readonly opens: string }[] = [];
-  const open: string[] = [];
-  let offset = 0;
-  for (const character of text) {
-    const held = open.length;
-    advance(open, character);
-    offset += character.length;
-    if (open.length !== held) steps.push({ after: offset, opens: open.join("") });
-  }
-  return (at) => steps.filter(({ after }) => after <= at).at(-1)?.opens ?? "";
+  let open = opened();
+  let read = 0;
+  return (offset) => {
+    if (offset < read) {
+      open = opened();
+      read = 0;
+    }
+    for (; read < offset; read += 1) advance(open, text[read]!);
+    return open.stack.slice(0, MAX_DEPTH).join("");
+  };
 }
 
 /** What closes `openers`, innermost first. */
@@ -143,9 +182,14 @@ export function closersOf(openers: string): string {
     .join("");
 }
 
+/** What closes the direction state `content` leaves open. */
+export function closing(content: string): string {
+  return isBidi(content) ? closersOf(openersOf(content)) : "";
+}
+
 /** `content` with the direction state it leaves open closed: separate content starts clean after it. */
 export function closed(content: string): string {
-  return isBidi(content) ? content + closersOf(openersAlong(content)(content.length)) : content;
+  return content + closing(content);
 }
 
 /** Whether `text` needs the algorithm at all. */
@@ -493,6 +537,12 @@ function resolveParagraph(
  * `text`, one paragraph, resolved to rule I2. `direction` is rule HL1: a
  * paragraph direction stated rather than found. Absent, P2 and P3 find it.
  */
+/** P2 and P3 alone: `text`'s paragraph level, for a caller that resolves nothing else. */
+export function paragraphLevel(text: string): ParagraphLevel {
+  const types = Array.from(text, (character) => classOf(character.codePointAt(0)!));
+  return firstStrongLevel(types, matchIsolates(types).pdiOf, 0, types.length);
+}
+
 export function paragraph(text: string, direction?: ParagraphLevel): Paragraph {
   const codePoints = Array.from(text, (character) => character.codePointAt(0)!);
   const { level, levels } = resolveParagraph(codePoints, direction);
@@ -553,16 +603,8 @@ function reverse(items: number[], start: number, end: number): void {
 type JoiningType = (typeof JOINING_TYPES)[number] | "U";
 
 function joiningTypeOf(codePoint: number): JoiningType {
-  let low = 0;
-  let high = JOINING_RANGES.length - 1;
-  while (low <= high) {
-    const mid = (low + high) >> 1;
-    const [first, last, index] = JOINING_RANGES[mid]!;
-    if (codePoint < first) high = mid - 1;
-    else if (codePoint > last) low = mid + 1;
-    else return JOINING_TYPES[index as 0]!;
-  }
-  return "U";
+  const index = inRanges(JOINING_RANGES, codePoint);
+  return index === undefined ? "U" : JOINING_TYPES[index as 0]!;
 }
 
 const FORMS_OF: ReadonlyMap<number, readonly number[]> = new Map(PRESENTATION_FORMS.map(([letter, ...forms]) => [letter, forms]));

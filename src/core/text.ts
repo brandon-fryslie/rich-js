@@ -3,9 +3,9 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
-import { closed, withoutExplicit } from "./bidi.js";
+import { closed, closing, withoutExplicit } from "./bidi.js";
 import { CONTROL_CODES, type Disposition } from "./control-codes.js";
-import { directed, edges, measured } from "./orient.js";
+import { directed, edges, hangingWhitespace, measured } from "./orient.js";
 import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
@@ -34,32 +34,6 @@ const STRIPPED = pattern(new RegExp(
 // string, and has to throw rather than read as `[object Object]`.
 export function stripControlChars(text: string): string {
   return text.match(STRIPPED) === null ? text : text.split(STRIPPED).join("");
-}
-
-const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
-
-/**
- * The cells of trailing whitespace on a wrapped line.
- *
- * A wrap cuts before a word, so the line it closes ends with the whitespace
- * that followed *its* last word — padding the break created, not content the
- * author wrote. Measuring it is what lets the overflow method tell "this line
- * was cut" from "this line ends in spaces" and stamp an ellipsis only on the
- * first, and what keeps a centred line from drifting half a space off true.
- *
- * Asked of the line's text rather than walked back through its segments,
- * because where a line ends is a fact about the characters and not about how
- * they were split. Walking the segments made it a fact about both: it read a
- * segment with no trailing whitespace as content and stopped there, which an
- * empty segment also looks like — and a crop leaves one behind. A styled line
- * whose last cells were cropped therefore reported no hanging whitespace at
- * all and was centred as though it were content to the edge, so a span landing
- * anywhere in a wrap's whitespace un-centred the line it closed. A bidi control
- * after the whitespace is no content either, and `closed` writes one exactly
- * there.
- */
-function hangingWhitespace(line: Segment[]): number {
-  return cellLen(TRAILING_WHITESPACE_RE.exec(withoutExplicit(Segment.plainOf(line)))?.[0] ?? "");
 }
 
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
@@ -204,13 +178,14 @@ interface TextFormat {
 export class RichText implements Renderable, Measurable {
   // Rich's `Text` is changed in place — appended to, stylized, padded — so its
   // characters, spans and format are state, and a write to one while
-  // something is drawn throws. Three holders rather than one per field: a
+  // something is drawn throws. Four holders rather than one per field: a
   // `RichText` is the most-made object in the library.
   private readonly _text: State<string>;
   private readonly _spans = new ListState<Span>();
-  // The text as `append` last left it, closed: a run of appends need not read
-  // what it already closed, and any other write misses this and is read again.
-  private readonly _closedText = new State("");
+  // What `append` has added to `text` since it last closed it, so closing reads
+  // no more than that. Any other write leaves `text` naming an older string, and
+  // the whole is read instead.
+  private readonly _closure = new State<{ readonly text: string; readonly tail: string }>({ text: "", tail: "" });
   private readonly _format: State<TextFormat>;
   private readonly _tabSize: TabSize;
 
@@ -226,6 +201,13 @@ export class RichText implements Renderable, Measurable {
       noWrap: options?.noWrap ?? false,
     });
     this._tabSize = parseTabSize(options?.tabSize ?? 8);
+  }
+
+  /** The part of the text whose direction state nothing has closed. */
+  private _unclosed(): string {
+    const text = this._text.get();
+    const closure = this._closure.get();
+    return closure.text === text ? closure.tail : text;
   }
 
   private _reformat(change: Partial<TextFormat>): void {
@@ -366,13 +348,12 @@ export class RichText implements Renderable, Measurable {
       // [LAW:single-enforcer] Reached only when separate Texts are set on one
       // line, so here direction state ends with the content holding it. The
       // string arm below builds one content, and an embedding spans it.
-      const text = this._text.get();
-      const own = text === this._closedText.get() ? text : closed(text);
+      const own = this._text.get() + closing(this._unclosed());
       const offset = own.length;
       // Read before anything is appended, so a text appended to itself takes its spans as they were.
       const moved = content._spans.get().map((span) => span.move(offset));
       this._text.set(own + closed(content._text.get()));
-      this._closedText.set(this._text.get());
+      this._closure.set({ text: this._text.get(), tail: "" });
       // Its base style becomes a span under its own spans, as the reference's
       // `append` does, so appended text looks as it did alone.
       this._addSpan(offset, this._text.get().length, content._format.get().style);
@@ -382,7 +363,9 @@ export class RichText implements Renderable, Measurable {
 
     const sanitized = stripControlChars(content);
     const start = this._text.get().length;
+    const tail = this._unclosed() + sanitized;
     this._text.set(this._text.get() + sanitized);
+    this._closure.set({ text: this._text.get(), tail });
     this._addSpan(start, this._text.get().length, style ?? "");
     return this;
   }
@@ -1107,9 +1090,11 @@ export class RichText implements Renderable, Measurable {
         yield* padded(orient(body), free, leftPad, gap - leftPad, padStyle);
         break;
       }
-      case "left":
-        yield* padded(orient(line), free, 0, Math.max(maxWidth - Segment.getLineLength(line), 0), padStyle);
+      case "left": {
+        const row = orient(line);
+        yield* padded(row, free, 0, Math.max(maxWidth - Segment.getLineLength(row), 0), padStyle);
         break;
+      }
       default:
         yield* orient(line);
         break;

@@ -60,7 +60,8 @@ export class JSONRenderable implements Renderable, Measurable {
         }
       : undefined;
 
-    const jsonStr = JSON.stringify(data, replacer, indent);
+    // `undefined` for what JSON has no form of, a function or a symbol, whatever its type says.
+    const jsonStr = (JSON.stringify(data, replacer, indent) as string | undefined) ?? "";
     // Data on show: one string holds every key and value, so a control left in
     // one would act on the rest of its line.
     const text = new RichText(withExplicitEscaped(jsonStr));
