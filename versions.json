@@ -4,15 +4,22 @@
     {
       "version": "pr-529",
       "ref": "refs/pull/529/merge",
-      "sha": "df52bc10d7aae8df4581529f8d0e22f2919bd543",
-      "timestamp": "2026-11-01T12:09:58.935Z",
+      "sha": "4b0c385367cfa89cad90666db9c83e1c22a2c4da",
+      "timestamp": "2026-11-01T12:20:48.716Z",
       "commits": [
         {
-          "sha": "df52bc10d7aae8df4581529f8d0e22f2919bd543",
+          "sha": "4b0c385367cfa89cad90666db9c83e1c22a2c4da",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T12:07:51Z",
-          "message": "Merge a9afa9bd7ad05478e4f282e60095c0ed2384f9aa into 06f609f4240535140c2759a22c0985fb316e03cf\n"
+          "timestamp": "2026-11-01T12:18:46Z",
+          "message": "Merge 3f6c8550791763cee302bee576daeffe14692a82 into 06f609f4240535140c2759a22c0985fb316e03cf\n"
+        },
+        {
+          "sha": "3f6c8550791763cee302bee576daeffe14692a82",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T05:18:37-07:00",
+          "message": "An effect answers for its joins seam by seam (rich-animation-27tq.19d)\n\nReview of #529. Summing joins across both sides let a join broken on one side\nhide a new one on the other. The docs now say the ring is the outer edge.\n"
         },
         {
           "sha": "a9afa9bd7ad05478e4f282e60095c0ed2384f9aa",
