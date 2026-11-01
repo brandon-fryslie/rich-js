@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-532",
-      "ref": "refs/pull/532/merge",
-      "sha": "bd0fd87d2da95b5577251f0e547856b422514c10",
-      "timestamp": "2026-11-01T15:46:27.492Z",
-      "commits": [
-        {
-          "sha": "bd0fd87d2da95b5577251f0e547856b422514c10",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T15:44:44Z",
-          "message": "Merge bccbcf5159259b76a14a01fa85ed07aadb11eb3f into 4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11\n"
-        },
-        {
-          "sha": "bccbcf5159259b76a14a01fa85ed07aadb11eb3f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T08:21:39-07:00",
-          "message": "chore(release): 0.28.0\n\nTicket: rich-unfiled-791c.01dl\n"
-        },
-        {
-          "sha": "ac432ff08a10ea647e65ffdc4c13c6561565c4ee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T08:32:29-07:00",
-          "message": "textual-ansi states only its bases, as 0.27.0's TerminalTheme was built from (rich-unfiled-791c.01dl)\n\n#531 gave TEXTUAL_ANSI the authored palette, whose data its generator had\nflattened: every ladder rung was its root, panel was the background, the input\ncursor was inverted. Removing those a few at a time left the rest to disagree\nwith what they derived, so the file now states the eight bases and buildPalette\nderives every other role. TEXTUAL_ANSI.palette is role for role what 0.27.0\ndrew. A test walks every bundled ladder through its root; boost is left out,\nbeing a layer.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11",
-      "timestamp": "2026-11-01T15:20:32.991Z",
+      "sha": "57dd684fcaedfb6e5999f81c5f85a2a5a408cb48",
+      "timestamp": "2026-11-01T15:58:29.044Z",
       "commits": [
         {
-          "sha": "4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11",
+          "sha": "57dd684fcaedfb6e5999f81c5f85a2a5a408cb48",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T08:18:22-07:00",
-          "message": "A bundled theme's name means one palette (rich-unfiled-791c.gy3z) (#531)\n\n* A bundled theme's name means one palette (rich-unfiled-791c.gy3z)\n\n`TerminalTheme.palette` was built from a theme's eight base colours, so\ntokyo-night's `panel` was #38374b there and #414868 from `getThemePalette`.\nA bundled constant now holds the registry's Palette itself, which moves 2,163\nof 3,634 role values on a bundled `TerminalTheme`, `*-muted` and `text-*`\namong them, to what the theme authored.\n\nThe contrast tests that ran on those palettes were testing `buildPalette`'s\nrules, so they now run on what those rules make of each theme's bases.\n\n* A disabled widget draws the palette's disabled text, and textual-ansi's follow its foreground (rich-unfiled-791c.gy3z)\n\nTaking the authored palette moved disabledInk's foreground-muted from\n1.5-2.6:1 to 1.08-7.37:1: a disabled label vanished on textual-ansi and\nread as enabled on the default theme. foreground-disabled is the role for\nthis and sits at 1.66-3.44:1 on every bundled theme, so the widgets read it.\n\ntextual-ansi's foreground-muted, foreground-disabled and markdown-h6-color\nwere black where every other theme has its own foreground, the generator\nhaving taken ansi_default for #000000; they are now #E0E0E0 at the same alpha.\n\nbg and fg come off the palette, so a TerminalTheme has one source for them.\nBASE_KEYS is exported in place of the test's copy, and comments that named\nthe old lazy path or called a TerminalTheme export optional are corrected.\n\n* textual-ansi derives what its generator flattened, and every widget is drawn on every bundled theme (rich-unfiled-791c.gy3z)\n\ntextual-ansi stated all six *-muted as one blue, surface as its background,\nand text-muted and text-disabled as its foreground, so a danger Button had a\nsuccess Button's ground and a default Button no ground. Those nine lines go,\nand buildPalette's rules derive the roles.\n\nterminal-contrast's scenes take a theme, so each one is drawn on all 23:\nglyphs at 3:1, disabled scenes between visible and the text floor, and each\nButton variant on its own ground.\n\n* A Button variant's ground is compared by colour, not by object (rich-unfiled-791c.gy3z)\n\nresolveLook returns a new ColorRgba each call, so a Set of them was always\nfull and the test passed on the data it exists to refuse.\n\n* textual-ansi's surface rungs follow its surface, and widgets hold body text on every bundled theme (rich-unfiled-791c.gy3z)\n\nDeleting surface left surface-active and the surface ladder stated below it.\nThey derive now. The themed floor is 4.5, with 4 named for the two Solarized\nconstants, instead of 3 everywhere to excuse one pair."
+          "timestamp": "2026-11-01T08:56:45-07:00",
+          "message": "chore(release): 0.28.0, and textual-ansi states only its bases (rich-unfiled-791c.01dl) (#532)\n\ntextual-ansi states only its bases, as 0.27.0's TerminalTheme was built from.\n#531 gave TEXTUAL_ANSI the authored palette, whose data its generator had\nflattened: every ladder rung was its root, panel was the background, the input\ncursor was inverted. The file now states the eight bases and buildPalette\nderives every other role, so TEXTUAL_ANSI.palette is role for role what 0.27.0\ndrew. A test walks every bundled ladder through its root; boost is left out,\nbeing a layer.\n\nVersion 0.28.0. This commit does not publish; the tag v0.28.0 does."
         }
       ]
     }
