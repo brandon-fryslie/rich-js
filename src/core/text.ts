@@ -3,7 +3,7 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
-import { CONTROL_CODES } from "./control-codes.js";
+import { CONTROL_CODES, type Disposition } from "./control-codes.js";
 import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
@@ -15,16 +15,23 @@ import { ListState, State } from "./state.js";
 
 const hex = (codePoint: number): string => `\\u{${codePoint.toString(16)}}`;
 
+// Exhaustive, so a new `Disposition` does not compile until it says what the
+// sanitizer does with it: a variant this missed would reach the wire.
+const DELETED: Readonly<Record<Disposition, boolean>> = { strip: true, keep: false };
+
 const STRIPPED = pattern(new RegExp(
-  `[${CONTROL_CODES.filter((row) => row.disposition === "strip").map((row) => `${hex(row.first)}-${hex(row.last)}`).join("")}]`,
+  `[${CONTROL_CODES.filter((row) => DELETED[row.disposition]).map((row) => `${hex(row.first)}-${hex(row.last)}`).join("")}]`,
   "u",
 ));
 
 // [LAW:single-enforcer] Single place where control chars are sanitized: every
 // string that becomes part of a Text's characters passes here. Which ones, and
-// why, is `CONTROL_CODES`. `split` needs no cursor, so `STRIPPED` can be held.
+// why, is `CONTROL_CODES`. `match` and `split` need no cursor, so `STRIPPED` can
+// be held. `match` first because nearly every string is clean, and not `test`,
+// which coerces: a template's unlifted scope value reaches here typed as a
+// string, and has to throw rather than read as `[object Object]`.
 export function stripControlChars(text: string): string {
-  return text.split(STRIPPED).join("");
+  return text.match(STRIPPED) === null ? text : text.split(STRIPPED).join("");
 }
 
 const TRAILING_WHITESPACE_RE = pattern(/\s+$/);

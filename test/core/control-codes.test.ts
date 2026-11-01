@@ -4,6 +4,9 @@ import { CONTROL_CODES, dispositionOf } from "../../src/core/control-codes.js";
 import { stripControlChars } from "../../src/core/text.js";
 
 const NON_PRINTING = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+// A row for a code point a newer Unicode assigned is unassigned on an older Node
+// that `engines` admits, and prints nothing there either.
+const ROWABLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Cn}]/u;
 
 const isSurrogate = (codePoint: number): boolean => codePoint >= 0xd800 && codePoint <= 0xdfff;
 
@@ -16,6 +19,8 @@ function census(): number[] {
   return found;
 }
 
+const CENSUS = census();
+
 const inARow = (codePoint: number): boolean =>
   CONTROL_CODES.some((row) => row.first <= codePoint && codePoint <= row.last);
 
@@ -23,14 +28,14 @@ const name = (codePoint: number): string => `U+${codePoint.toString(16).toUpperC
 
 describe("CONTROL_CODES", () => {
   it("has a row for every Cc, Cf, Zl and Zp code point", () => {
-    expect(census().filter((codePoint) => !inARow(codePoint)).map(name)).toEqual([]);
+    expect(CENSUS.filter((codePoint) => !inARow(codePoint)).map(name)).toEqual([]);
   });
 
   it("has a row for nothing else, so no row can delete a printing character", () => {
     const rowed = CONTROL_CODES.flatMap(({ first, last }) =>
       Array.from({ length: last - first + 1 }, (_, i) => first + i),
     );
-    expect(rowed.filter((codePoint) => !NON_PRINTING.test(String.fromCodePoint(codePoint))).map(name)).toEqual([]);
+    expect(rowed.filter((codePoint) => !ROWABLE.test(String.fromCodePoint(codePoint))).map(name)).toEqual([]);
   });
 
   it("holds its rows ascending and disjoint, which the bisection in dispositionOf relies on", () => {
@@ -54,15 +59,18 @@ describe("dispositionOf", () => {
 
 describe("the sanitizer and the measure", () => {
   it("strips exactly what the census says to strip", () => {
-    const disagreeing = census().filter((codePoint) => {
+    const disagreeing = CENSUS.filter((codePoint) => {
       const stripped = stripControlChars(String.fromCodePoint(codePoint)) === "";
       return stripped !== (dispositionOf(codePoint) === "strip");
     });
     expect(disagreeing.map(name)).toEqual([]);
   });
 
-  it("measures content the same before and after it is sanitized", () => {
-    const disagreeing = census().filter((codePoint) => {
+  // Between `a` and `b`, which join nothing. Between joined emoji the two rightly
+  // differ: a raw ESC reaches the wire and breaks the join, and the sanitized
+  // string has no ESC to break it, so each number is what its bytes draw.
+  it("gives no width to what it strips", () => {
+    const disagreeing = CENSUS.filter((codePoint) => {
       const content = `a${String.fromCodePoint(codePoint)}b`;
       return cellLen(content) !== cellLen(stripControlChars(content));
     });

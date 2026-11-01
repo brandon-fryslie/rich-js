@@ -2,8 +2,8 @@
  * The census of code points that do not print: every one in Unicode's general
  * categories Cc, Cf, Zl and Zp, with what `RichText` does when content carries
  * it. [LAW:one-source-of-truth] The sanitizer (`stripControlChars`) and the
- * cell-width measure (`cellLen`) both read this table, so whether a code point
- * is drawn has one statement.
+ * cell-width measure (`cellLen`) both read this table, so whether content keeps
+ * a code point has one statement.
  *
  * A row does not carry a width. A kept code point takes the cells Rich's table
  * gives it (`cell-widths.ts`), and a second statement of them here would be one
@@ -42,9 +42,12 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   // SOFT HYPHEN.
   keep(0xad, 0xad),
   // The Arabic and Syriac number signs and other prepended concatenation marks,
-  // which draw a glyph, and ARABIC LETTER MARK.
+  // which draw a glyph.
   keep(0x600, 0x605),
+  // ARABIC LETTER MARK, a bidi mark like LRM and RLM below: it holds no state,
+  // so right-to-left text can use it.
   keep(0x61c, 0x61c),
+  // More prepended concatenation marks.
   keep(0x6dd, 0x6dd),
   keep(0x70f, 0x70f),
   keep(0x890, 0x891),
@@ -52,7 +55,8 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   // MONGOLIAN VOWEL SEPARATOR.
   keep(0x180e, 0x180e),
   // ZWSP, ZWNJ and ZWJ, and the bidi marks LRM and RLM, which hold no state, so
-  // right-to-left text can use them.
+  // right-to-left text can use them. ZWJ's joining is Rich's width rule, which
+  // `cells.ts` holds apart from this row.
   keep(0x200b, 0x200f),
   // LINE SEPARATOR and PARAGRAPH SEPARATOR.
   keep(0x2028, 0x2029),
