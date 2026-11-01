@@ -28,7 +28,6 @@
 import { cellLen } from "./cells.js";
 import { Segment } from "./segment.js";
 import { Style } from "./style.js";
-import type { Anchor } from "./anchor.js";
 import { drawable } from "./protocol.js";
 
 /** A rule spanning the table: the top and bottom borders, and every separator. */
@@ -82,21 +81,6 @@ const contentOf = (row: readonly string[]): ContentChars => ({
 });
 
 // [LAW:one-type-per-behavior] Box is a single type for all border styles — instances differ by data
-/**
- * One drawing of a box, as the owner its frame's cells carry (`Box.frame`). A
- * frame is told by what drew it, never by its glyphs, as a strip's seam is
- * (`JOIN`, `./strip.ts`): a box may draw its frame in blanks, and what it draws
- * in ink an element's own content may draw too. The owner is a drawing and not
- * a box, so two panels of one `ROUNDED` are two frames.
- */
-class BoxFrame {}
-
-/** The drawing of a box that drew the cell `anchor` names, or none for a cell of no frame. */
-export function boxFrameOf(anchor: Anchor | undefined): object | undefined {
-  for (let level = anchor; level; level = level.inner) if (level.owner instanceof BoxFrame) return level.owner;
-  return undefined;
-}
-
 export class Box {
   readonly top: EdgeChars;
   readonly bottom: EdgeChars;
@@ -146,14 +130,13 @@ export class Box {
 
   /**
    * The style one drawing of a box draws its frame in: `style`, its cells
-   * told as that drawing's (`boxFrameOf`). Whatever draws a box calls this
+   * told as that drawing's (`Style.boxFrame`). Whatever draws a box calls this
    * once a drawing and hands the result to `getTop`, `getRow`, `getBottom` and
    * the `getContentChars` it writes, so an effect can find the frame. Its look
    * and its bytes are `style`'s.
    */
   frame(style?: Style): Style {
-    const base = style ?? Style.null();
-    return base.withAnchor({ owner: new BoxFrame(), row: 0, col: 0, inner: base.anchor });
+    return (style ?? Style.null()).withBoxFrame({});
   }
 
   /**

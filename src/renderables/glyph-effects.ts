@@ -25,7 +25,6 @@
 import { Animation } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { EASES, Phase, beat, positiveSeconds, settled, type Timing } from "../core/easing.js";
-import { boxFrameOf } from "../core/box.js";
 import { hash } from "../core/noise.js";
 import { drawable, isAscii } from "../core/protocol.js";
 import { inked } from "./effect.js";
@@ -305,19 +304,19 @@ export interface MarchingAnts {
 function ringPlaces(cells: readonly GlyphCell[]): ReadonlyMap<number, number> {
   const frames = new Map<object, GlyphCell[]>();
   for (const cell of cells) {
-    const frame = boxFrameOf(cell.anchor);
-    if (frame === undefined) continue;
-    const ring = frames.get(frame);
-    if (ring === undefined) frames.set(frame, [cell]);
+    if (cell.boxFrame === undefined) continue;
+    const ring = frames.get(cell.boxFrame);
+    if (ring === undefined) frames.set(cell.boxFrame, [cell]);
     else ring.push(cell);
   }
   const places = new Map<number, number>();
   for (const ring of frames.values()) {
-    const [top, bottom] = ring.reduce(([low, high], { row }) => [Math.min(low, row), Math.max(high, row)], [Infinity, -Infinity]);
-    const [left, right] = ring.reduce(([low, high], { col }) => [Math.min(low, col), Math.max(high, col)], [Infinity, -Infinity]);
-    const [down, across] = [bottom! - top!, right! - left!];
+    // Cells come in reading order, so the rows are the ring's two ends.
+    const [top, down] = [ring[0]!.row, ring[ring.length - 1]!.row - ring[0]!.row];
+    const left = ring.reduce((most, { col }) => Math.min(most, col), Infinity);
+    const across = ring.reduce((most, { col }) => Math.max(most, col), -Infinity) - left;
     for (const cell of ring) {
-      const [y, x] = [cell.row - top!, cell.col - left!];
+      const [y, x] = [cell.row - top, cell.col - left];
       const place = y === 0 ? x : x === across ? across + y : y === down ? 2 * across + down - x : x === 0 ? 2 * (across + down) - y : undefined;
       if (place !== undefined) places.set(cell.index, place);
     }
@@ -328,8 +327,8 @@ function ringPlaces(cells: readonly GlyphCell[]): ReadonlyMap<number, number> {
 /**
  * Marching ants: every `every`th cell round each box the element draws blank,
  * the gaps walking one cell clockwise a `step`. The ring is whatever the box
- * is (`Box.frame`), at any width and beside a title; a border drawn in blanks
- * marches unseen, and an element that draws no frame never changes.
+ * is (`Box.frame`), at any width and beside a title. A ring may draw blanks and
+ * they keep the count, but an element with no ink on any ring never changes.
  */
 export function marchingAnts({ step, every }: MarchingAnts): GlyphEffect {
   positiveSeconds("marchingAnts step", step);
@@ -337,7 +336,7 @@ export function marchingAnts({ step, every }: MarchingAnts): GlyphEffect {
   const steps = stepped(step);
   return ({ cells }) => {
     const places = ringPlaces(cells);
-    if (places.size === 0) return Animation.constant(AS_WRITTEN);
+    if (!cells.some((cell) => places.has(cell.index) && inked(cell.glyph))) return Animation.constant(AS_WRITTEN);
     return steps((s): GlyphFrame => (cell) => {
       const place = places.get(cell.index);
       return place !== undefined && (((place - s) % every) + every) % every === 0 ? blank(cell.glyph) : cell.glyph;

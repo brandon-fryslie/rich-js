@@ -699,13 +699,13 @@ export class Table implements Renderable, Measurable {
     // that is all it styles: the reference reads it as `table_style` for the
     // frame and nowhere else, so a cell is untouched by it.
     const borderStyle = getStyle(options, this.style).add(getStyle(options, this.borderStyle));
-    // Only an edge closes a frame: without one, a table's rules are not a border.
-    const border = box && this.showEdge ? box.frame(borderStyle) : borderStyle.isNull ? undefined : borderStyle;
 
     // The one division of the width every row below is measured against.
     const outerWidth = this._outerWidth(options);
     const geometry = this._geometry(options, outerWidth);
     const edge = geometry.edge === 1;
+    // Only an edge closes a frame: without one, a table's rules are not a border.
+    const border = box && edge ? box.frame(borderStyle) : borderStyle.isNull ? undefined : borderStyle;
 
     // Title
     if (this._title) {

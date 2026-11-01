@@ -103,6 +103,7 @@ export interface StyleOptions {
   link?: string;
   meta?: Record<string, unknown>;
   anchor?: Anchor;
+  boxFrame?: object;
   /**
    * The hold the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
@@ -158,6 +159,16 @@ export class Style {
    */
   readonly anchor: Anchor | undefined;
   /**
+   * The drawing of a box these cells are the frame of (`Box.frame`), compared
+   * by identity. A frame is told by what drew it, never by its glyphs, as a
+   * strip's seam is (`JOIN`, `./strip.ts`): a box may draw its frame in blanks,
+   * and what it draws in ink an element's own content may draw too. It is a
+   * drawing and not a box, so two panels of one `ROUNDED` are two frames, and
+   * it is no `Anchor`: a frame's cells say whose they are and not where, since
+   * a table draws its top rule before it knows its height. It draws nothing.
+   */
+  readonly boxFrame: object | undefined;
+  /**
    * The hold this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`lastChange`), and
    * when it next changes (`nextChange`) — both `t` for a cell drawn by
@@ -203,6 +214,7 @@ export class Style {
     this.link = options.link || undefined;
     this.meta = options.meta;
     this.anchor = options.anchor;
+    this.boxFrame = options.boxFrame;
   }
 
   get isNull(): boolean {
@@ -225,6 +237,7 @@ export class Style {
       this.link === undefined &&
       this.meta === undefined &&
       this.anchor === undefined &&
+      this.boxFrame === undefined &&
       this.hold.nextChange === Number.POSITIVE_INFINITY &&
       this.hold.lastChange === Number.NEGATIVE_INFINITY
     );
@@ -272,6 +285,11 @@ export class Style {
    */
   withAnchor(anchor: Anchor | undefined): Style {
     return this.with({ anchor });
+  }
+
+  /** The same look, as the frame of the drawing `boxFrame` names, or of none. */
+  withBoxFrame(boxFrame: object | undefined): Style {
+    return this.with({ boxFrame });
   }
 
   /** The style's text attributes, each as it sets it. */
@@ -337,6 +355,7 @@ export class Style {
           ? { ...this.meta, ...other.meta }
           : other.meta ?? this.meta,
       anchor: other.anchor ?? this.anchor,
+      boxFrame: other.boxFrame ?? this.boxFrame,
       // Cells under both change when either does: the sooner, and have been
       // what they are since the later — the intersection of the two holds.
       hold: { lastChange: Math.max(this.hold.lastChange, other.hold.lastChange), nextChange: Math.min(this.hold.nextChange, other.hold.nextChange) },
@@ -363,6 +382,7 @@ export class Style {
       this.overline === other.overline &&
       this.link === other.link &&
       anchorsEqual(this.anchor, other.anchor) &&
+      this.boxFrame === other.boxFrame &&
       this.hold.nextChange === other.hold.nextChange &&
       this.hold.lastChange === other.hold.lastChange
     );
@@ -422,7 +442,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colours, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `hold` —
+   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `hold` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */

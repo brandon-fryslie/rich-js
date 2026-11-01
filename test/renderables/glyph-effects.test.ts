@@ -4,8 +4,9 @@ import { cellLen } from "../../src/core/cells.js";
 import { EASES } from "../../src/core/easing.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import * as boxes from "../../src/core/box.js";
-import { ASCII, Box, DOUBLE, HEAVY, HORIZONTALS, ROUNDED, SQUARE } from "../../src/core/box.js";
+import { ASCII, Box, DOUBLE, HEAVY, HORIZONTALS, ROUNDED, SIMPLE, SQUARE } from "../../src/core/box.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { GlyphEffected, type GlyphEffect, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
 import { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, backspace, caseWave, marchingAnts, particles, scramble, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
@@ -372,6 +373,36 @@ describe("marchingAnts", () => {
     const { text, next } = draw(ants, lines("╭──╮"), 0);
     expect(text).toBe("╭──╮");
     expect(next).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("never wakes for a box drawn wholly in blanks, which has nothing to show", () => {
+    const panel = new Panel(new RichText("a"), { box: SIMPLE, width: 12 });
+    expect(draw(ants, panel, 0).next).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("leaves a table too narrow for its edges alone: its rules are no frame", () => {
+    const table = new Table();
+    table.addColumn("h");
+    table.addRow("a");
+    const options = { maxWidth: 1, colorSystem: null };
+    const drawn = [...new GlyphEffected(table, ants, { key: "k" }).at(0).render(options)];
+    expect(drawn.map((s) => s.text).join("")).toBe([...table.render(options)].map((s) => s.text).join(""));
+  });
+
+  it("blanks a frame cell a child's mark sits on, at every step", () => {
+    const panel = new Panel(new RichText("a\n️b\ńc\nd"), { padding: 0, width: 12 });
+    for (const t of [0, 1, 2]) expect(rows(panel, t).length).toBe(written(panel).length);
+  });
+
+  it("marks a frame without a position, and takes a title out of it whole", () => {
+    const owner = {};
+    const style = new Style({ anchor: { owner, row: 0, col: 0, inner: undefined } });
+    const panel = new Panel(new RichText("a"), { title: "name", style, width: 20 });
+    const top = [...panel.render({ maxWidth: 80, colorSystem: null })].slice(0, 4).filter((s) => s.text.trim() !== "");
+    const title = top.find((s) => s.text.includes("name"))!;
+    expect(title.style?.boxFrame).toBeUndefined();
+    expect(top[0]!.style?.boxFrame).toBeDefined();
+    expect([title, top[0]!].map((s) => s.style?.anchor?.owner)).toEqual([owner, owner]);
   });
 
   it("changes on its step, and reduced, draws the box as written", () => {

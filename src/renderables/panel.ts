@@ -129,10 +129,10 @@ function borderTitle(label: InlineLabel, options: RenderOptions): RichText {
  * text in". Laid over rather than in place of it, as Rich's `stylize_before`
  * does, because the border's style carries the panel's own: a title that
  * replaced it cut a hole in the panel's background on the top row. The text
- * is set into the frame and is not of it, so it leaves the frame's anchor.
+ * is set into the frame and is not of it.
  */
 function borderTextStyle(border: Style, own: Style): Style {
-  return border.add(own).withAnchor(undefined);
+  return border.add(own).withBoxFrame(undefined);
 }
 
 /**

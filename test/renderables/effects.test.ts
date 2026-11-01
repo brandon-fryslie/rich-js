@@ -85,6 +85,7 @@ const cellAt = (row: number, col: number, seed = 0): EffectCell & ListedCell => 
   col,
   seed,
   anchor: undefined,
+  boxFrame: undefined,
   width: 1,
   pair: { fg: ink, bg: ground, terminal: written, reverse: false },
   seam: false,

@@ -107,6 +107,12 @@ describe("GlyphEffected — what it may not change", () => {
     expect(out).toBe(" ".repeat(8));
   });
 
+  it("blames no effect for a join the child drew: a mark's glyph may change under it", () => {
+    const changing: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => (cell.glyph === "a" ? " " : cell.glyph));
+    const out = [...glyphed(fixed(new Segment("a"), new Segment("́"), new Segment("b")), changing).render({ maxWidth: 10 })];
+    expect(out.map((s) => s.text).join("")).toBe(" ́b");
+  });
+
   it("keeps every cell's anchor, link and meta", () => {
     const owner = {};
     const base = Style.null().withLink("https://example.com").add(Style.fromMeta({ id: 7 }));
