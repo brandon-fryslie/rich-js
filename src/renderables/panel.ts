@@ -154,7 +154,7 @@ function borderRow(
   geometry: PanelGeometry,
   span: number,
   label: InlineLabel | undefined,
-  labelStyle: Style | undefined,
+  labelStyle: Style,
   border: Style,
   close: string,
 ): Segment[] {

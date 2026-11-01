@@ -553,6 +553,25 @@ describe("Style.equals", () => {
   it("null vs non-null are not equal", () => {
     expect(new Style().equals(new Style({ bold: true }))).toBe(false);
   });
+
+  it("tells one box's frame from another's and from a cell of none, and draws them alike", () => {
+    const red = new Style({ color: "red" });
+    const frame = {};
+    const framed = red.withBoxFrame(frame);
+    expect(framed.equals(red.withBoxFrame(frame))).toBe(true);
+    expect(framed.equals(red.withBoxFrame({}))).toBe(false);
+    expect(framed.equals(red)).toBe(false);
+    expect(framed.toSgrCodes(ColorDepth.TRUECOLOR)).toBe(red.toSgrCodes(ColorDepth.TRUECOLOR));
+    expect(Style.null().withBoxFrame(frame).isNull).toBe(false);
+  });
+
+  it("lays a box frame over a style the way it lays an anchor", () => {
+    const [under, over] = [{}, {}];
+    const bold = new Style({ bold: true });
+    expect(bold.add(new Style({ boxFrame: over })).boxFrame).toBe(over);
+    expect(new Style({ boxFrame: under }).add(bold).boxFrame).toBe(under);
+    expect(new Style({ boxFrame: under }).add(new Style({ boxFrame: over })).boxFrame).toBe(over);
+  });
 });
 
 // --- What a style draws on the wire ---

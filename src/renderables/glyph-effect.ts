@@ -286,23 +286,23 @@ function shows(frame: GlyphFrame, cell: GlyphCell): string {
  * wide as its glyph is `shows`'s check; this is the half no one cell can
  * see — a trailing zero-width joiner that fuses with the next emoji, or a
  * leading combining mark that draws on the glyph before it, is right alone
- * and wrong beside its neighbour. Only a join the effect made is asked, so a
- * child that splits a cluster across its own segments is drawn as it drew it,
- * whatever becomes of the glyph its mark sits on.
+ * and wrong beside its neighbour. Only a join the effect made is asked, seam
+ * by seam, so a child that splits a cluster across its own segments is drawn
+ * as it drew it, whatever becomes of the glyph its mark sits on.
  */
 function standsApart(placed: readonly PlacedGlyph[], shown: readonly string[]): void {
-  const drawn = placed.map(({ glyph }) => glyph);
-  // How many clusters the text at `i` loses to the texts beside it on its line.
-  const joins = (texts: readonly string[], i: number): number => {
+  const fuse = (left: string, right: string): boolean => graphemes(left + right).length < graphemes(left).length + graphemes(right).length;
+  // Whether the text at `i` fuses across its left seam and across its right.
+  const seams = (texts: (j: number) => string, i: number): readonly boolean[] => {
     // A line break is no cell, and nothing joins across it.
-    const beside = (j: number): string => (placed[j]?.cell === undefined ? "" : texts[j]!);
-    const [before, text, after] = [beside(i - 1), texts[i]!, beside(i + 1)];
-    return graphemes(before).length + graphemes(text).length + graphemes(after).length - graphemes(before + text + after).length;
+    const beside = (j: number): string => (placed[j]?.cell === undefined ? "" : texts(j));
+    const [before, text, after] = [beside(i - 1), texts(i), beside(i + 1)];
+    return [fuse(before, text + after), fuse(before + text, after)];
   };
   shown.forEach((text, i) => {
     const { glyph, cell } = placed[i]!;
     if (cell === undefined || text === glyph) return;
-    if (joins(shown, i) > joins(drawn, i)) {
+    if (seams((j) => shown[j]!, i).some((fused, seam) => fused && !seams((j) => placed[j]!.glyph, i)[seam])) {
       throw new RangeError(
         `a glyph effect turned ${JSON.stringify(glyph)} at row ${cell.row}, column ${cell.col} into ${JSON.stringify(text)}, ` +
           `which joins the cell beside it into one character`,

@@ -113,6 +113,13 @@ describe("GlyphEffected — what it may not change", () => {
     expect(out.map((s) => s.text).join("")).toBe(" ́b");
   });
 
+  it("refuses a join an effect makes on one side while it breaks the child's on the other", () => {
+    // "a🇺" lets go of the joiner on its left and makes a flag with the 🇸 on its right.
+    const swapping: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => (cell.glyph === "👧" ? "a🇺" : cell.glyph));
+    const child = fixed(new Segment("👩‍"), new Segment("👧"), new Segment("🇸"));
+    expect(() => [...glyphed(child, swapping).render({ maxWidth: 10 })]).toThrow(/joins the cell beside it/);
+  });
+
   it("keeps every cell's anchor, link and meta", () => {
     const owner = {};
     const base = Style.null().withLink("https://example.com").add(Style.fromMeta({ id: 7 }));
