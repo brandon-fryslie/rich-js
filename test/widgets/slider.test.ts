@@ -7,7 +7,7 @@ import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 // What every widget draws a disabled cell in.
-const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
+const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
 // Factory — KeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string): KeyEvent => new KeyEvent({
@@ -267,7 +267,7 @@ describe("Slider", () => {
     it("renders in the palette's muted foreground when disabled", () => {
       const s = new Slider({ value: 50, disabled: true });
       const segs = Segment.splitLines(s.render(RENDER))[0]!;
-      expect(segs.map((s) => s.style?.color)).toEqual(segs.map(() => MUTED));
+      expect(segs.map((s) => s.style?.color)).toEqual(segs.map(() => DISABLED));
     });
 
     it("focused adds underline to all segments", () => {

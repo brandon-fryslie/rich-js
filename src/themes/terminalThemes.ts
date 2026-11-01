@@ -5,8 +5,8 @@
  *
  * [LAW:one-source-of-truth] Hex values live in `data/<name>.ts`, and a theme's
  * name means one palette: a constant here holds the very `Palette`
- * `getThemePalette(name)` returns, with the theme's background, foreground and
- * sixteen named colours beside it.
+ * `getThemePalette(name)` returns, and takes the background and foreground off
+ * it, with the theme's sixteen named colours beside it.
  *
  * [LAW:one-type-per-behavior] Every theme has the same shape — name,
  * `dark` flag, full Palette in the registry, `TerminalTheme` constant
@@ -22,8 +22,8 @@ import { TerminalTheme } from "../core/color.js";
 import { getThemeBaseColors, getThemePalette, type ThemeName } from "./registry.js";
 
 function defineTheme(name: ThemeName): TerminalTheme {
-  const { bg, fg, ansi } = getThemeBaseColors(name);
-  return new TerminalTheme(bg, fg, ansi, getThemePalette(name));
+  const palette = getThemePalette(name);
+  return new TerminalTheme(palette.get("background"), palette.get("foreground"), getThemeBaseColors(name).ansi, palette);
 }
 
 export const DEFAULT_TERMINAL_THEME = defineTheme("default");

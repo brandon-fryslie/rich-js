@@ -25,8 +25,9 @@ export function listThemePalettes(): readonly ThemeName[] {
  *
  * Synchronous: theme data is bundled at compile time via the data barrel,
  * so no I/O happens here. The Palette itself (which requires hex-parsing
- * ~150 vars into ColorRgba values) is constructed lazily on first request
- * and cached — subsequent calls for the same name return the same instance.
+ * ~150 vars into ColorRgba values) is cached on first request — subsequent
+ * calls for the same name return the same instance. `terminalThemes.ts` makes
+ * that request for every theme, on import.
  */
 export function getThemePalette(name: ThemeName): Palette;
 export function getThemePalette(name: string): Palette | null;
@@ -59,10 +60,8 @@ export interface ThemeBaseColors {
 }
 
 /**
- * Read just the eight base colors from a theme's data file. Cheap — parses
- * 8 hex strings, allocates no Palette, touches no cache. Use this when you
- * want a `TerminalTheme`-shaped substrate without forcing the full ~150-var
- * palette through the registry's hydration path.
+ * Read just the eight base colors and the ANSI table from a theme's data file.
+ * Parses 8 hex strings, allocates no Palette, touches no cache.
  */
 export function getThemeBaseColors(name: ThemeName): ThemeBaseColors {
   const data = THEMES[name];

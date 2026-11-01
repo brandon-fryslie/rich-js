@@ -202,7 +202,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "scrollbar-corner-color": same("scrollbar-background"),
 };
 
-const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "foreground"];
+export const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "foreground"];
 
 /** Every role of every palette, read off the rules. */
 export const PALETTE_ROLES: readonly PaletteRole[] = [...BASE_KEYS, ...(Object.keys(RULES) as PaletteRole[])];

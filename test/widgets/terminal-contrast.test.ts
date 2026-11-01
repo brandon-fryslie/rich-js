@@ -10,17 +10,12 @@
  * terminal and on a light one.
  */
 import { describe, it, expect } from "vitest";
-import { contrastRatio, type TerminalTheme } from "../../src/core/color.js";
 import { exportCanvas, resolveLook } from "../../src/core/export-lines.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { NULL_STYLE } from "../../src/core/style.js";
-import {
-  DEFAULT_TERMINAL_THEME,
-  SOLARIZED_LIGHT,
-  TEXTUAL_LIGHT,
-  CATPPUCCIN_MOCHA,
-} from "../../src/themes/terminalThemes.js";
+import { contrastRatio, TerminalTheme } from "../../src/core/color.js";
+import * as terminalThemes from "../../src/themes/terminalThemes.js";
 import { Button, type ButtonVariant } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Dropdown } from "../../src/widgets/dropdown.js";
@@ -33,12 +28,19 @@ const RENDER: RenderOptions = { maxWidth: 40 };
 // WCAG AA for body text.
 const FLOOR = 4.5;
 
+// Under this a disabled label is not drawn so much as lost in its ground.
+const VISIBLE = 1.5;
+
+const { DEFAULT_TERMINAL_THEME, SOLARIZED_LIGHT, TEXTUAL_LIGHT, CATPPUCCIN_MOCHA } = terminalThemes;
+
 const TERMINALS: ReadonlyArray<readonly [string, TerminalTheme]> = [
   ["default (dark)", DEFAULT_TERMINAL_THEME],
   ["catppuccin-mocha (dark)", CATPPUCCIN_MOCHA],
   ["solarized-light (light)", SOLARIZED_LIGHT],
   ["textual-light (light)", TEXTUAL_LIGHT],
 ];
+
+const BUNDLED = Object.values(terminalThemes).filter((value) => value instanceof TerminalTheme);
 
 const VARIANTS = ["default", "primary", "success", "warning", "danger"] as const satisfies
   readonly (ButtonVariant & ToggleVariant)[];
@@ -106,5 +108,15 @@ describe("a widget constructed without a theme", () => {
         .filter(({ ratio }) => ratio < FLOOR);
       expect(unreadable).toEqual([]);
     });
+  });
+});
+
+describe("a disabled widget on a bundled theme", () => {
+  it.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("%s is seen and reads as inactive", (_name, theme) => {
+    const [label] = cells(() => new Button({ label: "Save", disabled: true, theme }).render(RENDER)).filter((segment) => segment.text.trim() !== "");
+    const look = resolveLook(label!.style ?? NULL_STYLE, theme);
+    const ratio = contrastRatio(look.foreground, look.background === "canvas" ? exportCanvas(theme).background : look.background);
+    expect(ratio).toBeGreaterThan(VISIBLE);
+    expect(ratio).toBeLessThan(FLOOR);
   });
 });

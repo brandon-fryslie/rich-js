@@ -36,9 +36,9 @@ export abstract class ThemedWidget extends WidgetBase {
   }
 
   // [LAW:one-source-of-truth] How every widget looks while disabled: the
-  // palette's de-emphasized text on its ground. WCAG sets no contrast floor for
-  // an inactive control, and this sits under the one for text on purpose.
+  // palette's disabled text on its ground. WCAG sets no contrast floor for an
+  // inactive control, and this sits under the one for text on purpose.
   protected get disabledInk(): ReturnType<typeof ink> {
-    return ink(this.theme, "foreground-muted", "background");
+    return ink(this.theme, "foreground-disabled", "background");
   }
 }

@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba, TerminalTheme, blendRgb, contrastRatio } from "../../src/core/color.js";
 import { IDENTITY } from "../../src/core/oklch.js";
-import { PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
+import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
 import type { Palette } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
 import { transposePalette } from "../../src/themes/transpose.js";
-import { BASE_ROLES, derivedFrom } from "./derived-palette.js";
+import { derivedFrom } from "./derived-palette.js";
 
 const authored = listThemePalettes().map((name) => getThemePalette(name));
 const derived = authored.map(derivedFrom);
@@ -143,7 +143,7 @@ describe("a derived ladder continues the authored ones", () => {
   it.each(["textual-dark", "textual-light", "nord", "dracula"])("%s", (name) => {
     const theme = getThemePalette(name)!;
     const rederived = derivedFrom(theme);
-    for (const root of BASE_ROLES) {
+    for (const root of BASE_KEYS) {
       for (const rung of RUNGS) {
         const role = `${root}-${rung}` as const;
         const [was, is] = [theme.get(role), rederived.get(role)];

@@ -3,10 +3,7 @@
 // below define the canonical name set for the registry. Adding a theme:
 //   1. drop a new `data/<name>.ts` file,
 //   2. add it here,
-//   3. (optional) add a matching `<NAME>` export in `terminalThemes.ts`
-//      if you want a pre-built `TerminalTheme` constant alongside the
-//      registry palette. Without step 3 the theme is still fully usable
-//      via `getThemePalette(name)`.
+//   3. add a matching `<NAME>` export in `terminalThemes.ts`.
 
 import type { ThemePaletteData } from "./types.js";
 
