@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-529",
-      "ref": "refs/pull/529/merge",
-      "sha": "4875f032adcf5472193d0a787d04e662fa1ad7fe",
-      "timestamp": "2026-11-01T12:36:54.150Z",
-      "commits": [
-        {
-          "sha": "4875f032adcf5472193d0a787d04e662fa1ad7fe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T05:34:38-07:00",
-          "message": "Merge f0680e4ddb4ca206058fe141deb4e9f58353cd75 into 06f609f4240535140c2759a22c0985fb316e03cf\n"
-        },
-        {
-          "sha": "f0680e4ddb4ca206058fe141deb4e9f58353cd75",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T05:34:29-07:00",
-          "message": "Marching ants close the ring with no seam (rich-animation-27tq.19d)\n\nReview of #529. A count of every nth cell left a gap vanishing at the top-left\ncorner on two perimeters in three, at the default every. One evenly spaced\npattern now turns round the ring. The docs list boxFrame and say what falls\noutside a ring; the catalogue's absence of march leaves the artifacts.\n"
-        },
-        {
-          "sha": "3f6c8550791763cee302bee576daeffe14692a82",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T05:18:37-07:00",
-          "message": "An effect answers for its joins seam by seam (rich-animation-27tq.19d)\n\nReview of #529. Summing joins across both sides let a join broken on one side\nhide a new one on the other. The docs now say the ring is the outer edge.\n"
-        },
-        {
-          "sha": "a9afa9bd7ad05478e4f282e60095c0ed2384f9aa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T05:07:41-07:00",
-          "message": "A box frame is its own fact on a Style, and an effect answers for its own joins (rich-animation-27tq.19d)\n\nReview of #529. A frame stamped row 0, col 0 on every cell was a false Anchor\nand reached WidgetMouseEvent.cell; it is now Style.boxFrame, which draws\nnothing and claims no position. standsApart blamed every effect for a join the\nchild drew, so typewriter and backspace threw as marchingAnts did. A box with no\nink holds still, and a table too narrow for its edges draws no frame.\n"
-        },
-        {
-          "sha": "b7258651182a89d876771a8a67881fe682046b95",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T04:43:51-07:00",
-          "message": "A marching-ants border is a library effect (rich-animation-27tq.19d)\n\nmarchingAnts marches the frame of whatever box an element draws, at every\nbox set and width, past a title. A frame is told by what drew it, never by\nits glyphs: Box.frame stamps one drawing's cells with an owner, as a strip's\nseam is told, so a user's container reaches it the way Panel and Table do.\n\nThe ring is read off where a frame's cells sit in the element, because a\nTable draws its top rule before it knows its height.\n\nIt stays out of GLYPH_EFFECT_CATALOGUE: that record is the names a template's\nglyphs takes, and a template fragment has no box, so the name could never\nmarch. The playground's glyph-matching march is removed.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "06f609f4240535140c2759a22c0985fb316e03cf",
-      "timestamp": "2026-11-01T11:28:27.262Z",
+      "sha": "41a520a89f566eff663cdb9c968bd940ff56d1a2",
+      "timestamp": "2026-11-01T12:50:25.589Z",
       "commits": [
         {
-          "sha": "06f609f4240535140c2759a22c0985fb316e03cf",
+          "sha": "41a520a89f566eff663cdb9c968bd940ff56d1a2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T04:26:43-07:00",
-          "message": "reducedMotion's comment points at the shownAt that exists (rich-animation-27tq.1mt) (#528)\n\n* reducedMotion's comment points at the shownAt that exists (rich-animation-27tq.1mt)\n\nThe ticket named three stale comments; AppOptions.view and the one above\nApp.tick were already rewritten by rich-animation-27tq.wrw.\n\n* reducedMotion's comment says placed, the word its contract holds for (rich-animation-27tq.1mt)\n\n* reducedMotion's comment says what the preference does to blink (rich-animation-27tq.1mt)"
+          "timestamp": "2026-11-01T05:48:27-07:00",
+          "message": "A marching-ants border is a library effect (rich-animation-27tq.19d) (#529)\n\n* A marching-ants border is a library effect (rich-animation-27tq.19d)\n\nmarchingAnts marches the frame of whatever box an element draws, at every\nbox set and width, past a title. A frame is told by what drew it, never by\nits glyphs: Box.frame stamps one drawing's cells with an owner, as a strip's\nseam is told, so a user's container reaches it the way Panel and Table do.\n\nThe ring is read off where a frame's cells sit in the element, because a\nTable draws its top rule before it knows its height.\n\nIt stays out of GLYPH_EFFECT_CATALOGUE: that record is the names a template's\nglyphs takes, and a template fragment has no box, so the name could never\nmarch. The playground's glyph-matching march is removed.\n\n* A box frame is its own fact on a Style, and an effect answers for its own joins (rich-animation-27tq.19d)\n\nReview of #529. A frame stamped row 0, col 0 on every cell was a false Anchor\nand reached WidgetMouseEvent.cell; it is now Style.boxFrame, which draws\nnothing and claims no position. standsApart blamed every effect for a join the\nchild drew, so typewriter and backspace threw as marchingAnts did. A box with no\nink holds still, and a table too narrow for its edges draws no frame.\n\n* An effect answers for its joins seam by seam (rich-animation-27tq.19d)\n\nReview of #529. Summing joins across both sides let a join broken on one side\nhide a new one on the other. The docs now say the ring is the outer edge.\n\n* Marching ants close the ring with no seam (rich-animation-27tq.19d)\n\nReview of #529. A count of every nth cell left a gap vanishing at the top-left\ncorner on two perimeters in three, at the default every. One evenly spaced\npattern now turns round the ring. The docs list boxFrame and say what falls\noutside a ring; the catalogue's absence of march leaves the artifacts."
         }
       ]
     }
