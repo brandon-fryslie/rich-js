@@ -120,7 +120,12 @@ export interface Hold {
 }
 
 /** The hold of a cell that never changes: always was, and always will be. */
-const NEVER_CHANGES: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
+export const NEVER_CHANGES: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
+
+/** The moments both `a` and `b` hold through: the later `lastChange` and the sooner `nextChange`. */
+export function intersection(a: Hold, b: Hold): Hold {
+  return { lastChange: Math.max(a.lastChange, b.lastChange), nextChange: Math.min(a.nextChange, b.nextChange) };
+}
 
 export class StyleSyntaxError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -356,9 +361,8 @@ export class Style {
           : other.meta ?? this.meta,
       anchor: other.anchor ?? this.anchor,
       boxFrame: other.boxFrame ?? this.boxFrame,
-      // Cells under both change when either does: the sooner, and have been
-      // what they are since the later — the intersection of the two holds.
-      hold: { lastChange: Math.max(this.hold.lastChange, other.hold.lastChange), nextChange: Math.min(this.hold.nextChange, other.hold.nextChange) },
+      // Cells under both change when either does.
+      hold: intersection(this.hold, other.hold),
     });
   }
 

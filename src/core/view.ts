@@ -33,14 +33,14 @@
  * auto-refresh, polls every frame.
  *
  * Tier 7 of `src/core/`: `./animation.ts`'s `Animation`, `./timeline.ts`,
- * `./segment.ts`, `./protocol.ts` and `./style.ts`'s `Hold`, nothing else.
+ * `./segment.ts`, `./protocol.ts` and `./style.ts`'s holds, nothing else.
  * [LAW:one-way-deps]
  */
 
 import type { Animation } from "./animation.js";
 import { activePass, render, type HostFrame, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
-import type { Hold } from "./style.js";
+import { intersection, NEVER_CHANGES, type Hold } from "./style.js";
 import { Timeline } from "./timeline.js";
 
 /**
@@ -122,10 +122,7 @@ export const undrawn = (t: number): FrameSays => ({ t, nextChange: Number.POSITI
 
 /** The hold of the frame `lines` draw, told `told` besides: the intersection of its cells' holds and it. */
 const frameHold = (lines: Segment[][], told: Hold): Hold =>
-  lines.reduce(
-    (hold, row) => ({ lastChange: Math.max(hold.lastChange, Segment.lastChange(row)), nextChange: Math.min(hold.nextChange, Segment.nextChange(row)) }),
-    told,
-  );
+  lines.reduce((hold, row) => intersection(hold, { lastChange: Segment.lastChange(row), nextChange: Segment.nextChange(row) }), told);
 
 /**
  * `view` drawn by `drawnBy` at `time` under `options`, its lines shaped by
@@ -144,9 +141,9 @@ export function drawView(
   draw: (renderable: Renderable, options: RenderOptions) => Segment[][],
 ): DrawnView {
   const { now: host, timeline } = time;
-  let told: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
+  let told = NEVER_CHANGES;
   const onHold = (hold: Hold): void => {
-    told = { lastChange: Math.max(told.lastChange, hold.lastChange), nextChange: Math.min(told.nextChange, hold.nextChange) };
+    told = intersection(told, hold);
   };
   // Made before the render opens: the one time the frame has.
   const frame = frameNow(drawnBy, time);

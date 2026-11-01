@@ -109,7 +109,7 @@ class ChangeFrame implements Renderable, Measurable {
       ...splice(Segment.adjustLineLength(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5),
       ...(row < after.length - 1 || ended ? [Segment.line()] : []),
     ]);
-    // The frame says nothing of when it changes: the change's own animation says it moves every frame.
+    // The change's own animation says it moves every frame, and reads nothing this frame tells.
     const veil = veiled(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
     return render(new Recolored({ render: () => rows }, veil, { t: this.t, key: "change" }), options);
   }

@@ -5,7 +5,7 @@
 
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
-import { DEFAULT_THEME, Style, type Hold, type StyleSyntaxError, type Theme } from "./style.js";
+import { DEFAULT_THEME, NEVER_CHANGES, Style, type Hold, type StyleSyntaxError, type Theme } from "./style.js";
 import { ColorDepth, type ColorSpec, type TerminalColors } from "./color.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
@@ -167,6 +167,15 @@ export interface RenderOptions {
    * decides the frame's layout, so when it changes, the frame may.
    */
   onHold?: (hold: Hold) => void;
+  /**
+   * Told of the hold the element `key` names, drawn for a time on its own
+   * clock, is in: an effect's frame, which alone knows, since the answer
+   * depends on what it drew. `t` is that clock's, not the frame's, so this cannot be `onHold`:
+   * the animation placed around the value carries the answer back through the
+   * combinators that remapped the time (`Moves`, `./animation.ts`). It reaches
+   * whatever `frame` reaches.
+   */
+  onMoved?: (t: number, key: string, hold: Hold) => void;
 }
 
 /** The one field of the render options that says whether the reader wants motion. */
@@ -540,7 +549,9 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * enters and takes some. A motion held at no width therefore wakes its host
  * for frames that look the same: when it next takes room is not a moment its
  * hold can name, and an early answer costs a frame where a late one hides the
- * element. It commits nothing, as a measurement commits nothing —
+ * element. An effect is not such a motion: it cannot give itself room, so
+ * however it moves, a held one reports held for good, and whatever gives it
+ * room wakes the host. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown
  * left it.
@@ -551,10 +562,15 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * can repeat.
  */
 function holding(options: RenderOptions): { phase: Phase; drawing: RenderOptions } {
-  const { onPresent } = options;
+  const { onPresent, onMoved } = options;
   return {
     phase: { pass: phaseHere().pass, effects: [] },
-    drawing: { ...options, maxWidth: 0, onPresent: onPresent && ((content) => onPresent(content, "held")) },
+    drawing: {
+      ...options,
+      maxWidth: 0,
+      onPresent: onPresent && ((content) => onPresent(content, "held")),
+      onMoved: onMoved && ((t, key) => onMoved(t, key, NEVER_CHANGES)),
+    },
   };
 }
 
@@ -575,13 +591,14 @@ export function measure(measurable: Measurable, options: RenderOptions): { minim
  * `options` as a measurement is asked with. A `measure` that renders to learn
  * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
  * one that did would put a widget in the view at the moment a container
- * measured it, and keep one the frame then cropped away. It still tells its
+ * measured it, and keep one the frame then cropped away — and nothing to
+ * `onMoved`, which speaks only for what the frame shows. It still tells its
  * hold (`onHold`): a layout decided by a measurement changes when it does.
  *
  * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */
 function measuring(options: RenderOptions): RenderOptions {
-  return { ...options, onPresent: undefined };
+  return { ...options, onPresent: undefined, onMoved: undefined };
 }
 
 /**

@@ -71,8 +71,7 @@
  */
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
-import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
-import type { Hold } from "../core/style.js";
+import { Animation, holdOf, placedRender, shownAt, type Moves, type Shown } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
@@ -81,7 +80,7 @@ import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js"
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, joinedCell, type EdgeMove, type JoinedCell } from "../core/strip.js";
-import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
+import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes, type Hold } from "../core/style.js";
 import { finiteTime } from "../core/easing.js";
 
 /**
@@ -246,24 +245,25 @@ export interface EffectedOptions {
   readonly key: string;
 }
 
-/** A frame an effect drew at a moment, and the hold the effect says it is in there. */
-export interface Moved {
-  readonly segments: Iterable<Segment>;
-  readonly hold: Hold;
+/**
+ * The hold an effect drawn at `t` tells: its animation's there, or held for
+ * good over no cell, since it changes how cells look and never which exist.
+ * What drew none says for itself when it will (a lifecycle not yet entered).
+ */
+export function holdOver(anyCell: boolean, shown: Shown<unknown>, t: number): Hold {
+  return anyCell ? holdOf(shown, t) : NEVER_CHANGES;
 }
-
-/** What drew nothing the effect can change: held forever, as far as the effect says. */
-const UNMOVED: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
 
 /**
  * An `Effected` at `t`, or an element through an effect at a time an
  * animation's `at` was handed — a lifecycle's time since it entered: `renderable`
- * with its cells' looks passed through `effect` at `t`, saying nothing of
- * when that changes, since whatever placed the animation stamps its hold.
- * [LAW:one-type-per-behavior]
+ * with its cells' looks passed through `effect` at `t`. Its cells say nothing
+ * of when that changes, since `t` is not the frame's clock: it tells the hold
+ * it drew in (`RenderOptions.onMoved`), and whatever placed the animation
+ * carries that onto the frame's and stamps it. [LAW:one-type-per-behavior]
  */
 export class Recolored implements Renderable, Measurable {
-  readonly t: number;
+  private readonly _t: number;
   readonly key: string;
 
   constructor(
@@ -271,20 +271,18 @@ export class Recolored implements Renderable, Measurable {
     readonly effect: Effect,
     options: EffectedOptions & { readonly t: number },
   ) {
-    this.t = finiteTime("Effected", options.t);
+    this._t = finiteTime("Effected", options.t);
     this.key = options.key;
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return this.moved(options).segments;
-  }
-
-  /** The frame the effect draws at `t`, and the hold it says that is in. */
-  moved(options: RenderOptions): Moved {
     const segments = render(this.renderable, options);
     // With no colour output nothing the effect does is written, so the child
     // is what is shown, and it changes when the child says it does.
-    if (options.colorSystem === null) return { segments, hold: UNMOVED };
+    if (options.colorSystem === null) {
+      options.onMoved?.(this._t, this.key, NEVER_CHANGES);
+      return segments;
+    }
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     // [LAW:one-source-of-truth] Every colour below resolves on the frame's
@@ -296,8 +294,9 @@ export class Recolored implements Renderable, Measurable {
     const looked = looks(segments, depth, terminal);
     const walked = walk(looked);
     const drawn = measured(looked, () => walked, depth, terminal);
-    const shown = shownAt(this.effect(drawn), this.t, options);
-    return { segments: this._recolored(walked, shown.value, drawn), hold: holdOf(shown, this.t) };
+    const shown = shownAt(this.effect(drawn), this._t, options);
+    options.onMoved?.(this._t, this.key, holdOver(walked.some(({ glyphs }) => glyphs.some(({ cell }) => cell !== undefined)), shown, this._t));
+    return this._recolored(walked, shown.value, drawn);
   }
 
   private *_recolored(walked: readonly Walked[], frame: EffectFrame, drawn: Drawn): Iterable<Segment> {
@@ -458,13 +457,12 @@ export class Recolored implements Renderable, Measurable {
 /**
  * `renderable` under `effect` over time: an `Animation<Renderable>` whose
  * value at `t` is the element through the effect at `t`, placed wherever a
- * renderable goes. Its own answer to when it changes is `t`, at every time:
- * an `Effect` is made from what the element draws, so with nothing drawn
- * nothing can say more — early, never false. Placed, it says exactly: its
- * cells carry the effect's own hold at the frame's time and the output's
- * depth (`stampFrame`), under whatever the element already said, so at a
- * depth that shows no motion a loop says it never changes there and the
- * host sleeps.
+ * renderable goes. An `Effect` is made from what the element draws, so with
+ * nothing drawn its answer to when it changes is `t`, at every time: early,
+ * never false. Placed, on its own or as a part of any combinator, it says
+ * exactly: the frame's drawing told the effect's hold at that time and the
+ * output's depth (`Moves`), so at a depth that shows no motion a loop says it
+ * never changes there and the host sleeps.
  */
 export class Effected implements Animation<Renderable> {
   readonly key: string;
@@ -482,12 +480,12 @@ export class Effected implements Animation<Renderable> {
     return new Recolored(this.renderable, this.effect, { t, key: this.key });
   }
 
-  nextChange(t: number): number {
-    return t;
+  nextChange(t: number, moves?: Moves): number {
+    return moves?.(t, this.key)?.nextChange ?? t;
   }
 
-  lastChange(t: number): number {
-    return t;
+  lastChange(t: number, moves?: Moves): number {
+    return moves?.(t, this.key)?.lastChange ?? t;
   }
 
   /** The element under the effect with its motion taken out. */
@@ -498,8 +496,7 @@ export class Effected implements Animation<Renderable> {
 
   /** Drawn at the frame's time, its cells stamped with the effect's exact hold there. */
   render(options: RenderOptions): Iterable<Segment> {
-    const { segments, hold } = this.at(frameTimeOf(options)).moved(options);
-    return stampFrame(segments, hold);
+    return placedRender(this, options);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

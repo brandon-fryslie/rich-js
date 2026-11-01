@@ -51,7 +51,7 @@
  * sample a second or sixty.
  */
 
-import { Animation, type Timed } from "./animation.js";
+import { Animation, type Moves, type Timed } from "./animation.js";
 import { firstReaching } from "./easing.js";
 
 /**
@@ -111,8 +111,8 @@ function played<T>(animation: Timed<T>, { origin, time, rate }: Timeline & { pla
   // change where the value began, and the value began where the animation
   // says it ends. A hold is `[lastChange, nextChange)`, so the far side of
   // an edge is at it going up and strictly under it coming down.
-  const ahead = forward ? (t: number) => animation.nextChange(t) : (t: number) => animation.lastChange(t);
-  const behind = forward ? (t: number) => animation.lastChange(t) : (t: number) => animation.nextChange(t);
+  const ahead = forward ? (t: number, moves?: Moves) => animation.nextChange(t, moves) : (t: number, moves?: Moves) => animation.lastChange(t, moves);
+  const behind = forward ? (t: number, moves?: Moves) => animation.lastChange(t, moves) : (t: number, moves?: Moves) => animation.nextChange(t, moves);
   const past = forward ? (t: number, edge: number) => t >= edge : (t: number, edge: number) => t < edge;
   // The first host moment the map carries past `edge`, an animation time.
   // An edge at infinity, or one so far off at this rate that no host float
@@ -124,16 +124,16 @@ function played<T>(animation: Timed<T>, { origin, time, rate }: Timeline & { pla
   };
   return Animation.of({
     at: (host: number) => animation.at(mapped(hostTime(host))),
-    nextChange(host: number) {
+    nextChange(host: number, moves?: Moves) {
       const h = hostTime(host);
       const t = mapped(h);
-      const edge = ahead(t);
+      const edge = ahead(t, moves);
       return edge === t ? h : Math.max(h, hostOf(edge));
     },
-    lastChange(host: number) {
+    lastChange(host: number, moves?: Moves) {
       const h = hostTime(host);
       const t = mapped(h);
-      const edge = behind(t);
+      const edge = behind(t, moves);
       return edge === t ? h : Math.min(h, hostOf(edge));
     },
     reduced: () => played(animation.reduced(), { playing: true, origin, time, rate }),
