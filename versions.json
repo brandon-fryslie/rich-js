@@ -4,15 +4,22 @@
     {
       "version": "pr-528",
       "ref": "refs/pull/528/merge",
-      "sha": "257574936f652fc9556963152096800f75ba8b03",
-      "timestamp": "2026-11-01T11:13:32.829Z",
+      "sha": "6b8d13f0f0f358db977533c0f18f2d1442d13fd1",
+      "timestamp": "2026-11-01T11:16:28.806Z",
       "commits": [
         {
-          "sha": "257574936f652fc9556963152096800f75ba8b03",
+          "sha": "6b8d13f0f0f358db977533c0f18f2d1442d13fd1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T04:11:23-07:00",
-          "message": "Merge 132ceebbc73b344031087fb5f45c041c7424e4e9 into 6e41f29145f132d0e804708e52148a1a98cd8ef2\n"
+          "timestamp": "2026-11-01T11:14:42Z",
+          "message": "Merge ceaeddaa2ff45c2a84d965e22c96c80bf84e6358 into 6e41f29145f132d0e804708e52148a1a98cd8ef2\n"
+        },
+        {
+          "sha": "ceaeddaa2ff45c2a84d965e22c96c80bf84e6358",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T04:14:33-07:00",
+          "message": "reducedMotion's comment says placed, the word its contract holds for (rich-animation-27tq.1mt)\n"
         },
         {
           "sha": "132ceebbc73b344031087fb5f45c041c7424e4e9",
