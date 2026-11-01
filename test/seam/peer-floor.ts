@@ -29,9 +29,7 @@
  * [LAW:types-are-the-program] The `devDependencies` spec must be the floor too,
  * written exactly. A caret there admits the trees this rule refuses, so `npm
  * update` would walk off the floor, and npm writes that caret back on any plain
- * `npm install -D`, so the pin is checked rather than assumed. It is also what
- * makes an `npm ci` tree say the floor is published: an exact version resolves
- * from the registry, where a `file:` spec holding the same version would not.
+ * `npm install -D`, so the pin is checked rather than assumed.
  *
  * [LAW:effects-at-boundaries] Nothing in this module reads a file. The versions
  * arrive as data from the test next door, so the fixtures can hand it states this
@@ -39,9 +37,11 @@
  *
  * WHAT THIS CANNOT SEE. A consumer resolves the newest version a range admits,
  * and the floor is the one version this repository ever exercises, so a green run
- * says nothing about the top of the range. And this rule holds up only one end of
- * the claim: "src/ compiles at the floor" is true because lint ran on this same
- * tree, not because this passed.
+ * says nothing about anything above it, a later `||` arm included. Nothing here
+ * asks the registry either: a lockfile resolving an exact pin to a local tarball
+ * passes on a floor no consumer can install. And this rule holds up only one end
+ * of the claim: "src/ compiles at the floor" is true because lint ran on this
+ * same tree, not because this passed.
  */
 
 import semver from "semver";
@@ -92,15 +92,15 @@ export function peerFloorViolations(peers: readonly InstalledPeer[]): PeerFloorV
 }
 
 /**
- * One violation, as the line a reader of a red run sees. It names no version to
- * install, because the floor of a range may never have been published.
+ * One violation, as the line a reader of a red run sees: the first remedy is for
+ * a stale install under a manifest that is right, the second for a meant bump.
  */
 export function describePeerFloorViolation(violation: PeerFloorViolation): string {
   const { name, range, pin, installed, floor } = violation;
   return (
     `  ${name}: src/ is compiled against ${installed} and devDependencies reads ${pin}, but ` +
-    `peerDependencies reads ${range}, whose lowest version is ${floor}. Make them one version ` +
-    `published on npm: the range's lower bound, installed with ` +
-    `\`npm install -D -E ${name}@<version>\`.`
+    `peerDependencies reads ${range}, whose lowest version is ${floor}. To keep that floor, pin ` +
+    `${floor} exactly and run \`npm ci\`. To move it, write a version published on npm as the ` +
+    `range's lower bound, then \`npm install -D -E ${name}@<version>\`.`
   );
 }

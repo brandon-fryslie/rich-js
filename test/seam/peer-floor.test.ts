@@ -58,10 +58,6 @@ describe("peerFloorViolations", () => {
     expect(peerFloorViolations([peer("^7.0.3", "7.0.4")])).toHaveLength(1);
   });
 
-  it("reports a range whose bottom was never published", () => {
-    expect(peerFloorViolations([peer("^7.0.2", "7.0.3")])).toHaveLength(1);
-  });
-
   it("reports a peer older than the range's bottom", () => {
     expect(peerFloorViolations([peer("^7.1.0", "7.0.3")])).toHaveLength(1);
   });
@@ -88,11 +84,11 @@ describe("peerFloorViolations", () => {
 
 describe("describePeerFloorViolation", () => {
   it("names the peer, the range, the pin and both versions", () => {
-    const [violation] = peerFloorViolations([peer("^0.10.0", "0.11.0", "^0.11.0")]);
+    const [violation] = peerFloorViolations([peer("~0.10", "0.11.0", "^0.12.0")]);
 
     const line = describePeerFloorViolation(violation!);
 
-    for (const fact of ["engine", "^0.10.0", "^0.11.0", "0.11.0", "0.10.0"]) {
+    for (const fact of ["engine", "~0.10", "^0.12.0", "0.11.0", "0.10.0"]) {
       expect(line).toContain(fact);
     }
   });
