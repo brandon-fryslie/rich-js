@@ -4,15 +4,22 @@
     {
       "version": "pr-528",
       "ref": "refs/pull/528/merge",
-      "sha": "6b8d13f0f0f358db977533c0f18f2d1442d13fd1",
-      "timestamp": "2026-11-01T11:16:28.806Z",
+      "sha": "9dee7b9efcf44661585e8add2218a68325388618",
+      "timestamp": "2026-11-01T11:19:52.284Z",
       "commits": [
         {
-          "sha": "6b8d13f0f0f358db977533c0f18f2d1442d13fd1",
+          "sha": "9dee7b9efcf44661585e8add2218a68325388618",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T11:14:42Z",
-          "message": "Merge ceaeddaa2ff45c2a84d965e22c96c80bf84e6358 into 6e41f29145f132d0e804708e52148a1a98cd8ef2\n"
+          "timestamp": "2026-11-01T04:17:50-07:00",
+          "message": "Merge 1e8f62f773d14f7f5393e3c8fef8f4e70846b8a3 into 6e41f29145f132d0e804708e52148a1a98cd8ef2\n"
+        },
+        {
+          "sha": "1e8f62f773d14f7f5393e3c8fef8f4e70846b8a3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T04:17:43-07:00",
+          "message": "reducedMotion's comment says what the preference does to blink (rich-animation-27tq.1mt)\n"
         },
         {
           "sha": "ceaeddaa2ff45c2a84d965e22c96c80bf84e6358",
