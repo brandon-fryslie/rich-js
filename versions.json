@@ -4,15 +4,22 @@
     {
       "version": "pr-531",
       "ref": "refs/pull/531/merge",
-      "sha": "7d2a397310b7d8c230155b9f33a380a44088826c",
-      "timestamp": "2026-11-01T14:39:12.914Z",
+      "sha": "ba758af15bc574f8051ca2c8cf5d8cc89103a40b",
+      "timestamp": "2026-11-01T14:49:04.608Z",
       "commits": [
         {
-          "sha": "7d2a397310b7d8c230155b9f33a380a44088826c",
+          "sha": "ba758af15bc574f8051ca2c8cf5d8cc89103a40b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T07:37:48-07:00",
-          "message": "Merge 5f83a4c54e2abfd4b0e54564d25aa382a22fac33 into 3ab763eab3bc935444b4ec217422b7592271ad51\n"
+          "timestamp": "2026-11-01T14:47:29Z",
+          "message": "Merge fba2c6a0587ca60a6b410ed1896cb1d3a90c0f05 into 3ab763eab3bc935444b4ec217422b7592271ad51\n"
+        },
+        {
+          "sha": "fba2c6a0587ca60a6b410ed1896cb1d3a90c0f05",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T07:47:20-07:00",
+          "message": "A disabled widget draws the palette's disabled text, and textual-ansi's follow its foreground (rich-unfiled-791c.gy3z)\n\nTaking the authored palette moved disabledInk's foreground-muted from\n1.5-2.6:1 to 1.08-7.37:1: a disabled label vanished on textual-ansi and\nread as enabled on the default theme. foreground-disabled is the role for\nthis and sits at 1.66-3.44:1 on every bundled theme, so the widgets read it.\n\ntextual-ansi's foreground-muted, foreground-disabled and markdown-h6-color\nwere black where every other theme has its own foreground, the generator\nhaving taken ansi_default for #000000; they are now #E0E0E0 at the same alpha.\n\nbg and fg come off the palette, so a TerminalTheme has one source for them.\nBASE_KEYS is exported in place of the test's copy, and comments that named\nthe old lazy path or called a TerminalTheme export optional are corrected.\n"
         },
         {
           "sha": "5f83a4c54e2abfd4b0e54564d25aa382a22fac33",
