@@ -540,7 +540,7 @@ describe("layered", () => {
     const still = layered(turning, shimmering)(at).reduced();
     expect(still.nextChange(40)).toBe(Number.POSITIVE_INFINITY);
     const look = { fg: new ColorRgba(200, 200, 200), bg: new ColorRgba(20, 20, 20), attributes: cellAttributes(Style.null()) };
-    const cell = { row: 0, col: 0, seed: 0, anchor: undefined, pair: { ...look, terminal: { fg: false, bg: false }, reverse: false } };
+    const cell = { row: 0, col: 0, seed: 0, anchor: undefined, boxFrame: undefined, pair: { ...look, terminal: { fg: false, bg: false }, reverse: false } };
     expect(still.at(40)(look, cell)).toEqual(still.at(900)(look, cell));
   });
 

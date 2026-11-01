@@ -41,6 +41,7 @@ import {
   fadeIn,
   gradient,
   lifecycle,
+  marchingAnts,
   particles,
   scramble,
   scrambleOut,
@@ -52,7 +53,6 @@ import {
   typewriter,
   wipe,
   dissolveOut,
-  type GlyphEffect,
   type Lifecycle,
   type Renderable,
 } from "@promptctl/rich-js";
@@ -127,25 +127,6 @@ const HUES = new ColorRamp(EASES.linear, [
 ]);
 // Each loop is a phase of its own seconds; reduced, each holds at 0, the ramp unmoved.
 const flowing = HUES.moving({ scroll: Animation.continuous(Phase.loop(4)), hue: Animation.continuous(Phase.loop(12)) });
-
-// --- A marching border: a glyph effect on the border's cells ---
-
-const BOX_GLYPHS = new Set("─│╭╮╰╯");
-/** Which of three steps the march is on, a step every 0.15 s: a loop, so reduced it holds at its first. */
-const marching = beat([0.15, 0.15, 0.15]);
-/**
- * Every third cell of a border blank, the gaps walking one cell a step
- * clockwise: marching ants. A border cell is counted by its place along the
- * border, from the top-left corner round, so every edge walks the same way.
- */
-const march: GlyphEffect = ({ cells }) => {
-  const border = cells.filter((cell) => BOX_GLYPHS.has(cell.glyph));
-  const right = Math.max(...border.map((cell) => cell.col));
-  const bottom = Math.max(...border.map((cell) => cell.row));
-  const around = (row: number, col: number): number =>
-    row === 0 ? col : col === right ? right + row : row === bottom ? 2 * right + bottom - col : 2 * (right + bottom) - row;
-  return Animation.map(marching, (step) => (cell) => (BOX_GLYPHS.has(cell.glyph) && (around(cell.row, cell.col) + 3 - step) % 3 === 0 ? " " : cell.glyph));
-};
 
 // --- Glyph effects: text that arrives and leaves ---
 
@@ -300,7 +281,7 @@ export const KINDS: readonly Kind[] = [
   placed("tween · a colour", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
   placed("moving ramp · Rule", new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule" })),
   aroundPanel("moving ramp · border", new RichText("the border is the ramp", { style: TEXT }), (framed) => new Effected(framed, gradient(flowing, [BORDER]), { key: "border" })),
-  aroundPanel("marching border", new RichText("the ants march round", { style: TEXT }), (framed) => new GlyphEffected(framed, march, { key: "march" })),
+  aroundPanel("marching border", new RichText("the ants march round", { style: TEXT }), (framed) => new GlyphEffected(framed, marchingAnts(GLYPH_DEFAULTS.march), { key: "march" })),
   placed("typewriter", Animation.map(typing, prompted)),
   placed("scramble", Animation.map(scrambling, prompted)),
   placed("case wave", new GlyphEffected(WAVED, caseWave({ step: 0.12, width: 3 }, 0), { key: "wave" })),

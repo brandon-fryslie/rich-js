@@ -27,7 +27,7 @@
 
 import { cellLen } from "./cells.js";
 import { Segment } from "./segment.js";
-import type { Style } from "./style.js";
+import { Style } from "./style.js";
 import { drawable } from "./protocol.js";
 
 /** A rule spanning the table: the top and bottom borders, and every separator. */
@@ -126,6 +126,17 @@ export class Box {
     this.footSeparator = edgeOf(rows[5]!);
     this.footContent = contentOf(rows[6]!);
     this.bottom = edgeOf(rows[7]!);
+  }
+
+  /**
+   * The style one drawing of a box draws its frame in: `style`, its cells
+   * told as that drawing's (`Style.boxFrame`). Whatever draws a box calls this
+   * once a drawing and hands the result to `getTop`, `getRow`, `getBottom` and
+   * the `getContentChars` it writes, so an effect can find the frame. Its look
+   * and its bytes are `style`'s.
+   */
+  frame(style?: Style): Style {
+    return (style ?? Style.null()).withBoxFrame({});
   }
 
   /**

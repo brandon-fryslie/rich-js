@@ -131,10 +131,12 @@ export interface EffectCell {
    * from another's when their colours are alike (`confined`).
    */
   readonly anchor: Anchor | undefined;
+  /** The drawing of a box the cell is the frame of (`Style.boxFrame`), or none. */
+  readonly boxFrame: object | undefined;
 }
 
 /** Where a cell sits and who drew it: an `EffectCell` before it has a seed or colours. */
-export type Placed = Pick<EffectCell, "row" | "col" | "anchor">;
+export type Placed = Pick<EffectCell, "row" | "col" | "anchor" | "boxFrame">;
 
 /**
  * A cell as `Drawn.all` lists it: where it sits and who drew it, the
@@ -602,10 +604,11 @@ export function walkGlyphs(segments: readonly Segment[]): (readonly WalkedGlyph[
   return segments.map((segment) => {
     if (segment.isControl) return [];
     const anchor = segment.style?.anchor;
+    const boxFrame = segment.style?.boxFrame;
     // Cells into the segment, as `base.shiftedBy` counts them in the render.
     let into = 0;
     return [...graphemes(segment.text)].map((glyph) => {
-      const cell = glyph === "\n" ? undefined : { row, col, anchor: anchor && shiftAnchor(anchor, into) };
+      const cell = glyph === "\n" ? undefined : { row, col, anchor: anchor && shiftAnchor(anchor, into), boxFrame };
       const width = cellLen(glyph);
       [row, col] = glyph === "\n" ? [row + 1, 0] : [row, col + width];
       into += width;

@@ -128,10 +128,11 @@ function borderTitle(label: InlineLabel, options: RenderOptions): RichText {
  * its own laid over the border's, the one rule for "what colour is the title
  * text in". Laid over rather than in place of it, as Rich's `stylize_before`
  * does, because the border's style carries the panel's own: a title that
- * replaced it cut a hole in the panel's background on the top row.
+ * replaced it cut a hole in the panel's background on the top row. The text
+ * is set into the frame and is not of it.
  */
-function borderTextStyle(border: Style | undefined, own: Style): Style | undefined {
-  return own.isNull ? border : (border ?? NULL_STYLE).add(own);
+function borderTextStyle(border: Style, own: Style): Style {
+  return border.add(own).withBoxFrame(undefined);
 }
 
 /**
@@ -153,8 +154,8 @@ function borderRow(
   geometry: PanelGeometry,
   span: number,
   label: InlineLabel | undefined,
-  labelStyle: Style | undefined,
-  border: Style | undefined,
+  labelStyle: Style,
+  border: Style,
   close: string,
 ): Segment[] {
   const corner = edge.left.repeat(geometry.left);
@@ -232,7 +233,7 @@ export class Panel implements Renderable, Measurable {
     // and the content is rendered on top of it. Applied to the padding alone,
     // "white on dark_blue" drew a blue ring with a hole where the text was.
     const borderStyle = getStyle(options, this.style).add(getStyle(options, this.borderStyle));
-    const border = borderStyle.isNull ? undefined : borderStyle;
+    const border = box.frame(borderStyle);
 
     const geometry = layoutPanel(this._getPanelWidth(options));
     const bodyLines = this._renderBody(options, geometry.spanWidth);
@@ -336,7 +337,7 @@ export class Panel implements Renderable, Measurable {
     options: RenderOptions,
     box: Box,
     geometry: PanelGeometry,
-    border: Style | undefined,
+    border: Style,
   ): Iterable<Segment> {
     const titleStyle = borderTextStyle(border, getStyle(options, this.titleStyle ?? NULL_STYLE));
     yield* borderRow(options, box.top, geometry, geometry.spanWidth, this._titleLabel, titleStyle, border, box.top.right.repeat(geometry.right));
@@ -347,7 +348,7 @@ export class Panel implements Renderable, Measurable {
     options: RenderOptions,
     box: Box,
     geometry: PanelGeometry,
-    border: Style | undefined,
+    border: Style,
     body: readonly (readonly Segment[])[],
   ): Iterable<Segment> {
     const accessory = this._resolveAccessory(this.bottomRightAccessory, body);

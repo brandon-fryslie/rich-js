@@ -3,9 +3,16 @@ import type { Animation } from "../../src/core/animation.js";
 import { cellLen } from "../../src/core/cells.js";
 import { EASES } from "../../src/core/easing.js";
 import type { Renderable } from "../../src/core/protocol.js";
+import * as boxes from "../../src/core/box.js";
+import { ASCII, Box, DOUBLE, HEAVY, HORIZONTALS, ROUNDED, SIMPLE, SQUARE } from "../../src/core/box.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
+import { RichText } from "../../src/core/text.js";
 import { GlyphEffected, type GlyphEffect, type GlyphFrame } from "../../src/renderables/glyph-effect.js";
-import { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, backspace, caseWave, particles, scramble, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
+import { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, backspace, caseWave, marchingAnts, particles, scramble, scrambleOut, typewriter } from "../../src/renderables/glyph-effects.js";
+import { Padding } from "../../src/renderables/padding.js";
+import { Panel } from "../../src/renderables/panel.js";
+import { Table } from "../../src/renderables/table.js";
 import { inFrame } from "./in-frame.js";
 
 /** A renderable yielding `lines` as fixed segments. */
@@ -253,5 +260,180 @@ describe("the ways out: backspace and scrambleOut", () => {
 
   it("scrambleOut needs a finite z", () => {
     expect(() => scrambleOut(timing, Number.NaN)).toThrow(/scrambleOut z must be a finite place in the noise/);
+  });
+});
+
+describe("marchingAnts", () => {
+  const ants = marchingAnts({ step: 1, every: 3 });
+  const split = (text: string): string[] => text.split("\n").filter((row) => row !== "");
+  const rows = (element: Renderable, t: number): string[] => split(draw(ants, element, t).text);
+  const written = (element: Renderable): string[] => split([...element.render({ maxWidth: 80, colorSystem: null })].map((s) => s.text).join(""));
+  /** The columns a gap has opened in `row`, by comparing it with the row as written. */
+  const gaps = (row: string, asWritten: string): number[] => [...asWritten].flatMap((glyph, i) => (glyph !== " " && [...row][i] === " " ? [i] : []));
+
+  for (const box of [ROUNDED, SQUARE, HEAVY, DOUBLE, ASCII]) {
+    for (const width of [11, 12, 13]) {
+      it(`marches the frame of a ${width}-wide box of ${box.top.left}${box.top.horizontal} clockwise, and leaves its content`, () => {
+        const panel = new Panel(new RichText("─│ab"), { box, width });
+        const plain = written(panel);
+        const [before, after] = [rows(panel, 0), rows(panel, 1)];
+        expect(gaps(before[0]!, plain[0]!)).toEqual([0, 3, 6, 9, 12].filter((col) => col < width));
+        expect(gaps(after[0]!, plain[0]!)).toEqual([1, 4, 7, 10].filter((col) => col < width));
+        expect(before[1]!.slice(1, width - 1)).toBe(plain[1]!.slice(1, width - 1));
+      });
+    }
+  }
+
+  it("marches every box set the library ships, changing frame cells alone", () => {
+    const sets = Object.values(boxes).filter((value) => value instanceof Box);
+    expect(sets).toHaveLength(19);
+    for (const box of sets) {
+      const panel = new Panel(new RichText("content"), { box, width: 16 });
+      const [drawn, plain] = [rows(panel, 0), written(panel)];
+      expect(drawn.map(cellLen)).toEqual(plain.map(cellLen));
+      expect(drawn.some((row) => row.includes("content"))).toBe(true);
+      // Only a blank is ever written, and a gap reaches any ink on the ring within `every` steps.
+      expect(drawn.every((row, r) => [...row].every((glyph, c) => glyph === " " || glyph === [...plain[r]!][c]))).toBe(true);
+      const inked = [...plain[0]!, ...plain.at(-1)!, ...plain.flatMap((row) => [row[0]!, row.at(-1)!])].some((glyph) => glyph !== " ");
+      expect([0, 1, 2].some((t) => rows(panel, t).join("") !== plain.join(""))).toBe(inked);
+    }
+  });
+
+  it("walks the bottom edge the other way, so the gaps go round", () => {
+    const panel = new Panel(new RichText("a"), { width: 12 });
+    const plain = written(panel);
+    const bottom = plain.length - 1;
+    const [before, after] = [gaps(rows(panel, 0)[bottom]!, plain[bottom]!), gaps(rows(panel, 1)[bottom]!, plain[bottom]!)];
+    expect(after.map((col) => col + 1).filter((col) => before.includes(col))).toEqual(after.map((col) => col + 1).filter((col) => col < 11));
+  });
+
+  it("counts through a title and never blanks it", () => {
+    const panel = new Panel(new RichText("a"), { title: "name", width: 20 });
+    const top = written(panel)[0]!;
+    const col = top.indexOf("name");
+    for (const t of [0, 1, 2]) {
+      const row = rows(panel, t)[0]!;
+      expect(row.slice(col, col + 4)).toBe("name");
+      expect(gaps(row, top).every((gap) => (gap - t) % 3 === 0)).toBe(true);
+    }
+  });
+
+  it("marches a box wherever it sits among the element's cells", () => {
+    const panel = new Panel(new RichText("a"), { width: 12 });
+    const padded = new Padding(panel, [1, 0, 0, 4]);
+    const [row, plain] = [rows(padded, 0).find((r) => r.includes("─"))!, written(padded).find((r) => r.includes("─"))!];
+    expect(gaps(row, plain)).toEqual([4, 7, 10, 13]);
+  });
+
+  it("closes the ring with no seam at any width, every gap walking a cell a step", () => {
+    for (const width of [10, 11, 12, 13]) {
+      const panel = new Panel(new RichText("a"), { width });
+      const perimeter = 2 * (width - 1 + 2);
+      /** Each ring cell's place, clockwise from the top-left, in reading order of the ring. */
+      const ring = (row: readonly string[]): string[] => [
+        ...row[0]!,
+        row[1]!.at(-1)!,
+        ...[...row[2]!].reverse(),
+        row[1]![0]!,
+      ];
+      const blanks = (t: number): number[] => ring(rows(panel, t)).flatMap((glyph, place) => (glyph === " " ? [place] : []));
+      const start = blanks(0);
+      const spaces = start.map((place, i) => ((start[(i + 1) % start.length]! - place + perimeter) % perimeter));
+      expect(Math.max(...spaces)).toBeLessThanOrEqual(3);
+      expect(Math.min(...spaces)).toBeGreaterThanOrEqual(2);
+      for (const t of [1, 2, 5]) expect(blanks(t)).toEqual(start.map((place) => (place + t) % perimeter).sort((a, b) => a - b));
+    }
+  });
+
+  it("keeps the spacing round a box that draws its sides in blanks", () => {
+    const panel = new Panel(new RichText("a"), { box: HORIZONTALS, width: 13 });
+    expect(gaps(rows(panel, 0)[0]!, written(panel)[0]!)).toEqual([3, 6, 9]);
+  });
+
+  it("marches a box inside a box, each on its own ring", () => {
+    const nested = new Panel(new Panel(new RichText("a"), { width: 10 }), { width: 20 });
+    const [drawn, plain] = [rows(nested, 0), written(nested)];
+    expect(gaps(drawn[0]!, plain[0]!)).toContain(0);
+    expect(gaps(drawn[1]!, plain[1]!).filter((col) => col > 1)).toEqual([2, 5, 8, 11]);
+  });
+
+  it("walks a table's outer ring and leaves the rules inside it", () => {
+    const table = new Table({ showLines: true });
+    table.addColumn("h");
+    table.addRow("a");
+    table.addRow("b");
+    const [drawn, plain] = [rows(table, 0), written(table)];
+    expect(gaps(drawn[0]!, plain[0]!)).toContain(0);
+    const inner = plain.slice(1, -1).findIndex((row) => !/[a-z]/.test(row)) + 1;
+    expect(inner).toBeGreaterThan(0);
+    expect(drawn[inner]!.slice(1, -1)).toBe(plain[inner]!.slice(1, -1));
+  });
+
+  it("marches a container written outside the library, through `box.frame`", () => {
+    const framed: Renderable = {
+      *render() {
+        const frame = ROUNDED.frame();
+        const { left, right } = ROUNDED.getContentChars("row");
+        yield* ROUNDED.getTop([7], frame);
+        yield* [new Segment(left, frame), new Segment("───────"), new Segment(right, frame), Segment.line()];
+        yield* ROUNDED.getBottom([7], frame);
+      },
+    };
+    const [top, body] = rows(framed, 0);
+    expect(top).toBe(" ── ── ─╮");
+    expect(body!.slice(1, 8)).toBe("───────");
+  });
+
+  it("marches the box an ASCII output is given instead", () => {
+    const panel = new Panel(new RichText("a"), { width: 12 });
+    const [drawn] = [...new GlyphEffected(panel, ants, { key: "k" }).at(0).render({ maxWidth: 80, colorSystem: null, asciiOnly: true })];
+    expect(drawn!.text.startsWith(" -- -- --")).toBe(true);
+  });
+
+  it("leaves an element that draws no frame as written, and never wakes for it", () => {
+    const { text, next } = draw(ants, lines("╭──╮"), 0);
+    expect(text).toBe("╭──╮");
+    expect(next).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("never wakes for a box drawn wholly in blanks, which has nothing to show", () => {
+    const panel = new Panel(new RichText("a"), { box: SIMPLE, width: 12 });
+    expect(draw(ants, panel, 0).next).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("leaves a table too narrow for its edges alone: its rules are no frame", () => {
+    const table = new Table();
+    table.addColumn("h");
+    table.addRow("a");
+    const options = { maxWidth: 1, colorSystem: null };
+    const drawn = [...new GlyphEffected(table, ants, { key: "k" }).at(0).render(options)];
+    expect(drawn.map((s) => s.text).join("")).toBe([...table.render(options)].map((s) => s.text).join(""));
+  });
+
+  it("blanks a frame cell a child's mark sits on, at every step", () => {
+    const panel = new Panel(new RichText("a\n️b\ńc\nd"), { padding: 0, width: 12 });
+    for (const row of [2, 3]) expect([0, 1, 2, 3].some((t) => rows(panel, t)[row]!.startsWith(" "))).toBe(true);
+  });
+
+  it("marks a frame without a position, and takes a title out of it whole", () => {
+    const owner = {};
+    const style = new Style({ anchor: { owner, row: 0, col: 0, inner: undefined } });
+    const panel = new Panel(new RichText("a"), { title: "name", style, width: 20 });
+    const top = [...panel.render({ maxWidth: 80, colorSystem: null })].slice(0, 4).filter((s) => s.text.trim() !== "");
+    const title = top.find((s) => s.text.includes("name"))!;
+    expect(title.style?.boxFrame).toBeUndefined();
+    expect(top[0]!.style?.boxFrame).toBeDefined();
+    expect([title, top[0]!].map((s) => s.style?.anchor?.owner)).toEqual([owner, owner]);
+  });
+
+  it("changes on its step, and reduced, draws the box as written", () => {
+    const panel = new Panel(new RichText("a"), { width: 12 });
+    expect(draw(ants, panel, 0.5).next).toBe(1);
+    expect(split([...new GlyphEffected(panel, ants, { key: "k" }).reduced().at(0).render({ maxWidth: 80, colorSystem: null })].map((s) => s.text).join(""))).toEqual(written(panel));
+  });
+
+  it("needs a positive step and a gap at least every two cells", () => {
+    expect(() => marchingAnts({ step: 0, every: 3 })).toThrow(/marchingAnts step/);
+    expect(() => marchingAnts({ step: 1, every: 1 })).toThrow(/marchingAnts every must be a whole number of cells above 1/);
   });
 });

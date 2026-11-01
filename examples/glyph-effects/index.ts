@@ -1,12 +1,13 @@
 /**
- * glyph-effects — every glyph effect in the catalogue, and a few made by
- * hand from the same four functions, playing in a `Live` for twenty seconds.
+ * glyph-effects — every glyph effect, and a few made by hand from the
+ * catalogue's four functions, playing in a `Live` for twenty seconds.
  * The transitions start over a second after they settle.
  *
  * THIS IS A DEMO: the library's glyph effects
  * (`src/renderables/glyph-effects.ts`), for seeing them move. Each panel's
  * content is wrapped in a `GlyphEffected` drawn at the `Live`'s time, so
- * what it shows at a `t` is the same at any frame rate.
+ * what it shows at a `t` is the same at any frame rate. The ants wrap their
+ * panel whole, since they march round its box.
  */
 
 import {
@@ -15,6 +16,7 @@ import {
   EASES,
   GLYPH_DEFAULTS,
   GLYPH_EFFECT_CATALOGUE,
+  marchingAnts,
   GlyphEffected,
   Live,
   Panel,
@@ -67,7 +69,9 @@ const SHOWN: readonly [string, string, Shown][] = [
 
 const PANELS = SHOWN.map(([title, text, shown]) => [title, new RichText(text), played(shown)] as const);
 
-const view: Columns = new Columns(PANELS.map(([title, text, effect]) => new Panel(new GlyphEffected(text, effect, { key: title }), { title, width: WIDTH })));
+const MARCHING = new GlyphEffected(new Panel(new RichText(LINE), { title: "marching ants", width: WIDTH }), marchingAnts(GLYPH_DEFAULTS.march), { key: "marching ants" });
+
+const view: Columns = new Columns([...PANELS.map(([title, text, effect]) => new Panel(new GlyphEffected(text, effect, { key: title }), { title, width: WIDTH })), MARCHING]);
 
 const live = new Live(view, { refreshPerSecond: 30 });
 live.start();
