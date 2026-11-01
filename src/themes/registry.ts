@@ -42,8 +42,7 @@ function isThemeName(name: string): name is ThemeName {
 
 /**
  * The eight base colors every theme must declare, and its ANSI table. Returned by
- * `getThemeBaseColors` for callers (notably `terminalThemes.ts`) that only
- * need the substrate and would otherwise fill the registry cache.
+ * `getThemeBaseColors` for callers that only need the substrate.
  */
 export interface ThemeBaseColors {
   readonly name: string;
