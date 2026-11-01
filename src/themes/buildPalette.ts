@@ -212,7 +212,7 @@ const ROLE_NAMES: ReadonlySet<string> = new Set(PALETTE_ROLES);
  * Build a full semantic palette from its base colors and any other role it
  * states: a stated role keeps its colour, and everything derived from it
  * follows it, but for `text-*`, which is held to read on its `*-muted`. An
- * authored theme is this with most roles stated; see `RULES` for what a role
+ * authored theme is this with roles stated; see `RULES` for what a role
  * not stated becomes.
  *
  * A translucent colour is drawn onto `background` before anything is derived

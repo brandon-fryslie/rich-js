@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { ColorRgba, TerminalTheme, blendRgb, contrastRatio } from "../../src/core/color.js";
+import { ColorRgba, TerminalTheme, blendRgb, contrastRatio, relativeLuminance } from "../../src/core/color.js";
 import { IDENTITY } from "../../src/core/oklch.js";
 import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
-import type { Palette } from "../../src/themes/palette.js";
+import type { Palette, PaletteRole, ShadedRole } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
 import { transposePalette } from "../../src/themes/transpose.js";
@@ -62,6 +62,28 @@ describe("a bundled theme's name means one palette", () => {
 
   it.each(terminals.map((theme) => [theme.palette.name, theme] as const))("%s", (name, theme) => {
     expect(theme.palette).toBe(getThemePalette(name));
+  });
+});
+
+describe("a role's ladder", () => {
+  // `boost` is a layer, so a rung of it can composite to the same colour as its neighbour.
+  const roots = PALETTE_ROLES.flatMap((role) => (role.endsWith("-lighten-1") && role !== "boost-lighten-1" ? [role.slice(0, -"-lighten-1".length) as ShadedRole] : []));
+
+  it.each(authored.map((palette) => [palette.name, palette] as const))("steps through its root on %s", (_name, palette) => {
+    const lit = (role: PaletteRole) => relativeLuminance(palette.get(role));
+    const astray = roots.filter((root) => {
+      const steps = [
+        lit(`${root}-darken-3`),
+        lit(`${root}-darken-2`),
+        lit(`${root}-darken-1`),
+        lit(root),
+        lit(`${root}-lighten-1`),
+        lit(`${root}-lighten-2`),
+        lit(`${root}-lighten-3`),
+      ];
+      return steps[0]! >= steps[6]! || steps.some((step, i) => i > 0 && step < steps[i - 1]!);
+    });
+    expect(astray).toEqual([]);
   });
 });
 
