@@ -4,15 +4,22 @@
     {
       "version": "pr-535",
       "ref": "refs/pull/535/merge",
-      "sha": "8ebb45e21af370f2c1b71de890941c3b4bb74c21",
-      "timestamp": "2026-11-01T21:17:30.322Z",
+      "sha": "1e62fbef12af6e66cd56e74cc3f65ed6d4bac078",
+      "timestamp": "2026-11-01T21:35:08.935Z",
       "commits": [
         {
-          "sha": "8ebb45e21af370f2c1b71de890941c3b4bb74c21",
+          "sha": "1e62fbef12af6e66cd56e74cc3f65ed6d4bac078",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T21:15:12Z",
-          "message": "Merge 0d74461040020f9f468280a6d0596f69c5e8a5dc into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
+          "timestamp": "2026-11-01T21:32:52Z",
+          "message": "Merge fda604e8f35117468649970e02ff692b72cea8da into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
+        },
+        {
+          "sha": "fda604e8f35117468649970e02ff692b72cea8da",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T14:32:42-07:00",
+          "message": "A row's tail and a word's ends are read from what is drawn, and Pretty shows what the wire withholds (rich-control-codes-xh4n.5do)\n\nMedium review of #535. drawnTail answers the tail once for hanging whitespace and\na filled line, in linear time, and leaves a mark on a space as content. A break\nneeds a glyph on both sides. Pretty escapes what a string would lose on the wire,\nand a value's own text is wired before it is laid out.\n"
         },
         {
           "sha": "0d74461040020f9f468280a6d0596f69c5e8a5dc",
