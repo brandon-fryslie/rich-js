@@ -92,10 +92,13 @@ describe("an effect held still at the output lets the host sleep, wherever it is
     expect(nextChange).toBe(NEVER);
   });
 
-  it("placed on its own at no column, what the drawing says reaches the frame", () => {
+  it("at no column it holds for good, moving or not, on its own and in a combinator", () => {
     const told: Hold[] = [];
-    for (const options of [reduced, colourless]) [...render(inFrame(colour(), 1), { ...options, maxWidth: 0, onHold: (hold) => told.push(hold) })];
-    expect(told.map((hold) => hold.nextChange)).toEqual([NEVER, NEVER]);
+    for (const placed of [colour(), Timeline.run(Timeline.play(0), colour()), new Panel(colour())]) {
+      for (const options of [OPTIONS, reduced, colourless]) [...render(inFrame(placed, 1), { ...options, maxWidth: 0, onHold: (hold) => told.push(hold) })];
+    }
+    expect(told.map((hold) => hold.nextChange).filter((next) => next !== NEVER)).toEqual([]);
+    expect(told.length).toBeGreaterThanOrEqual(6);
   });
 });
 
@@ -136,7 +139,7 @@ describe("a moving effect still moves under a combinator", () => {
     expect(nextChangeOf(nested, 1.25)).toBe(1.25);
   });
 
-  it("a part a container hides its drawing of stays early, whatever a sibling told", () => {
+  it("a part a container hides its drawing of stays early, whatever a sibling under another key told", () => {
     const hiding = (child: Renderable): Renderable => ({ render: (options) => render(child, { maxWidth: options.maxWidth, colorSystem: options.colorSystem ?? null }) });
     const moving = new Effected(label, drifting, { key: "a" });
     const still = new Effected(new RichText("plain", { end: "" }), onItsColours, { key: "b" });
@@ -208,6 +211,19 @@ describe("one frame, one drawing", () => {
     measure(Timeline.run(Timeline.play(0), new Effected(measurable, EFFECT_CATALOGUE.loops.pulse({ z: 0 }), { key: "k" })), inFramed(OPTIONS, told));
     expect(drawn()).toBe(0);
     expect(told.map((hold) => hold.nextChange)).toEqual([NEVER]);
+  });
+
+  it("a measurement that renders to learn its shape reports no drawing", () => {
+    const told: string[] = [];
+    const probing = {
+      render: () => [],
+      measure: (options: RenderOptions) => {
+        [...render(colour("probed"), options)];
+        return { minimum: 1, maximum: 1 };
+      },
+    };
+    measure(probing, { ...inFramed(OPTIONS, []), onMoved: (_, key) => told.push(key) });
+    expect(told).toEqual([]);
   });
 
   it("a combinator's own switch still reaches a measurement", () => {

@@ -72,7 +72,6 @@
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { Animation, holdOf, placedRender, shownAt, type Moves } from "../core/animation.js";
-import { NEVER_CHANGES } from "../core/style.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
@@ -81,7 +80,7 @@ import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js"
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, joinedCell, type EdgeMove, type JoinedCell } from "../core/strip.js";
-import { ATTRIBUTE_NAMES, Style, type AttributeName, type Attributes } from "../core/style.js";
+import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes } from "../core/style.js";
 import { finiteTime } from "../core/easing.js";
 
 /**

@@ -90,9 +90,11 @@ import { intersection, NEVER_CHANGES, Style, type Hold } from "./style.js";
  * moments. Parts sharing both share the intersection of what was drawn:
  * narrower and never wider. A drawing a container hid, by not handing on its
  * options, reads as none and stays early, unless a part sharing its key and
- * `t` told. An animation that does not read it ignores it, and one that
- * forwards it to no part stays early. [LAW:one-source-of-truth] The frame's
- * one drawing says it, so the answer cannot disagree with what the frame shows.
+ * `t` told. A measurement, which draws nothing, answers held for good for
+ * every part (`UNLAID`). An animation that does not read it ignores it, and
+ * one that forwards it to no part stays early. [LAW:one-source-of-truth] The
+ * frame's one drawing says it, so the answer cannot disagree with what the
+ * frame shows.
  */
 export type Moves = (t: number, key: string) => Hold | undefined;
 
