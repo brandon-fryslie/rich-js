@@ -4,29 +4,29 @@
     {
       "version": "pr-532",
       "ref": "refs/pull/532/merge",
-      "sha": "bf3617dccb0f4a007cb894b9705923722296f55c",
-      "timestamp": "2026-11-01T15:34:46.249Z",
+      "sha": "c79fda118a74ff4dbc1fcc4cc64481eba2c09ff1",
+      "timestamp": "2026-11-01T15:39:55.532Z",
       "commits": [
         {
-          "sha": "bf3617dccb0f4a007cb894b9705923722296f55c",
+          "sha": "c79fda118a74ff4dbc1fcc4cc64481eba2c09ff1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T08:32:38-07:00",
-          "message": "Merge 1f9497a25e145704274bf01afa9d1dcaf3b649d4 into 4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11\n"
+          "timestamp": "2026-11-01T15:37:45Z",
+          "message": "Merge f468405dec90ccfc05cb7d78bf8bf2fda26d85ae into 4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11\n"
         },
         {
-          "sha": "1f9497a25e145704274bf01afa9d1dcaf3b649d4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T08:32:29-07:00",
-          "message": "textual-ansi derives its ladders, so taking the authored palette loses no shades (rich-unfiled-791c.01dl)\n\n#531 gave TEXTUAL_ANSI the authored palette and removed the surface ladder its\ngenerator had flattened, but left the other twelve: every rung of primary,\npanel and the rest was its root, where 0.27.0 derived steps. buildPalette's\nrules derive them now, and a test holds every bundled palette's ladders apart.\n"
-        },
-        {
-          "sha": "af19227b726fd37a2958ba2462871c452d35e4cf",
+          "sha": "f468405dec90ccfc05cb7d78bf8bf2fda26d85ae",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-01T08:21:39-07:00",
           "message": "chore(release): 0.28.0\n\nTicket: rich-unfiled-791c.01dl\n"
+        },
+        {
+          "sha": "3a4cb5293226a393ed7b1e5e985066627a218e6b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T08:32:29-07:00",
+          "message": "textual-ansi derives what its data flattened, as 0.27.0's TerminalTheme did (rich-unfiled-791c.01dl)\n\n#531 gave TEXTUAL_ANSI the authored palette and removed the surface ladder its\ngenerator had flattened, but left the rest: every rung of primary, panel and\nthe others was its root, where 0.27.0 derived steps. Those rungs go, and so do\nboost, primary-background and secondary-background, which were opaque or sat\noutside the ladders derived from them. A test holds every bundled palette's\nladders around their root; boost is left out, being a layer.\n"
         }
       ]
     },
