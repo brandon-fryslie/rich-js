@@ -4,15 +4,22 @@
     {
       "version": "pr-529",
       "ref": "refs/pull/529/merge",
-      "sha": "4b0c385367cfa89cad90666db9c83e1c22a2c4da",
-      "timestamp": "2026-11-01T12:20:48.716Z",
+      "sha": "4875f032adcf5472193d0a787d04e662fa1ad7fe",
+      "timestamp": "2026-11-01T12:36:54.150Z",
       "commits": [
         {
-          "sha": "4b0c385367cfa89cad90666db9c83e1c22a2c4da",
+          "sha": "4875f032adcf5472193d0a787d04e662fa1ad7fe",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T12:18:46Z",
-          "message": "Merge 3f6c8550791763cee302bee576daeffe14692a82 into 06f609f4240535140c2759a22c0985fb316e03cf\n"
+          "timestamp": "2026-11-01T05:34:38-07:00",
+          "message": "Merge f0680e4ddb4ca206058fe141deb4e9f58353cd75 into 06f609f4240535140c2759a22c0985fb316e03cf\n"
+        },
+        {
+          "sha": "f0680e4ddb4ca206058fe141deb4e9f58353cd75",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T05:34:29-07:00",
+          "message": "Marching ants close the ring with no seam (rich-animation-27tq.19d)\n\nReview of #529. A count of every nth cell left a gap vanishing at the top-left\ncorner on two perimeters in three, at the default every. One evenly spaced\npattern now turns round the ring. The docs list boxFrame and say what falls\noutside a ring; the catalogue's absence of march leaves the artifacts.\n"
         },
         {
           "sha": "3f6c8550791763cee302bee576daeffe14692a82",
