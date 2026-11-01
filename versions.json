@@ -2,74 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-534",
-      "ref": "refs/pull/534/merge",
-      "sha": "ec12a4a5c52a5e0142bf487811381528b3949fdd",
-      "timestamp": "2026-11-01T19:32:24.328Z",
-      "commits": [
-        {
-          "sha": "ec12a4a5c52a5e0142bf487811381528b3949fdd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T19:30:32Z",
-          "message": "Merge f158c195545a3727b8bc7265a10fc0242780be9e into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
-        },
-        {
-          "sha": "f158c195545a3727b8bc7265a10fc0242780be9e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T12:30:14-07:00",
-          "message": "Wrapped right-to-left rows start at their edge, and hostile nesting costs linear time (rich-unfiled-791c.zzmy)\n\nSecond high review of #534. A row a wrap closed loses its hanging whitespace\nbefore it is ordered, since L1 stood it at a right-to-left row's left edge.\nOpeners are read forward and a row reopens at most MAX_DEPTH of them, and an\nisolate count takes the scan out of an unmatched PDI. append carries the tail\nit has not closed, so alternating string and Text appends stay linear.\n\nPretty's non-string class name and JSON's undefined draw as they did on master.\nAn edge is a cell drawn, never a control.\n\nThe row-continuation map in sealed goes: it cost a stale-state bug for a case\nnobody reproduced, and containment does not need it. docs states the limit.\n"
-        },
-        {
-          "sha": "74af2c157fd3afca67dc11c5ced9a2f415656d56",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T12:03:21-07:00",
-          "message": "Long lines resolve, Markdown spans and tokens are their own content, and appends stay linear (rich-unfiled-791c.zzmy)\n\nMedium review of #534. A level run no longer spreads into a call, which threw\non a 200,000 character line holding one isolate. Each inline node of Markdown\nand each token closes what it left open, and inline code deletes the controls\na code block does. append remembers the text it closed, so a run of appends\nreads nothing twice. A row spliced into goes on from what it left open.\n\nplainOf has one home on Segment, and segmentToString says a row is encoded\nwhole.\n"
-        },
-        {
-          "sha": "74f3370d54f66d3e290e799689f0133832ffe336",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T11:48:05-07:00",
-          "message": "Direction state ends where rendering ends it, on every path into a Text (rich-unfiled-791c.zzmy)\n\nHigh review of #534. A line is the paragraph, so advance stops resetting at\nU+2029, which paragraph resolves inside the line: an override that survived it\nwas invisible to closed. assemble's strings and tuples and Pretty's symbols,\nfunction names, opaque names and thrown messages all close now.\n\nA closer after a wrap's whitespace no longer reads as content, clusters are\nfound across a row's spans so a mark keeps its letter, a ZWJ inside a letter's\ncluster joins forward, and edgeStyle reports the cells drawn at the edge.\nNeovim and Vim terminals are plain. Openers are read off one pass over the\nline, so logical wrapping is linear again.\n"
-        },
-        {
-          "sha": "1b05e31653819187772e2b6e554d8e1eaf8d5e02",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T11:24:28-07:00",
-          "message": "Right-to-left text is proved on the wire, a real emulator and a browser, and documented (rich-unfiled-791c.zzmy)\n"
-        },
-        {
-          "sha": "7202b40963db4d957e188aa467fcb1b8fd526766",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T11:10:07-07:00",
-          "message": "Bidi controls take effect inside the content holding them, and a terminal's text order decides what reaches the wire (rich-unfiled-791c.zzmy)\n"
-        },
-        {
-          "sha": "1ac9e345115dbc41fab9dcf1b5059c4b9c93de63",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T10:53:05-07:00",
-          "message": "UAX #9 resolves a paragraph's levels and a line's visual order, proven on the UCD's conformance data (rich-unfiled-791c.zzmy)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0",
-      "timestamp": "2026-11-01T16:40:17.627Z",
+      "sha": "c8ae6eaac9af60ccc503b47619a5fd65c263e3d1",
+      "timestamp": "2026-11-01T19:42:07.468Z",
       "commits": [
         {
-          "sha": "d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0",
+          "sha": "c8ae6eaac9af60ccc503b47619a5fd65c263e3d1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T09:38:11-07:00",
-          "message": "Every control and format code point has one disposition, read by the sanitizer and the width measure (rich-control-codes-xh4n.xt7) (#533)\n\n* Every control and format code point has one disposition, read by the sanitizer and the width measure (rich-control-codes-xh4n.xt7)\n\n* The sanitizer's disposition check is exhaustive, and a clean string costs one match (rich-control-codes-xh4n.xt7)\n\nThe measure's switch bound a new Disposition and the sanitizer's filter did not, so a variant that moved ESC out of `strip` compiled and reached the wire. Both readers now refuse to compile until they say what the variant does.\n\nThe clean check is `match` rather than `test`: `test` coerces, so a template's unlifted scope value read as \"[object Object]\" and rendered as success instead of failing as a template error.\n\nThe reverse census accepts Cn, so a row for a newer Unicode's code point passes on every Node `engines` admits.\n\n* The width table names the clause it holds, and the strip test asserts the width (rich-control-codes-xh4n.xt7)"
+          "timestamp": "2026-11-01T12:39:54-07:00",
+          "message": "Bidi controls take effect inside the content that holds them, and right-to-left text reads correctly (rich-unfiled-791c.zzmy) (#534)\n\n* UAX #9 resolves a paragraph's levels and a line's visual order, proven on the UCD's conformance data (rich-unfiled-791c.zzmy)\n\n* Bidi controls take effect inside the content holding them, and a terminal's text order decides what reaches the wire (rich-unfiled-791c.zzmy)\n\n* Right-to-left text is proved on the wire, a real emulator and a browser, and documented (rich-unfiled-791c.zzmy)\n\n* Direction state ends where rendering ends it, on every path into a Text (rich-unfiled-791c.zzmy)\n\nHigh review of #534. A line is the paragraph, so advance stops resetting at\nU+2029, which paragraph resolves inside the line: an override that survived it\nwas invisible to closed. assemble's strings and tuples and Pretty's symbols,\nfunction names, opaque names and thrown messages all close now.\n\nA closer after a wrap's whitespace no longer reads as content, clusters are\nfound across a row's spans so a mark keeps its letter, a ZWJ inside a letter's\ncluster joins forward, and edgeStyle reports the cells drawn at the edge.\nNeovim and Vim terminals are plain. Openers are read off one pass over the\nline, so logical wrapping is linear again.\n\n* Long lines resolve, Markdown spans and tokens are their own content, and appends stay linear (rich-unfiled-791c.zzmy)\n\nMedium review of #534. A level run no longer spreads into a call, which threw\non a 200,000 character line holding one isolate. Each inline node of Markdown\nand each token closes what it left open, and inline code deletes the controls\na code block does. append remembers the text it closed, so a run of appends\nreads nothing twice. A row spliced into goes on from what it left open.\n\nplainOf has one home on Segment, and segmentToString says a row is encoded\nwhole.\n\n* Wrapped right-to-left rows start at their edge, and hostile nesting costs linear time (rich-unfiled-791c.zzmy)\n\nSecond high review of #534. A row a wrap closed loses its hanging whitespace\nbefore it is ordered, since L1 stood it at a right-to-left row's left edge.\nOpeners are read forward and a row reopens at most MAX_DEPTH of them, and an\nisolate count takes the scan out of an unmatched PDI. append carries the tail\nit has not closed, so alternating string and Text appends stay linear.\n\nPretty's non-string class name and JSON's undefined draw as they did on master.\nAn edge is a cell drawn, never a control.\n\nThe row-continuation map in sealed goes: it cost a stale-state bug for a case\nnobody reproduced, and containment does not need it. docs states the limit."
         }
       ]
     }
