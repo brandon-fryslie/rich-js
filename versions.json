@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-534",
+      "ref": "refs/pull/534/merge",
+      "sha": "bad550babee797d3bbc72989194a016500df202b",
+      "timestamp": "2026-11-01T18:26:26.044Z",
+      "commits": [
+        {
+          "sha": "bad550babee797d3bbc72989194a016500df202b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T11:24:55-07:00",
+          "message": "Merge 1b05e31653819187772e2b6e554d8e1eaf8d5e02 into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
+        },
+        {
+          "sha": "1b05e31653819187772e2b6e554d8e1eaf8d5e02",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T11:24:28-07:00",
+          "message": "Right-to-left text is proved on the wire, a real emulator and a browser, and documented (rich-unfiled-791c.zzmy)\n"
+        },
+        {
+          "sha": "7202b40963db4d957e188aa467fcb1b8fd526766",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T11:10:07-07:00",
+          "message": "Bidi controls take effect inside the content holding them, and a terminal's text order decides what reaches the wire (rich-unfiled-791c.zzmy)\n"
+        },
+        {
+          "sha": "1ac9e345115dbc41fab9dcf1b5059c4b9c93de63",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T10:53:05-07:00",
+          "message": "UAX #9 resolves a paragraph's levels and a line's visual order, proven on the UCD's conformance data (rich-unfiled-791c.zzmy)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0",
