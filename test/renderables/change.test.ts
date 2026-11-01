@@ -35,7 +35,7 @@ const CHANGES: readonly [string, Transition<Change>][] = [
 
 describe("a change from one renderable to another", () => {
   for (const [name, change] of CHANGES) {
-    const between = (from: Renderable, to: Renderable) => change.effect({ from, to, theme });
+    const between = (from: Renderable, to: Renderable) => change.effect({ from, to });
 
     it(`${name}: draws the same bytes for the same t at one frame a second and sixty`, () => {
       const moving = between(building, done);
@@ -94,14 +94,14 @@ describe("a change from one renderable to another", () => {
   }
 
   it("a crossfade turns every cell at its half, and a wipe turns the left before the right", () => {
-    expect(text(draw(crossfade(curve).effect({ from: building, to: done, theme }).at(0.99), { maxWidth: 40, colorSystem: null }))).toBe("buildi\n");
-    expect(text(draw(crossfade(curve).effect({ from: building, to: done, theme }).at(1), { maxWidth: 40, colorSystem: null }))).toBe("done ✓\n");
-    const midway = text(draw(wipe(curve).effect({ from: new RichText("aaaaaaaaaaaaaaaaaaaa"), to: new RichText("bbbbbbbbbbbbbbbbbbbb"), theme }).at(1), { maxWidth: 40, colorSystem: null }));
+    expect(text(draw(crossfade(curve).effect({ from: building, to: done }).at(0.99), { maxWidth: 40, colorSystem: null }))).toBe("buildi\n");
+    expect(text(draw(crossfade(curve).effect({ from: building, to: done }).at(1), { maxWidth: 40, colorSystem: null }))).toBe("done ✓\n");
+    const midway = text(draw(wipe(curve).effect({ from: new RichText("aaaaaaaaaaaaaaaaaaaa"), to: new RichText("bbbbbbbbbbbbbbbbbbbb") }).at(1), { maxWidth: 40, colorSystem: null }));
     expect(midway).toMatch(/^b+a+\n$/);
   });
 
   it("reports the old renderable and the new one in the same order drawn as held", () => {
-    const frame = crossfade(curve).effect({ from: building, to: done, theme }).at(0.5);
+    const frame = crossfade(curve).effect({ from: building, to: done }).at(0.5);
     const seen = (maxWidth: number): Renderable[] => {
       const present: Renderable[] = [];
       draw(frame, { ...OPTIONS, maxWidth, onPresent: (r) => present.push(r) });
@@ -114,13 +114,13 @@ describe("a change from one renderable to another", () => {
   it("a wipe whose front falls inside a wide glyph blanks it rather than halving it", () => {
     // Linear over 2s, 20 columns, edge 6: the front is at 13t, and a cell turns once it is 3 columns behind it,
     // so at t = 0.577 columns 0–4 have turned and the cut at column 5 falls in the glyph at columns 4–5.
-    const cut = wipe(curve).effect({ from: wide, to: building, theme }).at(0.577);
+    const cut = wipe(curve).effect({ from: wide, to: building }).at(0.577);
     expect(text(draw(cut, { maxWidth: 40, colorSystem: null }))).toBe("build 字漢字漢字漢字\n");
   });
 
   it("a crossfade shorter than a second, sampled once a second, shows the old renderable and then the new", () => {
     const quick = crossfade({ seconds: 0.5, ease: EASES.linear, swing: 1 });
-    const moving = quick.effect({ from: building, to: done, theme });
+    const moving = quick.effect({ from: building, to: done });
     expect(text(draw(inFrame(moving, 0)))).toBe("buildi\n");
     for (const t of [1, 2]) {
       expect(quick.done(t)).toBe(true);
@@ -130,8 +130,8 @@ describe("a change from one renderable to another", () => {
   });
 
   it("a cell passes through the terminal's ground at its half", () => {
-    const moving = crossfade(curve).effect({ from: building, to: done, theme });
-    const half = draw(inFrame(moving, 1)).filter((s) => s.text.trim() !== "");
+    const moving = crossfade(curve).effect({ from: building, to: done });
+    const half = draw(inFrame(moving, 1), { ...OPTIONS, terminal: theme }).filter((s) => s.text.trim() !== "");
     const ground = theme.backgroundColor.hex;
     for (const segment of half) expect(segment.style?.color?.getTruecolor(theme, true).hex).toBe(ground);
   });

@@ -18,6 +18,7 @@ import {
   EASES,
   Effected,
   Group,
+  Console,
   Live,
   Panel,
   Phase,
@@ -48,15 +49,14 @@ const ELEMENTS: readonly [string, Animation<ColorRamp>][] = [
 
 const view: Renderable = new Group(
   ...ELEMENTS.flatMap(([title, ramp]) => [
-    new Effected(new Rule(title, { style: LINE }), gradient(ramp, [LINE]), { key: `rule ${title}`, theme: CATPPUCCIN_MOCHA }),
+    new Effected(new Rule(title, { style: LINE }), gradient(ramp, [LINE]), { key: `rule ${title}` }),
     new Effected(new Panel(new RichText("the words keep their own colour", { style: "#cdd6f4" }), { borderStyle: LINE, width: 50 }), gradient(ramp, [LINE]), {
       key: `panel ${title}`,
-      theme: CATPPUCCIN_MOCHA,
     }),
   ]),
 );
 
-const live = new Live(view, { refreshPerSecond: 30 });
+const live = new Live(view, { console: new Console({ terminal: CATPPUCCIN_MOCHA }), refreshPerSecond: 30 });
 live.start();
 await new Promise((resolve) => setTimeout(resolve, 20_000));
 live.stop();

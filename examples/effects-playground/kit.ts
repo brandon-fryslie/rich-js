@@ -41,7 +41,7 @@ export interface Pace {
  * version, which picks up at the frame and curve time the last one reached.
  */
 export function play(make: Make, pace: Pace): void {
-  const console = new Console();
+  const console = new Console({ terminal: THEME });
   const drawnWith = console.options;
   const subjects = [stripSubject(THEME), textSubject(THEME, drawnWith.colorSystem ?? ColorDepth.TRUECOLOR)].map((s) => drawnSubject(s, drawnWith));
   const ink = ColorSpec.fromRgba(THEME.foregroundColor);
@@ -69,7 +69,7 @@ export function play(make: Make, pace: Pace): void {
   });
   const draw = (): void => {
     const heading = new RichText(`frame ${frame} · curve time ${t.toFixed(2)} · ${pace.fps} fps`, { style: dim, noWrap: true });
-    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { key: s.name, theme: THEME }).at(t));
+    const drawn = subjects.map((s, n) => new Effected(s.renderable, effects[n]!, { key: s.name }).at(t));
     live.update(new Padding(new Group(heading, new RichText(""), ...drawn), [1, 2], { style: paper }), { refresh: true });
     t += pace.step;
     frame += 1;

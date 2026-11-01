@@ -720,6 +720,28 @@ It is a property of the terminal, not of any one renderable, so no renderable
 takes an option of its own for it. `renderToString` takes the same
 `asciiOnly` option, and so does an [`App`](./app).
 
+## The terminal a frame is drawn on
+
+An effect that fades toward the ground, or moves a colour the terminal supplies,
+has to know the colours of the terminal it is drawn on, and a terminal's palette
+cannot be queried. So the program says what it is, once, and every effect this
+console draws resolves its colours there:
+
+```typescript
+import { Console, Effected, EFFECT_CATALOGUE, RichText, SOLARIZED_LIGHT } from "@promptctl/rich-js";
+
+const light = new Console({ terminal: SOLARIZED_LIGHT });
+const arriving = EFFECT_CATALOGUE.transitions.fade({ z: 0 }).effect;
+light.print(new Effected(new RichText("arriving"), arriving, { key: "status" }).at(1));
+```
+
+`renderToString` and an [`App`](./app) take the same `terminal` option. A
+renderable reads it from its render options, as it reads `colorSystem`, so a
+container passes it down without knowing it is there. With none named it is the
+terminal the colour depth assumes. It is apart from `theme`, the names a style
+string may use, and from the `theme` of an [export](#exporting), which draws the
+recording for its own reader.
+
 ## Reduced motion
 
 `reducedMotion: true` draws every animation this console prints, and every

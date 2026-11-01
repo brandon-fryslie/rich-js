@@ -35,7 +35,7 @@ const identity: Effect = () => Animation.constant<EffectFrame>((colors) => color
 const perColumn: Effect = () => Animation.continuous(() => (colors, cell) => ({ ...colors, fg: new ColorRgba((cell.col * 37) % 256, 0, 0) }));
 
 function effected(child: Renderable, effect: Effect, t = 0, key = "k"): ReturnType<typeof inFrame> {
-  return inFrame(new Effected(child, effect, { key, theme: THEME }), t);
+  return inFrame(new Effected(child, effect, { key }), t);
 }
 
 /** A renderable yielding fixed segments, so nothing but the effect parses or builds a style. */
@@ -56,7 +56,7 @@ describe("Effected — the identity effect", () => {
 
   it("leaves an unstyled cell unstyled though it saw the default colours", () => {
     const seen: CellLook[] = [];
-    const segments = [...effected(fixed(new Segment("ab")), () => Animation.continuous(() => (c) => (seen.push(c), c))).render({ maxWidth: 10 })];
+    const segments = [...effected(fixed(new Segment("ab")), () => Animation.continuous(() => (c) => (seen.push(c), c))).render({ maxWidth: 10, terminal: THEME })];
     expect(seen).toEqual([DEFAULTS, DEFAULTS]);
     expect(segments).toHaveLength(1);
     // Written as it was: no byte but the glyphs. What the segment gains is
@@ -65,11 +65,11 @@ describe("Effected — the identity effect", () => {
     expect(segments[0]!.style?.hold.nextChange).toBe(0);
   });
 
-  it("hands a cell the colours on screen: an ANSI colour from the theme, swapped under reverse", () => {
+  it("hands a cell the colours on screen: an ANSI colour from the terminal, swapped under reverse", () => {
     const seen: CellLook[] = [];
     const record: Effect = () => Animation.continuous(() => (c) => (seen.push(c), c));
     const red = THEME.ansiColors.get(1);
-    [...effected(fixed(new Segment("a", Style.parse("red")), new Segment("b", Style.parse("reverse red"))), record).render({ maxWidth: 10 })];
+    [...effected(fixed(new Segment("a", Style.parse("red")), new Segment("b", Style.parse("reverse red"))), record).render({ maxWidth: 10, terminal: THEME })];
     expect(seen).toEqual([
       { fg: red, bg: THEME.backgroundColor, attributes: PLAIN },
       { fg: THEME.backgroundColor, bg: red, attributes: PLAIN },
@@ -113,7 +113,7 @@ describe("Effected — the identity effect", () => {
     const seen: CellLook[] = [];
     const record: Effect = () => Animation.continuous(() => (c) => (seen.push(c), c));
     const style = Style.parse("#ff8800");
-    [...effected(fixed(new Segment("a", style)), record).render({ maxWidth: 10, colorSystem: ColorDepth.STANDARD })];
+    [...effected(fixed(new Segment("a", style)), record).render({ maxWidth: 10, colorSystem: ColorDepth.STANDARD, terminal: THEME })];
     expect(seen[0]!.fg).toEqual(style.drawnColors(ColorDepth.STANDARD).color!.getTruecolor(THEME, true));
     expect(seen[0]!.fg).not.toEqual(new ColorRgba(255, 136, 0));
   });
@@ -223,7 +223,7 @@ describe("Effected — positions and seeds", () => {
   });
 
   it("refuses a non-finite t", () => {
-    expect(() => new Effected(fixed(), identity, { key: "k", theme: THEME }).at(Number.NaN)).toThrow(/finite t/);
+    expect(() => new Effected(fixed(), identity, { key: "k" }).at(Number.NaN)).toThrow(/finite t/);
   });
 });
 
@@ -353,8 +353,8 @@ describe("Effected — below truecolor", () => {
   const nudge: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: lighter(c.fg, 0.01), bg: lighter(c.bg, 0.01) }));
   const nudgeGround: Effect = () => Animation.continuous(() => (c) => ({ ...c, bg: lighter(c.bg, 0.01) }));
   const onMocha = (child: Renderable, effect: Effect): ReturnType<typeof inFrame> =>
-    inFrame(new Effected(child, effect, { key: "k", theme: CATPPUCCIN_MOCHA }), 0);
-  const ansi = { width: 10, colorSystem: "ansi" } as const;
+    inFrame(new Effected(child, effect, { key: "k" }), 0);
+  const ansi = { width: 10, colorSystem: "ansi", terminal: CATPPUCCIN_MOCHA } as const;
 
   it("draws a slightly moved ANSI colour in the slot it came from", () => {
     const text = new RichText("x", { style: "on blue" });

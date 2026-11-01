@@ -7,7 +7,7 @@ import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
 import { ColorDepth, isDumbTerminal, resolveDestination } from "./color.js";
 import type { ColorSystemName, Destination } from "./color.js";
 import type { Env } from "./env.js";
-import type { TerminalTheme } from "./color.js";
+import type { TerminalColors, TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
 import { encodeSvg } from "./export-svg.js";
 import { RichText } from "./text.js";
@@ -114,6 +114,12 @@ export interface ConsoleOptions {
    * it in; nothing here reads the environment for it. Default false.
    */
   reducedMotion?: boolean;
+  /**
+   * The terminal this console draws on (`RenderOptions.terminal`), which
+   * every effect it draws resolves its colours on. Default: the one the
+   * colour depth assumes.
+   */
+  terminal?: TerminalColors;
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
@@ -397,6 +403,7 @@ export class Console {
   private readonly _markup: boolean;
   private readonly _highlight: boolean;
   private readonly _theme: Theme;
+  private readonly _terminal: TerminalColors | undefined;
   private readonly _onStyleError: StyleErrorHandler | undefined;
   private readonly _asciiOnly: boolean;
   private readonly _highlighter: Highlighter;
@@ -433,6 +440,7 @@ export class Console {
     // [LAW:no-ambient-temporal-coupling] The theme is assigned before the
     // style, because the console's own style may be one of the theme's names.
     this._theme = options?.theme ?? DEFAULT_THEME;
+    this._terminal = options?.terminal;
     this._style = this._theme.resolve(options?.style ?? NULL_STYLE);
     // Rich's rule: a terminal is interactive unless it is a dumb one.
     this._interactive = options?.forceInteractive ?? (this._isTerminal && !isDumbTerminal(environment.env));
@@ -511,6 +519,7 @@ export class Console {
       theme: this._theme,
       onStyleError: this._onStyleError,
       colorSystem: this._destination.colorSystem,
+      terminal: this._terminal,
       markup: this._markup,
       highlight: this._highlight,
       highlighter: this._highlighter,

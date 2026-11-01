@@ -50,13 +50,13 @@ import type { TerminalHost } from "./terminal-host.js";
  */
 export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 
-// [LAW:one-source-of-truth] How a frame draws — its glyphs, the style names
-// it knows, what happens to a style it cannot resolve, markup and
-// highlighting — is the console's to say, so App takes those options as the
+// [LAW:one-source-of-truth] How a frame draws — its glyphs, the terminal its
+// colours resolve on, the style names it knows, what happens to a style it
+// cannot resolve, markup and highlighting — is the console's to say, so App takes those options as the
 // console declares them. This list is both the type and what is copied: the
 // host alone decides the console's size, colours and sink, so no other
 // property of the options object reaches it, whatever the object carries.
-const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
+const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "terminal", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
 type DrawOption = (typeof DRAW_OPTIONS)[number];
 type DrawOptions = Readonly<Pick<ConsoleOptions, DrawOption>>;
 

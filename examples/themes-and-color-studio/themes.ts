@@ -25,6 +25,7 @@ import {
   FLEXOKI,
   getThemePalette,
   GRUVBOX,
+  render,
   lighten,
   listThemePalettes,
   MONOKAI,
@@ -54,7 +55,7 @@ import {
   type Effect,
 } from "@promptctl/rich-js";
 
-import type { BaseColors, ThemeName } from "@promptctl/rich-js";
+import type { BaseColors, RenderOptions, ThemeName } from "@promptctl/rich-js";
 
 import { THEMES, type ThemePaletteData } from "@promptctl/rich-js/themes/data";
 import { getThemeBaseColors, type ThemeBaseColors } from "@promptctl/rich-js/themes/registry";
@@ -405,9 +406,9 @@ export function section5ColorRefs(out: Console): void {
     });
   out.print(bold("    Effected — a per-cell effect sampled at t = 0, 0.5, 1 s:"));
   for (const t of [0, 0.5, 1]) {
-    out.print(
-      new Effected(new RichText(`${indent}${label}`), shimmer, { key: "studio-shimmer", theme: GRUVBOX }).at(t),
-    );
+    const swept = new Effected(new RichText(`${indent}${label}`), shimmer, { key: "studio-shimmer" }).at(t);
+    // `out` draws the whole tour, so this one renderable names its own terminal.
+    out.print({ render: (options: RenderOptions) => render(swept, { ...options, terminal: GRUVBOX }) });
   }
   out.print(blank());
 

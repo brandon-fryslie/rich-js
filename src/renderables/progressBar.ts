@@ -3,7 +3,7 @@
  */
 
 import { cellCount } from "../core/cells.js";
-import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, type TerminalColors } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal } from "../core/color.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import type {
@@ -110,31 +110,34 @@ export class ProgressBar implements Renderable, Measurable {
     }
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
     // Rich's pulse resolves its colours on the terminal a depth assumes, as
-    // `get_truecolor` does with no theme; so does this.
-    const theme = resolveTerminal(undefined, depth);
+    // `get_truecolor` does with no theme; so does this with none named.
+    const terminal = resolveTerminal(options.terminal, depth);
     // Rich writes the pulse's back as a colour of its own, black where the
     // back style names none, so the light always has the bar's colour to fall
     // on: one the terminal supplies takes no light.
     const style = getStyle(options, this.style);
-    const ink = style.color?.isDefault === false ? style.color : ColorSpec.fromRgba((style.color ?? PULSE_BACK).getTruecolor(theme, true));
+    const ink = style.color?.isDefault === false ? style.color : ColorSpec.fromRgba((style.color ?? PULSE_BACK).getTruecolor(terminal, true));
     const back = style.add(Style.fromColor(ink));
     // [LAW:no-ambient-temporal-coupling] The moment is the frame's; the bar
     // only says what it looks like then. An empty track, lit by the shimmer.
     const track: Renderable = { render: (o) => this.track(o, width, 0, back) };
-    yield* render(new Effected(track, this.pulseEffect(options, back, depth, theme), { key: "progress-bar", theme }), options);
+    yield* render(new Effected(track, this.pulseEffect(options, back), { key: "progress-bar" }), options);
   }
 
   /**
-   * The shimmer over this bar's back colour as `Effected` sees it drawn at
-   * `depth`, toward `bar.pulse`. A bar has no words to keep legible, so its
-   * back takes the whole of the light.
+   * The shimmer over this bar's back colour as `Effected` sees it drawn,
+   * toward `bar.pulse`. A bar has no words to keep legible, so its back takes
+   * the whole of the light.
    */
-  private pulseEffect(options: RenderOptions, back: Style, depth: ColorDepth, theme: TerminalColors): Effect {
-    const ink = back.drawnColors(depth).color ?? ColorSpec.default();
-    const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
-    const loop = shimmer(PULSE_CURVE, PULSE_REACH, glow.getTruecolor(theme, true), 0);
-    const whole = new Map([[ink.getTruecolor(theme, true).hex, 1]]);
-    return atShares(loop, () => whole);
+  private pulseEffect(options: RenderOptions, back: Style): Effect {
+    return (drawn) => {
+      const { depth, terminal } = drawn;
+      const ink = back.drawnColors(depth).color ?? ColorSpec.default();
+      const glow = getStyle(options, "bar.pulse").drawnColors(depth).color ?? ColorSpec.default();
+      const loop = shimmer(PULSE_CURVE, PULSE_REACH, glow.getTruecolor(terminal, true), 0);
+      const whole = new Map([[ink.getTruecolor(terminal, true).hex, 1]]);
+      return atShares(loop, () => whole)(drawn);
+    };
   }
 
   /** Rich 9d8f9a3 `__rich_console__`: the fill is counted in half cells, and a total of zero is a bar already full. */

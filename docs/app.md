@@ -117,7 +117,7 @@ const app = new App({
 
 ## Style names and drawing options
 
-`theme`, `onStyleError`, `markup`, `highlight` and `highlighter` are the [`Console`](/console) options of the same names, and every frame is drawn with them, as `asciiOnly` is above. `theme` is the [`Theme`](/protocol#drawing-with-theme-names) a frame resolves style names against. Without one, a frame knows only the built-in names: a `RichText` styled with a name your theme adds draws plain, and `getStyle` throws for it. `onStyleError` [hears each style a frame drops](/style#reporting-dropped-styles), a name your theme lacks included:
+`terminal`, `theme`, `onStyleError`, `markup`, `highlight` and `highlighter` are the [`Console`](/console) options of the same names, and every frame is drawn with them, as `asciiOnly` is above. `theme` is the [`Theme`](/protocol#drawing-with-theme-names) a frame resolves style names against. Without one, a frame knows only the built-in names: a `RichText` styled with a name your theme adds draws plain, and `getStyle` throws for it. `onStyleError` [hears each style a frame drops](/style#reporting-dropped-styles), a name your theme lacks included:
 
 ```ts silent
 import { RichText, Theme } from "@promptctl/rich-js";

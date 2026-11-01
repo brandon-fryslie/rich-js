@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   Animation,
   ColorDepth,
-  DEFAULT_TERMINAL_THEME,
   EASES,
   Group,
   Layout,
@@ -32,7 +31,6 @@ import { nextDown } from "./next-down.js";
 // a late one.
 
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR, height: { rows: 6, exact: false } };
-const theme = DEFAULT_TERMINAL_THEME;
 const draw = (renderable: Renderable): Segment[] => [...render(renderable, OPTIONS)];
 const bytes = (renderable: Renderable): string => segmentsToString(draw(renderable), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false });
 
@@ -46,7 +44,7 @@ const sampled = (rate: number, from: number, to: number): number[] => Array.from
 const row = (i: number, seconds: number, steps?: number): Lifecycle => {
   const fade = fadeIn({ seconds, ease: EASES.linear, swing: 1 }, i);
   const enter = steps === undefined ? fade : onBeat(fade, beat([steps]));
-  return lifecycle(new RichText(`row ${i} arrived`, { style: "bold cyan" }), { enter: throughColors(enter, theme), exit: throughColors(dissolveOut({ seconds, ease: EASES.linear, swing: 1 }, i), theme), key: `row-${i}` }, 0);
+  return lifecycle(new RichText(`row ${i} arrived`, { style: "bold cyan" }), { enter: throughColors(enter), exit: throughColors(dissolveOut({ seconds, ease: EASES.linear, swing: 1 }, i)), key: `row-${i}` }, 0);
 };
 const rows = (seconds: number, steps?: number): Lifecycle[] => [0, 1, 2].map((i) => row(i, seconds, steps));
 

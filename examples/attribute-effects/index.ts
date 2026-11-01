@@ -15,6 +15,7 @@ import {
   Columns,
   EFFECT_CATALOGUE,
   Effected,
+  Console,
   Live,
   Panel,
   RichText,
@@ -33,11 +34,11 @@ const PANELS: readonly [string, Effect][] = [
 
 const view: Columns = new Columns(
   PANELS.map(([title, effect]) =>
-    new Panel(new Effected(new RichText("ready when you are", { style: "#89b4fa" }), effect, { key: title, theme: CATPPUCCIN_MOCHA }), { title, width: WIDTH }),
+    new Panel(new Effected(new RichText("ready when you are", { style: "#89b4fa" }), effect, { key: title }), { title, width: WIDTH }),
   ),
 );
 
-const live = new Live(view, { refreshPerSecond: 30 });
+const live = new Live(view, { console: new Console({ terminal: CATPPUCCIN_MOCHA }), refreshPerSecond: 30 });
 live.start();
 await new Promise((resolve) => setTimeout(resolve, 20_000));
 live.stop();

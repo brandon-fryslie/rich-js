@@ -39,7 +39,7 @@ import {
 } from "@promptctl/rich-js";
 import { Button, TextInput, WidgetApp, type ButtonVariant, type InteractiveWidget } from "@promptctl/rich-js/widgets";
 import type { TerminalHost } from "@promptctl/rich-js/host";
-import { KINDS, MUTED, TEXT, panel } from "./kinds.js";
+import { KINDS, MUTED, TEXT, THEME, panel } from "./kinds.js";
 
 /**
  * The colour depths the playground can ask its terminal for, each by the
@@ -247,6 +247,7 @@ async function session(host: TerminalHost, clock: Clock, c: Controls, preference
     timeline: from.timeline,
     rate: from.rate,
     reducedMotion: preferences.reducedMotion,
+    terminal: THEME,
     view,
   });
 

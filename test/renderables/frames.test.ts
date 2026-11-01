@@ -10,7 +10,6 @@ import { RichText } from "../../src/core/text.js";
 import { Effected, type Effect } from "../../src/renderables/effect.js";
 import { FrameSequence, type Frame } from "../../src/renderables/frames.js";
 import { Table } from "../../src/renderables/table.js";
-import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 import { inFrame } from "./in-frame.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a host sees: which
@@ -132,7 +131,7 @@ describe("FrameSequence — the frame in progress at the frame's time", () => {
   it("an effect lights whichever frame is up, by nesting, and still changes no glyph", () => {
     const lit: Effect = () => Animation.continuous(() => (colors) => ({ ...colors, fg: new ColorRgba(255, 255, 0) }));
     const sequence = new FrameSequence(chevrons);
-    const under = (t: number): string => renderToString(inFrame(new Effected(sequence, lit, { key: "k", theme: DEFAULT_TERMINAL_THEME }), t), { width: 1 });
+    const under = (t: number): string => renderToString(inFrame(new Effected(sequence, lit, { key: "k" }), t), { width: 1 });
     expect(under(0)).toContain(CHEVRONS[0]);
     expect(under(1)).toContain(CHEVRONS[1]);
     expect(under(0)).toContain("255;255;0");

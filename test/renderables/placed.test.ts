@@ -31,7 +31,6 @@ import { RichText } from "../../src/core/text.js";
 import { ColorRgba } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
-import { CATPPUCCIN_MOCHA } from "../../src/themes/terminalThemes.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Effected } from "../../src/renderables/effect.js";
 import { drawnAt, inFrame } from "./in-frame.js";
@@ -44,7 +43,6 @@ import { scroll } from "../../src/renderables/scroll.js";
 import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { lifecycle, throughColors, type Lifecycle } from "../../src/renderables/lifecycle.js";
-import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 /** A container written by a user: each child drawn through its own `render`, a line after each. */
 class Box implements Renderable {
@@ -96,7 +94,7 @@ const ramped = (): Effected => {
     { at: 1, color: new ColorRgba(255, 120, 100) },
   ]);
   const line = "#a6e3a1";
-  return new Effected(new Rule("x", { style: line }), gradient(hues.moving({ scroll: Animation.continuous(Phase.loop(4)) }), [line]), { key: "ramp", theme: CATPPUCCIN_MOCHA });
+  return new Effected(new Rule("x", { style: line }), gradient(hues.moving({ scroll: Animation.continuous(Phase.loop(4)) }), [line]), { key: "ramp" });
 };
 
 interface Run {
@@ -220,7 +218,7 @@ describe("an animation placed in a container written by the user", () => {
 describe("an animation placed showing nothing", () => {
   /** A toast that enters at 1 s, fading in over 2: before 1 it shows nothing. */
   const entering = (): Lifecycle =>
-    lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0), DEFAULT_TERMINAL_THEME), exit: throughColors(dissolveOut(curve, 0), DEFAULT_TERMINAL_THEME), key: "toast" }, 1);
+    lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(curve, 0)), key: "toast" }, 1);
   const rowsOf: readonly [string, (child: Renderable) => Renderable][] = [
     ["Rows", (child) => new Rows(new RichText("above", { end: "" }), child, new RichText("below", { end: "" }))],
     ...CONTAINERS,

@@ -183,8 +183,8 @@ const STATUSES = [
 ];
 const STAY = 3;
 const CHANGE = { seconds: 1.2, ease: EASES["ease-in-out"], swing: 1 };
-const crossfading = rotating(STAY, turnsOf(STATUSES.length, (i) => crossfade(CHANGE).effect({ from: nthOf(STATUSES, i - 1), to: STATUSES[i]!, theme: THEME })));
-const wiping = rotating(STAY, turnsOf(STATUSES.length, (i) => wipe(CHANGE).effect({ from: nthOf(STATUSES, i - 1), to: STATUSES[i]!, theme: THEME })));
+const crossfading = rotating(STAY, turnsOf(STATUSES.length, (i) => crossfade(CHANGE).effect({ from: nthOf(STATUSES, i - 1), to: STATUSES[i]! })));
+const wiping = rotating(STAY, turnsOf(STATUSES.length, (i) => wipe(CHANGE).effect({ from: nthOf(STATUSES, i - 1), to: STATUSES[i]! })));
 
 // --- A list whose items enter and leave ---
 
@@ -198,7 +198,7 @@ const SHOWN = Math.ceil((LOG_STAYS + LOG_LEAVES.seconds) / EVERY);
 function logLine(i: number, entered: number): Lifecycle {
   const step = ((i % LOG.length) + LOG.length) % LOG.length;
   const line = new RichText(`${step + 1}/${LOG.length}  ${LOG[step]!}`, { style: nthOf(["#a6adc8", "#89b4fa", "#f9e2af", "#cba6f7"], step) });
-  const exit = step % 2 === 0 ? throughColors(dissolveOut(LOG_LEAVES, step), THEME) : throughGlyphs(scrambleOut(LOG_LEAVES, step));
+  const exit = step % 2 === 0 ? throughColors(dissolveOut(LOG_LEAVES, step)) : throughGlyphs(scrambleOut(LOG_LEAVES, step));
   return lifecycle(line, { enter: throughGlyphs(typewriter({ seconds: 0.8, ease: EASES["ease-out"] })), exit, key: `log ${step}` }, entered).leave(entered + LOG_STAYS);
 }
 /**
@@ -233,7 +233,7 @@ const treeing = rotating(6, [
       PACKAGES.map((name, i) =>
         lifecycle(
           new RichText(`src/${name}/`, { style: "#89b4fa" }),
-          { enter: throughColors(fadeIn({ seconds: 0.5, ease: EASES["ease-out"], swing: 1 }, i), THEME), exit: throughGlyphs(backspace({ seconds: 0.5, ease: EASES.linear })), key: `tree ${name}` },
+          { enter: throughColors(fadeIn({ seconds: 0.5, ease: EASES["ease-out"], swing: 1 }, i)), exit: throughGlyphs(backspace({ seconds: 0.5, ease: EASES.linear })), key: `tree ${name}` },
           i * ARRIVES,
         ).leave(4.4 + i * 0.12),
       ),
@@ -275,7 +275,7 @@ const nobody = Animation.map(Timeline.stagger<Renderable>([], 0.2), (children) =
 // From the word's start, as the marquee is, so with motion reduced it holds in view.
 const narrow = scroll(new RichText("hi", { style: "#f9e2af" }), { width: 12, height: 1, col: Animation.continuous((t) => ((Math.round(Phase.loop(4)(t) * 26) + 12) % 26) - 12) });
 const same = new RichText("unchanged", { style: "#a6e3a1" });
-const sameFade = rotating(STAY, [crossfade(CHANGE).effect({ from: same, to: same, theme: THEME })]);
+const sameFade = rotating(STAY, [crossfade(CHANGE).effect({ from: same, to: same })]);
 const early = rotating(4, [
   lifecycle(new RichText("told to go at once", { style: "#cba6f7" }), { enter: throughGlyphs(typewriter({ seconds: 2, ease: EASES.linear })), exit: throughGlyphs(backspace({ seconds: 1, ease: EASES.linear })), key: "early" }, 0).leave(0.8),
 ]);
@@ -298,15 +298,15 @@ export const KINDS: readonly Kind[] = [
   placed("tween · a counter", Animation.map(counting, (v) => new RichText(`${Math.round(v).toLocaleString("en-US").padStart(6)} files`, { style: "bold #f9e2af" }))),
   placed("tween · ProgressBar", Animation.map(filling, (v) => new ProgressBar({ total: 1204, completed: v, width: SLOT }))),
   placed("tween · a colour", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
-  placed("moving ramp · Rule", new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule", theme: THEME })),
-  aroundPanel("moving ramp · border", new RichText("the border is the ramp", { style: TEXT }), (framed) => new Effected(framed, gradient(flowing, [BORDER]), { key: "border", theme: THEME })),
+  placed("moving ramp · Rule", new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule" })),
+  aroundPanel("moving ramp · border", new RichText("the border is the ramp", { style: TEXT }), (framed) => new Effected(framed, gradient(flowing, [BORDER]), { key: "border" })),
   aroundPanel("marching border", new RichText("the ants march round", { style: TEXT }), (framed) => new GlyphEffected(framed, march, { key: "march" })),
   placed("typewriter", Animation.map(typing, prompted)),
   placed("scramble", Animation.map(scrambling, prompted)),
   placed("case wave", new GlyphEffected(WAVED, caseWave({ step: 0.12, width: 3 }, 0), { key: "wave" })),
   placed("rain on a blank panel", new GlyphEffected(new RichText(" ".repeat(SLOT)), particles(GLYPH_DEFAULTS.rain, 1), { key: "rain" })),
-  placed("blink", new Effected(new RichText("● recording", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.blink), { key: "blink", theme: THEME })),
-  placed("bold pulse", new Effected(new RichText("♥ a bold heartbeat", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.boldPulse), { key: "pulse", theme: THEME })),
+  placed("blink", new Effected(new RichText("● recording", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.blink), { key: "blink" })),
+  placed("bold pulse", new Effected(new RichText("♥ a bold heartbeat", { style: "#f38ba8" }), blink(ATTRIBUTE_DEFAULTS.boldPulse), { key: "pulse" })),
   placed("crossfade", crossfading),
   placed("wipe", wiping),
   placed("marquee", marquee),

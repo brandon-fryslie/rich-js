@@ -74,7 +74,7 @@ import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
 import type { Hold } from "../core/style.js";
 import { cellLen, graphemes } from "../core/cells.js";
-import { ColorDepth, ColorSpec, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
+import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -160,7 +160,7 @@ export interface Pair extends CellColors {
   /**
    * Whether the glyph's colour and the colour behind it, as the screen shows
    * them, are the terminal's own: a slot the element's style leaves unset or
-   * sets to `default`. Such a colour is resolved through the theme, so its
+   * sets to `default`. Such a colour is resolved through the terminal, so its
    * hex can equal one the element wrote; this is what tells them apart.
    */
   readonly terminal: { readonly fg: boolean; readonly bg: boolean };
@@ -213,7 +213,7 @@ export interface Drawn {
   /** The depth the frame is written at: below truecolor a moved colour lands on a palette colour. */
   readonly depth: ColorDepth;
   /** The terminal the frame is drawn on. */
-  readonly theme: TerminalColors;
+  readonly terminal: TerminalColors;
 }
 
 /** What an effect does to the cells of one frame: each cell's look and where it is in, its look out. Return `look` to leave a cell be. */
@@ -242,12 +242,6 @@ export interface EffectedOptions {
    * not twinkle in lockstep. The same key gives the same seeds on every frame.
    */
   readonly key: string;
-  /**
-   * The terminal the frame is drawn on: the colours a cell that sets none is
-   * drawn in, and the sixteen an ANSI colour names. The terminal's own palette
-   * is never queried, so the caller says what it is.
-   */
-  readonly theme: TerminalColors;
 }
 
 /** A frame an effect drew at a moment, and the hold the effect says it is in there. */
@@ -269,7 +263,6 @@ const UNMOVED: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number
 export class Recolored implements Renderable, Measurable {
   readonly t: number;
   readonly key: string;
-  readonly theme: TerminalColors;
 
   constructor(
     readonly renderable: Renderable,
@@ -278,7 +271,6 @@ export class Recolored implements Renderable, Measurable {
   ) {
     this.t = finiteTime("Effected", options.t);
     this.key = options.key;
-    this.theme = options.theme;
   }
 
   render(options: RenderOptions): Iterable<Segment> {
@@ -293,17 +285,20 @@ export class Recolored implements Renderable, Measurable {
     if (options.colorSystem === null) return { segments, hold: UNMOVED };
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
+    // [LAW:one-source-of-truth] Every colour below resolves on the frame's
+    // terminal, so two effects in a frame cannot disagree.
+    const terminal = resolveTerminal(options.terminal, depth);
     // [LAW:one-source-of-truth] The frame is measured before any cell is
     // handed to the effect, off the same looks its cells are drawn from, and
     // the one measure is what the effect's animation is made from.
-    const looked = looks(segments, depth, this.theme);
+    const looked = looks(segments, depth, terminal);
     const walked = walk(looked);
-    const animation = this.effect(measured(looked, () => walked, depth, this.theme));
-    const shown = shownAt(animation, this.t, options);
-    return { segments: this._recolored(walked, shown.value, depth), hold: holdOf(shown, this.t) };
+    const drawn = measured(looked, () => walked, depth, terminal);
+    const shown = shownAt(this.effect(drawn), this.t, options);
+    return { segments: this._recolored(walked, shown.value, drawn), hold: holdOf(shown, this.t) };
   }
 
-  private *_recolored(walked: readonly Walked[], frame: EffectFrame, depth: ColorDepth): Iterable<Segment> {
+  private *_recolored(walked: readonly Walked[], frame: EffectFrame, drawn: Drawn): Iterable<Segment> {
     // [LAW:one-source-of-truth] Every cell but a join cell that follows its
     // neighbours is painted first, so that cell is resolved from the cells
     // beside it as the effect left them, wherever in the frame they fall.
@@ -318,13 +313,13 @@ export class Recolored implements Renderable, Measurable {
     for (const [i, { segment, look, glyphs }] of walked.entries()) {
       const drawing = drawings[i];
       if (look === undefined || drawing === undefined) yield segment;
-      else if ("joined" in drawing) yield this._rejoined(segment, look, drawing.joined, glyphs, beside, frame, depth);
-      else yield* this._repainted(segment, look, glyphs, drawing.painted, depth);
+      else if ("joined" in drawing) yield this._rejoined(segment, look, drawing.joined, glyphs, beside, frame, drawn);
+      else yield* this._repainted(segment, look, glyphs, drawing.painted, drawn);
     }
   }
 
   /** `segment`'s cells drawn in the looks the effect painted them. */
-  private *_repainted(segment: Segment, look: Look, glyphs: readonly WalkedGlyph[], moved: readonly CellLook[], depth: ColorDepth): Iterable<Segment> {
+  private *_repainted(segment: Segment, look: Look, glyphs: readonly WalkedGlyph[], moved: readonly CellLook[], drawn: Drawn): Iterable<Segment> {
     const { style: base, wire, slots, pair, attributes } = look;
     // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
     // cell is drawn at the output depth first and merged on the colours that
@@ -337,7 +332,7 @@ export class Recolored implements Renderable, Measurable {
       // Back from the screen to the style's slots: the same swap undoes itself.
       const colors = onScreen(now, pair.reverse);
       const last = runs[runs.length - 1];
-      const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, depth);
+      const writes = last !== undefined && sameColors(last.colors, colors) ? last.drawn : this.respec(wire, slots, colors, drawn);
       if (last !== undefined && writesAlike(last.drawn, writes) && sameAttributes(last.attributes, now.attributes)) {
         last.text += glyph;
         last.cells += cellLen(glyph);
@@ -367,12 +362,12 @@ export class Recolored implements Renderable, Measurable {
    * nothing of keeps the edge the cell was drawn from, so with neither moved
    * the cell is as it was drawn.
    */
-  private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, frame: EffectFrame, depth: ColorDepth): Segment {
+  private _rejoined(segment: Segment, look: Look, joined: JoinedCell, glyphs: readonly WalkedGlyph[], beside: EdgesBeside, frame: EffectFrame, measure: Drawn): Segment {
+    const { depth, terminal } = measure;
     const cells = glyphs.flatMap(({ cell }) => (cell === undefined ? [] : [cell]));
     // A join cell that draws no cell shows nothing an effect could move.
     const [at] = cells;
     if (at === undefined) return segment;
-    const { theme } = this;
     // [LAW:one-source-of-truth] A moved edge is the spec the depth writes its
     // slot in, the spec the joiner reads of an item drawn so: a palette slot
     // stays that slot, which the lift tells apart by number, never an RGB read
@@ -383,12 +378,12 @@ export class Recolored implements Renderable, Measurable {
     const terminals = new Set<ColorSpec>();
     const edgeOf = (spec: ColorSpec | undefined, foreground: boolean): ColorSpec | undefined => {
       if (!spec?.isDefault) return spec;
-      const own = ColorSpec.fromRgba(spec.getTruecolor(theme, foreground));
+      const own = ColorSpec.fromRgba(spec.getTruecolor(terminal, foreground));
       terminals.add(own);
       return own;
     };
     const moved = (from: CellColors, to: CellColors): EdgeMove | undefined => {
-      const specs = movedSpecs(from, to, depth, theme);
+      const specs = movedSpecs(from, to, depth, terminal);
       return specs.fg === undefined && specs.bg === undefined ? undefined : { color: edgeOf(specs.fg, true), bgcolor: edgeOf(specs.bg, false) };
     };
     // [LAW:one-source-of-truth] A neighbour the frame shows no cell of beside
@@ -402,9 +397,9 @@ export class Recolored implements Renderable, Measurable {
     // comes here [LAW:no-silent-failure].
     const unseen = (edge: Style): EdgeMove | undefined => {
       const wire = edge.drawnColors(depth);
-      const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
-      const terminal = { fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true };
-      return moved(slots, returned(frame({ ...slots, attributes: cellAttributes(edge) }, { ...at, seed: cellSeed(this.key, at.row, at.col), pair: { ...slots, terminal, reverse: false } })));
+      const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(terminal, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(terminal, false) };
+      const own = { fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true };
+      return moved(slots, returned(frame({ ...slots, attributes: cellAttributes(edge) }, { ...at, seed: cellSeed(this.key, at.row, at.col), pair: { ...slots, terminal: own, reverse: false } })));
     };
     const moveOf = (side: "left" | "right"): EdgeMove | undefined => {
       const read = joined.reads[side];
@@ -428,7 +423,7 @@ export class Recolored implements Renderable, Measurable {
     const was = joined.style;
     const drawn = colors.drawnColors(depth);
     const { wire, slots } = look;
-    const rounded = this.respec(wire, slots, { fg: colors.color?.getTruecolor(theme, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(theme, false) ?? slots.bg }, depth);
+    const rounded = this.respec(wire, slots, { fg: colors.color?.getTruecolor(terminal, true) ?? slots.fg, bg: colors.bgcolor?.getTruecolor(terminal, false) ?? slots.bg }, measure);
     const written = (now: ColorSpec | undefined, before: ColorSpec | undefined, wrote: ColorSpec | undefined, drew: ColorSpec | undefined, round: ColorSpec | undefined): ColorSpec | undefined => {
       if (sameSpec(now, before)) return wrote;
       // [LAW:no-silent-failure] Unreachable: a move only fills an edge in, so
@@ -452,8 +447,8 @@ export class Recolored implements Renderable, Measurable {
    * `from` with `wire`: each moved slot in the spec `movedSpecs` writes it
    * in, the rest as `wire` wrote them.
    */
-  private respec(wire: DrawnColors, from: CellColors, to: CellColors, depth: ColorDepth): DrawnColors {
-    const moved = movedSpecs(from, to, depth, this.theme);
+  private respec(wire: DrawnColors, from: CellColors, to: CellColors, { depth, terminal }: Drawn): DrawnColors {
+    const moved = movedSpecs(from, to, depth, terminal);
     return { color: moved.fg ?? wire.color, bgcolor: moved.bg ?? wire.bgcolor };
   }
 }
@@ -471,7 +466,6 @@ export class Recolored implements Renderable, Measurable {
  */
 export class Effected implements Animation<Renderable> {
   readonly key: string;
-  readonly theme: TerminalColors;
 
   constructor(
     readonly renderable: Renderable,
@@ -479,12 +473,11 @@ export class Effected implements Animation<Renderable> {
     options: EffectedOptions,
   ) {
     this.key = options.key;
-    this.theme = options.theme;
   }
 
   /** The element through the effect at `t`, unstamped. */
   at(t: number): Recolored {
-    return new Recolored(this.renderable, this.effect, { t, key: this.key, theme: this.theme });
+    return new Recolored(this.renderable, this.effect, { t, key: this.key });
   }
 
   nextChange(t: number): number {
@@ -513,15 +506,15 @@ export class Effected implements Animation<Renderable> {
 
   /**
    * The colours the screen shows for `pair` once it is drawn moved to `to`,
-   * both as the screen shows them, at `depth` on `theme`: what an effect
+   * both as the screen shows them, at `depth` on `terminal`: what an effect
    * moving a pair's colours leaves its words reading in.
    * [LAW:one-source-of-truth] Read through `movedSpecs`, the one writer a
    * moved slot is written with.
    */
-  static shows(pair: Pair, to: CellColors, depth: ColorDepth, theme: TerminalColors): CellColors {
+  static shows(pair: Pair, to: CellColors, depth: ColorDepth, terminal: TerminalColors): CellColors {
     const from = onScreen(pair, pair.reverse);
-    const moved = movedSpecs(from, onScreen(to, pair.reverse), depth, theme);
-    return onScreen({ fg: moved.fg?.getTruecolor(theme, true) ?? from.fg, bg: moved.bg?.getTruecolor(theme, false) ?? from.bg }, pair.reverse);
+    const moved = movedSpecs(from, onScreen(to, pair.reverse), depth, terminal);
+    return onScreen({ fg: moved.fg?.getTruecolor(terminal, true) ?? from.fg, bg: moved.bg?.getTruecolor(terminal, false) ?? from.bg }, pair.reverse);
   }
 }
 
@@ -540,7 +533,7 @@ type DrawnColors = ReturnType<Style["drawnColors"]>;
 
 /**
  * How one segment is drawn. [LAW:single-enforcer] `drawnColors` is what the
- * wire writes at the depth — alpha flattened, downgraded — and the theme
+ * wire writes at the depth — alpha flattened, downgraded — and the terminal
  * resolves what it leaves to the terminal. A slot an effect leaves alone keeps
  * the written spec, so it stays what the screen showed whatever moves beside it.
  */
@@ -562,16 +555,16 @@ interface Look {
   readonly seam: boolean;
 }
 
-/** Each of `segments` with how it is drawn at `depth` on `theme`; a control segment draws nothing. */
-function looks(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalColors): Looked[] {
+/** Each of `segments` with how it is drawn at `depth` on `terminal`; a control segment draws nothing. */
+function looks(segments: Iterable<Segment>, depth: ColorDepth, terminal: TerminalColors): Looked[] {
   return [...segments].map((segment) => {
     if (segment.isControl) return { segment, look: undefined };
     const style = segment.style ?? Style.null();
     const wire = style.drawnColors(depth);
-    const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(theme, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(theme, false) };
+    const slots = { fg: (wire.color ?? DEFAULT).getTruecolor(terminal, true), bg: (wire.bgcolor ?? DEFAULT).getTruecolor(terminal, false) };
     const reverse = style.reverse === true;
-    const terminal = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, reverse);
-    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal, reverse }, attributes: cellAttributes(style), seam: drawnBy(style.anchor, JOIN) } };
+    const own = onScreen({ fg: wire.color?.isDefault ?? true, bg: wire.bgcolor?.isDefault ?? true }, reverse);
+    return { segment, look: { style, wire, slots, pair: { ...onScreen(slots, reverse), terminal: own, reverse }, attributes: cellAttributes(style), seam: drawnBy(style.anchor, JOIN) } };
   });
 }
 
@@ -707,8 +700,8 @@ function drawsLines(style: Style): boolean {
  * a glyph walk is what measuring the words alone, a segment at a time, is
  * spared (`drawnOf`).
  */
-function measured(looked: readonly Looked[], walked: () => readonly Walked[], depth: ColorDepth, theme: TerminalColors): Drawn {
-  const ground = theme.backgroundColor.hex;
+function measured(looked: readonly Looked[], walked: () => readonly Walked[], depth: ColorDepth, terminal: TerminalColors): Drawn {
+  const ground = terminal.backgroundColor.hex;
   // [LAW:one-source-of-truth] One listing, each cell with whether it shows; `all` and `cells` are read off it.
   let everything: readonly { readonly cell: ListedCell; readonly shows: boolean }[] | undefined;
   const list = (): readonly { readonly cell: ListedCell; readonly shows: boolean }[] =>
@@ -732,7 +725,7 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
     colors: new Set([...own("fg"), ...own("bg")]),
     fills: new Set(own("bg")),
     depth,
-    theme,
+    terminal,
   };
 }
 
@@ -764,13 +757,15 @@ export function confined(effect: Effect, ...owners: readonly object[]): Effect {
 }
 
 /**
- * What `segments`, drawn at `depth` on `theme`, draw their words in, measured
- * as `Effected` measures its child for every frame. Measure an element's
- * output under an effect to read the contrast its words are left at.
+ * What `segments`, drawn at `depth` on `terminal`, draw their words in, measured
+ * as `Effected` measures its child for every frame, so `options.terminal` means
+ * here what it means on a frame. Measure an element's output under an effect to
+ * read the contrast its words are left at.
  */
-export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, theme: TerminalColors): Drawn {
-  const looked = looks(segments, depth, theme);
-  return measured(looked, () => walk(looked), depth, theme);
+export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, terminal?: TerminalColors): Drawn {
+  const on = resolveTerminal(terminal, depth);
+  const looked = looks(segments, depth, on);
+  return measured(looked, () => walk(looked), depth, on);
 }
 
 /**
@@ -789,11 +784,11 @@ function onScreen<T>(slots: { readonly fg: T; readonly bg: T }, reverse: boolean
  * (`ColorSpec.matchMove`). A slot the depth shows no move in has none, and
  * keeps the spec it was written in.
  */
-function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, theme: TerminalColors): { readonly fg?: ColorSpec; readonly bg?: ColorSpec } {
+function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, terminal: TerminalColors): { readonly fg?: ColorSpec; readonly bg?: ColorSpec } {
   // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
   const ground = to.bg.compositeOver(SURFACE_BLACK);
   const glyph = to.fg.compositeOver(ground);
-  return { fg: ColorSpec.matchMove(from.fg, glyph, depth, theme, true), bg: ColorSpec.matchMove(from.bg, ground, depth, theme, false) };
+  return { fg: ColorSpec.matchMove(from.fg, glyph, depth, terminal, true), bg: ColorSpec.matchMove(from.bg, ground, depth, terminal, false) };
 }
 
 /**

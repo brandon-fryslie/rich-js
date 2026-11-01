@@ -56,7 +56,7 @@ import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 // [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
 // `RenderOptions`' and is not restated here.
 export interface RenderToStringOptions
-  extends Pick<RenderOptions, "asciiOnly" | "reducedMotion" | "theme" | "onStyleError" | "highlight" | "highlighter" | "frame"> {
+  extends Pick<RenderOptions, "asciiOnly" | "reducedMotion" | "terminal" | "theme" | "onStyleError" | "highlight" | "highlighter" | "frame"> {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
@@ -159,6 +159,7 @@ export function renderToString(
     asciiOnly: options?.asciiOnly ?? false,
     // [LAW:one-source-of-truth] What is drawn and how it is encoded take one preference.
     reducedMotion: destination.reducedMotion,
+    terminal: options?.terminal,
     theme: options?.theme,
     onStyleError: options?.onStyleError,
     highlight: options?.highlight,

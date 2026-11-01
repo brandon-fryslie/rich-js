@@ -10,7 +10,7 @@
  * line that has left draws nothing, and a frame for an earlier time shows its log.
  */
 
-import { Animation, CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, backspace, dissolveOut, lifecycle, scrambleOut, throughColors, throughGlyphs, typewriter, type Lifecycle } from "../../src/index.js";
+import { Animation, CATPPUCCIN_MOCHA, Console, EASES, Group, Live, Panel, RichText, backspace, dissolveOut, lifecycle, scrambleOut, throughColors, throughGlyphs, typewriter, type Lifecycle } from "../../src/index.js";
 
 const EVERY = 1.2;
 const STAYS = 4;
@@ -31,7 +31,7 @@ function appended(i: number, at: number): Lifecycle {
   const [message, style] = MESSAGES[i % MESSAGES.length]!;
   const line = new RichText(`${String(i + 1).padStart(3)}  ${message}`, { style });
   const key = `line-${i}`;
-  const exits = [throughColors(dissolveOut(EXIT, i), CATPPUCCIN_MOCHA), throughGlyphs(backspace(EXIT)), throughGlyphs(scrambleOut(EXIT, i))];
+  const exits = [throughColors(dissolveOut(EXIT, i)), throughGlyphs(backspace(EXIT)), throughGlyphs(scrambleOut(EXIT, i))];
   return lifecycle(line, { enter: throughGlyphs(typewriter(ENTER)), exit: exits[i % exits.length]!, key }, at).leave(at + STAYS);
 }
 
@@ -45,7 +45,7 @@ const view = Animation.map(Animation.time(), (t) => {
   return new Panel(new Group(...log), { title: `build log · ${log.length} shown`, width: 44, borderStyle: "#585b70" });
 });
 
-const live = new Live(view, { refreshPerSecond: 30 });
+const live = new Live(view, { console: new Console({ terminal: CATPPUCCIN_MOCHA }), refreshPerSecond: 30 });
 live.start();
 await new Promise((resolve) => setTimeout(resolve, 20_000));
 live.stop();

@@ -22,7 +22,6 @@
  */
 
 import { Animation } from "../core/animation.js";
-import type { TerminalTheme } from "../core/color.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
@@ -30,11 +29,10 @@ import { Segment } from "../core/segment.js";
 import { Recolored } from "./effect.js";
 import { requireCurve, transition, veiled, type Curve, type Transition } from "./effects.js";
 
-/** What a change is between: the renderable drawn until now, the one drawn from now on, and the terminal whose ground the change passes through. */
+/** What a change is between: the renderable drawn until now and the one drawn from now on. */
 export interface Between {
   readonly from: Renderable;
   readonly to: Renderable;
-  readonly theme: TerminalTheme;
 }
 
 /** A change from one renderable to another: what it draws at each moment, from `t = 0` on its own clock. */
@@ -54,9 +52,9 @@ const shows = (p: number): number => Math.abs(2 * p - 1);
 /** The change over `curve`, each cell as far through it as `progress` says. */
 function change(curve: Curve, progress: Progress): Transition<Change> {
   requireCurve(curve);
-  return transition(curve.seconds, ({ from, to, theme }) =>
+  return transition(curve.seconds, ({ from, to }) =>
     Animation.sequence(
-      Animation.continuous((t) => new ChangeFrame(from, to, theme, progress, t, curve.swing)),
+      Animation.continuous((t) => new ChangeFrame(from, to, progress, t, curve.swing)),
       curve.seconds,
       Animation.constant(to),
     ),
@@ -93,7 +91,6 @@ class ChangeFrame implements Renderable, Measurable {
   constructor(
     readonly from: Renderable,
     readonly to: Renderable,
-    readonly theme: TerminalTheme,
     readonly progress: Progress,
     readonly t: number,
     readonly swing: number,
@@ -114,7 +111,7 @@ class ChangeFrame implements Renderable, Measurable {
     ]);
     // The frame says nothing of when it changes: the change's own animation says it moves every frame.
     const veil = veiled(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
-    return render(new Recolored({ render: () => rows }, veil, { t: this.t, key: "change", theme: this.theme }), options);
+    return render(new Recolored({ render: () => rows }, veil, { t: this.t, key: "change" }), options);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

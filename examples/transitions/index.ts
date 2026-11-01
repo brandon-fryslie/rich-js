@@ -8,7 +8,7 @@
  * and what sits beside it moves once, at the cut, never while it changes.
  */
 
-import { Animation, CATPPUCCIN_MOCHA, EASES, Group, Live, Panel, RichText, crossfade, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
+import { Animation, CATPPUCCIN_MOCHA, Console, EASES, Group, Live, Panel, RichText, crossfade, wipe, type Change, type Renderable, type Transition } from "../../src/index.js";
 
 const EVERY = 3;
 const STATES = [
@@ -31,7 +31,7 @@ const cycled = (n: number): number => ((n % STATES.length) + STATES.length) % ST
  * before it to change from.
  */
 const changing = (change: Transition<Change>): Animation<Renderable> => {
-  const into = STATES.map((to, i) => change.effect({ from: STATES[cycled(i - 1)]!, to, theme: CATPPUCCIN_MOCHA }));
+  const into = STATES.map((to, i) => change.effect({ from: STATES[cycled(i - 1)]!, to }));
   const first = Animation.constant<Renderable>(STATES[0]!);
   return Animation.repeat(EVERY, (n) => (n === 0 ? first : into[cycled(n)]!));
 };
@@ -41,7 +41,7 @@ const ROWS = CHANGES.map(([name, change]) => [name, changing(change)] as const);
 // Each change placed in its panel, drawn at the Live's time and saying when it next moves.
 const view = new Group(...ROWS.map(([name, changes]) => new Panel(changes, { title: name, width: 40, borderStyle: "#585b70" })));
 
-const live = new Live(view, { refreshPerSecond: 30 });
+const live = new Live(view, { console: new Console({ terminal: CATPPUCCIN_MOCHA }), refreshPerSecond: 30 });
 live.start();
 await new Promise((resolve) => setTimeout(resolve, 20_000));
 live.stop();
