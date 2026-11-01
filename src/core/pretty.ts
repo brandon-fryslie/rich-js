@@ -17,7 +17,7 @@
  * times.
  */
 
-import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, splitAtCells } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, replaceWithheld, splitAtCells, wireText } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Memo } from "./memo.js";
 import { Segment } from "./segment.js";
@@ -233,8 +233,12 @@ interface Lines {
   readonly arrows: readonly number[];
 }
 
-/** Text a value wrote itself, as layout reads it: every line ending an LF, its direction closed. */
-const spelled = (text: string): string => closed(sanitized(text));
+/**
+ * Text a value wrote itself, as layout reads it: what the wire will hold, every
+ * line ending an LF, its direction closed. A soft hyphen is gone with the rest,
+ * because this text is on show and the rows it hangs on are cut here.
+ */
+const spelled = (text: string): string => closed(wireText(sanitized(text)));
 
 /** Text with no line break in it. */
 const flat = (text: string): Lines => ({ text, margins: [], arrows: [] });
@@ -744,12 +748,14 @@ const BARE_KEY = pattern(/^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Sta
  */
 const unprintable = (): RegExp => /(?! )[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]/gu;
 
-/** `value` in double quotes, every character that does not print escaped. */
+const escaped = (character: string): string => {
+  const hex = character.codePointAt(0)!.toString(16).padStart(4, "0");
+  return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
+};
+
+/** `value` in double quotes, every character that does not print or that the wire would withhold escaped. */
 const quoted = (value: string): string =>
-  JSON.stringify(value).replace(unprintable(), (c) => {
-    const hex = c.codePointAt(0)!.toString(16).padStart(4, "0");
-    return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
-  });
+  replaceWithheld(JSON.stringify(value), escaped).replace(unprintable(), escaped);
 
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;

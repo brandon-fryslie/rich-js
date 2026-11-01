@@ -19,6 +19,19 @@ import { NULL_STYLE, type Style } from "./style.js";
 import type { BidiStamp, ParagraphLevel, TextOrder } from "./text-order.js";
 
 const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
+// From the front, greedily: anchored at the end, a scan restarts at each format
+// character of a run, and that is quadratic on content anyone can send.
+const THROUGH_CONTENT = pattern(/^[^]*[^\s\p{Cf}]/u);
+
+/**
+ * The cells that end `text` and are no content: its whitespace, once what draws no
+ * cell among it is gone. A mark drawn on a space is not in it, because that space
+ * is a cell with something on it.
+ */
+export function drawnTail(text: string): string {
+  const tail = text.slice(THROUGH_CONTENT.exec(text)?.[0].length ?? 0);
+  return Array.from(tail).filter((character) => cellLen(character) > 0).join("");
+}
 
 /**
  * The cells of trailing whitespace on a wrapped line.
@@ -42,8 +55,7 @@ const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
  * word on the row before it.
  */
 export function hangingWhitespace(line: Segment[]): number {
-  const drawn = Array.from(Segment.plainOf(line)).filter((character) => cellLen(character) > 0).join("");
-  return cellLen(TRAILING_WHITESPACE_RE.exec(drawn)?.[0] ?? "");
+  return cellLen(TRAILING_WHITESPACE_RE.exec(drawnTail(Segment.plainOf(line)))?.[0] ?? "");
 }
 
 /**

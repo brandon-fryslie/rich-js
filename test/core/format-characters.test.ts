@@ -392,3 +392,45 @@ describe("JSON", () => {
     expect(JSON.parse(wire(JSONRenderable.fromData(data), 200))).toEqual(data);
   });
 });
+
+describe("where a row and a word end", () => {
+  const drawn = (text: string, width: number, options: Partial<RenderOptions>): string[] =>
+    Array.from(new RichText(text).render({ ...new Console({ width }).options, ...options }), (segment) => segment.text).join("").split("\n");
+
+  it("fills a row flush to its edge past a zero-width opener", () => {
+    const row = (opener: string): string => drawn(`aa bb cc ${opener}dddddddddddd`, 12, { justify: "full" })[0]!;
+    expect(row(ZWSP).trimEnd()).toBe(row("").trimEnd());
+    expect(row(WJ).trimEnd()).toBe(row("").trimEnd());
+  });
+
+  it("keeps a space a mark is drawn on as content", () => {
+    expect(drawn(`ab ${COMBINING}`, 6, { justify: "right" })[0]).toBe(`   ab ${COMBINING}`);
+  });
+
+  it("does not break a word at a soft hyphen with no glyph after it", () => {
+    for (const closer of [ZWSP, COMBINING, "\u{e0068}"]) expect(rows(`abcd foo${SHY}${closer}`, 8)).toHaveLength(1);
+    expect(rows(`foo${SHY}${SHY}${SHY} bar`, 3)).toEqual(["foo", "bar"]);
+  });
+
+  it("is linear in a word of nothing but marks", () => {
+    const started = performance.now();
+    expect(rows(`a${SHY}${ZWNJ.repeat(200000)}b`, 40).length).toBeGreaterThan(0);
+    expect(performance.now() - started).toBeLessThan(5000);
+  });
+});
+
+describe("Pretty, showing data", () => {
+  it("escapes the selectors the wire would withhold from a string", () => {
+    expect(rows(new Pretty(`a${VS1}${VS1}b`), 40)).toEqual([`"a${VS1}\\ufe00b"`]);
+  });
+
+  it("wraps a value's soft hyphen the same at every depth, with no hyphen", () => {
+    class Named {
+      toString(): string {
+        return `hello${SHY}worldworld`;
+      }
+    }
+    expect(rows(new Pretty(new Named()), 12).join("")).not.toContain("-");
+    expect(rows(new Pretty({ a: new Named() }), 14).join("")).not.toContain("-");
+  });
+});

@@ -38,8 +38,11 @@ const ZWSP = "\u200b";
 const UNSPACED = "[\\p{Script_Extensions=Thai}\\p{Script_Extensions=Lao}\\p{Script_Extensions=Khmer}\\p{Script_Extensions=Myanmar}]+";
 const BREAKABLE = pattern(new RegExp(`[${SOFT_HYPHEN}${ZWSP}]|${UNSPACED}`, "u"));
 const WORD_SEGMENTER = new Intl.Segmenter(undefined, { granularity: "word" });
-// A word's opening: no text in it yet, so nothing to break away from or to hyphenate.
-const OPENING = pattern(new RegExp(`^[\\s${SOFT_HYPHEN}${ZWSP}]*`, "u"));
+// A break needs a glyph on both sides of it: with none before, nothing breaks away
+// or takes a hyphen, and with none after, the word was already over.
+const UNDRAWN = "\\s\\p{Cf}\\p{Mn}";
+const OPENING = pattern(new RegExp(`^[${UNDRAWN}]*`, "u"));
+const THROUGH_LAST_GLYPH = pattern(new RegExp(`^[^]*[^${UNDRAWN}]`, "u"));
 
 /** One place a line of text was cut. */
 export interface LineBreak {
@@ -89,7 +92,7 @@ function widthOf(word: string): number {
   return cellLen(word.trimEnd());
 }
 
-/** The offsets inside `word`, ascending, that it may break at: never before its first glyph's end or past its last glyph. */
+/** The offsets inside `word`, ascending, that it may break at. */
 function breaksIn(word: string): number[] {
   if (word.match(BREAKABLE) === null) return [];
   const found = new Set<number>();
@@ -100,7 +103,7 @@ function breaksIn(word: string): number[] {
     for (const { index: at } of WORD_SEGMENTER.segment(run)) if (at > 0) found.add(index + at);
   }
   const start = OPENING.exec(word)![0].length;
-  const end = word.trimEnd().length;
+  const end = THROUGH_LAST_GLYPH.exec(word)?.[0].length ?? 0;
   return [...found].filter((at) => at > start && at < end).sort((a, b) => a - b);
 }
 

@@ -3,9 +3,9 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
-import { closed, closing, withoutExplicit } from "./bidi.js";
+import { closed, closing } from "./bidi.js";
 import { controlClass, type Disposition } from "./control-codes.js";
-import { directed, edges, hangingWhitespace, measured } from "./orient.js";
+import { directed, drawnTail, edges, hangingWhitespace, measured } from "./orient.js";
 import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
@@ -1133,7 +1133,7 @@ export class RichText implements Renderable, Measurable {
   private _fillLine(line: Segment[], maxWidth: number, base: Style): Segment[] {
     const plain = Segment.plainOf(line);
     const words = plain.split(" ");
-    if (withoutExplicit(plain).endsWith(" ")) words.pop();
+    if (drawnTail(plain).endsWith(" ")) words.pop();
 
     const gaps = words.length - 1;
     const spaces = new Array<number>(gaps).fill(1);
