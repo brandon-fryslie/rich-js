@@ -3,6 +3,7 @@
  */
 
 import { codePointWidth, widensToEmoji } from "./cell-widths.js";
+import { dispositionOf } from "./control-codes.js";
 import { Memo } from "./memo.js";
 import { pattern } from "./pattern.js";
 
@@ -16,6 +17,16 @@ const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
 // even in 10k code units, and a cache of segmentations would hold native
 // memory for every string it kept.
 const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+// The cells `codePoint` takes as what the census says is done with it. Exhaustive,
+// so a new `Disposition` does not compile until it says what it measures.
+function dispositionCells(codePoint: number): 0 | 1 | 2 {
+  const disposition = dispositionOf(codePoint);
+  switch (disposition) {
+    case "strip": return 0;
+    case "keep": return codePointWidth(codePoint);
+  }
+}
 
 // Rich's `cell_len` over a run of text: each code point the cells Rich's table
 // gives it, but that a ZWJ takes the code point after it into the glyph before
@@ -35,7 +46,7 @@ function richCells(text: string): number {
       cells += widenable ? 1 : 0;
       widenable = false;
     } else {
-      const width = codePointWidth(codePoint);
+      const width = dispositionCells(codePoint);
       cells += width;
       widenable = width > 0 ? widensToEmoji(codePoint) : widenable;
     }
