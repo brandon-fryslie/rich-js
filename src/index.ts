@@ -32,6 +32,7 @@ export {
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
 export type { ColorSystemName, DetectColorOptions, Destination, DestinationOptions } from "./core/color.js";
+export type { TextOrder } from "./core/text-order.js";
 
 // Perceptually-uniform color space (manipulation, transposition).
 export {
