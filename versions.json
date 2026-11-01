@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-527",
+      "ref": "refs/pull/527/merge",
+      "sha": "0190247c6c57e14f466ab4626a984838b3ea76b8",
+      "timestamp": "2026-11-01T10:37:10.225Z",
+      "commits": [
+        {
+          "sha": "0190247c6c57e14f466ab4626a984838b3ea76b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T03:35:28-07:00",
+          "message": "Merge a4e4450d5728b8d6ee18c79c401688d386ebf532 into e37ad0dc96d6c95d59654851cc9a5ebe9cf859e7\n"
+        },
+        {
+          "sha": "a4e4450d5728b8d6ee18c79c401688d386ebf532",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T03:35:11-07:00",
+          "message": "The terminal a frame is drawn on travels with the frame (rich-animation-27tq.lfw)\n\nEvery colour effect was handed the terminal when it was built, so two effects\nin one frame could name different terminals, and a user container's caller had\nto carry it down to the leaves. It is now `RenderOptions.terminal`, beside\n`colorSystem`: a program names it once on its Console, App or renderToString,\nand `Recolored.moved` is the one read of it. ProgressBar reads it too, where it\nhad hard-coded the depth's assumed terminal.\n\n`theme` comes off `EffectedOptions`, `throughColors` and `Between`.\n`Drawn.theme` becomes `Drawn.terminal`, since `RenderOptions.theme` already\nmeans the style names. Each is a compile error for a caller, not a silent\nchange. `drawnOf` keeps its argument: it measures segments the caller holds and\nbuilds no effect.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e37ad0dc96d6c95d59654851cc9a5ebe9cf859e7",
