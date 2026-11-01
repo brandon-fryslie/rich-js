@@ -4,15 +4,22 @@
     {
       "version": "pr-532",
       "ref": "refs/pull/532/merge",
-      "sha": "fae5229e3fab37f5d9e5c53b88a4d098a9f4e575",
-      "timestamp": "2026-11-01T15:23:56.736Z",
+      "sha": "bf3617dccb0f4a007cb894b9705923722296f55c",
+      "timestamp": "2026-11-01T15:34:46.249Z",
       "commits": [
         {
-          "sha": "fae5229e3fab37f5d9e5c53b88a4d098a9f4e575",
+          "sha": "bf3617dccb0f4a007cb894b9705923722296f55c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T08:22:06-07:00",
-          "message": "Merge af19227b726fd37a2958ba2462871c452d35e4cf into 4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11\n"
+          "timestamp": "2026-11-01T08:32:38-07:00",
+          "message": "Merge 1f9497a25e145704274bf01afa9d1dcaf3b649d4 into 4f1e0e0416ff78f41ec4e03b081b8e1d07e27d11\n"
+        },
+        {
+          "sha": "1f9497a25e145704274bf01afa9d1dcaf3b649d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T08:32:29-07:00",
+          "message": "textual-ansi derives its ladders, so taking the authored palette loses no shades (rich-unfiled-791c.01dl)\n\n#531 gave TEXTUAL_ANSI the authored palette and removed the surface ladder its\ngenerator had flattened, but left the other twelve: every rung of primary,\npanel and the rest was its root, where 0.27.0 derived steps. buildPalette's\nrules derive them now, and a test holds every bundled palette's ladders apart.\n"
         },
         {
           "sha": "af19227b726fd37a2958ba2462871c452d35e4cf",
