@@ -4,15 +4,22 @@
     {
       "version": "pr-534",
       "ref": "refs/pull/534/merge",
-      "sha": "bad550babee797d3bbc72989194a016500df202b",
-      "timestamp": "2026-11-01T18:26:26.044Z",
+      "sha": "bacd2c937995dfdc09800fa5f92a02d8738fafdb",
+      "timestamp": "2026-11-01T18:50:14.825Z",
       "commits": [
         {
-          "sha": "bad550babee797d3bbc72989194a016500df202b",
+          "sha": "bacd2c937995dfdc09800fa5f92a02d8738fafdb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T11:24:55-07:00",
-          "message": "Merge 1b05e31653819187772e2b6e554d8e1eaf8d5e02 into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
+          "timestamp": "2026-11-01T18:48:20Z",
+          "message": "Merge 74f3370d54f66d3e290e799689f0133832ffe336 into d94009e5ea1fa181e4cc23e4e3cbd0b15486c1f0\n"
+        },
+        {
+          "sha": "74f3370d54f66d3e290e799689f0133832ffe336",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T11:48:05-07:00",
+          "message": "Direction state ends where rendering ends it, on every path into a Text (rich-unfiled-791c.zzmy)\n\nHigh review of #534. A line is the paragraph, so advance stops resetting at\nU+2029, which paragraph resolves inside the line: an override that survived it\nwas invisible to closed. assemble's strings and tuples and Pretty's symbols,\nfunction names, opaque names and thrown messages all close now.\n\nA closer after a wrap's whitespace no longer reads as content, clusters are\nfound across a row's spans so a mark keeps its letter, a ZWJ inside a letter's\ncluster joins forward, and edgeStyle reports the cells drawn at the edge.\nNeovim and Vim terminals are plain. Openers are read off one pass over the\nline, so logical wrapping is linear again.\n"
         },
         {
           "sha": "1b05e31653819187772e2b6e554d8e1eaf8d5e02",
