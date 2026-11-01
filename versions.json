@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-530",
+      "ref": "refs/pull/530/merge",
+      "sha": "df96723cec222aea6c16f0eea682b7bd926ab256",
+      "timestamp": "2026-11-01T13:27:38.645Z",
+      "commits": [
+        {
+          "sha": "df96723cec222aea6c16f0eea682b7bd926ab256",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T06:25:33-07:00",
+          "message": "Merge 8f0d76c601160e208eecd2e303e0356741400f9c into 41a520a89f566eff663cdb9c968bd940ff56d1a2\n"
+        },
+        {
+          "sha": "8f0d76c601160e208eecd2e303e0356741400f9c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T06:25:22-07:00",
+          "message": "An effect's hold is told by the frame's drawing, so it holds still inside a combinator (rich-animation-27tq.vmc)\n\nAn effect's exact hold depends on what it drew, and a combinator asked nextChange(t) with nothing drawn, so an Effected in Timeline.run, sequence, repeat, map or all answered t and the host repainted every frame, even under reduced motion.\n\nThe frame's one drawing now tells the hold (RenderOptions.onMoved), and placed asks with that report (Moves), so the combinators that remapped the time carry it back. Nothing is drawn twice, so the answer cannot disagree with the frame. Effected.render and GlyphEffected.render stop being a second placement; moved, Moved and Shown.nextChange go.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "41a520a89f566eff663cdb9c968bd940ff56d1a2",
