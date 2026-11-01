@@ -4,15 +4,22 @@
     {
       "version": "pr-527",
       "ref": "refs/pull/527/merge",
-      "sha": "0190247c6c57e14f466ab4626a984838b3ea76b8",
-      "timestamp": "2026-11-01T10:37:10.225Z",
+      "sha": "94c7aee17b02515730ca9cdd408109b03b1bc5a4",
+      "timestamp": "2026-11-01T10:52:04.361Z",
       "commits": [
         {
-          "sha": "0190247c6c57e14f466ab4626a984838b3ea76b8",
+          "sha": "94c7aee17b02515730ca9cdd408109b03b1bc5a4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T03:35:28-07:00",
-          "message": "Merge a4e4450d5728b8d6ee18c79c401688d386ebf532 into e37ad0dc96d6c95d59654851cc9a5ebe9cf859e7\n"
+          "timestamp": "2026-11-01T03:50:00-07:00",
+          "message": "Merge c2472ba4c3fc86da6e33e01df756234f2f394c41 into e37ad0dc96d6c95d59654851cc9a5ebe9cf859e7\n"
+        },
+        {
+          "sha": "c2472ba4c3fc86da6e33e01df756234f2f394c41",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T03:49:52-07:00",
+          "message": "Review: a test's terminal is named, and drawnOf reads absent as a frame does (rich-animation-27tq.lfw)\n\neffect-seams had lost its terminals: every row drew on the assumed one, so a\nseam resolved apart from its neighbours passed. With `terminal: theme` back,\nbreaking only `_rejoined` fails 84 of its rows; without it, none.\n\n`drawnOf` takes `options.terminal` as it stands, since `resolveTerminal` is not\npublic and a renderable could not say what absent means. The pulse builds from\nthe `Drawn` it is handed, and the private recolouring helpers take that `Drawn`\nfor the depth and terminal it already carries. \"The one read\" was false, since\nthe bar must read the terminal before `Effected` runs to name its back.\n\nThe gruvbox tour section and the steppedInk live fence name their terminals\nagain, and docs/effects.md stops describing a `theme` option.\n"
         },
         {
           "sha": "a4e4450d5728b8d6ee18c79c401688d386ebf532",
