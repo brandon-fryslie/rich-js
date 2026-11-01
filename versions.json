@@ -4,15 +4,22 @@
     {
       "version": "pr-526",
       "ref": "refs/pull/526/merge",
-      "sha": "ba6afe0d3d00be687a776c3cb47e0234277d01ac",
-      "timestamp": "2026-10-31T14:40:12.981Z",
+      "sha": "fd63e035b6358975ef3ff33d60fb1f8bc8d262ae",
+      "timestamp": "2026-11-01T10:04:30.533Z",
       "commits": [
         {
-          "sha": "ba6afe0d3d00be687a776c3cb47e0234277d01ac",
+          "sha": "fd63e035b6358975ef3ff33d60fb1f8bc8d262ae",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-31T08:38:21-06:00",
-          "message": "Merge ab32fe97aaef4510b9195501ec6253c5fb72ee61 into d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d\n"
+          "timestamp": "2026-11-01T03:02:30-07:00",
+          "message": "Merge aeeb92548fce80c0de4414286b99c494a04f27f9 into d2fb7b70bfc5060a3b94fefc9ec99d4db82c3a1d\n"
+        },
+        {
+          "sha": "aeeb92548fce80c0de4414286b99c494a04f27f9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T03:02:21-07:00",
+          "message": "The gate claims nothing about the registry, and says how to answer a stale install (rich-unfiled-791c.25dh)\n\nAn exact pin does not stop a lockfile resolving to a tarball, so the header stops\nsaying an npm ci tree proves a floor is published and names that as a blind spot.\nThe message now separates the stale install from the meant bump, and says the\nrange is what a bump has to move.\n"
         },
         {
           "sha": "ab32fe97aaef4510b9195501ec6253c5fb72ee61",
