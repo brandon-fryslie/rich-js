@@ -4,15 +4,29 @@
     {
       "version": "pr-531",
       "ref": "refs/pull/531/merge",
-      "sha": "ba758af15bc574f8051ca2c8cf5d8cc89103a40b",
-      "timestamp": "2026-11-01T14:49:04.608Z",
+      "sha": "9d91b67f0020370c29d8195b2d41e1f5349c3a8f",
+      "timestamp": "2026-11-01T14:57:44.662Z",
       "commits": [
         {
-          "sha": "ba758af15bc574f8051ca2c8cf5d8cc89103a40b",
+          "sha": "9d91b67f0020370c29d8195b2d41e1f5349c3a8f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T14:47:29Z",
-          "message": "Merge fba2c6a0587ca60a6b410ed1896cb1d3a90c0f05 into 3ab763eab3bc935444b4ec217422b7592271ad51\n"
+          "timestamp": "2026-11-01T07:55:07-07:00",
+          "message": "Merge f1e40a82fd458305e4f0978f12813caabd55bc48 into 3ab763eab3bc935444b4ec217422b7592271ad51\n"
+        },
+        {
+          "sha": "f1e40a82fd458305e4f0978f12813caabd55bc48",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T07:54:59-07:00",
+          "message": "A Button variant's ground is compared by colour, not by object (rich-unfiled-791c.gy3z)\n\nresolveLook returns a new ColorRgba each call, so a Set of them was always\nfull and the test passed on the data it exists to refuse.\n"
+        },
+        {
+          "sha": "ff2ac2f7d19cd87ce947ab01a159c3355a09c9d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T07:54:21-07:00",
+          "message": "textual-ansi derives what its generator flattened, and every widget is drawn on every bundled theme (rich-unfiled-791c.gy3z)\n\ntextual-ansi stated all six *-muted as one blue, surface as its background,\nand text-muted and text-disabled as its foreground, so a danger Button had a\nsuccess Button's ground and a default Button no ground. Those nine lines go,\nand buildPalette's rules derive the roles.\n\nterminal-contrast's scenes take a theme, so each one is drawn on all 23:\nglyphs at 3:1, disabled scenes between visible and the text floor, and each\nButton variant on its own ground.\n"
         },
         {
           "sha": "fba2c6a0587ca60a6b410ed1896cb1d3a90c0f05",
