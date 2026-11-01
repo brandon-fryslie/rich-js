@@ -1,11 +1,13 @@
 /**
  * The glyph effect catalogue: a typewriter and a scramble, which run once and
  * are done, each with its way out for an element leaving (`backspace`,
- * `scrambleOut`), and a wave of case changes, rain and stars, which loop for as
- * long as they are drawn. Each is a `GlyphEffect` for `GlyphEffected`
- * (`./glyph-effect.ts`), built as the colour catalogue's are
- * (`./effects.ts`): one function each over the one shape, made by name, one
- * way, at the defaults in `GLYPH_DEFAULTS` (`GLYPH_EFFECT_CATALOGUE`).
+ * `scrambleOut`), and a wave of case changes, rain, stars and marching ants,
+ * which loop for as long as they are drawn. Each is a `GlyphEffect` for
+ * `GlyphEffected` (`./glyph-effect.ts`), built as the colour catalogue's are
+ * (`./effects.ts`): one function each over the one shape, at the defaults in
+ * `GLYPH_DEFAULTS`. All but the ants are made by name too
+ * (`GLYPH_EFFECT_CATALOGUE`), the names a template's `glyphs` takes: a
+ * template's fragment is text with no box in it for ants to march round.
  *
  * Where a colour loop glides, a glyph cannot: a cell shows one glyph or
  * another, so every loop here moves in steps, on a `beat`, and says when its
@@ -23,6 +25,7 @@
 import { Animation } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { EASES, Phase, beat, positiveSeconds, settled, type Timing } from "../core/easing.js";
+import { boxFrameOf } from "../core/box.js";
 import { hash } from "../core/noise.js";
 import { drawable, isAscii } from "../core/protocol.js";
 import { inked } from "./effect.js";
@@ -285,13 +288,70 @@ export function particles(spec: Particles, z: number): GlyphEffect {
   };
 }
 
+/** How ants march: a step, in seconds, for the gaps to move one cell, and every how many cells a gap falls. */
+export interface MarchingAnts {
+  readonly step: number;
+  readonly every: number;
+}
+
+/**
+ * Where each cell stands on the ring of the box frame that drew it: cells
+ * clockwise from the frame's top-left corner, by `index`. A ring is the
+ * perimeter of the rectangle a frame's cells cover, read in the element's own
+ * rows and columns, so it is true wherever the box sits among them. A rule or
+ * divider inside that rectangle, as a table draws, is frame and no part of the
+ * ring, and a title set into the frame is no frame but keeps its places.
+ */
+function ringPlaces(cells: readonly GlyphCell[]): ReadonlyMap<number, number> {
+  const frames = new Map<object, GlyphCell[]>();
+  for (const cell of cells) {
+    const frame = boxFrameOf(cell.anchor);
+    if (frame === undefined) continue;
+    const ring = frames.get(frame);
+    if (ring === undefined) frames.set(frame, [cell]);
+    else ring.push(cell);
+  }
+  const places = new Map<number, number>();
+  for (const ring of frames.values()) {
+    const [top, bottom] = ring.reduce(([low, high], { row }) => [Math.min(low, row), Math.max(high, row)], [Infinity, -Infinity]);
+    const [left, right] = ring.reduce(([low, high], { col }) => [Math.min(low, col), Math.max(high, col)], [Infinity, -Infinity]);
+    const [down, across] = [bottom! - top!, right! - left!];
+    for (const cell of ring) {
+      const [y, x] = [cell.row - top!, cell.col - left!];
+      const place = y === 0 ? x : x === across ? across + y : y === down ? 2 * across + down - x : x === 0 ? 2 * (across + down) - y : undefined;
+      if (place !== undefined) places.set(cell.index, place);
+    }
+  }
+  return places;
+}
+
+/**
+ * Marching ants: every `every`th cell round each box the element draws blank,
+ * the gaps walking one cell clockwise a `step`. The ring is whatever the box
+ * is (`Box.frame`), at any width and beside a title; a border drawn in blanks
+ * marches unseen, and an element that draws no frame never changes.
+ */
+export function marchingAnts({ step, every }: MarchingAnts): GlyphEffect {
+  positiveSeconds("marchingAnts step", step);
+  if (!(Number.isInteger(every) && every > 1)) throw new RangeError(`marchingAnts every must be a whole number of cells above 1, got ${every}`);
+  const steps = stepped(step);
+  return ({ cells }) => {
+    const places = ringPlaces(cells);
+    if (places.size === 0) return Animation.constant(AS_WRITTEN);
+    return steps((s): GlyphFrame => (cell) => {
+      const place = places.get(cell.index);
+      return place !== undefined && (((place - s) % every) + every) % every === 0 ? blank(cell.glyph) : cell.glyph;
+    }, AS_WRITTEN);
+  };
+}
+
 /** The names of the glyph effects that loop. */
 export type GlyphLoopName = "wave" | "rain" | "stars";
 
 /** The names of the glyph effects that run once. */
 export type GlyphTransitionName = "typewriter" | "scramble" | "backspace" | "scrambleOut";
 
-/** Each catalogue glyph effect's defaults, as first drawn in `examples/glyph-effects`. */
+/** Each glyph effect's defaults, as first drawn in `examples/glyph-effects`. */
 export const GLYPH_DEFAULTS = {
   typewriter: { seconds: 2, ease: EASES.linear },
   scramble: { seconds: 2.5, ease: EASES["ease-in"] },
@@ -300,7 +360,8 @@ export const GLYPH_DEFAULTS = {
   wave: { step: 0.06, width: 3 },
   rain: { glyphs: "│╎", ascii: "|:", density: 0.06, step: 0.08, drift: 1, life: Number.POSITIVE_INFINITY },
   stars: { glyphs: "·+*", ascii: ".+*", density: 0.04, step: 1.5, drift: 0, life: 1 },
-} as const satisfies { readonly [K in GlyphTransitionName]: Timing } & { readonly wave: CaseWave; readonly rain: Particles; readonly stars: Particles };
+  march: { step: 0.15, every: 3 },
+} as const satisfies { readonly [K in GlyphTransitionName]: Timing } & { readonly wave: CaseWave; readonly rain: Particles; readonly stars: Particles; readonly march: MarchingAnts };
 
 /**
  * Every glyph effect in the catalogue by name, each made the one way: for an

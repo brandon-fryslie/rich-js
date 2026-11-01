@@ -15,6 +15,7 @@ import {
   EASES,
   GLYPH_DEFAULTS,
   GLYPH_EFFECT_CATALOGUE,
+  marchingAnts,
   GlyphEffected,
   Live,
   Panel,
@@ -67,7 +68,9 @@ const SHOWN: readonly [string, string, Shown][] = [
 
 const PANELS = SHOWN.map(([title, text, shown]) => [title, new RichText(text), played(shown)] as const);
 
-const view: Columns = new Columns(PANELS.map(([title, text, effect]) => new Panel(new GlyphEffected(text, effect, { key: title }), { title, width: WIDTH })));
+const MARCHING = new GlyphEffected(new Panel(new RichText(LINE), { title: "marching ants", width: WIDTH }), marchingAnts(GLYPH_DEFAULTS.march), { key: "marching ants" });
+
+const view: Columns = new Columns([...PANELS.map(([title, text, effect]) => new Panel(new GlyphEffected(text, effect, { key: title }), { title, width: WIDTH })), MARCHING]);
 
 const live = new Live(view, { refreshPerSecond: 30 });
 live.start();

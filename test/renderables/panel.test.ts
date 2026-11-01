@@ -316,7 +316,7 @@ describe("Panel", () => {
   it("draws an accessory on an unstyled panel with no style, as its frame is", () => {
     const panel = new Panel("Content", { bottomRightAccessory: "x", box: ASCII });
     const bottom = Segment.splitLines(collectSegments(panel, { maxWidth: 20 })).at(-1)!;
-    for (const s of bottom) expect(s.style, JSON.stringify(s.text)).toBeUndefined();
+    for (const s of bottom) expect(s.style?.withAnchor(undefined).isNull ?? true, JSON.stringify(s.text)).toBe(true);
   });
 
   // --- Measurement ---

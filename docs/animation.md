@@ -224,6 +224,19 @@ The catalogue, `GLYPH_EFFECT_CATALOGUE`, has four transitions, which run once an
 - `caseWave({ step, width }, z)`: a band of swapped case crossing the element one column a `step`.
 - `particles(spec, z)`: particles on the element's blank cells, never over its words. `rain` falls a row a step, and `stars` are drawn afresh each life. Both are values of the one `particles` function, and their specs are in `GLYPH_DEFAULTS`. Each spec names an ASCII set too, which is drawn instead on an output that draws ASCII alone.
 
+`marchingAnts({ step, every })` is a loop that goes round a box rather than through text: every `every`th cell of the frame blank, the gaps walking one cell clockwise a `step`. Its defaults are `GLYPH_DEFAULTS.march`:
+
+```typescript
+import { GLYPH_DEFAULTS, GlyphEffected, Panel, marchingAnts } from "@promptctl/rich-js";
+
+const marching = new GlyphEffected(new Panel("the ants march round", { title: "border" }), marchingAnts(GLYPH_DEFAULTS.march), { key: "border" });
+
+console.print(marching.at(0));
+console.print(marching.at(0.15));
+```
+
+It marches whatever box the element draws, at any width, past a title, and each box of several. A frame is told by what drew it, not by its glyphs, so a line in the element's content that looks like a border stays still. `Panel` and `Table` say which cells are their frame. A container of your own says so by drawing in `box.frame(style)`, the style one drawing of a box draws its frame in, handed to `getTop`, `getRow` and `getBottom` and given to the cells it writes from `getContentChars`. An element that draws no frame, such as a `Table` with `showEdge: false`, is left as written and never changes. A template's text holds no box, so this effect has no name in the catalogue, which is the list [`glyphs`](/template-bindings) takes.
+
 A transition moves every frame until it is done, then never. A loop moves in steps, because a cell shows one glyph or another, and its `nextChange` is when its next step begins. A glyph effect and a colour effect compose by nesting: the outer wrapper is drawn over what the inner one drew, so here a wave of capitals crosses a line that is turning red:
 
 ```typescript
