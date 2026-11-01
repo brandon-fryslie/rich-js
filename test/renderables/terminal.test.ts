@@ -20,10 +20,12 @@ import { crossfade } from "../../src/renderables/change.js";
 import { Effected, drawnOf, type Effect, type EffectFrame } from "../../src/renderables/effect.js";
 import { fadeIn } from "../../src/renderables/effects.js";
 import { Group } from "../../src/renderables/group.js";
+import { Live } from "../../src/renderables/live.js";
 import { lifecycle, throughColors } from "../../src/renderables/lifecycle.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { ProgressBar } from "../../src/renderables/progressBar.js";
 import { CATPPUCCIN_LATTE, CATPPUCCIN_MOCHA, SOLARIZED_LIGHT } from "../../src/themes/terminalThemes.js";
+import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { scriptedHost } from "../host/scripted-host.js";
 import { inFrame } from "./in-frame.js";
 
@@ -57,9 +59,21 @@ describe("an effect reads the terminal off the frame", () => {
     expect(seen).toEqual([SOLARIZED_LIGHT, SOLARIZED_LIGHT]);
   });
 
-  it("as an app was told it", () => {
+  it("as a live's console named it", () => {
     const { view, seen } = placed();
-    void new App({ host: scriptedHost({ cols: 40, rows: 5 }), surface: "inline", view, terminal: CATPPUCCIN_LATTE }).run();
+    const live = new Live(view, { console: new Console({ file: sink, width: 40, colorSystem: "truecolor", terminal: CATPPUCCIN_MOCHA }), autoRefresh: false });
+    live.start();
+    live.stop();
+    expect(seen.length).toBeGreaterThan(0);
+    expect(new Set(seen)).toEqual(new Set([CATPPUCCIN_MOCHA]));
+  });
+
+  it.each([["an app", App], ["a widget app", WidgetApp]] as const)("as %s was told it", async (_, Host) => {
+    const { view, seen } = placed();
+    const app = new Host({ host: scriptedHost({ cols: 40, rows: 5 }), surface: "inline", view, terminal: CATPPUCCIN_LATTE });
+    const running = app.run();
+    app.stop();
+    await running;
     expect(seen.length).toBeGreaterThan(0);
     expect(new Set(seen)).toEqual(new Set([CATPPUCCIN_LATTE]));
   });

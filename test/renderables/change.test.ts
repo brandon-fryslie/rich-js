@@ -131,7 +131,7 @@ describe("a change from one renderable to another", () => {
 
   it("a cell passes through the terminal's ground at its half", () => {
     const moving = crossfade(curve).effect({ from: building, to: done });
-    const half = draw(inFrame(moving, 1)).filter((s) => s.text.trim() !== "");
+    const half = draw(inFrame(moving, 1), { ...OPTIONS, terminal: theme }).filter((s) => s.text.trim() !== "");
     const ground = theme.backgroundColor.hex;
     for (const segment of half) expect(segment.style?.color?.getTruecolor(theme, true).hex).toBe(ground);
   });

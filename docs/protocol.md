@@ -35,7 +35,7 @@ console.print(new UserReport([
 ```
 
 The `render` method:
-- Receives `RenderOptions` with `maxWidth` and other context, including `colorSystem`, the depth the output will be encoded at, for a renderable that decides on the colours the terminal will draw
+- Receives `RenderOptions` with `maxWidth` and other context, including `colorSystem`, the depth the output will be encoded at, and `terminal`, the [terminal it is drawn on](/console#the-terminal-a-frame-is-drawn-on), for a renderable that decides on the colours the terminal will draw
 - Returns an iterable of `Segment`s — a generator is recommended
 - Draws a child renderable (markup rendered with `renderMarkup`, a `Table`, a `Panel`, another custom renderable) through `render(child, options)` and yields its segments with `yield*`
 
