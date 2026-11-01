@@ -7,6 +7,7 @@ import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, NEVER_CHANGES, Style, type Hold, type StyleSyntaxError, type Theme } from "./style.js";
 import { ColorDepth, type ColorSpec, type TerminalColors } from "./color.js";
+import type { TextOrder } from "./text-order.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
 // `RichText` is itself rendered under these options, is a recursion in the
@@ -107,6 +108,8 @@ export interface RenderOptions {
    * handed. Absent means truecolor.
    */
   colorSystem?: ColorDepth | null;
+  /** What the output's destination does with direction. Absent is `"plain"`. */
+  textOrder?: TextOrder;
   /**
    * The terminal the output is drawn on: the colours a cell that sets none is
    * drawn in, and the sixteen an ANSI colour names. The terminal's own palette

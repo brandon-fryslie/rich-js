@@ -15,3 +15,13 @@
  */
 
 export type Env = Readonly<Record<string, string | undefined>>;
+
+/**
+ * A terminal that says it cannot be drawn on: `TERM` is `dumb` or `unknown`,
+ * as Emacs' shell mode sets it. It takes no colour and nothing that moves the
+ * cursor.
+ */
+export function isDumbTerminal(env: Env): boolean {
+  const term = env["TERM"];
+  return term === "dumb" || term === "unknown";
+}

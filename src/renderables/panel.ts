@@ -2,6 +2,7 @@
  * Panel — a bordered box that wraps content, with optional title and subtitle.
  */
 
+import { labelled } from "../core/orient.js";
 import { cellLen, setCellSize, asCellCol, cellCount } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
@@ -368,7 +369,7 @@ export class Panel implements Renderable, Measurable {
     const corner = box.bottom.right.repeat(geometry.right);
     const [close, afterAccessory] = accessoryText === "" ? [corner, ""] : ["", corner];
     yield* borderRow(options, box.bottom, geometry, geometry.spanWidth - cellLen(accessoryText), this._subtitleLabel, subtitleStyle, border, close);
-    yield new Segment(accessoryText, borderTextStyle(border, accessoryOwn));
+    yield* labelled("", accessoryText, "", borderTextStyle(border, accessoryOwn), options.textOrder);
     yield new Segment(afterAccessory, border);
     yield Segment.line();
   }

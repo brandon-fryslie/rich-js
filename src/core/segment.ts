@@ -483,10 +483,10 @@ export class Segment {
    * in its length.
    */
   static divide(
-    segments: Segment[],
+    segments: readonly Segment[],
     cuts: number[],
   ): Segment[][] {
-    if (cuts.length === 0) return [segments];
+    if (cuts.length === 0) return [[...segments]];
 
     const sections: Segment[][] = [[]];
     let offset = 0;

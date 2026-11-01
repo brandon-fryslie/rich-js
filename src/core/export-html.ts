@@ -142,16 +142,17 @@ function onGrid(text: string, draw: (escaped: string) => string): string {
  * blinks with the glyph. A wide glyph's box sits between the two: it inherits
  * the double underline, and the inner span inside it draws the other lines.
  */
-function runHtml({ text, look }: ExportRun): string {
+function runHtml({ text, look, inVisualOrder }: ExportRun): string {
   const drawn = look.underline === "double"
     ? span(
       [...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
       onGrid(text, (glyph) => span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph)),
     )
     : span([...paintCss(look), ...glyphCss(look)], onGrid(text, (glyph) => glyph));
+  const ordered = inVisualOrder ? span(["unicode-bidi:bidi-override"], drawn) : drawn;
   return look.href === null
-    ? drawn
-    : `<a href="${escapeAttribute(look.href)}" style="${ANCHOR_CSS}">${drawn}</a>`;
+    ? ordered
+    : `<a href="${escapeAttribute(look.href)}" style="${ANCHOR_CSS}">${ordered}</a>`;
 }
 
 /**

@@ -56,7 +56,7 @@ export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 // console declares them. This list is both the type and what is copied: the
 // host alone decides the console's size, colours and sink, so no other
 // property of the options object reaches it, whatever the object carries.
-const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "terminal", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
+const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "textOrder", "terminal", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
 type DrawOption = (typeof DRAW_OPTIONS)[number];
 type DrawOptions = Readonly<Pick<ConsoleOptions, DrawOption>>;
 

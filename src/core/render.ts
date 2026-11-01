@@ -52,11 +52,12 @@ import { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 import { render } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
+import { sealed } from "./seal.js";
 
 // [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
 // `RenderOptions`' and is not restated here.
 export interface RenderToStringOptions
-  extends Pick<RenderOptions, "asciiOnly" | "reducedMotion" | "terminal" | "theme" | "onStyleError" | "highlight" | "highlighter" | "frame"> {
+  extends Pick<RenderOptions, "asciiOnly" | "reducedMotion" | "textOrder" | "terminal" | "theme" | "onStyleError" | "highlight" | "highlighter" | "frame"> {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
@@ -109,6 +110,10 @@ export function shownOn(segment: Segment, destination: Destination): Segment {
  * `Style.render` for that segment, and nothing for a control segment.
  */
 export function segmentToString(segment: Segment, destination: Destination): string {
+  return segmentsToString([segment], destination);
+}
+
+function encoded(segment: Segment, destination: Destination): string {
   if (segment.isControl) return "";
   const { text, style } = shownOn(segment, destination);
   // As the reference's `if not text` and `if style:` — no pair around nothing.
@@ -121,10 +126,13 @@ export function segmentToString(segment: Segment, destination: Destination): str
   return link === undefined ? styled : `${osc8Open(link)}${styled}${OSC8_CLOSE}`;
 }
 
-/** Encodes a sequence of segments as ANSI bytes for `destination`, one segment at a time. */
+/**
+ * Encodes a sequence of segments as ANSI bytes for `destination`, one segment
+ * at a time, over what `sealed` lets reach the wire.
+ */
 export function segmentsToString(segments: Iterable<Segment>, destination: Destination): string {
   const parts: string[] = [];
-  for (const segment of segments) parts.push(segmentToString(segment, destination));
+  for (const segment of sealed(segments, destination.textOrder)) parts.push(encoded(segment, destination));
   return parts.join("");
 }
 
@@ -136,7 +144,9 @@ export function renderToString(
   // [LAW:dataflow-not-control-flow] An absent spec is truecolor; an explicit
   // `null` stays null (`??` would collapse it).
   // [LAW:single-enforcer] Specs resolve through `resolveDestination`.
-  const destinationOptions: DestinationOptions = { reducedMotion: options?.reducedMotion };
+  // Stated, never detected: this call's bytes have no known destination, and
+  // its output is deterministic.
+  const destinationOptions: DestinationOptions = { reducedMotion: options?.reducedMotion, textOrder: options?.textOrder ?? "plain" };
   if (options?.env !== undefined) destinationOptions.env = options.env;
   if (options?.isTTY !== undefined) destinationOptions.isTTY = options.isTTY;
   const rawSpec = options?.colorSystem;
@@ -168,6 +178,7 @@ export function renderToString(
     // [LAW:one-source-of-truth] The depth the segments below are encoded at,
     // so a renderable measures what this very call will draw.
     colorSystem: destination.colorSystem,
+    textOrder: destination.textOrder,
   };
 
   return segmentsToString(render(renderable, renderOptions), destination);

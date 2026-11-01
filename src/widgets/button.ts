@@ -16,6 +16,7 @@
  * partner depends on luminance.
  */
 
+import { labelled } from "../core/orient.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
@@ -108,15 +109,15 @@ export class Button extends ThemedWidget {
 
   // --- Rendering ---
 
-  protected draw(_options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     // [LAW:dataflow-not-control-flow] same segment count and width every state
     const focused = this.focused;
     const left = focused ? "[" : " ";
     const right = focused ? "]" : " ";
-    const text = `${left} ${this.label} ${right}`;
+    const drawn = (style: Style): Segment[] => labelled(`${left} `, this.label, ` ${right}`, style, options.textOrder);
 
     if (this.disabled) {
-      return [new Segment(text, new Style(this.disabledInk))];
+      return drawn(new Style(this.disabledInk));
     }
 
     // Active and hover share the same colour pair (full accent bg + on-accent fg).
@@ -125,10 +126,10 @@ export class Button extends ThemedWidget {
     // accents whose contrast partner depends on luminance.
     const keys = VARIANT_KEYS[this.variant];
     if (this.active || this.hovered) {
-      return [new Segment(text, new Style({ ...ink(this.theme, keys.hoverFg, keys.hover), bold: this.active }))];
+      return drawn(new Style({ ...ink(this.theme, keys.hoverFg, keys.hover), bold: this.active }));
     }
 
-    return [new Segment(text, new Style(ink(this.theme, keys.fg, keys.bg)))];
+    return drawn(new Style(ink(this.theme, keys.fg, keys.bg)));
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

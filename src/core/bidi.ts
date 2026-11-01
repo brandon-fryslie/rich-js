@@ -12,13 +12,13 @@
  * character the algorithm takes out of the text, which has no level.
  */
 
-import { BIDI_CLASSES, BRACKET_PAIRS, CLASS_RANGES, MIRRORS } from "./bidi-data.js";
+import { BIDI_CLASSES, BRACKET_PAIRS, CLASS_RANGES, JOINING_RANGES, JOINING_TYPES, MIRRORS, PRESENTATION_FORMS } from "./bidi-data.js";
 import { pattern } from "./pattern.js";
+import type { ParagraphLevel } from "./text-order.js";
+
+export type { ParagraphLevel } from "./text-order.js";
 
 type BidiClass = (typeof BIDI_CLASSES)[number] | "L";
-
-/** The paragraph direction: 0 is left to right, 1 right to left. */
-export type ParagraphLevel = 0 | 1;
 
 /** The level of a character rule X9 removes. */
 export const REMOVED = -1;
@@ -77,6 +77,67 @@ const ACTIVE = pattern(
     "u",
   ),
 );
+
+// LRE, RLE, PDF, LRO, RLO, LRI, RLI, FSI, PDI.
+const EXPLICIT = pattern(/[\u202a-\u202e\u2066-\u2069]/);
+const MARKS = pattern(/[\u200e\u200f\u061c]/);
+
+/** `text` with every explicit formatting character gone. */
+export function withoutExplicit(text: string): string {
+  return text.match(EXPLICIT) === null ? text : text.replace(new RegExp(EXPLICIT.source, "g"), "");
+}
+
+/** `json` with every explicit formatting character as its JSON escape: visible, lossless, and still JSON. */
+export function withExplicitEscaped(json: string): string {
+  return json.replace(new RegExp(EXPLICIT.source, "g"), (control) => `\\u${control.codePointAt(0)!.toString(16).padStart(4, "0")}`);
+}
+
+/** `text` with LRM, RLM and ALM gone. */
+export function withoutMarks(text: string): string {
+  return text.match(MARKS) === null ? text : text.replace(new RegExp(MARKS.source, "g"), "");
+}
+
+const isIsolateOpener = (opener: string): boolean => isIsolateInitiator(classOf(opener.codePointAt(0)!));
+
+/**
+ * `character` applied to `open`, the openers in force, outermost first: an
+ * opener joins them, a closer takes what it closes, and a paragraph separator
+ * ends them all, as X8 does. False for a closer that matches nothing, which
+ * closes nothing: PDF closes an embedding opened since the innermost isolate,
+ * and PDI the innermost isolate with every embedding inside it.
+ */
+export function advance(open: string[], character: string): boolean {
+  const type = classOf(character.codePointAt(0)!);
+  if (type === "B") open.length = 0;
+  else if (type === "LRE" || type === "RLE" || type === "LRO" || type === "RLO" || isIsolateInitiator(type)) open.push(character);
+  else if (type === "PDF") {
+    if (open.length === 0 || isIsolateOpener(open.at(-1)!)) return false;
+    open.pop();
+  } else if (type === "PDI") {
+    if (!open.some(isIsolateOpener)) return false;
+    while (!isIsolateOpener(open.pop()!));
+  }
+  return true;
+}
+
+/** The openers `text` leaves open at its end, outermost first. */
+export function openersOf(text: string): string {
+  const open: string[] = [];
+  for (const character of text) advance(open, character);
+  return open.join("");
+}
+
+/** What closes `openers`, innermost first. */
+export function closersOf(openers: string): string {
+  return Array.from(openers, (opener) => (isIsolateOpener(opener) ? "\u2069" : "\u202c"))
+    .reverse()
+    .join("");
+}
+
+/** `content` with the direction state it leaves open closed: separate content starts clean after it. */
+export function closed(content: string): string {
+  return isBidi(content) ? content + closersOf(openersOf(content)) : content;
+}
 
 /** Whether `text` needs the algorithm at all. */
 export function isBidi(text: string): boolean {
@@ -477,4 +538,74 @@ function reverse(items: number[], start: number, end: number): void {
   for (let left = start, right = end - 1; left < right; left += 1, right -= 1) {
     [items[left], items[right]] = [items[right]!, items[left]!];
   }
+}
+
+type JoiningType = (typeof JOINING_TYPES)[number] | "U";
+
+function joiningTypeOf(codePoint: number): JoiningType {
+  let low = 0;
+  let high = JOINING_RANGES.length - 1;
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const [first, last, index] = JOINING_RANGES[mid]!;
+    if (codePoint < first) high = mid - 1;
+    else if (codePoint > last) low = mid + 1;
+    else return JOINING_TYPES[index as 0]!;
+  }
+  return "U";
+}
+
+const FORMS_OF: ReadonlyMap<number, readonly number[]> = new Map(PRESENTATION_FORMS.map(([letter, ...forms]) => [letter, forms]));
+const ISOLATED = 0;
+const FINAL = 1;
+const INITIAL = 2;
+const MEDIAL = 3;
+const ZWNJ = "\u200c";
+const ZWJ = "\u200d";
+
+/** What of a cluster joining sees: whether it has forms, and which way it joins. */
+interface Joining {
+  readonly letter: boolean;
+  readonly toPrevious: boolean;
+  readonly toNext: boolean;
+}
+
+function joiningOf(cluster: string): Joining {
+  const base = cluster.codePointAt(0)!;
+  const type = joiningTypeOf(base);
+  const toNext = (type === "D" || type === "L" || type === "C") && !cluster.includes(ZWNJ);
+  return { letter: FORMS_OF.has(base), toPrevious: type === "D" || type === "R" || type === "C", toNext };
+}
+
+/**
+ * Arabic joining on one row's grapheme clusters, in logical order and in place:
+ * each letter takes the presentation form its neighbours call for, because a
+ * terminal that does not reorder does not join either. A presentation form is
+ * one cell, as the letter was, so no width moves. Lam-alef stays two forms rather
+ * than the one-cell ligature, as VTE leaves it, since the ligature would narrow
+ * a line after it was laid out. A letter Unicode encodes no such form for stays a
+ * base letter. A joiner beside a shaped letter goes, its effect carried by the
+ * form; any other joiner, an emoji sequence's among them, stays or `cellLen`
+ * would change after the cut.
+ */
+export function shaped(clusters: readonly string[]): string[] {
+  const joinings = clusters.map(joiningOf);
+  // Marks and lone joiners are transparent: joining reads past them.
+  const isTransparent = (at: number): boolean => joiningTypeOf(clusters[at]!.codePointAt(0)!) === "T";
+  const neighbour = (at: number, step: 1 | -1): Joining | undefined => {
+    let next = at + step;
+    while (next >= 0 && next < clusters.length && isTransparent(next)) next += step;
+    return joinings[next];
+  };
+
+  return clusters.map((text, at) => {
+    const own = joinings[at]!;
+    if (!own.letter) return text;
+    const joinsBefore = own.toPrevious && (neighbour(at, -1)?.toNext ?? false);
+    const joinsAfter = own.toNext && (neighbour(at, 1)?.toPrevious ?? false);
+    const forms = FORMS_OF.get(text.codePointAt(0)!)!;
+    const wanted = joinsBefore ? (joinsAfter ? MEDIAL : FINAL) : joinsAfter ? INITIAL : ISOLATED;
+    const form = forms[wanted] || text.codePointAt(0)!;
+    return String.fromCodePoint(form) + text.slice(1).replaceAll(ZWNJ, "").replaceAll(ZWJ, "");
+  });
 }

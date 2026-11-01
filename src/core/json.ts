@@ -7,6 +7,7 @@
  * where the console can reach it without an upward edge. [LAW:one-way-deps]
  */
 
+import { withExplicitEscaped } from "./bidi.js";
 import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
 import { JSONHighlighter } from "./highlighter.js";
@@ -60,7 +61,9 @@ export class JSONRenderable implements Renderable, Measurable {
       : undefined;
 
     const jsonStr = JSON.stringify(data, replacer, indent);
-    const text = new RichText(jsonStr);
+    // Data on show: one string holds every key and value, so a control left in
+    // one would act on the rest of its line.
+    const text = new RichText(withExplicitEscaped(jsonStr));
 
     if (doHighlight) {
       highlighter.highlight(text);

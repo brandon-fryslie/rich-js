@@ -44,8 +44,8 @@ describe("isBidi", () => {
     expect(isBidi("א")).toBe(true);
     expect(isBidi("ا")).toBe(true);
     expect(isBidi("٠")).toBe(true);
-    expect(isBidi("‬")).toBe(true);
-    expect(isBidi("⁩")).toBe(true);
+    expect(isBidi("\u202c")).toBe(true);
+    expect(isBidi("\u2069")).toBe(true);
   });
 
   test("a line it refuses is level 0 throughout", () => {

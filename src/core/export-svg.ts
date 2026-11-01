@@ -85,6 +85,7 @@ interface PlacedRun {
   readonly column: number;
   readonly cells: number;
   readonly look: ExportLook;
+  readonly inVisualOrder: boolean;
   readonly chunks: readonly Chunk[];
 }
 
@@ -122,10 +123,10 @@ function chunk(text: string, column: number): Chunk[] {
 function place(rows: readonly ExportLine[]): PlacedRun[] {
   return rows.flatMap((runs, row) => {
     let column = 0;
-    return runs.map(({ text, look }) => {
+    return runs.map(({ text, look, inVisualOrder }) => {
       const chunks = chunk(text, column);
       const cells = chunks.reduce((sum, c) => sum + c.cells, 0);
-      const placed = { row, column, cells, look, chunks };
+      const placed = { row, column, cells, look, inVisualOrder, chunks };
       column += cells;
       return placed;
     });
@@ -175,10 +176,11 @@ function backgroundSvg(run: PlacedRun): string[] {
     : [`<rect fill="${run.look.background.hex}" ${cellBox(run)} shape-rendering="crispEdges"/>`];
 }
 
-function textSvg({ text, column, cells }: Chunk, baseline: number): string {
+function textSvg({ text, column, cells }: Chunk, baseline: number, inVisualOrder: boolean): string {
   // A chunk of no cells has no length to stretch to; it takes the font's.
   const length = cells === 0 ? "" : ` textLength="${n(cells * CELL_WIDTH)}" lengthAdjust="spacingAndGlyphs"`;
-  return `<text x="${n(column * CELL_WIDTH)}" y="${n(baseline)}"${length} xml:space="preserve">${escapeText(text)}</text>`;
+  const order = inVisualOrder ? ` unicode-bidi="bidi-override"` : "";
+  return `<text x="${n(column * CELL_WIDTH)}" y="${n(baseline)}"${length}${order} xml:space="preserve">${escapeText(text)}</text>`;
 }
 
 /**
@@ -199,7 +201,7 @@ function runSvg(run: PlacedRun, className: string): string {
   ];
   const radius = OUTLINE_RADIUS[look.outline];
   const drawn = [
-    ...run.chunks.map((c) => textSvg(c, baseline)),
+    ...run.chunks.map((c) => textSvg(c, baseline, run.inVisualOrder)),
     ...lineYs.map((y) => `<rect x="${x}" y="${n(y)}" width="${width}" height="${LINE_THICKNESS}"/>`),
     ...(radius === null
       ? []

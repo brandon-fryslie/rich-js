@@ -11,6 +11,7 @@
  *   disabled  — dimmed
  */
 
+import { labelled } from "../core/orient.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
@@ -76,14 +77,14 @@ export class Checkbox extends ThemedWidget {
 
   protected draw(options: RenderOptions): Iterable<Segment> {
     const indicator = this.checked ? drawable(options, "✓", "x") : " ";
-    const text = `[${indicator}] ${this.label}`;
+    const drawn = (style: Style): Segment[] => labelled(`[${indicator}] `, this.label, "", style, options.textOrder);
 
     if (this.disabled) {
-      return [new Segment(text, new Style(this.disabledInk))];
+      return drawn(new Style(this.disabledInk));
     }
 
     const colors = ink(this.theme, this.checked ? "text-primary" : "foreground", "background");
-    return [new Segment(text, new Style({ ...colors, underline: this.focused }))];
+    return drawn(new Style({ ...colors, underline: this.focused }));
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

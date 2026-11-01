@@ -21,6 +21,7 @@ import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, splitAtCells } 
 import { divideLine } from "./wrap.js";
 import { Memo } from "./memo.js";
 import { Segment } from "./segment.js";
+import { closed } from "./bidi.js";
 import { RichText, stripControlChars } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
@@ -966,7 +967,7 @@ export class Pretty implements Renderable, Measurable {
       case "opaque":
         return { kind: "text", text: form.text };
       case "self":
-        return { kind: "text", text: String(value) };
+        return { kind: "text", text: closed(String(value)) };
       case "keys": {
         // No self-description, so the keys are the whole story.
         const { record } = form;

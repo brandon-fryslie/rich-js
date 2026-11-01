@@ -32,6 +32,7 @@
 
 import { blendRgb, ColorSpec, type ColorRgba, type TerminalTheme } from "./color.js";
 import { NULL_STYLE, type Style } from "./style.js";
+import { sealed } from "./seal.js";
 import type { Segment } from "./segment.js";
 
 declare const _href: unique symbol;
@@ -69,6 +70,8 @@ export interface ExportLook {
 export interface ExportRun {
   readonly text: string;
   readonly look: ExportLook;
+  /** Its cells are in display order already, so a browser must not reorder them. */
+  readonly inVisualOrder: boolean;
 }
 
 /** One terminal row, left to right. An empty array is a blank row. */
@@ -209,11 +212,14 @@ export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
  */
 export function exportLines(segments: Iterable<Segment>, theme?: TerminalTheme): ExportLine[] {
   const rows: ExportRun[][] = [[]];
-  for (const segment of segments) {
-    const look = resolveLook(segment.style ?? NULL_STYLE, theme);
+  // A browser is a display that reorders and holds the controls at zero width.
+  for (const segment of sealed(segments, "logical")) {
+    const style = segment.style ?? NULL_STYLE;
+    const look = resolveLook(style, theme);
+    const inVisualOrder = style.bidi?.order === "visual";
     segment.text.split("\n").forEach((piece, index) => {
       if (index > 0) rows.push([]);
-      if (piece.length > 0) rows[rows.length - 1]!.push({ text: piece, look });
+      if (piece.length > 0) rows[rows.length - 1]!.push({ text: piece, look, inVisualOrder });
     });
   }
   return rows[rows.length - 1]!.length === 0 ? rows.slice(0, -1) : rows;
