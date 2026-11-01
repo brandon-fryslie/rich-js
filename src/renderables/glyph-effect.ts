@@ -129,7 +129,7 @@ export class Reglyphed implements Renderable, Measurable {
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
     const frame = shownAt(animation, this._t, options);
     const shown = showGlyphs(placed, frame.value);
-    options.onMoved?.(this._t, holdOf(frame, this._t));
+    options.onMoved?.(this._t, this.key, holdOf(frame, this._t));
     return segments.map((segment, i) => (shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style)));
   }
 
@@ -162,11 +162,11 @@ export class GlyphEffected implements Animation<Renderable> {
   }
 
   nextChange(t: number, moves?: Moves): number {
-    return moves?.(t)?.nextChange ?? t;
+    return moves?.(t, this.key)?.nextChange ?? t;
   }
 
   lastChange(t: number, moves?: Moves): number {
-    return moves?.(t)?.lastChange ?? t;
+    return moves?.(t, this.key)?.lastChange ?? t;
   }
 
   /** The element under the glyph effect with its motion taken out. */

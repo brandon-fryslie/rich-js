@@ -168,14 +168,14 @@ export interface RenderOptions {
    */
   onHold?: (hold: Hold) => void;
   /**
-   * Told of the hold a value drawn for a time on its own clock is in: an
-   * effect's frame, which alone knows, since the answer depends on what it
-   * drew. `t` is that clock's, not the frame's, so this cannot be `onHold`:
+   * Told of the hold the element `key` names, drawn for a time on its own
+   * clock, is in: an effect's frame, which alone knows, since the answer
+   * depends on what it drew. `t` is that clock's, not the frame's, so this cannot be `onHold`:
    * the animation placed around the value carries the answer back through the
    * combinators that remapped the time (`Moves`, `./animation.ts`). It reaches
    * whatever `frame` reaches.
    */
-  onMoved?: (t: number, hold: Hold) => void;
+  onMoved?: (t: number, key: string, hold: Hold) => void;
 }
 
 /** The one field of the render options that says whether the reader wants motion. */
@@ -549,7 +549,8 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * enters and takes some. A motion held at no width therefore wakes its host
  * for frames that look the same: when it next takes room is not a moment its
  * hold can name, and an early answer costs a frame where a late one hides the
- * element. It commits nothing, as a measurement commits nothing —
+ * element. An effect is not such a motion: it cannot give itself room, so
+ * what its drawing says stands. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown
  * left it.

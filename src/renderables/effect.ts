@@ -72,7 +72,7 @@
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
 import { Animation, holdOf, placedRender, shownAt, type Moves } from "../core/animation.js";
-import type { Hold } from "../core/style.js";
+import { NEVER_CHANGES } from "../core/style.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
@@ -246,9 +246,6 @@ export interface EffectedOptions {
   readonly key: string;
 }
 
-/** What drew nothing the effect can change: held forever, as far as the effect says. */
-const UNMOVED: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
-
 /**
  * An `Effected` at `t`, or an element through an effect at a time an
  * animation's `at` was handed — a lifecycle's time since it entered: `renderable`
@@ -275,7 +272,7 @@ export class Recolored implements Renderable, Measurable {
     // With no colour output nothing the effect does is written, so the child
     // is what is shown, and it changes when the child says it does.
     if (options.colorSystem === null) {
-      options.onMoved?.(this._t, UNMOVED);
+      options.onMoved?.(this._t, this.key, NEVER_CHANGES);
       return segments;
     }
     // No depth named is no downgrade, as `drawnColors` reads it.
@@ -290,7 +287,7 @@ export class Recolored implements Renderable, Measurable {
     const walked = walk(looked);
     const drawn = measured(looked, () => walked, depth, terminal);
     const shown = shownAt(this.effect(drawn), this._t, options);
-    options.onMoved?.(this._t, holdOf(shown, this._t));
+    options.onMoved?.(this._t, this.key, holdOf(shown, this._t));
     return this._recolored(walked, shown.value, drawn);
   }
 
@@ -476,11 +473,11 @@ export class Effected implements Animation<Renderable> {
   }
 
   nextChange(t: number, moves?: Moves): number {
-    return moves?.(t)?.nextChange ?? t;
+    return moves?.(t, this.key)?.nextChange ?? t;
   }
 
   lastChange(t: number, moves?: Moves): number {
-    return moves?.(t)?.lastChange ?? t;
+    return moves?.(t, this.key)?.lastChange ?? t;
   }
 
   /** The element under the effect with its motion taken out. */

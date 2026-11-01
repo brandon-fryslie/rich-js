@@ -78,22 +78,23 @@ import { beat, firstReaching, passAt, positiveSeconds, type Beat } from "./easin
 import { Measurement } from "./measure.js";
 import { isRenderable, render, type Measurable, type Motion, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
-import { Style, type Hold } from "./style.js";
+import { intersection, NEVER_CHANGES, Style, type Hold } from "./style.js";
 
 /**
- * What a frame's drawing said of the hold a value drawn at `t` is in, or
- * nothing if none was drawn then: handed to an animation asked about a frame
- * already drawn, so an answer only a drawing knows goes up through the
- * combinators that remapped the time. It reads by `t` alone: two parts at one
- * moment share the intersection of what was drawn then, narrower and never
- * wider, and a part drawn nowhere has nothing on screen to change. So every
- * drawn part must tell, which holds while a container draws a child with the
- * options it was handed, as `frame` and `onHold` already need. An animation
- * that does not read it ignores it, and one that forwards it to no part
- * stays early. [LAW:one-source-of-truth] The frame's one drawing says it, so
- * the answer cannot disagree with what the frame shows.
+ * What a frame's drawing said of the hold the element named `key`, drawn at
+ * `t`, is in, or nothing if the frame heard of no such drawing: handed to an
+ * animation asked about a frame already drawn, so an answer only a drawing
+ * knows goes up through the combinators that remapped the time. It reads by
+ * `key` and not by the effect, which `reduced()` and a `repeat`'s `nth` build
+ * anew at each asking, and by `t`, since one element may be drawn at two
+ * moments. Parts sharing both share the intersection of what was drawn:
+ * narrower and never wider. A drawing a container hid, by not handing on its
+ * options, reads as none and stays early, unless a part sharing its key and
+ * `t` told. An animation that does not read it ignores it, and one that
+ * forwards it to no part stays early. [LAW:one-source-of-truth] The frame's
+ * one drawing says it, so the answer cannot disagree with what the frame shows.
  */
-export type Moves = (t: number) => Hold | undefined;
+export type Moves = (t: number, key: string) => Hold | undefined;
 
 /** A value of `T` at a time in seconds, and the hold it is in: what every animation answers, whatever its values. */
 export interface Timed<T> {
@@ -143,11 +144,6 @@ export function shownAt<T>(animation: Timed<T>, t: number, motion: Motion): Show
 /** The hold `shown`, drawn at `t`, is in: its animation's two answers there, given what its drawing said. */
 export function holdOf(shown: Shown<unknown>, t: number, moves?: Moves): Hold {
   return { lastChange: shown.drawn.lastChange(t, moves), nextChange: shown.drawn.nextChange(t, moves) };
-}
-
-/** The moments both `a` and `b` hold through: the later `lastChange` and the sooner `nextChange`, as `Style.add` joins two cells'. */
-export function intersection(a: Hold, b: Hold): Hold {
-  return { lastChange: Math.max(a.lastChange, b.lastChange), nextChange: Math.min(a.nextChange, b.nextChange) };
 }
 
 /** The style saying a cell is in `hold`. */
@@ -202,14 +198,15 @@ function drawable(value: unknown): Renderable {
 export function* placed<T>(animation: Timed<T>, options: RenderOptions, draw: (value: T, options: RenderOptions) => Iterable<Segment>): Iterable<Segment> {
   const t = frameTimeOf(options);
   const shown = shownAt(animation, t, options);
-  const said = new Map<number, Hold>();
-  const onMoved = (at: number, hold: Hold): void => {
-    const known = said.get(at);
-    said.set(at, known === undefined ? hold : intersection(known, hold));
-    options.onMoved?.(at, hold);
+  const said = new Map<string, Hold>();
+  const part = (at: number, key: string): string => `${at} ${key}`;
+  const onMoved = (at: number, key: string, hold: Hold): void => {
+    const known = said.get(part(at, key));
+    said.set(part(at, key), known === undefined ? hold : intersection(known, hold));
+    options.onMoved?.(at, key, hold);
   };
   const segments = [...draw(shown.value, { ...options, onMoved })];
-  const hold = holdOf(shown, t, (at) => said.get(at));
+  const hold = holdOf(shown, t, (at, key) => said.get(part(at, key)));
   options.onHold?.(hold);
   yield* stampFrame(segments, hold);
 }
@@ -242,7 +239,7 @@ export function placedMeasure(animation: Timed<unknown>, options: RenderOptions)
  * layout; a combinator's own switches and a child's holds still reach the
  * measurement. [LAW:types-are-the-program]
  */
-const UNLAID: Moves = () => ({ lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY });
+const UNLAID: Moves = () => NEVER_CHANGES;
 
 /** What `Animation.of` makes of `X`: `X`, with the face its values call for. */
 export type Faced<X extends Timed<unknown>> = X & Animation<X extends Timed<infer T> ? T : never>;
@@ -400,8 +397,13 @@ export const Animation = {
         return moved <= end ? end : beat.lastChange(moved) === moved ? moved : beat.nextChange(moved);
       },
       // The value held now began at this hold's start at the latest: an early
-      // answer where the animation had not moved by it, which the contract allows.
-      lastChange: (t: number) => beat.lastChange(t),
+      // answer where the animation had not moved by it, which the contract
+      // allows. One that always was never turned on any beat.
+      lastChange(t: number, moves?: Moves) {
+        const began = beat.lastChange(t);
+        const moved = animation.lastChange(began, moves);
+        return moved === Number.NEGATIVE_INFINITY ? moved : began;
+      },
       // Reduced, nothing moves between beats, so there is nothing to sample on them.
       reduced: () => animation.reduced(),
     });

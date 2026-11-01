@@ -33,6 +33,7 @@ import { inFrame } from "./in-frame.js";
 
 const OPTIONS = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR, terminal: CATPPUCCIN_MOCHA } as const;
 const NEVER = Number.POSITIVE_INFINITY;
+const EVER = Number.NEGATIVE_INFINITY;
 
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
 /** Moves every frame, promising no hold. */
@@ -45,19 +46,21 @@ const stepping: Effect = () => Animation.onBeat(Animation.continuous(() => (look
 const colour = (key = "k"): Effected => new Effected(label, drifting, { key });
 const glyph = (key = "k"): GlyphEffected => new GlyphEffected(label, GLYPH_EFFECT_CATALOGUE.loops.wave({ z: 0 }) as GlyphEffect, { key });
 
-/** Each combinator, over a part, with the moment after 1 it changes of its own accord, on the frame's clock. */
-const combinators = (part: () => Timed<Renderable>): readonly [string, Animation<Renderable>, number][] => [
-  ["Timeline.run", Timeline.run(Timeline.play(0), part()), NEVER],
-  ["Timeline.run at another rate", Timeline.run(Timeline.play(0, 2), part()), NEVER],
-  ["Animation.map", Animation.map(part(), (value) => new Panel(value)), NEVER],
-  ["Animation.all", Animation.map(Animation.all([part(), part()]), (values) => new Group(...values)), NEVER],
-  ["Timeline.stagger", Animation.map(Timeline.stagger([part(), part()], 0.25), (values) => new Group(...values)), NEVER],
-  ["Animation.sequence, the first part", Animation.sequence<Renderable>(part(), 5, Animation.constant(label)), 5],
-  ["Animation.sequence, the second part", Animation.sequence<Renderable>(Animation.constant(label), 0.5, part()), NEVER],
-  ["Animation.repeat", Animation.repeat(4, () => part()), 4],
+/** Each combinator, over a part, with the moments around 1 it changes of its own accord, on the frame's clock: the last, and the next. */
+const combinators = (part: () => Timed<Renderable>): readonly [string, Animation<Renderable>, number, number][] => [
+  ["Timeline.run", Timeline.run(Timeline.play(0), part()), EVER, NEVER],
+  ["Timeline.run at another rate", Timeline.run(Timeline.play(0, 2), part()), EVER, NEVER],
+  ["Animation.map", Animation.map(part(), (value) => new Panel(value)), EVER, NEVER],
+  ["Animation.all", Animation.map(Animation.all([part(), part()]), (values) => new Group(...values)), EVER, NEVER],
+  ["Timeline.stagger", Animation.map(Timeline.stagger([part(), part()], 0.25), (values) => new Group(...values)), EVER, NEVER],
+  ["Animation.onBeat", Animation.onBeat(part(), beat([1])), EVER, NEVER],
+  ["Animation.sequence, the first part", Animation.sequence<Renderable>(part(), 5, Animation.constant(label)), EVER, 5],
+  ["Animation.sequence, the second part", Animation.sequence<Renderable>(Animation.constant(label), 0.5, part()), 0.5, NEVER],
+  ["Animation.repeat", Animation.repeat(4, () => part()), 0, 4],
 ];
 
 const nextChangeOf = (renderable: Renderable, t: number, options: RenderOptions = OPTIONS): number => Segment.nextChange(render(inFrame(renderable, t), options));
+const lastChangeOf = (renderable: Renderable, t: number, options: RenderOptions = OPTIONS): number => Segment.lastChange(render(inFrame(renderable, t), options));
 
 describe("an effect held still at the output lets the host sleep, wherever it is placed", () => {
   const reduced = { ...OPTIONS, reducedMotion: true };
@@ -67,18 +70,15 @@ describe("an effect held still at the output lets the host sleep, wherever it is
     expect(nextChangeOf(Timeline.run(Timeline.play(0), colour()), 1, reduced)).toBe(NEVER);
   });
 
-  for (const [name, placed, next] of combinators(() => colour())) {
+  for (const [name, placed, last, next] of combinators(() => colour())) {
     it(`a colour effect in ${name}, reduced`, () => expect(nextChangeOf(placed, 1, reduced)).toBe(next));
     it(`a colour effect in ${name}, with no colour`, () => expect(nextChangeOf(placed, 1, colourless)).toBe(next));
+    it(`a colour effect in ${name}, with no colour, run backwards`, () => expect(lastChangeOf(placed, 1, colourless)).toBe(last));
   }
 
-  for (const [name, placed, next] of combinators(() => glyph())) {
+  for (const [name, placed, , next] of combinators(() => glyph())) {
     it(`a glyph effect in ${name}, reduced`, () => expect(nextChangeOf(placed, 1, reduced)).toBe(next));
   }
-
-  it("an effect on a beat holds for good once there is nothing to sample", () => {
-    expect(nextChangeOf(Animation.onBeat(colour(), beat([1])), 1.25, colourless)).toBe(NEVER);
-  });
 
   it("a repeat whose turn builds its effect each time it is asked, reduced and with no colour", () => {
     const placed = Animation.repeat(4, () => colour());
@@ -100,7 +100,7 @@ describe("an effect held still at the output lets the host sleep, wherever it is
 });
 
 describe("a moving effect still moves under a combinator", () => {
-  for (const [name, placed] of combinators(() => colour())) {
+  for (const [name, placed] of combinators(() => colour()).filter(([name]) => name !== "Animation.onBeat")) {
     it(`in ${name}, it answers the frame's time`, () => expect(nextChangeOf(placed, 1.25)).toBe(1.25));
   }
 
@@ -134,6 +134,14 @@ describe("a moving effect still moves under a combinator", () => {
     const still = new Effected(new RichText("plain", { end: "" }), onItsColours, { key: "b" });
     const nested = Animation.map(Animation.all([still, moving]), ([a, b]) => new Group(a, Animation.constant(b)));
     expect(nextChangeOf(nested, 1.25)).toBe(1.25);
+  });
+
+  it("a part a container hides its drawing of stays early, whatever a sibling told", () => {
+    const hiding = (child: Renderable): Renderable => ({ render: (options) => render(child, { maxWidth: options.maxWidth, colorSystem: options.colorSystem ?? null }) });
+    const moving = new Effected(label, drifting, { key: "a" });
+    const still = new Effected(new RichText("plain", { end: "" }), onItsColours, { key: "b" });
+    const hidden = Animation.map(Animation.all([still, moving]), ([a, b]) => new Group(a, hiding(b)));
+    expect(nextChangeOf(hidden, 1.25)).toBe(1.25);
   });
 
   it("an effect never drawn answers the time it is asked at", () => {
