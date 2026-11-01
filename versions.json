@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-531",
+      "ref": "refs/pull/531/merge",
+      "sha": "7d2a397310b7d8c230155b9f33a380a44088826c",
+      "timestamp": "2026-11-01T14:39:12.914Z",
+      "commits": [
+        {
+          "sha": "7d2a397310b7d8c230155b9f33a380a44088826c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T07:37:48-07:00",
+          "message": "Merge 5f83a4c54e2abfd4b0e54564d25aa382a22fac33 into 3ab763eab3bc935444b4ec217422b7592271ad51\n"
+        },
+        {
+          "sha": "5f83a4c54e2abfd4b0e54564d25aa382a22fac33",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T07:37:24-07:00",
+          "message": "A bundled theme's name means one palette (rich-unfiled-791c.gy3z)\n\n`TerminalTheme.palette` was built from a theme's eight base colours, so\ntokyo-night's `panel` was #38374b there and #414868 from `getThemePalette`.\nA bundled constant now holds the registry's Palette itself, which moves 2,163\nof 3,634 role values on a bundled `TerminalTheme`, `*-muted` and `text-*`\namong them, to what the theme authored.\n\nThe contrast tests that ran on those palettes were testing `buildPalette`'s\nrules, so they now run on what those rules make of each theme's bases.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3ab763eab3bc935444b4ec217422b7592271ad51",
