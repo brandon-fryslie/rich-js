@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-529",
+      "ref": "refs/pull/529/merge",
+      "sha": "0063d99398c747d90f9b1f0625014f8234d3a7d5",
+      "timestamp": "2026-11-01T11:47:57.782Z",
+      "commits": [
+        {
+          "sha": "0063d99398c747d90f9b1f0625014f8234d3a7d5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T04:45:49-07:00",
+          "message": "Merge b7258651182a89d876771a8a67881fe682046b95 into 06f609f4240535140c2759a22c0985fb316e03cf\n"
+        },
+        {
+          "sha": "b7258651182a89d876771a8a67881fe682046b95",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T04:43:51-07:00",
+          "message": "A marching-ants border is a library effect (rich-animation-27tq.19d)\n\nmarchingAnts marches the frame of whatever box an element draws, at every\nbox set and width, past a title. A frame is told by what drew it, never by\nits glyphs: Box.frame stamps one drawing's cells with an owner, as a strip's\nseam is told, so a user's container reaches it the way Panel and Table do.\n\nThe ring is read off where a frame's cells sit in the element, because a\nTable draws its top rule before it knows its height.\n\nIt stays out of GLYPH_EFFECT_CATALOGUE: that record is the names a template's\nglyphs takes, and a template fragment has no box, so the name could never\nmarch. The playground's glyph-matching march is removed.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "06f609f4240535140c2759a22c0985fb316e03cf",
