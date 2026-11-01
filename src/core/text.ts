@@ -3,9 +3,9 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
-import { closed } from "./bidi.js";
+import { closed, withoutExplicit } from "./bidi.js";
 import { CONTROL_CODES, type Disposition } from "./control-codes.js";
-import { directed, measured } from "./orient.js";
+import { directed, edges, measured } from "./orient.js";
 import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
@@ -65,10 +65,12 @@ function plainOf(line: readonly Segment[]): string {
  * empty segment also looks like — and a crop leaves one behind. A styled line
  * whose last cells were cropped therefore reported no hanging whitespace at
  * all and was centred as though it were content to the edge, so a span landing
- * anywhere in a wrap's whitespace un-centred the line it closed.
+ * anywhere in a wrap's whitespace un-centred the line it closed. A bidi control
+ * after the whitespace is no content either, and `closed` writes one exactly
+ * there.
  */
 function hangingWhitespace(line: Segment[]): number {
-  return cellLen(TRAILING_WHITESPACE_RE.exec(plainOf(line))?.[0] ?? "");
+  return cellLen(TRAILING_WHITESPACE_RE.exec(withoutExplicit(plainOf(line)))?.[0] ?? "");
 }
 
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
@@ -351,7 +353,8 @@ export class RichText implements Renderable, Measurable {
   edgeStyle(side: "left" | "right", options: RenderOptions): Style {
     const base = this.resolvedStyle(options);
     if (this._text.get().length === 0) return base;
-    const pos = side === "left" ? 0 : this._text.get().length - 1;
+    const shown = edges(this._text.get(), options.textOrder ?? "plain");
+    const pos = side === "left" ? shown.left : shown.right;
     let result = base;
     for (const span of this._spans.get()) {
       if (span.start <= pos && pos < span.end) {
@@ -797,15 +800,12 @@ export class RichText implements Renderable, Measurable {
     options?: { style?: TextStyle },
   ): RichText {
     const result = new RichText("", { style: options?.style });
+    // Each part is its own content, a string's included, so each takes
+    // `append`'s RichText arm.
     for (const part of parts) {
-      if (typeof part === "string") {
-        result.append(part);
-      } else if (part instanceof RichText) {
-        result.append(part);
-      } else {
-        const [text, style] = part;
-        result.append(text, style);
-      }
+      if (part instanceof RichText) result.append(part);
+      else if (typeof part === "string") result.append(new RichText(part));
+      else result.append(new RichText(part[0], { style: part[1] }));
     }
     return result;
   }
@@ -1144,7 +1144,7 @@ export class RichText implements Renderable, Measurable {
   private _fillLine(line: Segment[], maxWidth: number, base: Style): Segment[] {
     const plain = plainOf(line);
     const words = plain.split(" ");
-    if (plain.endsWith(" ")) words.pop();
+    if (withoutExplicit(plain).endsWith(" ")) words.pop();
 
     const gaps = words.length - 1;
     const spaces = new Array<number>(gaps).fill(1);

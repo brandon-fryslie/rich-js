@@ -53,7 +53,8 @@ variable it may have inherited from the program that started it.
 - **`visual`:** Windows Terminal, Alacritty, foot and Ghostty.
 - **`logical`:** VTE terminals, such as GNOME Terminal.
 - **`plain`:** everything else, including pipes, files, tmux, screen, zellij,
-  Emacs, VS Code, xterm.js, kitty, iTerm2, Konsole and Terminal.app.
+  Emacs, Vim and Neovim terminals, VS Code, xterm.js, kitty, iTerm2, Konsole and
+  Terminal.app.
 
 WezTerm is `plain` because its bidi is a setting the environment cannot show. If
 you have left it off, state `visual` yourself.

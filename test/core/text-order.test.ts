@@ -32,6 +32,8 @@ describe("detectTextOrder", () => {
     ["a dumb pty under Emacs in Windows Terminal", { TERM: "dumb", WT_SESSION: "abc" }, true, "plain"],
     ["a dumb pty from Ghostty", { TERM: "dumb", TERM_PROGRAM: "ghostty" }, true, "plain"],
     ["vterm in Windows Terminal", { ...WT, INSIDE_EMACS: "vterm" }, true, "plain"],
+    ["Neovim's terminal in GNOME Terminal", { ...VTE, NVIM: "/run/nvim.sock" }, true, "plain"],
+    ["Vim's terminal in GNOME Terminal", { ...VTE, VIM_TERMINAL: "901" }, true, "plain"],
     ["Alacritty on a pipe", { TERM: "alacritty" }, false, "plain"],
   ];
   test.each(cases)("%s", (_name, env, isTTY, order) => {

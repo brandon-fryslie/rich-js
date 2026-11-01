@@ -5,6 +5,7 @@ import { shaped } from "../../src/core/bidi.js";
 import { MIRRORS } from "../../src/core/bidi-data.js";
 import { cellLen, graphemes } from "../../src/core/cells.js";
 import { JSONRenderable } from "../../src/core/json.js";
+import { Pretty } from "../../src/core/pretty.js";
 import { MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
 import { Console } from "../../src/core/console.js";
 import { renderToString, segmentToString, segmentsToString } from "../../src/core/render.js";
@@ -53,6 +54,12 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     ["a Columns item", () => new Columns([hostile(), after])],
     ["joined Texts", () => new RichText("Name: ").append(new RichText(`${RLO}abc`)).append(new RichText(` ${after}`))],
     ["an assembly", () => RichText.assemble([new RichText(`${RLO}abc`), new RichText(` ${after}`)])],
+    ["an assembly of strings", () => RichText.assemble([`${RLO}abc`, ` ${after}`])],
+    ["an assembly of styled strings", () => RichText.assemble([[`${RLO}abc`, "red"], [` ${after}`, "blue"]])],
+    ["a paragraph separator ends nothing", () => new RichText(`${RLO}abc\u2029`).append(new RichText(` ${after}`))],
+    ["a symbol in Pretty", () => new Pretty([Symbol(`${RLO}abc`), after])],
+    ["a function's name in Pretty", () => new Pretty([Object.defineProperty(() => 0, "name", { value: `${RLO}abc` }), after])],
+    ["a thrown message in Pretty", () => new Pretty([{ get a(): number { throw new Error(`${RLO}abc`); } }, after])],
   ];
 
   for (const order of ["plain", "logical", "visual"] as const) {
@@ -95,6 +102,18 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
   test("content cannot end the isolate around it", () => {
     const bytes = plainBytes(new RichText("\u2069\u202cשלום", { end: "" }), "logical");
     expect(balancedControls(bytes)).toBe(true);
+  });
+
+  test("a control after a wrap's whitespace does not make the row overfull", () => {
+    const rle = "\u202b";
+    const pdf = "\u202c";
+    const hebrew = "\u05d0\u05d1\u05d2\u05d3";
+    for (const textOrder of ["plain", "logical", "visual"] as const) {
+      const bytes = plainBytes(new RichText(`${rle}${hebrew} ${pdf}\u05d4\u05d5\u05d6\u05d7`, { end: "", overflow: "ellipsis" }), textOrder, 4);
+      expect(bytes).not.toContain("\u2026");
+    }
+    const centred = rows(plainBytes(new RichText(`${rle}\u05d0\u05d1 \u05d2\u05d3 ${pdf}`, { end: "", justify: "center" }), "logical", 7))[0]!;
+    expect(/^ */.exec(none(centred))![0].length).toBe(1);
   });
 
   test("a wrapped override opens again on the next row, and closes on each", () => {
@@ -207,6 +226,23 @@ describe("reading on a terminal that does not reorder", () => {
     expect(rows(bytes).join("\n")).toContain([...HEBREW].reverse().join(""));
   });
 
+  test("a span edge inside a cluster leaves it whole, so a mark stays on its letter", () => {
+    const text = new RichText("\u05d0\u05b0\u05d1", { end: "" }).stylize("bold", 1, 2);
+    const shown = [...text.render({ maxWidth: 40, textOrder: "visual" })].map((segment) => segment.text).join("");
+    expect(shown).toBe("\u05d1\u05d0\u05b0");
+  });
+
+  test("a Text's edges are the cells it draws at them", () => {
+    const options = (textOrder: TextOrder) => ({ maxWidth: 40, textOrder });
+    const rtl = new RichText("\u05d0\u05d1", { end: "" }).stylize("on red", 0, 1);
+    expect(rtl.edgeStyle("right", options("visual")).bgcolor?.name).toBe("red");
+    expect(rtl.edgeStyle("left", options("visual")).bgcolor).toBeUndefined();
+    expect(rtl.edgeStyle("left", options("plain")).bgcolor?.name).toBe("red");
+    // The left edge of a right-to-left row holding a Latin word is neither end of the text.
+    const mixed = new RichText("\u05d0\u05d1 abc", { end: "" }).stylize("on red", 3, 4);
+    expect(mixed.edgeStyle("left", options("logical")).bgcolor?.name).toBe("red");
+  });
+
   test("a mixed line keeps the left-to-right word forwards", () => {
     expect(plainBytes(new RichText("אב abc גד", { end: "" }), "visual")).toBe("דג abc בא");
   });
@@ -242,6 +278,11 @@ describe("shaping, against an implementation of its own", () => {
   test.each(golden)("%s", (row) => {
     const [source, forms] = row.split(";") as [string, string];
     expect(shaped(graphemes(decoded(source))).join("")).toBe(decoded(forms));
+  });
+
+  test("a ZWJ joins across it: the letter before takes its connecting form", () => {
+    expect(shaped(["\u0647\u200d", " "])).toEqual(["\ufeeb", " "]);
+    expect(shaped(["\u0627\u200d", "\u0628"])).toEqual(["\ufe8d", "\ufe90"]);
   });
 
   test("a joiner goes where forms carry it, and stays in an emoji", () => {

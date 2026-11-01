@@ -63,7 +63,7 @@ const VISUAL_TERM = pattern(/^(alacritty|foot|xterm-ghostty)/);
  */
 export function detectTextOrder(env: Env, isTTY: boolean): TextOrder {
   if (!isTTY || isDumbTerminal(env)) return "plain";
-  if (env["TMUX"] || env["STY"] || env["ZELLIJ"] || env["INSIDE_EMACS"]) return "plain";
+  if (env["TMUX"] || env["STY"] || env["ZELLIJ"] || env["INSIDE_EMACS"] || env["NVIM"] || env["VIM_TERMINAL"]) return "plain";
   if ((env["TERM"] ?? "").match(VISUAL_TERM) !== null) return "visual";
   if (env["TERM_PROGRAM"] || env["TERMINAL_EMULATOR"] || env["KONSOLE_VERSION"]) return "plain";
   // VTE reorders, and takes the controls at zero width past column 0

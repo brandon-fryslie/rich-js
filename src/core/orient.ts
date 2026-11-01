@@ -11,7 +11,7 @@
  * `plain` line passes through both.
  */
 
-import { isBidi, lineLevels, mirrored, openersOf, paragraph, REMOVED, shaped, visualOrder, withoutExplicit, withoutMarks } from "./bidi.js";
+import { isBidi, lineLevels, mirrored, openersAlong, paragraph, REMOVED, shaped, visualOrder, withoutExplicit, withoutMarks } from "./bidi.js";
 import { graphemes } from "./cells.js";
 import { Segment } from "./segment.js";
 import { NULL_STYLE, type Style } from "./style.js";
@@ -75,17 +75,18 @@ interface Cluster {
 function displayed(shown: readonly Segment[], levels: readonly number[], paragraphLevel: ParagraphLevel): Segment[] {
   const text = plainOf(shown);
   const finished = lineLevels(text, levels, paragraphLevel);
+  // Clusters are found in the whole row, because a span edge inside one is no
+  // place to cut it: reversed apart, a mark lands on another letter.
+  const styles = shown.flatMap((segment) => new Array<Style | undefined>(segment.text.length).fill(segment.style));
   const clusters: Cluster[] = [];
   let unit = 0;
   let previous: number = paragraphLevel;
-  for (const segment of shown) {
-    for (const cluster of graphemes(segment.text)) {
-      // A cluster of what X9 removes holds no level of its own, and stays where the text put it.
-      const level = finished[unit] === REMOVED ? previous : finished[unit]!;
-      previous = level;
-      clusters.push({ text: cluster, style: segment.style, level });
-      unit += cluster.length;
-    }
+  for (const cluster of graphemes(text)) {
+    // A cluster of what X9 removes holds no level of its own, and stays where the text put it.
+    const level = finished[unit] === REMOVED ? previous : finished[unit]!;
+    previous = level;
+    clusters.push({ text: cluster, style: styles[unit], level });
+    unit += cluster.length;
   }
   const forms = shaped(clusters.map((cluster) => cluster.text));
   const order = visualOrder(clusters.map((cluster) => cluster.level));
@@ -119,10 +120,11 @@ export function directed(line: readonly Segment[], order: TextOrder): Directed {
   const text = plainOf(line);
   const { level, levels } = paragraph(text);
   if (order === "logical") {
+    const openersAt = openersAlong(text);
     return {
       line,
       oriented: true,
-      orient: (shown, start) => withStamp(shown, { order: "logical", level, opens: openersOf(text.slice(0, start)) }),
+      orient: (shown, start) => withStamp(shown, { order: "logical", level, opens: openersAt(start) }),
     };
   }
 
@@ -153,6 +155,14 @@ export function directed(line: readonly Segment[], order: TextOrder): Directed {
 export function measured(text: string, order: TextOrder): string {
   if (!isBidi(text) || order === "logical") return text;
   return order === "plain" ? withoutExplicit(text) : withoutMarks(withoutExplicit(text));
+}
+
+/** The offsets in `text`, one row, of the characters `order` shows at its left and right edges. */
+export function edges(text: string, order: TextOrder): { readonly left: number; readonly right: number } {
+  if (order === "plain" || !isBidi(text)) return { left: 0, right: text.length - 1 };
+  const { level, levels } = paragraph(text);
+  const shown = visualOrder(lineLevels(text, levels, level));
+  return { left: shown[0] ?? 0, right: shown.at(-1) ?? 0 };
 }
 
 /**

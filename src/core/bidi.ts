@@ -101,14 +101,16 @@ const isIsolateOpener = (opener: string): boolean => isIsolateInitiator(classOf(
 
 /**
  * `character` applied to `open`, the openers in force, outermost first: an
- * opener joins them, a closer takes what it closes, and a paragraph separator
- * ends them all, as X8 does. False for a closer that matches nothing, which
- * closes nothing: PDF closes an embedding opened since the innermost isolate,
- * and PDI the innermost isolate with every embedding inside it.
+ * opener joins them, a closer takes what it closes, and a line feed ends them
+ * all, as X8 does at a paragraph's end. A line is the paragraph here, so U+2029
+ * ends nothing: `paragraph` resolves it inside the line that holds it. False for
+ * a closer that matches nothing, which closes nothing: PDF closes an embedding
+ * opened since the innermost isolate, and PDI the innermost isolate with every
+ * embedding inside it.
  */
 export function advance(open: string[], character: string): boolean {
   const type = classOf(character.codePointAt(0)!);
-  if (type === "B") open.length = 0;
+  if (character === "\n") open.length = 0;
   else if (type === "LRE" || type === "RLE" || type === "LRO" || type === "RLO" || isIsolateInitiator(type)) open.push(character);
   else if (type === "PDF") {
     if (open.length === 0 || isIsolateOpener(open.at(-1)!)) return false;
@@ -120,11 +122,18 @@ export function advance(open: string[], character: string): boolean {
   return true;
 }
 
-/** The openers `text` leaves open at its end, outermost first. */
-export function openersOf(text: string): string {
+/** The openers `text` leaves open at any offset, outermost first, read off one pass over it. */
+export function openersAlong(text: string): (offset: number) => string {
+  const steps: { readonly after: number; readonly opens: string }[] = [];
   const open: string[] = [];
-  for (const character of text) advance(open, character);
-  return open.join("");
+  let offset = 0;
+  for (const character of text) {
+    const held = open.length;
+    advance(open, character);
+    offset += character.length;
+    if (open.length !== held) steps.push({ after: offset, opens: open.join("") });
+  }
+  return (at) => steps.filter(({ after }) => after <= at).at(-1)?.opens ?? "";
 }
 
 /** What closes `openers`, innermost first. */
@@ -136,7 +145,7 @@ export function closersOf(openers: string): string {
 
 /** `content` with the direction state it leaves open closed: separate content starts clean after it. */
 export function closed(content: string): string {
-  return isBidi(content) ? content + closersOf(openersOf(content)) : content;
+  return isBidi(content) ? content + closersOf(openersAlong(content)(content.length)) : content;
 }
 
 /** Whether `text` needs the algorithm at all. */
@@ -568,13 +577,17 @@ interface Joining {
   readonly letter: boolean;
   readonly toPrevious: boolean;
   readonly toNext: boolean;
+  /** It holds a ZWJ, which joins across it whatever its base is. */
+  readonly joiner: boolean;
 }
+
+const UNJOINED: Joining = { letter: false, toPrevious: false, toNext: false, joiner: false };
 
 function joiningOf(cluster: string): Joining {
   const base = cluster.codePointAt(0)!;
   const type = joiningTypeOf(base);
   const toNext = (type === "D" || type === "L" || type === "C") && !cluster.includes(ZWNJ);
-  return { letter: FORMS_OF.has(base), toPrevious: type === "D" || type === "R" || type === "C", toNext };
+  return { letter: FORMS_OF.has(base), toPrevious: type === "D" || type === "R" || type === "C", toNext, joiner: cluster.includes(ZWJ) };
 }
 
 /**
@@ -592,17 +605,18 @@ export function shaped(clusters: readonly string[]): string[] {
   const joinings = clusters.map(joiningOf);
   // Marks and lone joiners are transparent: joining reads past them.
   const isTransparent = (at: number): boolean => joiningTypeOf(clusters[at]!.codePointAt(0)!) === "T";
-  const neighbour = (at: number, step: 1 | -1): Joining | undefined => {
+  const neighbour = (at: number, step: 1 | -1): Joining => {
     let next = at + step;
     while (next >= 0 && next < clusters.length && isTransparent(next)) next += step;
-    return joinings[next];
+    return joinings[next] ?? UNJOINED;
   };
 
   return clusters.map((text, at) => {
     const own = joinings[at]!;
     if (!own.letter) return text;
-    const joinsBefore = own.toPrevious && (neighbour(at, -1)?.toNext ?? false);
-    const joinsAfter = own.toNext && (neighbour(at, 1)?.toPrevious ?? false);
+    const before = neighbour(at, -1);
+    const joinsBefore = own.toPrevious && (before.toNext || before.joiner);
+    const joinsAfter = own.toNext && (own.joiner || neighbour(at, 1).toPrevious);
     const forms = FORMS_OF.get(text.codePointAt(0)!)!;
     const wanted = joinsBefore ? (joinsAfter ? MEDIAL : FINAL) : joinsAfter ? INITIAL : ISOLATED;
     const form = forms[wanted] || text.codePointAt(0)!;

@@ -548,7 +548,7 @@ function take<T>(source: Iterable<T>, limit: number): T[] {
 function threw(error: unknown): string {
   // An `Error` from any realm carries its `message` as a string.
   const message = (error as { message?: unknown } | null)?.message;
-  return `[Threw: ${typeof message === "string" ? message : String(error)}]`;
+  return `[Threw: ${closed(typeof message === "string" ? message : String(error))}]`;
 }
 
 /**
@@ -831,9 +831,9 @@ export class Pretty implements Renderable, Measurable {
       case "boolean":
         return String(value);
       case "symbol":
-        return value.toString();
+        return closed(value.toString());
       case "function":
-        return `[Function: ${value.name || "anonymous"}]`;
+        return `[Function: ${closed(value.name || "anonymous")}]`;
     }
 
     return null;
@@ -965,7 +965,7 @@ export class Pretty implements Renderable, Measurable {
           })),
         );
       case "opaque":
-        return { kind: "text", text: form.text };
+        return { kind: "text", text: closed(form.text) };
       case "self":
         return { kind: "text", text: closed(String(value)) };
       case "keys": {
