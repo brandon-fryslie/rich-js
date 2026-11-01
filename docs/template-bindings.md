@@ -41,7 +41,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
 
-A third, `withAnimation(config, frame)`, answers a different question: what moment is the template drawn for? A host that redraws on its own clock hands that clock's time in, and `tween`, `loop`, `glyphs`, `frames` and `stepped` draw for it. [Animating a template](#animating-a-template) covers them.
+Animation is not a third map to merge. It answers a different question — what moment is the template drawn for? — and `withAnimation(config, frame)` takes the engine config those maps went into and returns it with `tween`, `loop`, `glyphs`, `frames` and `stepped` registered, drawn for the time your clock hands in, and the two engine hooks that carry what they drew to the frame. A config that already has one of those five names is refused. [Animating a template](#animating-a-template) covers them.
 
 `createRichTextEngine()` wires up `richTextFuncs()` alone — it cannot supply a palette. Once you want theme colors, build the engine yourself and merge both maps:
 

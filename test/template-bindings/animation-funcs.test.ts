@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createEngine, marked, sprigConversions, sprigLists, sprigMath, type Engine } from "@promptctl/go-template-js";
+import { createEngine, marked, sprigConversions, sprigLists, sprigMath, type Engine, type FuncMap } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
 import { Style, type Hold } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
@@ -421,6 +421,13 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
     it("and the arm it takes carries the hold on its cells too", () => {
       expect(heldAt(`{{ if lt (loop 2 0) 0.5 }}on{{ end }}`, 0.25)).toEqual({ cells: { lastChange: 0.25, nextChange: 0.25 }, told: [{ lastChange: 0.25, nextChange: 0.25 }] });
     });
+  });
+
+  it("a config that already has one of the five names is refused, not silently replaced", () => {
+    const own = { loop: { fn: () => 0, argTypes: [], arity: { kind: "exact" }, returnType: "float" } } satisfies FuncMap;
+    const config = { fromString: (s: string) => new RichText(s), toString: (rt: RichText) => rt.plain };
+    expect(() => withAnimation({ ...config, funcs: own }, () => ({ time: 0 }))).toThrow(/^withAnimation registers loop, already in config\.funcs$/);
+    expect(() => withAnimation(withAnimation(config, () => ({ time: 0 })), () => ({ time: 0 }))).toThrow(/frames, stepped, tween, loop, glyphs/);
   });
 
   it("a consumer's own mark is not a hold, and passes through both hooks untouched", () => {

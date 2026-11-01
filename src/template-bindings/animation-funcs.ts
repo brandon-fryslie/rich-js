@@ -208,6 +208,9 @@ function glyphEffect(name: string): (element: EffectTarget) => GlyphEffect {
  * call, so the functions and the hooks that report for them cannot be wired
  * apart: the functions alone would compile, draw, and never say they move.
  * [LAW:types-are-the-program] [LAW:no-silent-failure] [LAW:composability]
+ * A `config` that already has one of the five names is refused, which is
+ * also what a second `withAnimation` over its own result meets: its template
+ * calls would otherwise reach these with no word said.
  *
  * The functions exist whatever `frame` returns, so a template compiles once
  * and is evaluated at every moment the host draws. In a frame that says
@@ -273,6 +276,12 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
     returnType: "T",
   };
 
+  const funcs = { frames: framesFunc, stepped: steppedFunc, tween: tweenFunc, loop: loopFunc, glyphs: glyphsFunc };
+  const taken = Object.keys(funcs).filter((name) => Object.hasOwn(config.funcs ?? {}, name));
+  if (taken.length > 0) {
+    throw new RangeError(`withAnimation registers ${taken.join(", ")}, already in config.funcs`);
+  }
+
   const holdMarks = (marks: ReadonlySet<unknown>): HoldMark[] => [...marks].filter((mark): mark is HoldMark => mark instanceof HoldMark);
   // The holds among `marks` layered onto the fragment's base style, which an
   // empty text still draws as its one piece of no width: `Style.add` keeps
@@ -298,7 +307,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   const decided = config.decided ?? (() => {});
   return {
     ...config,
-    funcs: { ...config.funcs, frames: framesFunc, stepped: steppedFunc, tween: tweenFunc, loop: loopFunc, glyphs: glyphsFunc },
+    funcs: { ...config.funcs, ...funcs },
     emitted: (fragment, marks) => held(emitted(fragment, marks), marks),
     decided: (marks) => {
       decided(marks);
