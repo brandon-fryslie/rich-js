@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-539",
-      "ref": "refs/pull/539/merge",
-      "sha": "068e4743916aa26de23228d0c3ada9a2756d8612",
-      "timestamp": "2026-11-02T14:59:26.736Z",
-      "commits": [
-        {
-          "sha": "068e4743916aa26de23228d0c3ada9a2756d8612",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T14:57:05Z",
-          "message": "Merge cfcb0d6bc4fcd649814adb295d68e2f0f1627e02 into b9316d0b160018666a6b5c1d18d18ec1d7b16694\n"
-        },
-        {
-          "sha": "cfcb0d6bc4fcd649814adb295d68e2f0f1627e02",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:56:52-07:00",
-          "message": "Step-11 review: the parser owns whether replies are awaited; only a reply's opener outlasts the delay (rich-control-codes-xh4n.re6)\n\n- awaitReplies(boolean), told by App at the ask's start and end, replaces the\n  awaitingReply pull plus replyWaitEnded push: one fact, one channel.\n- During an ask only a lone ESC or an unterminated ESC ]/P/_ is held past the\n  escape delay; a stalled CSI settles as usual.\n- A control string cut off by a non-ST ESC is reissued again, so Alt+] during\n  an ask reads as Alt+], the same as with no ask.\n- suspend resets the parser, so a half-read reply is never typed while suspended.\n"
-        },
-        {
-          "sha": "b0f8b78be3742804cce9f0f9b84ee77055f68dda",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:51:26-07:00",
-          "message": "Step-10 review: one reading of when a reply may arrive, and every ask's end re-arms the escape delay (rich-control-codes-xh4n.re6)\n\n- replyMayArrive (split host and an ask awaiting) is the one predicate; a\n  whole-keys host reads ESC ] the same with or without an ask.\n- An ask ending any way (answer, timeout, leave) calls replyWaitEnded, which\n  arms the escape delay afresh instead of flushing: a suspend no longer\n  strands held bytes, and a reply straddling the timeout gets the full delay.\n- A control string cut off by a non-ST ESC reads its ESC as Escape, so\n  Escape then P during an ask is two keys.\n- docs/app.md: a late reply split across reads is read as Alt keys.\n"
-        },
-        {
-          "sha": "9d4274d6f556c8f8ffa9be6fee4327429abdf100",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:43:14-07:00",
-          "message": "ESC ], P or _ opens a reply only while an ask awaits one, and is Alt on its key otherwise (rich-control-codes-xh4n.re6)\n\nThe parser asks its sink whether an ask is in flight. With none, an\nunterminated control string is Alt+], Alt+P or Alt+_ at once, so keys typed\nafter it in one read are not held. With one, a reply split across slow reads\nor right after its ESC is held until it ends, and the ask's timeout flushes\nwhat was held. A terminated control string is a reply either way.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b9316d0b160018666a6b5c1d18d18ec1d7b16694",
