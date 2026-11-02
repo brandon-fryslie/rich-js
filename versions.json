@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-538",
+      "ref": "refs/pull/538/merge",
+      "sha": "fdfd1e36d9c8187b8585d81aa260fff9485d4566",
+      "timestamp": "2026-11-02T14:05:11.931Z",
+      "commits": [
+        {
+          "sha": "fdfd1e36d9c8187b8585d81aa260fff9485d4566",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T07:02:48-07:00",
+          "message": "Merge 0a4ce1fe2fa7fe78c45edb31bec459192c20d7bc into fc0b93d088f830f6de5446f42739ed1f2a1d62b0\n"
+        },
+        {
+          "sha": "0a4ce1fe2fa7fe78c45edb31bec459192c20d7bc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T07:02:26-07:00",
+          "message": "A running App asks its terminal, and terminalColors reads its real foreground and background (rich-control-codes-xh4n.3xk)\n\nThe input parser reads OSC, DCS and APC strings and private-prefix CSI\nreports as TerminalReply, never as keys. App.ask writes queries then DA1\nand ends answered on DA1's reply, on a timeout, or when the app leaves;\nApp holds raw mode and the one reader, so the ask adds neither.\nterminalColors asks OSC 10/11 and app.terminal draws the next frame on\nthe answer.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fc0b93d088f830f6de5446f42739ed1f2a1d62b0",
