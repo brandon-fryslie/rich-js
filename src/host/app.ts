@@ -293,10 +293,14 @@ export class App implements FrameHost {
         finish: (ended) => {
           timer();
           this.asking = null;
+          // [LAW:single-enforcer] Every way an ask ends goes through here, so
+          // what the parser held for its replies is settled on every one.
+          this.input.awaitReplies(false);
           resolve({ ended, replies });
         },
       };
       this.asking = asking;
+      this.input.awaitReplies(true);
     });
   }
 
@@ -430,6 +434,8 @@ export class App implements FrameHost {
     if (this._phase !== "running") return;
     this._phase = "suspended";
     this.tick();
+    // What is half-read belongs to no one once the terminal is handed back.
+    this.input.reset();
     this.leave();
     await this.host.suspend();
     // Stopped while suspended — by a signal, say: the terminal is already

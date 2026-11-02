@@ -7,10 +7,10 @@
  * scripted host on a hand-moved clock.
  */
 
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 
 import { App } from "../../src/host/app.js";
-import { keyName } from "../../src/host/input.js";
+import { ESCAPE_DELAY_MS, keyName } from "../../src/host/input.js";
 import { terminalColors } from "../../src/host/terminal-colors.js";
 import { ColorRgba } from "../../src/core/color.js";
 import { RichText } from "../../src/core/text.js";
@@ -149,6 +149,160 @@ describe("App.ask", () => {
     const { host, keys } = started();
     host.type("\x1b]11;rgb:0000/0000/0000\x1b\\q\x1b[?62;22cw\x1bP>|kitty\x1b\\");
     expect(keys).toEqual(["q", "w"]);
+  });
+});
+
+// rich-control-codes-xh4n.re6: whether `ESC ]`, `ESC P` or `ESC _` opens a
+// reply or is Alt on a key is decided by whether an ask is waiting for one.
+describe("a reply or Alt on a split host", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("reads ESC ] with no ask in flight as Alt+], and Ctrl+C after it at once", () => {
+    const { host, app, keys } = started();
+    host.type("\x1b]x\x1b_y\x1bPz");
+    expect(keys).toEqual(["meta+]", "x", "meta+_", "y", "meta+P", "z"]);
+    host.type("\x03");
+    expect(app.phase).toBe("stopped");
+  });
+
+  it("reads Alt+] at once after an ask the terminal never answered", async () => {
+    const { host, app, clock, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"], { timeout: 0.2 });
+    await asked();
+    clock.advance(0.2);
+    await ask;
+    host.type("\x1b]x");
+    expect(keys).toEqual(["meta+]", "x"]);
+  });
+
+  it("hears a reply split across reads longer than the escape delay apart", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b]11;rgb:00");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS * 3);
+    host.type("00/0000/0000\x1b\\" + DA1_REPLY);
+    expect(await ask).toEqual({ ended: "answered", replies: [{ kind: "osc", body: "11;rgb:0000/0000/0000" }] });
+    expect(keys).toEqual([]);
+  });
+
+  it("hears a reply split right after its ESC", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b");
+    host.type("]11;rgb:0000/0000/0000\x1b\\" + DA1_REPLY);
+    expect((await ask).replies).toEqual([{ kind: "osc", body: "11;rgb:0000/0000/0000" }]);
+    expect(keys).toEqual([]);
+  });
+
+  it("reads Escape then P typed as two chunks as two keys with no ask in flight", () => {
+    const { host, keys } = started();
+    host.type("\x1b");
+    host.type("P");
+    expect(keys).toEqual(["escape", "P"]);
+  });
+
+  it("hears a held Escape when the ask it waited behind times out", async () => {
+    const { host, app, clock, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"], { timeout: 0.2 });
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS * 3);
+    expect(keys).toEqual([]);
+    clock.advance(0.2);
+    expect((await ask).ended).toBe("timeout");
+    expect(keys).toEqual([]);
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS + 1);
+    expect(keys).toEqual(["escape"]);
+  });
+
+  it("reads Alt+] typed during an ask as Alt+] when the reply follows it", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b]");
+    host.type("\x1b]11;rgb:0000/0000/0000\x1b\\" + DA1_REPLY);
+    expect((await ask).replies).toEqual([{ kind: "osc", body: "11;rgb:0000/0000/0000" }]);
+    expect(keys).toEqual(["meta+]"]);
+  });
+
+  it("reads Alt+] then x typed during an ask as Alt+] and x when the reply follows", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b]x");
+    host.type(DA1_REPLY);
+    expect((await ask).ended).toBe("answered");
+    expect(keys).toEqual(["meta+]", "x"]);
+  });
+
+  it("does not stretch a stalled CSI's escape delay when an ask starts", async () => {
+    const { host, app, keys } = started();
+    vi.useFakeTimers();
+    host.type("\x1b[");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS - 10);
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await vi.advanceTimersByTimeAsync(11);
+    expect(keys).toEqual(["meta+["]);
+    host.type(DA1_REPLY);
+    await ask;
+  });
+
+  it("settles a stalled CSI during an ask after the escape delay", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b[");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS + 1);
+    expect(keys).toEqual(["meta+["]);
+    host.type(DA1_REPLY);
+    await ask;
+  });
+
+  it("gives a reply straddling the ask's timeout the whole escape delay", async () => {
+    const { host, app, clock, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"], { timeout: 0.2 });
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b]11;rgb:00");
+    clock.advance(0.2);
+    expect((await ask).ended).toBe("timeout");
+    host.type("00/0000/0000\x1b\\");
+    expect(keys).toEqual([]);
+  });
+
+  it("drops what an ask held when a suspend ends it", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b]1");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS * 3);
+    const suspended = app.suspend();
+    expect((await ask).ended).toBe("left");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS + 1);
+    expect(keys).toEqual([]);
+    host.resume();
+    await suspended;
+    host.type("a");
+    expect(keys).toEqual(["a"]);
+  });
+});
+
+describe("a reply or Alt on a whole-keys host", () => {
+  it("reads ESC ] alone in a chunk as Alt+] whether or not an ask is in flight", async () => {
+    const { host, app, keys } = started({ ...scriptedHost(), inputChunks: "whole-keys" });
+    host.type("\x1b]x");
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b]x");
+    host.type(DA1_REPLY);
+    await ask;
+    expect(keys).toEqual(["meta+]", "x", "meta+]", "x"]);
   });
 });
 
