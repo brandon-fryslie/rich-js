@@ -150,7 +150,9 @@ describe("RichText construction", () => {
     // The deprecated shaping and swapping switches.
     expect(range(0x206a, 0x206f).filter(kept)).toEqual([]);
     // The neighbours of each stripped range pass.
-    expect([0xa0, 0x2029, 0x202f, 0x2065, 0x2070].filter(kept)).toHaveLength(5);
+    expect([0x2029, 0x202f, 0x2065, 0x2070].filter(kept)).toHaveLength(4);
+    // C1 ends where it ends: DEL and NBSP on either side are not its stand-in.
+    expect(new RichText("\x7f\x80\x9f\xa0").plain).toBe("\u2421\u2426\u2426\xa0");
   });
 
   it("sanitizes a pad character and a truncation marker as it sanitizes content", () => {
