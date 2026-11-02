@@ -46,4 +46,10 @@ describe("osc8Sequences", () => {
       expect(stripUrlControls(`a${t}b`)).toBe("ab");
     }
   });
+
+  it("removes every code point of the census from a url, and nothing else", () => {
+    const census = [0x09, 0x18, 0x9b, 0xad, 0x200d, 0x2028, 0x202e, 0xe0100].map((codePoint) => String.fromCodePoint(codePoint));
+    for (const c of census) expect(stripUrlControls(`a${c}b`)).toBe("ab");
+    expect(stripUrlControls("https://例え.jp/a%20b?q=1#x")).toBe("https://例え.jp/a%20b?q=1#x");
+  });
 });

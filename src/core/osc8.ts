@@ -7,7 +7,7 @@
  * it with `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
  * test extracting URLs) matches them with `OSC8`; the data-model boundary
  * (RichText) cleans URLs with `stripUrlControls`. Producer and reader share the
- * terminator set below, and the sanitizer's range holds all of it, so no URL it
+ * terminator set below, and the census holds all of it, so no URL the sanitizer
  * has cleaned can end a wrap early.
  *
  * [LAW:locality-or-seam] This module depends only on `fnv1a`; every consumer
@@ -31,6 +31,7 @@
  * exact, not approximate.
  */
 
+import { controlClass } from "./control-codes.js";
 import { fnv1a } from "./fnv1a.js";
 import { pattern } from "./pattern.js";
 
@@ -41,12 +42,14 @@ import { pattern } from "./pattern.js";
 const TERMINATORS = "\\x1b\\x07\\x9c";
 
 /**
- * `url` without a C0 control, DEL or a C1 control. RFC 3986 admits none of them:
- * ESC, BEL and ST end the wrap, CAN and SUB abort it, and U+009B opens a sequence
- * inside it. `sealed` reads a segment's text, so this is the one rule for a link.
+ * `url` without a code point of the census. OSC 8 carries a URI as printable ASCII
+ * with the rest percent-encoded, so none of them is a URL's to hold raw: ESC, BEL
+ * and ST end the wrap, CAN and SUB abort it, U+009B opens a sequence inside it, and
+ * U+202E would reorder the address shown on hover. `sealed` reads a segment's text,
+ * so this is the one rule for a link.
  */
 export function stripUrlControls(url: string): string {
-  return url.replace(/[\x00-\x1f\x7f-\x9f]/g, "");
+  return url.replace(new RegExp(controlClass(() => true), "gu"), "");
 }
 
 /**

@@ -219,10 +219,32 @@ describe("decodeAnsi", () => {
     expect(decodeAnsi("字\x08\x1b[K").plain).toBe(" ");
   });
 
-  it("keeps what has no width, ahead of the first column included", () => {
+  it("keeps what has no width on the cell it follows, and takes it with that cell", () => {
     const mark = String.fromCodePoint(0x200f);
-    expect(decodeAnsi(`${mark}ab\rX`).plain).toBe(`${mark}Xb`);
+    expect(decodeAnsi(`${mark}ab`).plain).toBe(`${mark}ab`);
     expect(decodeAnsi(`字${mark}a`).plain).toBe(`字${mark}a`);
+    expect(decodeAnsi(`${mark}ab\rX`).plain).toBe("Xb");
+    expect(decodeAnsi(`${mark}ab\r\x1b[2Knew`).plain).toBe("new");
+    expect(decodeAnsi(`${mark}ab\r${mark}cd\r${mark}ef`).plain).toBe(`${mark}ef`);
+  });
+
+  it("moves a tab to the next stop, over what is there", () => {
+    expect(decodeAnsi("a\tb").plain).toBe("a\tb");
+    expect(decodeAnsi("a\tb\rX").plain).toBe("X\tb");
+    expect(decodeAnsi("a\tb\rXY").plain).toBe("XY      b");
+    expect(decodeAnsi("\tabc\rX").plain).toBe("X       abc");
+    expect(decodeAnsi("abcdefghij\r\tX").plain).toBe("abcdefghXj");
+  });
+
+  it("reads overstrike on a wide character as mandoc writes it, one backspace", () => {
+    expect(spans(decodeAnsi("字\x08字"))).toEqual(["0-1 bold"]);
+    expect(spans(decodeAnsi("_\x08字"))).toEqual(["0-1 underline"]);
+  });
+
+  it("leaves a string escape whole when a line break sits in its payload", () => {
+    expect(decodeAnsi("a\x1b]0;ti\x0ctle\x07b").plain).toBe("ab");
+    const link = decodeAnsi("\x1b]8;;http://a\x0bb\x1b\\x\x1b]8;;\x1b\\");
+    expect(link.plain).toBe("x");
   });
 
   it("drops what a terminal draws nothing for, with no picture in a capture", () => {

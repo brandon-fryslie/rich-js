@@ -40,7 +40,8 @@ const output = new Console({ width: 30 });
 output.print(decodeAnsi("N\bNA\bAM\bME\bE  _\bm_\ba_\bn\n12%\b\b\b13%"));
 ```
 
-A link URL holds no C0 or C1 code point at all: RFC 3986 admits none.
+A link URL holds nothing on this page: OSC 8 carries a URI as printable ASCII, so
+what a URL means by one of these it writes percent-encoded.
 
 A renderable that yields bytes already holding escapes, or a `print` whose `end` is
 `"\r"`, gets its controls deleted, where Rich writes them. Styled bytes go through

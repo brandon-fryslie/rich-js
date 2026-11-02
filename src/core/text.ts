@@ -24,6 +24,7 @@ function standIn(character: string): string {
   return dispositionOf(codePoint) === "pictured" ? pictureOf(codePoint) : "\n";
 }
 
+// `text` without its `strip` code points, all that `sanitized` deletes.
 // [LAW:single-enforcer] Single place where control chars are sanitized: every
 // string that becomes part of a Text's characters passes through `sanitized`.
 // Which ones, and why, is `CONTROL_CODES`. A code point at a time and never by its

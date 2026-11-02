@@ -25,8 +25,8 @@
  * `\r` returns to the first column, so later text overwrites earlier text cell by
  * cell: `50%\r100%` is `100%`, `Downloading\rDone` is `Doneloading`, and `done\r`
  * is still `done`. Columns are a terminal's cells: a wide character takes two, a
- * combining mark none, and a wide character half overwritten leaves a blank.
- * Erase in line (`\x1b[K`) is honoured for the same reason, because a redraw
+ * combining mark none, a tab moves to the next stop over what is there, and a wide
+ * character or a tab half overwritten leaves blanks. Erase in line (`\x1b[K`) is honoured for the same reason, because a redraw
  * is usually `\r\x1b[K` and the old text must not show through a shorter new
  * one.
  *
@@ -70,6 +70,8 @@ const BOLD = new Style({ bold: true });
 const UNDERLINED = new Style({ underline: true });
 const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
 
+const STRING_ESCAPE = String.raw`\x1b[\]P_^X][^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
+
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
  * order: a carriage return; an SGR sequence (`sgr`, its parameters — a private
@@ -84,14 +86,15 @@ const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|\x1b\[(?<sgr>[0-9;:]*)m|\x1b\[(?<mode>[012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]`,
+  String.raw`\r|\x1b\[(?<sgr>[0-9;:]*)m|\x1b\[(?<mode>[012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "withheld"),
 ].join("|");
 
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
-const lineBreaks = (): RegExp => new RegExp(controlClass((disposition) => disposition === "line-break"), "gu");
+// A string escape goes first so a line break in its payload stays in the payload.
+const lineBreaks = (): RegExp => new RegExp(`${STRING_ESCAPE}|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -207,32 +210,47 @@ function applySgr(style: Style, params: string): Style {
 }
 
 /**
- * What a column holds: a grapheme cluster and its style, or `""` for the second
- * column of a wide one. Columns count from 1. Index 0 is `ORIGIN`, ahead of the
- * first column, where what has no width and nothing before it to sit on is kept.
+ * What a column holds: a grapheme cluster and its style, or `""` for a further
+ * column of a wide one or a tab. Columns count from 1. Index 0 is `ORIGIN`, ahead
+ * of the first column, where what has no width and nothing before it to sit on
+ * waits for the next cell drawn.
  */
 type Cell = readonly [string, Style];
 
 const ORIGIN: Cell = ["", NULL_STYLE];
 const BLANK: Cell = [" ", NULL_STYLE];
+const TAB_STOP = 8;
 
-/** A wide cluster across the edge before `column` goes blank, as on a terminal. */
+/** The column holding the cluster drawn across `column`. */
+function leadOf(cells: readonly Cell[], column: number): number {
+  let at = column;
+  while (at > 0 && cells[at]![0] === "") at -= 1;
+  return at;
+}
+
+/** A cluster across the edge before `column` goes blank, as on a terminal. */
 function splitWide(cells: Cell[], column: number): void {
-  if (cells[column]?.[0] === "") cells[column - 1] = cells[column] = BLANK;
+  if (cells[column]?.[0] !== "") return;
+  const lead = leadOf(cells, column);
+  for (let at = lead; at === lead || cells[at]?.[0] === ""; at += 1) cells[at] = BLANK;
 }
 
 /** `cluster` drawn at `column`, and the columns the cursor moves. */
 function draw(cells: Cell[], column: number, cluster: string, style: Style): number {
-  const width = cellLen(cluster);
+  const width = cluster === "\t" ? TAB_STOP - ((column - 1) % TAB_STOP) : cellLen(cluster);
   if (width === 0) {
-    let at = column - 1;
-    while (at > 0 && cells[at]![0] === "") at -= 1;
-    cells[at] = [cells[at]![0] + cluster, cells[at]![1]];
+    const lead = leadOf(cells, column - 1);
+    cells[lead] = [cells[lead]![0] + cluster, cells[lead]![1]];
     return 0;
+  }
+  if (cluster === "\t" && column < cells.length) {
+    while (cells.length < column + width) cells.push(BLANK);
+    return width;
   }
   splitWide(cells, column);
   splitWide(cells, column + width);
-  cells[column] = [cluster, style];
+  cells[column] = [cells[0]![0] + cluster, style];
+  cells[0] = ORIGIN;
   for (let at = 1; at < width; at += 1) cells[column + at] = ["", style];
   return width;
 }
@@ -241,6 +259,7 @@ function draw(cells: Cell[], column: number, cluster: string, style: Style): num
 function erase(cells: Cell[], column: number, mode: EraseMode): void {
   splitWide(cells, column);
   splitWide(cells, column + 1);
+  cells[0] = ORIGIN;
   if (mode !== "0") cells.fill(BLANK, 1, Math.min(column + 1, cells.length));
   if (mode !== "1") cells.length = Math.min(column, cells.length);
 }
@@ -258,7 +277,8 @@ export class AnsiDecoder {
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    return (ansi.replace(lineBreaks(), "\n").match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
+    const lined = ansi.replace(lineBreaks(), (found) => (found.startsWith("\x1b") ? found : "\n"));
+    return (lined.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
       this.decodeLine(line.replace(/\r?\n$/, "")),
     );
   }

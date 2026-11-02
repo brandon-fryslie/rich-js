@@ -302,7 +302,7 @@ function follow(out: Lines, laid: Lines, tail: Lines): Lines {
  * the same pass runs either way.
  *
  * The guide offsets are counted over the text `RichText` will hold, which has
- * its control characters stripped; counted over the raw text, every guide past
+ * every `strip` code point deleted; counted over the raw text, every guide past
  * a `\r` in a key or a `toString` would land one cell right. A margin is only
  * ever spaces, so stripping cannot move one. An arrow is moved by the
  * stripping of what precedes it, and by the blank lines dropped before it;
