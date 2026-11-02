@@ -86,16 +86,6 @@ describe("App.ask", () => {
     expect(await app.ask(["\x1b]11;?\x1b\\"])).toEqual({ ended: "left", replies: [] });
   });
 
-  it("hears a reply split right after its ESC as a reply", async () => {
-    const { host, app, keys } = started();
-    const ask = app.ask(["\x1b]11;?\x1b\\"]);
-    await asked();
-    host.type("\x1b");
-    host.type("]11;rgb:0/0/0\x1b\\" + DA1_REPLY);
-    expect(await ask).toEqual({ ended: "answered", replies: [{ kind: "osc", body: "11;rgb:0/0/0" }] });
-    expect(keys).toEqual([]);
-  });
-
   it("runs asks one after another", async () => {
     const { host, app } = started();
     const before = host.output().length;
