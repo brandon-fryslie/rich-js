@@ -84,6 +84,7 @@ export function replaceWithheld(text: string, replacement: (character: string) =
     const joiner = text.slice(end, scanned).lastIndexOf(ZWJ_CHARACTER);
     if (joiner >= 0) takeJoiners(end + joiner);
   }
+  if (gone.size === 0) return text;
   let kept = "";
   let at = 0;
   for (const character of text) {
@@ -91,6 +92,12 @@ export function replaceWithheld(text: string, replacement: (character: string) =
     at += character.length;
   }
   return kept;
+}
+
+/** `character` as a Unicode escape a reader can see, for data on show. */
+export function unicodeEscape(character: string): string {
+  const hex = character.codePointAt(0)!.toString(16).padStart(4, "0");
+  return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
 }
 
 /** `text` as the wire may hold it. */

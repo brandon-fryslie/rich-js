@@ -9,7 +9,7 @@
  */
 
 import { withoutExplicit } from "../core/bidi.js";
-import { cellLen, expandTabs, parseTabSize } from "../core/cells.js";
+import { cellLen, expandTabs, parseTabSize, replaceWithheld, unicodeEscape } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { RichText, sanitized } from "../core/text.js";
 import {
@@ -127,7 +127,9 @@ export class Syntax implements Renderable, Measurable {
     this.wordWrap = options?.wordWrap ?? false;
     const tabSize = parseTabSize(options?.tabSize ?? 4);
     this.tabSize = tabSize;
-    this._lines = expandTabs(sanitized(code), tabSize).text.split("\n");
+    // Code on show: what the wire would drop is escaped, or the screen shows an
+    // identifier the source does not hold.
+    this._lines = expandTabs(replaceWithheld(sanitized(code), unicodeEscape), tabSize).text.split("\n");
   }
 
   /**

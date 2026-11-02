@@ -218,12 +218,12 @@ export function measured(text: string, order: TextOrder): string {
   return isBidi(text) ? REMOVALS[order](text) : text;
 }
 
-/** The offsets in `text` of the code points that take a cell. */
+/** The offsets in `text` of the code points that take a cell: a tab does, once expanded. */
 function drawnOffsets(text: string): Set<number> {
   const drawn = new Set<number>();
   let unit = 0;
   for (const character of text) {
-    if (cellLen(character) > 0) drawn.add(unit);
+    if (character === "\t" || cellLen(character) > 0) drawn.add(unit);
     unit += character.length;
   }
   return drawn;

@@ -96,7 +96,8 @@ function widthOf(word: string): number {
 function breaksIn(word: string): number[] {
   if (word.match(BREAKABLE) === null) return [];
   const found = new Set<number>();
-  for (const { 0: mark, index } of word.matchAll(new RegExp(`[${SOFT_HYPHEN}${ZWSP}]`, "gu"))) found.add(index + mark.length);
+  // One break to a run of marks: a second would open a piece with nothing in it.
+  for (const { 0: mark, index } of word.matchAll(new RegExp(`(?<![${SOFT_HYPHEN}${ZWSP}])[${SOFT_HYPHEN}${ZWSP}]`, "gu"))) found.add(index + mark.length);
   for (const { 0: run, index } of word.matchAll(new RegExp(UNSPACED, "gu"))) {
     // A run's start is where the segmenter's input began, not a boundary it found:
     // UAX #14 has these scripts break as letters do against what comes before them.
@@ -113,7 +114,8 @@ function* piecesOf(text: string): Iterable<Piece> {
     let start = 0;
     for (const at of breaksIn(word)) {
       const piece = word.slice(start, at);
-      yield { text: piece, cells: widthOf(piece), hyphenates: piece.endsWith(SOFT_HYPHEN) };
+      const cells = widthOf(piece);
+      yield { text: piece, cells, hyphenates: cells > 0 && piece.endsWith(SOFT_HYPHEN) };
       start = at;
     }
     const last = word.slice(start);
@@ -123,10 +125,11 @@ function* piecesOf(text: string): Iterable<Piece> {
 
 /**
  * The cells each piece of `text` needs, in order — the widest is the narrowest
- * width `divideLine` can wrap it to without cutting a word.
+ * width `divideLine` can wrap it to without cutting a word. A hyphen is not in
+ * them: where it does not fit, the break goes without it.
  */
 export function wordWidths(text: string): number[] {
-  return Array.from(piecesOf(text), (piece) => piece.cells + (piece.hyphenates ? 1 : 0));
+  return Array.from(piecesOf(text), (piece) => piece.cells);
 }
 
 /**

@@ -1256,11 +1256,14 @@ function hyphenated(line: readonly Segment[], breaks: readonly LineBreak[]): Seg
   return line.map((segment) => {
     const start = end;
     end += segment.text.length;
-    let text = segment.text;
+    let text = "";
+    let from = 0;
     for (; next < taken.length && taken[next]! < end; next += 1) {
       const at = taken[next]! - start;
-      text = text.slice(0, at) + "-" + text.slice(at + 1);
+      text += segment.text.slice(from, at) + "-";
+      from = at + 1;
     }
+    text += segment.text.slice(from);
     return text === segment.text ? segment : new Segment(text, segment.style, segment.control);
   });
 }

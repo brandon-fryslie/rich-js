@@ -117,7 +117,9 @@ describe("line-break controls", () => {
 
   it("measures the narrowest width a soft hyphen allows, its hyphen included", () => {
     const { minimum, maximum } = new RichText(`super${SHY}cali`).measure({ maxWidth: 80 } as never);
-    expect([minimum, maximum]).toEqual([6, 9]);
+    expect([minimum, maximum]).toEqual([5, 9]);
+    const narrow = new RichText(`ab${SHY}\u1161`).measure({ maxWidth: 80 } as never);
+    expect(narrow.minimum).toBeLessThanOrEqual(narrow.maximum);
   });
 
   it("hyphenates a right-to-left row on its own side, in logical order", () => {
@@ -432,5 +434,30 @@ describe("Pretty, showing data", () => {
     }
     expect(rows(new Pretty(new Named()), 12).join("")).not.toContain("-");
     expect(rows(new Pretty({ a: new Named() }), 14).join("")).not.toContain("-");
+  });
+});
+
+describe("Syntax, showing code", () => {
+  it("escapes what the wire would drop, so no identifier is invented", () => {
+    expect(rows(new Syntax(`total${SHY}count${HIDDEN}`, "text"), 40)).toEqual([String.raw`total\u00adcount\u{e0068}\u{e0069}`]);
+  });
+
+  it("draws no hyphen the source does not hold", () => {
+    expect(rows(new Syntax(`const total${SHY}count = 1;`, "text", { wordWrap: true }), 14).join("")).not.toContain("-");
+  });
+});
+
+describe("adjacent marks", () => {
+  it("draws no row of a lone hyphen", () => {
+    expect(rows(`hello${SHY}${SHY}world${SHY}again`, 5)).toEqual(["hello", "world", "again"]);
+    expect(rows(`hello${SHY}${SHY}world`, 6)).toEqual(["hello-", "world"]);
+  });
+});
+
+describe("the edge of a text with a tab", () => {
+  it("is the tab, which draws its cells", () => {
+    const options = new Console({ width: 80 }).options;
+    const text = new RichText("ab\t").stylize("on red", 2, 3);
+    expect(text.edgeStyle("right", options).toString()).toContain("red");
   });
 });

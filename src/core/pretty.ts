@@ -17,7 +17,7 @@
  * times.
  */
 
-import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, replaceWithheld, splitAtCells, wireText } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, replaceWithheld, splitAtCells, unicodeEscape, wireText } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Memo } from "./memo.js";
 import { Segment } from "./segment.js";
@@ -748,14 +748,9 @@ const BARE_KEY = pattern(/^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Sta
  */
 const unprintable = (): RegExp => /(?! )[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]/gu;
 
-const escaped = (character: string): string => {
-  const hex = character.codePointAt(0)!.toString(16).padStart(4, "0");
-  return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
-};
-
 /** `value` in double quotes, every character that does not print or that the wire would withhold escaped. */
 const quoted = (value: string): string =>
-  replaceWithheld(JSON.stringify(value), escaped).replace(unprintable(), escaped);
+  replaceWithheld(JSON.stringify(value), unicodeEscape).replace(unprintable(), unicodeEscape);
 
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;
