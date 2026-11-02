@@ -41,7 +41,7 @@ describe("osc8Sequences", () => {
     }
   });
 
-  it("stops the uri at exactly the bytes stripUrlControls removes", () => {
+  it("stops the uri only at bytes stripUrlControls removes", () => {
     for (const t of ["\x1b", "\x07", "\x9c"]) {
       expect(stripUrlControls(`a${t}b`)).toBe("ab");
     }

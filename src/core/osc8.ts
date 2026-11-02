@@ -6,9 +6,9 @@
  * every link reaches the wire through) opens a link with `osc8Open` and closes
  * it with `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
  * test extracting URLs) matches them with `OSC8`; the data-model boundary
- * (RichText) cleans URLs with `stripUrlControls`. All four read the one
- * terminator set below, so the bytes a sanitizer removes and the bytes a
- * reader stops at cannot disagree.
+ * (RichText) cleans URLs with `stripUrlControls`. Producer and reader share the
+ * terminator set below, and the sanitizer's range holds all of it, so no URL it
+ * has cleaned can end a wrap early.
  *
  * [LAW:locality-or-seam] This module depends only on `fnv1a`; every consumer
  * imports downward.

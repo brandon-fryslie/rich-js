@@ -170,6 +170,13 @@ describe("Syntax", () => {
   it("reads a CRLF as one line ending", () => {
     expect(written(new Syntax("a\r\nb", "text")).trimEnd().split("\n").map((row) => row.trimEnd())).toEqual(["a", "b"]);
   });
+
+  it("shows what a compiler reads and the screen would hide", () => {
+    expect(written(new Syntax("// note\reval(x)", "javascript"))).toContain("// note\\u000deval(x)");
+    expect(written(new Syntax("ad\x85min", "text"))).toContain("ad\\u0085min");
+    const override = String.fromCodePoint(0x202e);
+    expect(written(new Syntax(`a${override}b`, "text"))).toContain("a\\u202eb");
+  });
 });
 
 describe("decodeAnsi", () => {
@@ -200,8 +207,36 @@ describe("decodeAnsi", () => {
     expect(decodeAnsi("\x08a").plain).toBe("a");
   });
 
+  it("moves back a cell, not a code point, so a redraw lands where a terminal puts it", () => {
+    expect(decodeAnsi("进度你好\x08\x08\x08\x08再见").plain).toBe("进度再见");
+    expect(decodeAnsi("a字\x08\x08字").plain).toBe("a字");
+    expect(decodeAnsi("é\x08x").plain).toBe("x");
+  });
+
+  it("leaves a blank where a wide character is half overwritten or erased", () => {
+    expect(decodeAnsi("字\rX").plain).toBe("X ");
+    expect(decodeAnsi("字\x08X").plain).toBe(" X");
+    expect(decodeAnsi("字\x08\x1b[K").plain).toBe(" ");
+  });
+
+  it("keeps what has no width, ahead of the first column included", () => {
+    const mark = String.fromCodePoint(0x200f);
+    expect(decodeAnsi(`${mark}ab\rX`).plain).toBe(`${mark}Xb`);
+    expect(decodeAnsi(`字${mark}a`).plain).toBe(`字${mark}a`);
+  });
+
   it("drops what a terminal draws nothing for, with no picture in a capture", () => {
     expect(new AnsiDecoder().decodeLine("do\x07ne\x0e\x1b").plain).toBe("done");
+  });
+
+  it("gives a C1 control no column", () => {
+    expect(decodeAnsi("\x85ab\rX").plain).toBe("Xb");
+    expect(decodeAnsi("abc\x85\x08X").plain).toBe("abX");
+  });
+
+  it("breaks a capture at every line break content does", () => {
+    const ends = ["\x0b", "\x0c", String.fromCodePoint(0x2028), String.fromCodePoint(0x2029)];
+    expect(ends.map((end) => decodeAnsi(`a${end}b`).plain)).toEqual(["a\nb", "a\nb", "a\nb", "a\nb"]);
   });
 
   it("gives one line for one line, whatever line ending it holds", () => {
@@ -238,6 +273,15 @@ describe("Console.bell", () => {
     const dumb = terminal({ environment: { env: { TERM: "dumb" } } });
     dumb.console.bell();
     expect(dumb.chunks).toEqual([]);
+  });
+
+  it("answers who is at the terminal, whatever animation policy is forced", () => {
+    const animated = terminal({ forceTerminal: false, forceInteractive: true });
+    animated.console.bell();
+    expect(animated.chunks).toEqual([]);
+    const still = terminal({ forceInteractive: false });
+    still.console.bell();
+    expect(still.chunks).toEqual(["\x07"]);
   });
 
   it("writes nothing into a capture, and nothing to a recording", () => {

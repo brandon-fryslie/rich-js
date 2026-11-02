@@ -4,7 +4,7 @@
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
 import { closed, closing } from "./bidi.js";
-import { controlClass, dispositionOf, pictureOf, type Disposition } from "./control-codes.js";
+import { controlClass, dispositionOf, pictureOf } from "./control-codes.js";
 import { directed, drawnTail, edges, hangingWhitespace, measured } from "./orient.js";
 import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
@@ -15,11 +15,7 @@ import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./pr
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
 
-// Exhaustive, so a new `Disposition` does not compile until it says what the
-// sanitizer does with it: a variant this missed would reach the wire.
-const DELETED: Readonly<Record<Disposition, boolean>> = { strip: true, keep: false, "line-break": false, pictured: false, withheld: false };
-
-const STRIPPED = pattern(new RegExp(controlClass((disposition) => DELETED[disposition]), "u"));
+const STRIPPED = pattern(new RegExp(controlClass((disposition) => disposition === "strip"), "u"));
 const STOOD_IN_FOR = pattern(new RegExp(controlClass((disposition) => disposition === "line-break" || disposition === "pictured"), "u"));
 
 /** What content holds in place of a `line-break` or `pictured` code point. */

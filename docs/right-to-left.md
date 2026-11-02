@@ -80,8 +80,8 @@ Appending a string builds one content, so an override in it reaches the end of
 its line. To keep untrusted text apart, hand it in as its own `RichText`.
 
 `JSONRenderable` shows an explicit control as its `\u` escape, so the output
-stays valid JSON. `Syntax` and Markdown's inline code delete them, because a
-control held in source code is the Trojan Source attack.
+stays valid JSON. `Syntax` does too, because a control held in source code is the
+Trojan Source attack, and Markdown's inline code deletes them.
 
 ## Wrapping and truncation
 

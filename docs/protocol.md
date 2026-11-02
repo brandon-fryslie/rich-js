@@ -65,7 +65,7 @@ Nothing a held renderable learns by drawing is kept: what it hands to `afterPass
 
 ## Low-level rendering
 
-The segments do not have to come from a child. For complete character-level control, build them yourself — each `Segment` is a text string paired with an optional style:
+The segments do not have to come from a child. For complete character-level control, build them yourself — each `Segment` is a text string paired with an optional style. The text is what prints: [a control in it is deleted on the way out](/control-codes):
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
