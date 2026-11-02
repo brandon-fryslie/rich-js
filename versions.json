@@ -4,15 +4,22 @@
     {
       "version": "pr-537",
       "ref": "refs/pull/537/merge",
-      "sha": "3a4c5da15a83ead3ee909ed6653906f2e3ffe413",
-      "timestamp": "2026-11-02T13:20:51.784Z",
+      "sha": "4f52efc91b37966ed60b74461e84e26715a9147a",
+      "timestamp": "2026-11-02T13:26:13.515Z",
       "commits": [
         {
-          "sha": "3a4c5da15a83ead3ee909ed6653906f2e3ffe413",
+          "sha": "4f52efc91b37966ed60b74461e84e26715a9147a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T13:18:26Z",
-          "message": "Merge c25e81800da8e84cf26eeccde81758b6094cf643 into 35eae6222251d18b0ac95a1fc8fd119cb01c861f\n"
+          "timestamp": "2026-11-02T13:24:01Z",
+          "message": "Merge 0225167c5f08ef95b7008e7c9a4e456548f2d037 into 35eae6222251d18b0ac95a1fc8fd119cb01c861f\n"
+        },
+        {
+          "sha": "0225167c5f08ef95b7008e7c9a4e456548f2d037",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T06:23:45-07:00",
+          "message": "Each pictured row carries its stand-in, so which code points are pictured has one statement (rich-control-codes-xh4n.keg)\n\npictureOf reads the row instead of restating its ranges, and a pictured row\ncannot be written without a stand-in. The C1 boundary test pins DEL and NBSP\non either side; U+00A0 no longer borders a stripped range.\n"
         },
         {
           "sha": "c25e81800da8e84cf26eeccde81758b6094cf643",
