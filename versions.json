@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-536",
+      "ref": "refs/pull/536/merge",
+      "sha": "25fb00af4052517cd74836ff9d08839c2ef07906",
+      "timestamp": "2026-11-02T00:47:41.893Z",
+      "commits": [
+        {
+          "sha": "25fb00af4052517cd74836ff9d08839c2ef07906",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T17:45:26-07:00",
+          "message": "Merge e3b5b71478978c258fa870df3791c295142db5b4 into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
+        },
+        {
+          "sha": "e3b5b71478978c258fa870df3791c295142db5b4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T17:45:15-07:00",
+          "message": "C0 controls keep their meaning, and content writes no directive (rich-control-codes-xh4n.fng)\n\nVT and FF are line breaks, and the codes with no meaning in a span show their\nControl Pictures symbol, one code unit for one. BEL's alert is Console.bell, and\nBS's overstrike and ESC's styling are decodeAnsi, which reads nroff's grammar.\n\nsealed is total: only keep and an admitted withheld code point reach the wire, so\na raw Segment, a widget label, an end and a TextInput value are contained by one\nrule. A link's URL takes no C0 or C1 at stripUrlControls. Syntax escapes what the\nwire refuses, so a line number stays the editor's.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5fc4cdc868f19fcf180f26465efd67129bbf3d99",
