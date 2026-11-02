@@ -296,11 +296,12 @@ export class InputParser {
       this.buffer = concatBytes(this.buffer, next);
       return this.settleChunk();
     }
-    // A held lone ESC waits only for the rest of a split CSI/SS3 introducer.
+    // A held lone ESC waits only for the rest of a split CSI/SS3 introducer or
+    // a split control-string reply.
     // Any other next chunk means Escape was its own key, even when the hold
     // timer has not run yet: a busy worker can queue the next key ahead of it,
     // and joining them would read Escape then G as Alt+G (rich-host-input-0c4f).
-    const escaped = this.holdingEscape() && next.length > 0 && next[0] !== LBRACKET && next[0] !== O_BYTE;
+    const escaped = this.holdingEscape() && next.length > 0 && next[0] !== LBRACKET && next[0] !== O_BYTE && STRING_REPLIES[next[0]!] === undefined;
     this.cancelEscape();
     // The buffer is settled before the sink hears Escape, so a sink that
     // resets the parser on it (an app stopping) leaves nothing to drain.

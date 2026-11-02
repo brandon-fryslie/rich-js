@@ -191,7 +191,7 @@ export class App implements FrameHost {
   // its size, its colours, where bytes go. Every frame renders with this
   // console's options and is encoded for its destination.
   private console: Console;
-  private readonly drawing: Pick<ConsoleOptions, DrawOption>;
+  private drawing: Pick<ConsoleOptions, DrawOption>;
   // [LAW:single-enforcer] One ask at a time, through the one input reader:
   // the next waits on the last, and `leave` ends the one in flight.
   private asking: Asking | null = null;
@@ -229,7 +229,7 @@ export class App implements FrameHost {
     this._rate = options.rate ?? DEFAULT_RATE;
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.drawing = drawOptions(options);
-    this.console = new Console({ ...this.drawing, environment: hostEnvironment(options.host) });
+    this.console = this.drawingConsole();
   }
 
   /**
@@ -245,7 +245,8 @@ export class App implements FrameHost {
   set terminal(terminal: TerminalColors) {
     // [LAW:one-source-of-truth] The console is the one holder of how a frame
     // draws, so the terminal changes by a new console, not beside the old one.
-    this.console = new Console({ ...this.drawing, terminal, environment: hostEnvironment(this.host) });
+    this.drawing = { ...this.drawing, terminal };
+    this.console = this.drawingConsole();
     this.refresh();
   }
 
@@ -259,13 +260,20 @@ export class App implements FrameHost {
    * reply would end the ask early.
    */
   ask(queries: readonly string[], options: AskOptions = {}): Promise<Asked> {
-    if (this._phase !== "running") throw new Error(`App.ask: only a running app asks its terminal, and this one is ${this._phase}`);
+    // An ask before the app runs is a mistake in the program; one after it
+    // stopped ends `left`, so the error that stopped it is the one heard.
+    if (this._phase === "idle") throw new Error("App.ask: an app asks its terminal once it runs, and this one has not started");
     const timeout = options.timeout ?? DEFAULT_ASK_TIMEOUT;
     if (!(timeout > 0 && Number.isFinite(timeout))) throw new RangeError(`App.ask: a timeout is a positive, finite number of seconds, not ${timeout}`);
     const turn = this.asked.then(() => this.askNow(queries, timeout));
     // One ask's failure is its caller's; the asks queued after it still run.
     this.asked = turn.catch(() => undefined);
     return turn;
+  }
+
+  // The one way the app builds the console it draws with.
+  private drawingConsole(): Console {
+    return new Console({ ...this.drawing, environment: hostEnvironment(this.host) });
   }
 
   private askNow(queries: readonly string[], timeout: number): Promise<Asked> {

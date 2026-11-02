@@ -75,9 +75,25 @@ describe("App.ask", () => {
     expect(await app.ask(["\x1b]11;?\x1b\\"])).toEqual({ ended: "unasked", replies: [] });
   });
 
-  it("refuses an ask from an app that is not running", () => {
+  it("refuses an ask from an app that has not started", () => {
     const app = new App({ host: scriptedHost(), surface: "inline", view: () => new RichText("x") });
-    expect(() => app.ask([])).toThrow(/only a running app asks/);
+    expect(() => app.ask([])).toThrow(/has not started/);
+  });
+
+  it("ends left for an ask from an app that has stopped", async () => {
+    const { app } = started();
+    app.stop();
+    expect(await app.ask(["\x1b]11;?\x1b\\"])).toEqual({ ended: "left", replies: [] });
+  });
+
+  it("hears a reply split right after its ESC as a reply", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b");
+    host.type("]11;rgb:0/0/0\x1b\\" + DA1_REPLY);
+    expect(await ask).toEqual({ ended: "answered", replies: [{ kind: "osc", body: "11;rgb:0/0/0" }] });
+    expect(keys).toEqual([]);
   });
 
   it("runs asks one after another", async () => {
