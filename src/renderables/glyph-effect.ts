@@ -59,7 +59,7 @@ import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js"
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { finiteTime } from "../core/easing.js";
-import { stripControlChars, type RichText } from "../core/text.js";
+import { sanitized, type RichText } from "../core/text.js";
 import { cellSeed, holdOver, walkGlyphs, type Placed } from "./effect.js";
 import { pattern } from "../core/pattern.js";
 
@@ -251,7 +251,7 @@ function rewritten(text: RichText, glyphs: readonly PlacedGlyph[], shown: readon
   return result;
 }
 
-/** Line breaks and tabs, which `stripControlChars` leaves for a text's own lines and which no cell may hold. */
+/** Line breaks and tabs, which `sanitized` leaves for a text's own lines and which no cell may hold. */
 const BREAKS = pattern(/[\n\t]/);
 
 /**
@@ -263,7 +263,7 @@ const BREAKS = pattern(/[\n\t]/);
 function shows(frame: GlyphFrame, cell: GlyphCell): string {
   const text = frame(cell);
   if (text === cell.glyph) return text;
-  if (cellLen(text) !== cellLen(cell.glyph) || BREAKS.test(text) || stripControlChars(text) !== text) {
+  if (cellLen(text) !== cellLen(cell.glyph) || BREAKS.test(text) || sanitized(text) !== text) {
     throw new RangeError(
       `a glyph effect turned ${JSON.stringify(cell.glyph)} at row ${cell.row}, column ${cell.col} into ${JSON.stringify(text)}: ` +
         `it must be ${cellLen(cell.glyph)} cell(s) wide, with no line break or control character`,

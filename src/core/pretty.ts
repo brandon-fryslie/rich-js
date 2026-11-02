@@ -17,12 +17,12 @@
  * times.
  */
 
-import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, splitAtCells } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, replaceWithheld, splitAtCells, unicodeEscape, wireText } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Memo } from "./memo.js";
 import { Segment } from "./segment.js";
 import { closed } from "./bidi.js";
-import { RichText, stripControlChars } from "./text.js";
+import { RichText, sanitized, stripControlChars } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 import { drawable, render } from "./protocol.js";
@@ -233,6 +233,13 @@ interface Lines {
   readonly arrows: readonly number[];
 }
 
+/**
+ * Text a value wrote itself, as layout reads it: what the wire will hold, every
+ * line ending an LF, its direction closed. A soft hyphen is gone with the rest,
+ * because this text is on show and the rows it hangs on are cut here.
+ */
+const spelled = (text: string): string => closed(wireText(sanitized(text)));
+
 /** Text with no line break in it. */
 const flat = (text: string): Lines => ({ text, margins: [], arrows: [] });
 
@@ -358,7 +365,7 @@ function drawMargins(
 function rowsOf(line: string, stay: number, hangRoom: number): string[] {
   const lead = line.slice(0, line.length - line.trimStart().length);
   const rest = line.slice(stay);
-  const hung = splitAtCells(rest, divideLine(rest, asCellCol(hangRoom - cellLen(lead)), { fold: true }))
+  const hung = splitAtCells(rest, divideLine(rest, asCellCol(hangRoom - cellLen(lead)), { fold: true }).map(({ cell }) => cell))
     .map((row) => row.trim())
     .filter((row) => row !== "")
     .map((row) => lead + row);
@@ -378,7 +385,7 @@ function stayingLength(line: string, room: number, canHang: boolean): number {
   if (cellLen(line.trimEnd()) <= room) return line.length;
   const cut = (fold: boolean): number => {
     const first = divideLine(line, asCellCol(room), { fold })[0];
-    return first === undefined ? line.length : cellColToCodeUnitOffset(line, first);
+    return first === undefined ? line.length : cellColToCodeUnitOffset(line, first.cell);
   };
   const words = cut(false);
   if (cellLen(line.slice(0, words).trimEnd()) <= room) return words;
@@ -548,7 +555,7 @@ function take<T>(source: Iterable<T>, limit: number): T[] {
 function threw(error: unknown): string {
   // An `Error` from any realm carries its `message` as a string.
   const message = (error as { message?: unknown } | null)?.message;
-  return `[Threw: ${closed(typeof message === "string" ? message : String(error))}]`;
+  return `[Threw: ${spelled(typeof message === "string" ? message : String(error))}]`;
 }
 
 /**
@@ -741,12 +748,9 @@ const BARE_KEY = pattern(/^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Sta
  */
 const unprintable = (): RegExp => /(?! )[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]/gu;
 
-/** `value` in double quotes, every character that does not print escaped. */
+/** `value` in double quotes, every character that does not print or that the wire would withhold escaped. */
 const quoted = (value: string): string =>
-  JSON.stringify(value).replace(unprintable(), (c) => {
-    const hex = c.codePointAt(0)!.toString(16).padStart(4, "0");
-    return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
-  });
+  replaceWithheld(JSON.stringify(value), unicodeEscape).replace(unprintable(), unicodeEscape);
 
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;
@@ -831,9 +835,9 @@ export class Pretty implements Renderable, Measurable {
       case "boolean":
         return String(value);
       case "symbol":
-        return closed(value.toString());
+        return spelled(value.toString());
       case "function":
-        return `[Function: ${closed(String(value.name || "anonymous"))}]`;
+        return `[Function: ${spelled(String(value.name || "anonymous"))}]`;
     }
 
     return null;
@@ -965,9 +969,9 @@ export class Pretty implements Renderable, Measurable {
           })),
         );
       case "opaque":
-        return { kind: "text", text: closed(form.text) };
+        return { kind: "text", text: spelled(form.text) };
       case "self":
-        return { kind: "text", text: closed(String(value)) };
+        return { kind: "text", text: spelled(String(value)) };
       case "keys": {
         // No self-description, so the keys are the whole story.
         const { record } = form;

@@ -21,7 +21,7 @@
 import { closed } from "./bidi.js";
 import { cellLen } from "./cells.js";
 import { Style, StyleSyntaxError } from "./style.js";
-import { RichText, stripControlChars } from "./text.js";
+import { RichText, sanitized } from "./text.js";
 import { emojiReplace } from "./emoji.js";
 import type { RenderOptions as DrawOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
@@ -741,7 +741,7 @@ function walk(tokens: readonly MarkupToken[], source: string, registry: MarkupRe
       // counted along the way — a span, a splice point — indexes the text it
       // lands on. Stripped only by the constructor, a control character
       // shifted every style after it one cell right.
-      write(out, stripControlChars(emoji ? emojiReplace(text) : text));
+      write(out, sanitized(emoji ? emojiReplace(text) : text));
       continue;
     }
     const plugin = pluginOf(token, registry);

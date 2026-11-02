@@ -57,7 +57,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     ["an assembly", () => RichText.assemble([new RichText(`${RLO}abc`), new RichText(` ${after}`)])],
     ["an assembly of strings", () => RichText.assemble([`${RLO}abc`, ` ${after}`])],
     ["an assembly of styled strings", () => RichText.assemble([[`${RLO}abc`, "red"], [` ${after}`, "blue"]])],
-    ["a paragraph separator ends nothing", () => new RichText(`${RLO}abc\u2029`).append(new RichText(` ${after}`))],
+    ["a paragraph separator, a line ending like any other", () => new RichText(`${RLO}abc\u2029`).append(new RichText(` ${after}`))],
     ["a string between Texts", () => new RichText("x").append(new RichText("y")).append(`${RLO}abc`).append(new RichText(` ${after}`))],
     ["tokens", () => new RichText("").appendTokens([[`${RLO}abc`, "red"], [` ${after}`]])],
     ["a Markdown span", () => new Markdown(`**${RLO}abc** ${after}`)],

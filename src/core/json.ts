@@ -7,9 +7,10 @@
  * where the console can reach it without an upward edge. [LAW:one-way-deps]
  */
 
-import { withExplicitEscaped } from "./bidi.js";
+import { EXPLICIT } from "./bidi.js";
 import { Segment } from "./segment.js";
-import { RichText } from "./text.js";
+import { RichText, STRIPPED } from "./text.js";
+import { replaceWithheld } from "./cells.js";
 import { JSONHighlighter } from "./highlighter.js";
 import type {
   Renderable,
@@ -17,6 +18,7 @@ import type {
   RenderOptions,
 } from "./protocol.js";
 import { measure, render } from "./protocol.js";
+import { pattern } from "./pattern.js";
 
 export interface JSONOptions {
   indent?: number;
@@ -25,6 +27,11 @@ export interface JSONOptions {
 }
 
 const highlighter = new JSONHighlighter();
+const UNWRITABLE = pattern(new RegExp(`${EXPLICIT.source}|${STRIPPED.source}`, "u"));
+
+/** `character` as JSON escapes, a surrogate pair for one past the BMP. */
+const jsonEscape = (character: string): string =>
+  Array.from({ length: character.length }, (_, at) => `\\u${character.charCodeAt(at).toString(16).padStart(4, "0")}`).join("");
 
 export class JSONRenderable implements Renderable, Measurable {
   readonly text: RichText;
@@ -63,8 +70,9 @@ export class JSONRenderable implements Renderable, Measurable {
     // `undefined` for what JSON has no form of, a function or a symbol, whatever its type says.
     const jsonStr = (JSON.stringify(data, replacer, indent) as string | undefined) ?? "";
     // Data on show: one string holds every key and value, so a control left in
-    // one would act on the rest of its line.
-    const text = new RichText(withExplicitEscaped(jsonStr));
+    // one would act on the rest of its line, and what content deletes or the wire
+    // withholds would leave a document that no longer parses back to this data.
+    const text = new RichText(replaceWithheld(jsonStr, jsonEscape).replace(new RegExp(UNWRITABLE.source, "gu"), jsonEscape));
 
     if (doHighlight) {
       highlighter.highlight(text);

@@ -3,10 +3,10 @@
  */
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
-import { closed, closing, withoutExplicit } from "./bidi.js";
-import { CONTROL_CODES, type Disposition } from "./control-codes.js";
-import { directed, edges, hangingWhitespace, measured } from "./orient.js";
-import { divideLine, wordWidths } from "./wrap.js";
+import { closed, closing } from "./bidi.js";
+import { controlClass, type Disposition } from "./control-codes.js";
+import { directed, drawnTail, edges, hangingWhitespace, measured } from "./orient.js";
+import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
 import { stripOscTerminators } from "./osc8.js";
@@ -15,25 +15,33 @@ import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./pr
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
 
-const hex = (codePoint: number): string => `\\u{${codePoint.toString(16)}}`;
-
 // Exhaustive, so a new `Disposition` does not compile until it says what the
 // sanitizer does with it: a variant this missed would reach the wire.
-const DELETED: Readonly<Record<Disposition, boolean>> = { strip: true, keep: false };
+const DELETED: Readonly<Record<Disposition, boolean>> = { strip: true, keep: false, "line-break": false, withheld: false };
 
-const STRIPPED = pattern(new RegExp(
-  `[${CONTROL_CODES.filter((row) => DELETED[row.disposition]).map((row) => `${hex(row.first)}-${hex(row.last)}`).join("")}]`,
-  "u",
-));
+export const STRIPPED = pattern(new RegExp(controlClass((disposition) => DELETED[disposition]), "u"));
+const LINE_BREAKS = pattern(new RegExp(controlClass((disposition) => disposition === "line-break"), "u"));
 
 // [LAW:single-enforcer] Single place where control chars are sanitized: every
-// string that becomes part of a Text's characters passes here. Which ones, and
-// why, is `CONTROL_CODES`. `match` and `split` need no cursor, so `STRIPPED` can
+// string that becomes part of a Text's characters passes through `sanitized`.
+// Which ones, and why, is `CONTROL_CODES`. A code point at a time and never by its
+// neighbours, because it runs again on every slice and fragment: what depends on
+// context is `wireText`'s. `match` and `split` need no cursor, so `STRIPPED` can
 // be held. `match` first because nearly every string is clean, and not `test`,
 // which coerces: a template's unlifted scope value reaches here typed as a
 // string, and has to throw rather than read as `[object Object]`.
 export function stripControlChars(text: string): string {
   return text.match(STRIPPED) === null ? text : text.split(STRIPPED).join("");
+}
+
+/**
+ * `text` as a Text's characters hold it: stripped, and every line ending an LF.
+ * One code unit for one, so an offset into stripped text holds, and every reader
+ * of a Text finds one line break without having to know the others.
+ */
+export function sanitized(text: string): string {
+  const stripped = stripControlChars(text);
+  return stripped.match(LINE_BREAKS) === null ? stripped : stripped.split(LINE_BREAKS).join("\n");
 }
 
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
@@ -190,7 +198,7 @@ export class RichText implements Renderable, Measurable {
   private readonly _tabSize: TabSize;
 
   constructor(text?: string, options?: RichTextOptions) {
-    this._text = new State(text ? stripControlChars(text) : "");
+    this._text = new State(text ? sanitized(text) : "");
     this._format = new State<TextFormat>({
       // [LAW:single-enforcer] `admitStyle` is the boundary that sanitizes
       // any link URL crossing into a RichText; downstream trusts the invariant.
@@ -221,10 +229,10 @@ export class RichText implements Renderable, Measurable {
   }
 
   set plain(value: string) {
-    const sanitized = stripControlChars(value);
-    this._text.set(sanitized);
+    const clean = sanitized(value);
+    this._text.set(clean);
     // Trim spans that extend beyond new length
-    const len = sanitized.length;
+    const len = clean.length;
     this._spans.set(this._spans.get()
       .map((s) => (s.end > len ? new Span(s.start, Math.min(s.end, len), s.style) : s))
       .filter((s) => s.start < len));
@@ -361,10 +369,10 @@ export class RichText implements Renderable, Measurable {
       return this;
     }
 
-    const sanitized = stripControlChars(content);
+    const clean = sanitized(content);
     const start = this._text.get().length;
-    const tail = this._unclosed() + sanitized;
-    this._text.set(this._text.get() + sanitized);
+    const tail = this._unclosed() + clean;
+    this._text.set(this._text.get() + clean);
     this._closure.set({ text: this._text.get(), tail });
     this._addSpan(start, this._text.get().length, style ?? "");
     return this;
@@ -553,7 +561,7 @@ export class RichText implements Renderable, Measurable {
   }
 
   pad(count: number, char?: string): this {
-    const padding = stripControlChars(char ?? " ").repeat(count);
+    const padding = sanitized(char ?? " ").repeat(count);
     // Shift all spans right by what the left side gained.
     this._spans.set(this._spans.get().map((s) => s.move(padding.length)));
     this._text.set(padding + this._text.get() + padding);
@@ -575,14 +583,14 @@ export class RichText implements Renderable, Measurable {
   }
 
   padLeft(count: number, char?: string): this {
-    const padding = stripControlChars(char ?? " ").repeat(count);
+    const padding = sanitized(char ?? " ").repeat(count);
     this._spans.set(this._spans.get().map((s) => s.move(padding.length)));
     this._text.set(padding + this._text.get());
     return this;
   }
 
   padRight(count: number, char?: string): this {
-    this._text.set(this._text.get() + stripControlChars(char ?? " ").repeat(count));
+    this._text.set(this._text.get() + sanitized(char ?? " ").repeat(count));
     return this;
   }
 
@@ -652,7 +660,7 @@ export class RichText implements Renderable, Measurable {
     // value, so width 0 and a marker wider than the width run the same walk
     // as every other call: what is drawn plus what is kept is `cells` wide.
     const cells = cellCount(width);
-    const marker = cellFit(stripControlChars(options?.marker ?? "\u2026"), cells);
+    const marker = cellFit(sanitized(options?.marker ?? "\u2026"), cells);
     const budget = asCellCol(cells - cellLen(marker));
 
     if (mode === "right") {
@@ -876,9 +884,9 @@ export class RichText implements Renderable, Measurable {
       // Wrap first, overflow last — the reference's order, and the reason a
       // long sentence grows a table row while an unbreakable word in the same
       // column still ellipsizes.
-      const cuts = divideLine(Segment.plainOf(line), wrapAt, { fold: overflow === "fold" });
+      const breaks = divideLine(Segment.plainOf(line), wrapAt, { fold: overflow === "fold" });
 
-      const wrapped = Segment.divide(line, cuts);
+      const wrapped = Segment.divide(hyphenated(line, breaks), drawnCuts(breaks));
       let start = 0;
       const placed = this._justifyLines(
         wrapped.map((piece, at) => {
@@ -888,8 +896,9 @@ export class RichText implements Renderable, Measurable {
           return {
             segments: [...this._fitLine(piece, edge, overflow, ellipsis)],
             // An oriented row's cells are not where `free` counted them, and a
-            // pad joined to one would land inside its isolate.
-            free: oriented ? NEVER_FREE : (cell: number) => free(at === 0 ? cell : cuts[at - 1]! + cell),
+            // pad joined to one would land inside its isolate. A hyphen's cell
+            // was counted by nobody.
+            free: oriented || breaks[at]?.hyphen !== undefined ? NEVER_FREE : (cell: number) => free(at === 0 ? cell : breaks[at - 1]!.cell + cell),
             orient: (segments: Segment[]) => orient(segments, from, source),
           };
         }),
@@ -1124,7 +1133,7 @@ export class RichText implements Renderable, Measurable {
   private _fillLine(line: Segment[], maxWidth: number, base: Style): Segment[] {
     const plain = Segment.plainOf(line);
     const words = plain.split(" ");
-    if (withoutExplicit(plain).endsWith(" ")) words.pop();
+    if (drawnTail(plain).endsWith(" ")) words.pop();
 
     const gaps = words.length - 1;
     const spaces = new Array<number>(gaps).fill(1);
@@ -1234,6 +1243,39 @@ interface WrappedLine {
 }
 
 const NEVER_FREE = (): boolean => false;
+
+/**
+ * `line` with the soft hyphen each of `breaks` took turned into `-`, in its own
+ * segment and so its own style. One code unit for one, so an offset into the line
+ * still reads the logical line `orient` was built from.
+ */
+function hyphenated(line: readonly Segment[], breaks: readonly LineBreak[]): Segment[] {
+  const taken = breaks.flatMap(({ hyphen }) => hyphen ?? []);
+  let next = 0;
+  let end = 0;
+  return line.map((segment) => {
+    const start = end;
+    end += segment.text.length;
+    let text = "";
+    let from = 0;
+    for (; next < taken.length && taken[next]! < end; next += 1) {
+      const at = taken[next]! - start;
+      text += segment.text.slice(from, at) + "-";
+      from = at + 1;
+    }
+    text += segment.text.slice(from);
+    return text === segment.text ? segment : new Segment(text, segment.style, segment.control);
+  });
+}
+
+/** Where `breaks` cut once `hyphenated` has given each hyphen its cell, which the line above it ends in. */
+function drawnCuts(breaks: readonly LineBreak[]): CellCol[] {
+  let hyphens = 0;
+  return breaks.map(({ cell, hyphen }) => {
+    hyphens += hyphen === undefined ? 0 : 1;
+    return asCellCol(cell + hyphens);
+  });
+}
 
 /**
  * For each logical line of a render, whether the cell at an offset is covered

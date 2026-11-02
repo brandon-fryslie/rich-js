@@ -3,13 +3,14 @@
  */
 
 import { codePointWidth, widensToEmoji } from "./cell-widths.js";
-import { dispositionOf } from "./control-codes.js";
+import { controlClass, dispositionOf, SUBDIVISION_FLAG, type Disposition } from "./control-codes.js";
 import { Memo } from "./memo.js";
 import { pattern } from "./pattern.js";
 
 const cellLenMemo = new Memo<number>();
 
 const ZWJ = 0x200d;
+const ZWJ_CHARACTER = String.fromCodePoint(ZWJ);
 const VS16 = 0xfe0f;
 const JOINERS = pattern(/[\u200d\ufe0f]/);
 const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
@@ -25,7 +26,83 @@ function dispositionCells(codePoint: number): 0 | 1 | 2 {
   switch (disposition) {
     case "strip": return 0;
     case "keep": return codePointWidth(codePoint);
+    case "line-break": return 0;
+    case "withheld": return 0;
   }
+}
+
+// Exhaustive, so a new `Disposition` does not compile until it says whether the
+// wire may be denied it. `strip` is content's rule, and a raw `Segment` is not content.
+const OFF_THE_WIRE: Readonly<Record<Disposition, boolean>> = { strip: false, keep: false, "line-break": true, withheld: true };
+const WITHHELD = pattern(new RegExp(controlClass((disposition) => OFF_THE_WIRE[disposition]), "u"));
+const SELECTOR = pattern(/\p{Variation_Selector}/u);
+
+/**
+ * Whether the selector at `index` follows a code point that draws. Asked of the
+ * census and the vendored table, so an ideograph newer than the engine keeps its
+ * selector; the first code point of a string has nothing before it to judge.
+ */
+function selectsAGlyph(text: string, index: number): boolean {
+  const previous = Array.from(text.slice(Math.max(0, index - 2), index)).at(-1);
+  return previous === undefined || dispositionCells(previous.codePointAt(0)!) > 0;
+}
+
+/**
+ * `text` with each code point the wire may not hold given by `replacement`, one
+ * at a time. A line separator and a soft hyphen never are;
+ * a tag only in a subdivision flag, since elsewhere it is text no reader sees; a
+ * variation selector only directly on a glyph, so what can hide behind one glyph
+ * is one selector, and what can hide in a text is one per glyph. That last is not
+ * containable here: a real sequence and a planted one differ only by data this
+ * library does not carry.
+ *
+ * [LAW:one-source-of-truth] `measure` reads this, so `cellLen` is the width of what
+ * is written. A deletion keeps every cluster boundary the text had: it takes the
+ * run of ZWJs before it and the last run past any Extend after it, what a join
+ * across it would need (UAX #29 GB11). So the width of a string stays the sum over
+ * the clusters of the text as it was given, and every cut stays exact.
+ */
+export function replaceWithheld(text: string, replacement: (character: string) => string): string {
+  if (text.match(WITHHELD) === null) return text;
+  const gone = new Set<number>();
+  const extended = new RegExp(`[\\p{Grapheme_Extend}\\p{Emoji_Modifier}${ZWJ_CHARACTER}]*`, "uy");
+  // A run is scanned once, so a text that is one long run stays linear.
+  let scanned = 0;
+  const takeJoiners = (last: number): void => {
+    for (let at = last; text[at] === ZWJ_CHARACTER; at -= 1) gone.add(at);
+  };
+  for (const match of text.matchAll(new RegExp(`(${SUBDIVISION_FLAG})|${WITHHELD.source}`, "gu"))) {
+    const [found, flag] = match;
+    if (flag !== undefined || (SELECTOR.test(found) && selectsAGlyph(text, match.index))) continue;
+    gone.add(match.index);
+    takeJoiners(match.index - 1);
+    const end = match.index + found.length;
+    if (end < scanned) continue;
+    extended.lastIndex = end;
+    extended.test(text);
+    scanned = extended.lastIndex;
+    const joiner = text.slice(end, scanned).lastIndexOf(ZWJ_CHARACTER);
+    if (joiner >= 0) takeJoiners(end + joiner);
+  }
+  if (gone.size === 0) return text;
+  let kept = "";
+  let at = 0;
+  for (const character of text) {
+    kept += gone.has(at) ? replacement(character) : character;
+    at += character.length;
+  }
+  return kept;
+}
+
+/** `character` as a Unicode escape a reader can see, for data on show. */
+export function unicodeEscape(character: string): string {
+  const hex = character.codePointAt(0)!.toString(16).padStart(4, "0");
+  return hex.length > 4 ? `\\u{${hex}}` : `\\u${hex}`;
+}
+
+/** `text` as the wire may hold it. */
+export function wireText(text: string): string {
+  return replaceWithheld(text, () => "");
 }
 
 // Rich's `cell_len` over a run of text: each code point the cells Rich's table
@@ -55,16 +132,18 @@ function richCells(text: string): number {
 }
 
 // [LAW:one-source-of-truth] the single authority for cell width. A string is
-// the sum of its grapheme clusters, each measured as Rich measures it, so a cut
+// what `wireText` leaves of it, the sum of those grapheme clusters, each measured
+// as Rich measures it, so a cut
 // between clusters splits the width exactly; the two part only where a ZWJ or
 // VS16 reaches across a cluster boundary, as in `a` ZWJ `b`, which Rich counts
 // as one cell and two clusters count as two. Without either, every code point
 // counts alone and no segmentation is needed.
 function measure(text: string): number {
   if (PRINTABLE_ASCII.test(text)) return text.length;
-  if (!JOINERS.test(text)) return richCells(text);
+  const drawn = wireText(text);
+  if (!JOINERS.test(drawn)) return richCells(drawn);
   let cells = 0;
-  for (const { segment } of SEGMENTER.segment(text)) cells += richCells(segment);
+  for (const { segment } of SEGMENTER.segment(drawn)) cells += richCells(segment);
   return cells;
 }
 
