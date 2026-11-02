@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-536",
-      "ref": "refs/pull/536/merge",
-      "sha": "f9a1eb35d5603e5643fc454dbc04e7fe0946f356",
-      "timestamp": "2026-11-02T01:29:39.016Z",
-      "commits": [
-        {
-          "sha": "f9a1eb35d5603e5643fc454dbc04e7fe0946f356",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T18:27:33-07:00",
-          "message": "Merge e1723e42695ae351fc1d50a6b3f399ea1c217b60 into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
-        },
-        {
-          "sha": "e1723e42695ae351fc1d50a6b3f399ea1c217b60",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T18:27:23-07:00",
-          "message": "A link keeps its joiners, and data on show has one escape rule (rich-control-codes-xh4n.fng)\n\nReview of #536. Stripping the whole census from a URL took ZWNJ out of a Persian\naddress, so the link went somewhere else. The rule is what RFC 3986 and RFC 3987\nrefuse: controls, line separators and bidi controls.\n\n`escaped` holds what JSON and Syntax both do to data on show.\n"
-        },
-        {
-          "sha": "e6f39db90ab8973bb5fc73c7d0c5a282bb759bdf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T18:12:38-07:00",
-          "message": "decodeAnsi's cells hold tabs and leave escapes whole, and a URL holds no census code point (rich-control-codes-xh4n.fng)\n\nReview of #536. The cell model read a tab as zero-width, so a redraw lost it and\nthe text after it; a tab now moves to the next stop. Line breaks were rewritten\nbefore tokenizing, which cut an OSC payload in two and leaked its tail as text.\nWhat has no width at the first column waited in a slot nothing cleared, so it\noutlived an erase and piled up across redraws; it now joins the next cell drawn.\n\nstripUrlControls derives from the census: an explicit bidi control or LS still\nreached the bytes in an OSC 8 URL, around `sealed`.\n"
-        },
-        {
-          "sha": "c62e2b679c6f6285276bd6201b417df4d262095e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T18:01:58-07:00",
-          "message": "decodeAnsi counts cells and Syntax escapes what it deleted (rich-control-codes-xh4n.fng)\n\nReview of #536. A backspace moved one code point, so a redraw over wide or\ncombining text landed on the wrong characters; columns are now a terminal's\ncells, and a C1 control takes none. decodeAnsi breaks at the census's line breaks.\n\nSyntax deleted a bare CR, C1 and explicit bidi controls, so `// note\\reval(x)`\nshowed one comment line while a compiler ran the call. It escapes them now.\n\nConsole.bell reads who is at the terminal, not forceInteractive.\n"
-        },
-        {
-          "sha": "e3b5b71478978c258fa870df3791c295142db5b4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T17:45:15-07:00",
-          "message": "C0 controls keep their meaning, and content writes no directive (rich-control-codes-xh4n.fng)\n\nVT and FF are line breaks, and the codes with no meaning in a span show their\nControl Pictures symbol, one code unit for one. BEL's alert is Console.bell, and\nBS's overstrike and ESC's styling are decodeAnsi, which reads nroff's grammar.\n\nsealed is total: only keep and an admitted withheld code point reach the wire, so\na raw Segment, a widget label, an end and a TextInput value are contained by one\nrule. A link's URL takes no C0 or C1 at stripUrlControls. Syntax escapes what the\nwire refuses, so a line number stays the editor's.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5fc4cdc868f19fcf180f26465efd67129bbf3d99",
-      "timestamp": "2026-11-02T00:18:43.748Z",
+      "sha": "35eae6222251d18b0ac95a1fc8fd119cb01c861f",
+      "timestamp": "2026-11-02T01:40:05.515Z",
       "commits": [
         {
-          "sha": "5fc4cdc868f19fcf180f26465efd67129bbf3d99",
+          "sha": "35eae6222251d18b0ac95a1fc8fd119cb01c861f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T17:16:16-07:00",
-          "message": "Format characters keep their meaning in content, and their abuse is contained (rich-control-codes-xh4n.5do) (#535)\n\n* Format characters keep their meaning in content, and their abuse is contained (rich-control-codes-xh4n.5do)\n\nThe census gains two dispositions. `line-break` turns U+2028 and U+2029 into an\nLF at the content boundary, code unit for code unit, so every reader of a Text\nfinds one line ending. `withheld` covers the soft hyphen, tag characters and\nvariation selectors: content keeps them, and `replaceWithheld` decides from their\nneighbours what reaches the wire. It runs in `sealed`, on text nothing cuts again,\nso a rule that reads context cannot move an offset. `cellLen` measures what it\nleaves, and a deletion keeps every cluster boundary the text had, so a cut stays\nexact.\n\nThe wrapper breaks where a word's own text says it may: after ZWSP, at a soft\nhyphen, which draws as `-` only at a break it took, and between the words of Thai,\nLao, Khmer and Burmese. U+FEFF stops counting as a space, which was JavaScript's\n`\\s` departing from Rich by accident. JSON escapes whatever content or the wire\nwould drop, so it parses back to its data.\n\nDepartures from Rich: a soft hyphen measures 0 rather than 1, and a U+2028 in a\nJSON string prints as an escape. docs/control-codes.md records each family and\nwhat tmux, Terminal.app, iTerm2 and xterm.js were measured doing.\n\n* A break, a measure and a document each read what is drawn (rich-control-codes-xh4n.5do)\n\nHigh review of #535. A run's start is no break, a mark with no text before it\nneither; a zero-width code point after a wrap's whitespace is not content; a\ntext's edge is the last thing drawn; a value's own separator lays out as an LF;\nJSON has one escape pass over the census; the two per-render fast paths return.\n\n* The hanging whitespace test renders the text itself, since print sets its own overflow and justify (rich-control-codes-xh4n.5do)\n\n* A row's tail and a word's ends are read from what is drawn, and Pretty shows what the wire withholds (rich-control-codes-xh4n.5do)\n\nMedium review of #535. drawnTail answers the tail once for hanging whitespace and\na filled line, in linear time, and leaves a mark on a space as content. A break\nneeds a glyph on both sides. Pretty escapes what a string would lose on the wire,\nand a value's own text is wired before it is laid out.\n\n* Syntax escapes what the wire withholds, and a soft hyphen costs nothing it cannot draw (rich-control-codes-xh4n.5do)\n\nSecond high review of #535. Code on show escapes withheld code points through the\none unicodeEscape Pretty uses. A run of marks is one break, a zero-cell piece takes\nno hyphen, and a piece's minimum is its own cells. edges counts a tab. hyphenated\nwalks a segment once, and replaceWithheld returns text it did not touch."
+          "timestamp": "2026-11-01T18:37:51-07:00",
+          "message": "C0 controls keep their meaning, and content writes no directive (rich-control-codes-xh4n.fng) (#536)\n\n* C0 controls keep their meaning, and content writes no directive (rich-control-codes-xh4n.fng)\n\nVT and FF are line breaks, and the codes with no meaning in a span show their\nControl Pictures symbol, one code unit for one. BEL's alert is Console.bell, and\nBS's overstrike and ESC's styling are decodeAnsi, which reads nroff's grammar.\n\nsealed is total: only keep and an admitted withheld code point reach the wire, so\na raw Segment, a widget label, an end and a TextInput value are contained by one\nrule. A link's URL takes no C0 or C1 at stripUrlControls. Syntax escapes what the\nwire refuses, so a line number stays the editor's.\n\n* decodeAnsi counts cells and Syntax escapes what it deleted (rich-control-codes-xh4n.fng)\n\nReview of #536. A backspace moved one code point, so a redraw over wide or\ncombining text landed on the wrong characters; columns are now a terminal's\ncells, and a C1 control takes none. decodeAnsi breaks at the census's line breaks.\n\nSyntax deleted a bare CR, C1 and explicit bidi controls, so `// note\\reval(x)`\nshowed one comment line while a compiler ran the call. It escapes them now.\n\nConsole.bell reads who is at the terminal, not forceInteractive.\n\n* decodeAnsi's cells hold tabs and leave escapes whole, and a URL holds no census code point (rich-control-codes-xh4n.fng)\n\nReview of #536. The cell model read a tab as zero-width, so a redraw lost it and\nthe text after it; a tab now moves to the next stop. Line breaks were rewritten\nbefore tokenizing, which cut an OSC payload in two and leaked its tail as text.\nWhat has no width at the first column waited in a slot nothing cleared, so it\noutlived an erase and piled up across redraws; it now joins the next cell drawn.\n\nstripUrlControls derives from the census: an explicit bidi control or LS still\nreached the bytes in an OSC 8 URL, around `sealed`.\n\n* A link keeps its joiners, and data on show has one escape rule (rich-control-codes-xh4n.fng)\n\nReview of #536. Stripping the whole census from a URL took ZWNJ out of a Persian\naddress, so the link went somewhere else. The rule is what RFC 3986 and RFC 3987\nrefuse: controls, line separators and bidi controls.\n\n`escaped` holds what JSON and Syntax both do to data on show."
         }
       ]
     }
