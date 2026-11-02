@@ -32,6 +32,7 @@
  */
 
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
+import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { SurfacePainter, type Surface } from "../core/paint.js";
@@ -40,7 +41,7 @@ import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
 import { drawView, frameNow, hostView, undrawn, type FrameSays, type HostTime, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
-import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent } from "./input.js";
+import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent, type TerminalReply } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
 
 /**
@@ -136,6 +137,37 @@ type WheelTurn = Extract<ScreenMouseEvent, { type: keyof typeof WHEEL_LINES }>;
 /** A pointer event `onMouse` hears: every one but the vertical wheel, which is `onWheel`'s. */
 export type AppMouseEvent = Exclude<ScreenMouseEvent, WheelTurn>;
 
+// Primary Device Attributes. Every VT100 descendant answers it, and a terminal
+// answers in the order it was asked, so its reply, sent after an ask's queries,
+// says every reply to them that is coming has come.
+const DA1 = "\x1b[c";
+const isDa1Reply = (reply: TerminalReply): boolean => reply.kind === "csi" && reply.body.startsWith("?") && reply.body.endsWith("c");
+
+/**
+ * How an ask ended, with the replies heard before it did. `answered`: the
+ * terminal answered DA1, so a query with no reply among `replies` is one it
+ * does not support. `timeout`: it answered nothing in time, DA1 included.
+ * `left`: the app handed the terminal back first. `unasked`: the host writes
+ * to no terminal, so nothing was asked.
+ */
+export interface Asked {
+  readonly ended: "answered" | "timeout" | "left" | "unasked";
+  readonly replies: readonly TerminalReply[];
+}
+
+export interface AskOptions {
+  /** Seconds to wait for a terminal that answers nothing. Half a second, unless given. */
+  readonly timeout?: number;
+}
+
+const DEFAULT_ASK_TIMEOUT = 0.5;
+
+// The ask in flight: the replies heard so far, and how it ends.
+interface Asking {
+  readonly replies: TerminalReply[];
+  finish(ended: Asked["ended"]): void;
+}
+
 const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
 
 export class App implements FrameHost {
@@ -158,7 +190,16 @@ export class App implements FrameHost {
   // [LAW:one-source-of-truth] The host is the console's whole environment:
   // its size, its colours, where bytes go. Every frame renders with this
   // console's options and is encoded for its destination.
-  private readonly console: Console;
+  private console: Console;
+  private drawing: Pick<ConsoleOptions, DrawOption>;
+  // [LAW:single-enforcer] One ask at a time, through the one input reader:
+  // the next waits on the last, and `leave` ends the one in flight.
+  private asking: Asking | null = null;
+  private asked: Promise<unknown> = Promise.resolve();
+  // DA1 replies still owed to asks that timed out. A terminal answers in the
+  // order it was asked, so every reply before the last of them belongs to an
+  // ask that has ended, and none reaches the ask after it.
+  private owedDa1 = 0;
 
   private _phase: AppPhase = "idle";
   private _frame: readonly (readonly Segment[])[] = [];
@@ -176,7 +217,7 @@ export class App implements FrameHost {
   constructor(options: AppOptions) {
     this.host = options.host;
     this.input = new InputParser(
-      { key: (press) => this.key(press), mouse: (event) => this.mouse(event) },
+      { key: (press) => this.key(press), mouse: (event) => this.mouse(event), reply: (reply) => this.reply(reply) },
       options.host.inputChunks,
     );
     this.surface = options.surface;
@@ -187,7 +228,76 @@ export class App implements FrameHost {
     this._timeline = options.timeline ?? Timeline.play(this._epoch);
     this._rate = options.rate ?? DEFAULT_RATE;
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
-    this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
+    this.drawing = drawOptions(options);
+    this.console = this.drawingConsole();
+  }
+
+  /**
+   * The terminal the app draws on: the colours a cell that sets none is drawn
+   * in, and the sixteen an ANSI colour names — as given, or as the colour
+   * depth assumes (`resolveTerminal`).
+   */
+  get terminal(): TerminalColors {
+    return resolveTerminal(this.console.options.terminal, this.console.colorSystem ?? ColorDepth.TRUECOLOR);
+  }
+
+  /** Draw on `terminal` from the next frame on — what `terminalColors` learned, say. */
+  set terminal(terminal: TerminalColors) {
+    // [LAW:one-source-of-truth] The console is the one holder of how a frame
+    // draws, so the terminal changes by a new console, not beside the old one.
+    this.drawing = { ...this.drawing, terminal };
+    this.console = this.drawingConsole();
+    this.refresh();
+  }
+
+  /**
+   * Ask the terminal: write `queries`, then DA1, and resolve with the replies
+   * heard before DA1's, or before the timeout or the app handing the terminal
+   * back. It rejects only when writing to the terminal throws. Asks run one
+   * after another, and only while the app runs: it holds raw mode and reads
+   * the input, so a reply reaches the ask and never a key handler. A reply no
+   * ask is waiting for is dropped. `queries` must not ask for DA1 itself: its
+   * reply would end the ask early.
+   */
+  ask(queries: readonly string[], options: AskOptions = {}): Promise<Asked> {
+    // An ask before the app runs is a mistake in the program; one after it
+    // stopped ends `left`, so the error that stopped it is the one heard.
+    if (this._phase === "idle") throw new Error("App.ask: an app asks its terminal once it runs, and this one has not started");
+    const timeout = options.timeout ?? DEFAULT_ASK_TIMEOUT;
+    if (!(timeout > 0 && Number.isFinite(timeout))) throw new RangeError(`App.ask: a timeout is a positive, finite number of seconds, not ${timeout}`);
+    const turn = this.asked.then(() => this.askNow(queries, timeout));
+    // One ask's failure is its caller's; the asks queued after it still run.
+    this.asked = turn.catch(() => undefined);
+    return turn;
+  }
+
+  // The one way the app builds the console it draws with.
+  private drawingConsole(): Console {
+    return new Console({ ...this.drawing, environment: hostEnvironment(this.host) });
+  }
+
+  private askNow(queries: readonly string[], timeout: number): Promise<Asked> {
+    return new Promise((resolve) => {
+      if (this._phase !== "running") return resolve({ ended: "left", replies: [] });
+      if (!this.host.writesToTerminal) return resolve({ ended: "unasked", replies: [] });
+      // Written before the ask takes the input, so a write that throws leaves
+      // no ask in flight and no timer armed.
+      this.host.write(queries.join("") + DA1);
+      const replies: TerminalReply[] = [];
+      const timer = this._clock.at(this._clock.now() + timeout, () => {
+        this.owedDa1++;
+        asking.finish("timeout");
+      });
+      const asking: Asking = {
+        replies,
+        finish: (ended) => {
+          timer();
+          this.asking = null;
+          resolve({ ended, replies });
+        },
+      };
+      this.asking = asking;
+    });
   }
 
   get phase(): AppPhase {
@@ -396,6 +506,9 @@ export class App implements FrameHost {
   }
 
   private leave(): void {
+    this.asking?.finish("left");
+    // Whatever answers the terminal sends from here reach whoever holds it next.
+    this.owedDa1 = 0;
     this.host.write(POINTER[this.surface].off);
     this.painter.handBack();
     this.host.setRawMode(false);
@@ -421,6 +534,16 @@ export class App implements FrameHost {
   }
 
   // --- input ---
+
+  private reply(reply: TerminalReply): void {
+    if (this.owedDa1 > 0) {
+      if (isDa1Reply(reply)) this.owedDa1--;
+      return;
+    }
+    if (this.asking === null) return;
+    if (isDa1Reply(reply)) return this.asking.finish("answered");
+    this.asking.replies.push(reply);
+  }
 
   private key(press: KeyPress): void {
     if (this.quitKeys.has(keyName(press))) return this.stop();

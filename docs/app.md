@@ -137,6 +137,32 @@ const app = new App({
 
 A `WidgetApp` takes the same options. Its `theme` names styles; it does not colour the widgets, each of which takes its own [`theme`](/widgets#the-widgets) palette.
 
+## Asking the terminal
+
+A terminal reports what it is when asked, and a running app is what asks: it holds raw mode and reads the terminal's input, so the reply comes back to the ask and never reaches a key handler. `app.ask(queries)` writes the queries, then Primary Device Attributes (DA1, `ESC [ c`), and resolves with the replies heard before DA1's. Every terminal descended from the VT100 answers DA1, and a terminal answers in the order it was asked, so a query with no reply by then is one the terminal does not support, known without waiting. The `timeout`, half a second unless given, is only for a terminal that answers nothing, DA1 included.
+
+The result says how the ask ended: `answered`, `timeout`, `left` (the app handed the terminal back first), or `unasked` (the host writes to no terminal). It rejects only when writing to the terminal throws. Asks run one at a time, and only while the app runs: an ask from an app that has stopped or suspended ends `left`, and one from an app that has not started, or with a timeout that is not a positive, finite number of seconds, throws. A reply that arrives after its ask has ended is dropped rather than typed.
+
+`terminalColors(app)` asks OSC 10 and OSC 11 for the terminal's own foreground and background, and returns the terminal the app draws on with them in place, or `undefined` when the terminal did not report both. Set it as `app.terminal`, and every frame from the next on measures its contrast against the colours actually on screen rather than the ones the colour depth assumes:
+
+```ts node
+import { RichText } from "@promptctl/rich-js";
+import { App, terminalColors } from "@promptctl/rich-js/host";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+
+const app = new App({
+  host: new NodeTerminalHost(),
+  surface: "inline",
+  view: (): RichText => new RichText(`drawn on ${app.terminal.backgroundColor.hex}`),
+});
+const running = app.run();
+const learned = await terminalColors(app);
+if (learned !== undefined) app.terminal = learned;
+await running;
+```
+
+Inside tmux, tmux answers OSC 10 and OSC 11 itself, with its client terminal's colours, and only DA1 when no client is attached. `npm run terminal-colors` shows what your terminal says.
+
 ## Every exit hands the terminal back
 
 While it runs, the app hides the cursor, switches the terminal to raw mode and, on the alternate surface, enters the alternate screen and turns on pointer reporting. All of it is undone when:

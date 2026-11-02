@@ -87,10 +87,23 @@ export function keyName(press: KeyPress): string {
   return modifiers.join("") + (typed ? press.character : press.key);
 }
 
+/**
+ * What a terminal sends back when it is asked something: an OSC, DCS or APC
+ * string, its introducer and terminator taken off (`11;rgb:1e1e/1e1e/1e1e`
+ * for an OSC 11 reply), or a CSI report with a private prefix, its final byte
+ * kept (`?62;22c` for DA1, `?2026;2$y` for DECRQM). No key is sent in either
+ * form, so neither is ever read as one.
+ */
+export interface TerminalReply {
+  readonly kind: "osc" | "dcs" | "apc" | "csi";
+  readonly body: string;
+}
+
 /** Where a parser delivers what it parses. */
 export interface InputSink {
   key(press: KeyPress): void;
   mouse(event: ScreenMouseEvent): void;
+  reply(reply: TerminalReply): void;
 }
 
 // Single-byte → key name table for the trivial cases.
@@ -190,6 +203,13 @@ const LANGLE = 0x3c; // <
 const O_BYTE = 0x4f; // O
 const M_UPPER = 0x4d; // M
 const M_LOWER = 0x6d; // m
+const BEL = 0x07;
+const BACKSLASH = 0x5c;
+
+// The control strings a terminal answers in, by the byte after ESC: OSC, DCS, APC.
+const STRING_REPLIES: Readonly<Record<number, TerminalReply["kind"]>> = { 0x5d: "osc", 0x50: "dcs", 0x5f: "apc" };
+// A CSI whose parameters open with one of these is a report, never a key.
+const PRIVATE_PREFIXES: ReadonlySet<string> = new Set(["?", ">"]);
 
 // [LAW:single-enforcer] Shared encode/decode singletons. The parser
 // receives `Uint8Array | string` from the host and walks bytes through
@@ -226,6 +246,7 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyPress }
   | { kind: "mouse"; bytes: number; event: ScreenMouseEvent }
+  | { kind: "reply"; bytes: number; event: TerminalReply }
   | { kind: "reissued"; bytes: number; event: KeyPress } // a sequence that opened no key, read by `reissue`
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
@@ -375,6 +396,7 @@ export class InputParser {
       this.buffer = this.buffer.subarray(result.bytes);
       if (result.kind === "key" || result.kind === "reissued") this.sink.key(result.event);
       else if (result.kind === "mouse") this.sink.mouse(result.event);
+      else if (result.kind === "reply") this.sink.reply(result.event);
       // skip → drop bytes silently
     }
   }
@@ -443,6 +465,8 @@ export class InputParser {
 
     // ESC [ ... → CSI
     if (b1 === LBRACKET) return this.consumeCSI(buf);
+    const string = STRING_REPLIES[b1];
+    if (string !== undefined) return consumeString(buf, string);
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
     if (b1 === ESC) {
@@ -625,7 +649,24 @@ function decodeMouseFromCb(
   };
 }
 
+// A control string runs to its terminator, ST (`ESC \\`) or BEL, and holds
+// any byte but ESC before it. Unterminated, it is unfinished, and the hold
+// that settles every unfinished sequence reads `ESC ]` alone as Alt+]; an ESC
+// that is not ST ends it before it closed, and it is read as the keys it holds.
+function consumeString(buf: Uint8Array, kind: TerminalReply["kind"]): ConsumeResult {
+  for (let i = 2; i < buf.length; i++) {
+    const b = buf[i]!;
+    if (b === BEL) return { kind: "reply", bytes: i + 1, event: { kind, body: UTF8_DECODER.decode(buf.subarray(2, i)) } };
+    if (b !== ESC) continue;
+    if (i + 1 === buf.length) return { kind: "incomplete" };
+    if (buf[i + 1] !== BACKSLASH) return { kind: "reissued", ...reissue(buf.subarray(0, i)) };
+    return { kind: "reply", bytes: i + 2, event: { kind, body: UTF8_DECODER.decode(buf.subarray(2, i)) } };
+  }
+  return { kind: "incomplete" };
+}
+
 function decodeCSI(params: string, final: string, bytes: number): ConsumeResult {
+  if (PRIVATE_PREFIXES.has(params[0] ?? "")) return { kind: "reply", bytes, event: { kind: "csi", body: params + final } };
   // Handle modifier suffixes like `1;2A` (shift+up). We split params on `;`.
   const parts = params.split(";");
   const first = parts[0] ?? "";
