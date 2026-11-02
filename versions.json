@@ -4,15 +4,22 @@
     {
       "version": "pr-536",
       "ref": "refs/pull/536/merge",
-      "sha": "ed619d12b3552520603169221955231eb9294465",
-      "timestamp": "2026-11-02T01:15:02.182Z",
+      "sha": "f9a1eb35d5603e5643fc454dbc04e7fe0946f356",
+      "timestamp": "2026-11-02T01:29:39.016Z",
       "commits": [
         {
-          "sha": "ed619d12b3552520603169221955231eb9294465",
+          "sha": "f9a1eb35d5603e5643fc454dbc04e7fe0946f356",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T01:12:49Z",
-          "message": "Merge e6f39db90ab8973bb5fc73c7d0c5a282bb759bdf into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
+          "timestamp": "2026-11-01T18:27:33-07:00",
+          "message": "Merge e1723e42695ae351fc1d50a6b3f399ea1c217b60 into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
+        },
+        {
+          "sha": "e1723e42695ae351fc1d50a6b3f399ea1c217b60",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T18:27:23-07:00",
+          "message": "A link keeps its joiners, and data on show has one escape rule (rich-control-codes-xh4n.fng)\n\nReview of #536. Stripping the whole census from a URL took ZWNJ out of a Persian\naddress, so the link went somewhere else. The rule is what RFC 3986 and RFC 3987\nrefuse: controls, line separators and bidi controls.\n\n`escaped` holds what JSON and Syntax both do to data on show.\n"
         },
         {
           "sha": "e6f39db90ab8973bb5fc73c7d0c5a282bb759bdf",
