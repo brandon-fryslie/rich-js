@@ -4,15 +4,22 @@
     {
       "version": "pr-536",
       "ref": "refs/pull/536/merge",
-      "sha": "25fb00af4052517cd74836ff9d08839c2ef07906",
-      "timestamp": "2026-11-02T00:47:41.893Z",
+      "sha": "7db2d35438125e06b67988ae8f58ec9f463a733a",
+      "timestamp": "2026-11-02T01:04:19.857Z",
       "commits": [
         {
-          "sha": "25fb00af4052517cd74836ff9d08839c2ef07906",
+          "sha": "7db2d35438125e06b67988ae8f58ec9f463a733a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T17:45:26-07:00",
-          "message": "Merge e3b5b71478978c258fa870df3791c295142db5b4 into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
+          "timestamp": "2026-11-01T18:02:09-07:00",
+          "message": "Merge c62e2b679c6f6285276bd6201b417df4d262095e into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
+        },
+        {
+          "sha": "c62e2b679c6f6285276bd6201b417df4d262095e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T18:01:58-07:00",
+          "message": "decodeAnsi counts cells and Syntax escapes what it deleted (rich-control-codes-xh4n.fng)\n\nReview of #536. A backspace moved one code point, so a redraw over wide or\ncombining text landed on the wrong characters; columns are now a terminal's\ncells, and a C1 control takes none. decodeAnsi breaks at the census's line breaks.\n\nSyntax deleted a bare CR, C1 and explicit bidi controls, so `// note\\reval(x)`\nshowed one comment line while a compiler ran the call. It escapes them now.\n\nConsole.bell reads who is at the terminal, not forceInteractive.\n"
         },
         {
           "sha": "e3b5b71478978c258fa870df3791c295142db5b4",
