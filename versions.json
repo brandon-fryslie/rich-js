@@ -4,15 +4,22 @@
     {
       "version": "pr-537",
       "ref": "refs/pull/537/merge",
-      "sha": "6862bf4dadd3fb9a81c2113e881307c7609fb1a4",
-      "timestamp": "2026-11-02T12:57:17.963Z",
+      "sha": "3a4c5da15a83ead3ee909ed6653906f2e3ffe413",
+      "timestamp": "2026-11-02T13:20:51.784Z",
       "commits": [
         {
-          "sha": "6862bf4dadd3fb9a81c2113e881307c7609fb1a4",
+          "sha": "3a4c5da15a83ead3ee909ed6653906f2e3ffe413",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T05:54:54-07:00",
-          "message": "Merge 4642c2804b52863b2699f374a57465821e9474b4 into 35eae6222251d18b0ac95a1fc8fd119cb01c861f\n"
+          "timestamp": "2026-11-02T13:18:26Z",
+          "message": "Merge c25e81800da8e84cf26eeccde81758b6094cf643 into 35eae6222251d18b0ac95a1fc8fd119cb01c861f\n"
+        },
+        {
+          "sha": "c25e81800da8e84cf26eeccde81758b6094cf643",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T06:18:11-07:00",
+          "message": "A C1 control shows U+2426, one cell under every width setting and no decoding error (rich-control-codes-xh4n.keg)\n\nU+FFFD is East Asian Ambiguous, two cells on a CJK terminal, and indistinguishable\nfrom a real decode error. pictureOf names its ranges and refuses any other, so a\nnew pictured row cannot inherit a stand-in silently. Stale comments on Disposition\nand Pretty's escaping corrected; C1 test titles in hex.\n"
         },
         {
           "sha": "4642c2804b52863b2699f374a57465821e9474b4",
