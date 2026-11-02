@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-537",
-      "ref": "refs/pull/537/merge",
-      "sha": "4f52efc91b37966ed60b74461e84e26715a9147a",
-      "timestamp": "2026-11-02T13:26:13.515Z",
-      "commits": [
-        {
-          "sha": "4f52efc91b37966ed60b74461e84e26715a9147a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T13:24:01Z",
-          "message": "Merge 0225167c5f08ef95b7008e7c9a4e456548f2d037 into 35eae6222251d18b0ac95a1fc8fd119cb01c861f\n"
-        },
-        {
-          "sha": "0225167c5f08ef95b7008e7c9a4e456548f2d037",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T06:23:45-07:00",
-          "message": "Each pictured row carries its stand-in, so which code points are pictured has one statement (rich-control-codes-xh4n.keg)\n\npictureOf reads the row instead of restating its ranges, and a pictured row\ncannot be written without a stand-in. The C1 boundary test pins DEL and NBSP\non either side; U+00A0 no longer borders a stripped range.\n"
-        },
-        {
-          "sha": "c25e81800da8e84cf26eeccde81758b6094cf643",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T06:18:11-07:00",
-          "message": "A C1 control shows U+2426, one cell under every width setting and no decoding error (rich-control-codes-xh4n.keg)\n\nU+FFFD is East Asian Ambiguous, two cells on a CJK terminal, and indistinguishable\nfrom a real decode error. pictureOf names its ranges and refuses any other, so a\nnew pictured row cannot inherit a stand-in silently. Stale comments on Disposition\nand Pretty's escaping corrected; C1 test titles in hex.\n"
-        },
-        {
-          "sha": "4642c2804b52863b2699f374a57465821e9474b4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T05:54:34-07:00",
-          "message": "NEL ends a line, and every other C1 control shows a stand-in (rich-control-codes-xh4n.keg)\n\nU+0085 is the one C1 code Unicode gives a meaning in text, a line ending (5.8), so content holds an LF for it and decodeAnsi breaks a capture there. Every other C1 code means nothing in text and Unicode has no picture for it, so content shows U+FFFD, one code unit for one. sealed already keeps every C1 code off the wire. Mojibake repair needs the whole string and is left to the caller.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "35eae6222251d18b0ac95a1fc8fd119cb01c861f",
-      "timestamp": "2026-11-02T01:40:05.515Z",
+      "sha": "fc0b93d088f830f6de5446f42739ed1f2a1d62b0",
+      "timestamp": "2026-11-02T13:40:44.688Z",
       "commits": [
         {
-          "sha": "35eae6222251d18b0ac95a1fc8fd119cb01c861f",
+          "sha": "fc0b93d088f830f6de5446f42739ed1f2a1d62b0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T18:37:51-07:00",
-          "message": "C0 controls keep their meaning, and content writes no directive (rich-control-codes-xh4n.fng) (#536)\n\n* C0 controls keep their meaning, and content writes no directive (rich-control-codes-xh4n.fng)\n\nVT and FF are line breaks, and the codes with no meaning in a span show their\nControl Pictures symbol, one code unit for one. BEL's alert is Console.bell, and\nBS's overstrike and ESC's styling are decodeAnsi, which reads nroff's grammar.\n\nsealed is total: only keep and an admitted withheld code point reach the wire, so\na raw Segment, a widget label, an end and a TextInput value are contained by one\nrule. A link's URL takes no C0 or C1 at stripUrlControls. Syntax escapes what the\nwire refuses, so a line number stays the editor's.\n\n* decodeAnsi counts cells and Syntax escapes what it deleted (rich-control-codes-xh4n.fng)\n\nReview of #536. A backspace moved one code point, so a redraw over wide or\ncombining text landed on the wrong characters; columns are now a terminal's\ncells, and a C1 control takes none. decodeAnsi breaks at the census's line breaks.\n\nSyntax deleted a bare CR, C1 and explicit bidi controls, so `// note\\reval(x)`\nshowed one comment line while a compiler ran the call. It escapes them now.\n\nConsole.bell reads who is at the terminal, not forceInteractive.\n\n* decodeAnsi's cells hold tabs and leave escapes whole, and a URL holds no census code point (rich-control-codes-xh4n.fng)\n\nReview of #536. The cell model read a tab as zero-width, so a redraw lost it and\nthe text after it; a tab now moves to the next stop. Line breaks were rewritten\nbefore tokenizing, which cut an OSC payload in two and leaked its tail as text.\nWhat has no width at the first column waited in a slot nothing cleared, so it\noutlived an erase and piled up across redraws; it now joins the next cell drawn.\n\nstripUrlControls derives from the census: an explicit bidi control or LS still\nreached the bytes in an OSC 8 URL, around `sealed`.\n\n* A link keeps its joiners, and data on show has one escape rule (rich-control-codes-xh4n.fng)\n\nReview of #536. Stripping the whole census from a URL took ZWNJ out of a Persian\naddress, so the link went somewhere else. The rule is what RFC 3986 and RFC 3987\nrefuse: controls, line separators and bidi controls.\n\n`escaped` holds what JSON and Syntax both do to data on show."
+          "timestamp": "2026-11-02T06:38:25-07:00",
+          "message": "NEL ends a line, and every other C1 control shows a stand-in (rich-control-codes-xh4n.keg) (#537)\n\n* NEL ends a line, and every other C1 control shows a stand-in (rich-control-codes-xh4n.keg)\n\nU+0085 is the one C1 code Unicode gives a meaning in text, a line ending (5.8), so content holds an LF for it and decodeAnsi breaks a capture there. Every other C1 code means nothing in text and Unicode has no picture for it, so content shows U+FFFD, one code unit for one. sealed already keeps every C1 code off the wire. Mojibake repair needs the whole string and is left to the caller.\n\n* A C1 control shows U+2426, one cell under every width setting and no decoding error (rich-control-codes-xh4n.keg)\n\nU+FFFD is East Asian Ambiguous, two cells on a CJK terminal, and indistinguishable\nfrom a real decode error. pictureOf names its ranges and refuses any other, so a\nnew pictured row cannot inherit a stand-in silently. Stale comments on Disposition\nand Pretty's escaping corrected; C1 test titles in hex.\n\n* Each pictured row carries its stand-in, so which code points are pictured has one statement (rich-control-codes-xh4n.keg)\n\npictureOf reads the row instead of restating its ranges, and a pictured row\ncannot be written without a stand-in. The C1 boundary test pins DEL and NBSP\non either side; U+00A0 no longer borders a stripped range."
         }
       ]
     }
