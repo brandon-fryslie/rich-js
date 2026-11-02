@@ -4,15 +4,22 @@
     {
       "version": "pr-538",
       "ref": "refs/pull/538/merge",
-      "sha": "6f8351f118a46470c60955445e6dbd2ab14e77ff",
-      "timestamp": "2026-11-02T14:11:53.825Z",
+      "sha": "4be2157794998307bb80f6ddc617b8e1b3f5fc43",
+      "timestamp": "2026-11-02T14:16:19.958Z",
       "commits": [
         {
-          "sha": "6f8351f118a46470c60955445e6dbd2ab14e77ff",
+          "sha": "4be2157794998307bb80f6ddc617b8e1b3f5fc43",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T14:09:54Z",
-          "message": "Merge 1bf2e05731d698fead381c48077bc36921e8a978 into fc0b93d088f830f6de5446f42739ed1f2a1d62b0\n"
+          "timestamp": "2026-11-02T14:13:49Z",
+          "message": "Merge c61bfc821cdf488a97c169f6d83c0626481928ca into fc0b93d088f830f6de5446f42739ed1f2a1d62b0\n"
+        },
+        {
+          "sha": "c61bfc821cdf488a97c169f6d83c0626481928ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T07:13:36-07:00",
+          "message": "An ask whose write throws leaves nothing in flight, and a timeout must be positive and finite (rich-control-codes-xh4n.3xk)\n"
         },
         {
           "sha": "1bf2e05731d698fead381c48077bc36921e8a978",
