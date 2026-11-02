@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-537",
+      "ref": "refs/pull/537/merge",
+      "sha": "6862bf4dadd3fb9a81c2113e881307c7609fb1a4",
+      "timestamp": "2026-11-02T12:57:17.963Z",
+      "commits": [
+        {
+          "sha": "6862bf4dadd3fb9a81c2113e881307c7609fb1a4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T05:54:54-07:00",
+          "message": "Merge 4642c2804b52863b2699f374a57465821e9474b4 into 35eae6222251d18b0ac95a1fc8fd119cb01c861f\n"
+        },
+        {
+          "sha": "4642c2804b52863b2699f374a57465821e9474b4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T05:54:34-07:00",
+          "message": "NEL ends a line, and every other C1 control shows a stand-in (rich-control-codes-xh4n.keg)\n\nU+0085 is the one C1 code Unicode gives a meaning in text, a line ending (5.8), so content holds an LF for it and decodeAnsi breaks a capture there. Every other C1 code means nothing in text and Unicode has no picture for it, so content shows U+FFFD, one code unit for one. sealed already keeps every C1 code off the wire. Mojibake repair needs the whole string and is left to the caller.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "35eae6222251d18b0ac95a1fc8fd119cb01c861f",
