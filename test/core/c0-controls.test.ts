@@ -257,8 +257,8 @@ describe("decodeAnsi", () => {
   });
 
   it("gives a C1 control no column", () => {
-    expect(decodeAnsi("\x85ab\rX").plain).toBe("Xb");
-    expect(decodeAnsi("abc\x85\x08X").plain).toBe("abX");
+    expect(decodeAnsi("\x84ab\rX").plain).toBe("Xb");
+    expect(decodeAnsi("abc\x84\x08X").plain).toBe("abX");
   });
 
   it("breaks a capture at every line break content does", () => {

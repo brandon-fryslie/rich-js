@@ -141,27 +141,28 @@ describe("RichText construction", () => {
     expect(t.length).toBe(0);
   });
 
-  it("strips the C1 controls and the deprecated switches, and holds every bidi control", () => {
+  it("strips the deprecated switches, and holds every bidi control", () => {
     const kept = (code: number): boolean => new RichText(`a${String.fromCodePoint(code)}b`).plain.length === 3;
     const range = (from: number, to: number): number[] => Array.from({ length: to - from + 1 }, (_, i) => from + i);
     // Unicode's own Bidi_Control set: content holds them, and `sealed` decides what reaches the wire.
     const bidiControls = range(0, 0xffff).filter((code) => /\p{Bidi_Control}/u.test(String.fromCodePoint(code)));
     expect(bidiControls.filter(kept)).toEqual(bidiControls);
-    // Every C1 control, and the deprecated shaping and swapping switches.
-    expect(range(0x80, 0x9f).filter(kept)).toEqual([]);
+    // The deprecated shaping and swapping switches.
     expect(range(0x206a, 0x206f).filter(kept)).toEqual([]);
     // The neighbours of each stripped range pass.
-    expect([0xa0, 0x2029, 0x202f, 0x2065, 0x2070].filter(kept)).toHaveLength(5);
+    expect([0x2029, 0x202f, 0x2065, 0x2070].filter(kept)).toHaveLength(4);
+    // C1 ends where it ends: DEL and NBSP on either side are not its stand-in.
+    expect(new RichText("\x7f\x80\x9f\xa0").plain).toBe("\u2421\u2426\u2426\xa0");
   });
 
   it("sanitizes a pad character and a truncation marker as it sanitizes content", () => {
-    const padded = new RichText("ab").stylize("bold", 0, 2).pad(1, "\u009B");
+    const padded = new RichText("ab").stylize("bold", 0, 2).pad(1, "\u206A");
     expect(padded.plain).toBe("ab");
     expect(padded.spans.map((s) => [s.start, s.end])).toEqual([[0, 2]]);
-    expect(new RichText("ab").padLeft(2, "\u009B").plain).toBe("ab");
-    expect(new RichText("ab").padRight(2, "\u009B").plain).toBe("ab");
-    expect(new RichText("abcdef").truncate(3, { marker: "\u009B" }).plain).toBe("abc");
-    expect(new RichText().append("x\u009By").plain).toBe("xy");
+    expect(new RichText("ab").padLeft(2, "\u206A").plain).toBe("ab");
+    expect(new RichText("ab").padRight(2, "\u206A").plain).toBe("ab");
+    expect(new RichText("abcdef").truncate(3, { marker: "\u206A" }).plain).toBe("abc");
+    expect(new RichText().append("x\u206Ay").plain).toBe("xy");
   });
 
   it("drops a carriage return from content set by the constructor, the plain setter and append, as Rich's Text does", () => {
