@@ -229,6 +229,28 @@ describe("a reply or Alt on a split host", () => {
     expect(keys).toEqual(["meta+]"]);
   });
 
+  it("reads Alt+] then x typed during an ask as Alt+] and x when the reply follows", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b]x");
+    host.type(DA1_REPLY);
+    expect((await ask).ended).toBe("answered");
+    expect(keys).toEqual(["meta+]", "x"]);
+  });
+
+  it("does not stretch a stalled CSI's escape delay when an ask starts", async () => {
+    const { host, app, keys } = started();
+    vi.useFakeTimers();
+    host.type("\x1b[");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS - 10);
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await vi.advanceTimersByTimeAsync(11);
+    expect(keys).toEqual(["meta+["]);
+    host.type(DA1_REPLY);
+    await ask;
+  });
+
   it("settles a stalled CSI during an ask after the escape delay", async () => {
     const { host, app, keys } = started();
     const ask = app.ask(["\x1b]11;?\x1b\\"]);

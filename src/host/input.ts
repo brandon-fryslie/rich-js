@@ -37,8 +37,8 @@
  * unterminated one, or a lone ESC that may open one, held — past the escape
  * delay, until `awaitReplies(false)` arms the delay afresh. Otherwise it is Alt
  * on its key at once. A terminated one is a reply either way, and one cut off
- * by an ESC that is not ST was never a reply, and reads as its bytes would
- * with none awaited.
+ * by an ESC that is not ST was never a reply, and is Alt on its key, as with
+ * none awaited.
  */
 
 import type { InputChunks } from "./terminal-host.js";
@@ -358,11 +358,12 @@ export class InputParser {
    * Whether an ask is awaiting the terminal's replies, told by whoever asks
    * at the ask's start and end. Only while one is does an unfinished
    * `ESC ]`, `ESC P` or `ESC _` open a reply still arriving; otherwise it is
-   * Alt on that key. Either way, what is held waits the escape delay from now.
+   * Alt on that key. The wait's end restarts the escape delay for what is
+   * held, on a split host, the only one that holds.
    */
   awaitReplies(awaiting: boolean): void {
     this.awaiting = awaiting;
-    this.hold();
+    if (!awaiting && this.chunks === "split") this.hold();
   }
 
   // [LAW:single-enforcer] The one reading of whether an unfinished control
@@ -510,7 +511,7 @@ export class InputParser {
       const result = consumeString(buf, string);
       // Unterminated where no reply may arrive, it was never a reply: Alt on
       // its key, and what followed is read on its own.
-      if (result.kind !== "reply" && !this.replyMayArrive()) return { kind: "key", bytes: 2, event: altKey(b1) };
+      if (result.kind === "incomplete" && !this.replyMayArrive()) return { kind: "key", bytes: 2, event: altKey(b1) };
       return result;
     }
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
@@ -695,24 +696,24 @@ function decodeMouseFromCb(
   };
 }
 
-// A control string runs to its terminator, ST (`ESC \\`) or BEL, and holds
-// any byte but ESC before it. Terminated, it is a reply whether or not one was
-// awaited. Unterminated, it is unfinished, and `consumeEscape` decides by
-// whether a reply may arrive if that means held or Alt on its key. An ESC that
-// is not ST ends it before it closed: it was never a reply, and it is read as
-// the keys it holds, as it would be with no reply awaited.
 // A lone ESC, or one opening a control string: the holds a reply may be.
 function opensString(buf: Uint8Array): boolean {
   return buf.length === 1 || STRING_REPLIES[buf[1]!] !== undefined;
 }
 
+// A control string runs to its terminator, ST (`ESC \\`) or BEL, and holds
+// any byte but ESC before it. Terminated, it is a reply whether or not one was
+// awaited. Unterminated, it is unfinished, and `consumeEscape` decides by
+// whether a reply may arrive if that means held or Alt on its key. An ESC that
+// is not ST ends it before it closed: it was never a reply, so it is Alt on
+// its key and what followed is read on its own, as with none awaited.
 function consumeString(buf: Uint8Array, kind: TerminalReply["kind"]): ConsumeResult {
   for (let i = 2; i < buf.length; i++) {
     const b = buf[i]!;
     if (b === BEL) return { kind: "reply", bytes: i + 1, event: { kind, body: UTF8_DECODER.decode(buf.subarray(2, i)) } };
     if (b !== ESC) continue;
     if (i + 1 === buf.length) return { kind: "incomplete" };
-    if (buf[i + 1] !== BACKSLASH) return { kind: "reissued", ...reissue(buf.subarray(0, i)) };
+    if (buf[i + 1] !== BACKSLASH) return { kind: "key", bytes: 2, event: altKey(buf[1]!) };
     return { kind: "reply", bytes: i + 2, event: { kind, body: UTF8_DECODER.decode(buf.subarray(2, i)) } };
   }
   return { kind: "incomplete" };
