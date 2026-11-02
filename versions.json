@@ -4,15 +4,22 @@
     {
       "version": "pr-536",
       "ref": "refs/pull/536/merge",
-      "sha": "7db2d35438125e06b67988ae8f58ec9f463a733a",
-      "timestamp": "2026-11-02T01:04:19.857Z",
+      "sha": "ed619d12b3552520603169221955231eb9294465",
+      "timestamp": "2026-11-02T01:15:02.182Z",
       "commits": [
         {
-          "sha": "7db2d35438125e06b67988ae8f58ec9f463a733a",
+          "sha": "ed619d12b3552520603169221955231eb9294465",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T18:02:09-07:00",
-          "message": "Merge c62e2b679c6f6285276bd6201b417df4d262095e into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
+          "timestamp": "2026-11-02T01:12:49Z",
+          "message": "Merge e6f39db90ab8973bb5fc73c7d0c5a282bb759bdf into 5fc4cdc868f19fcf180f26465efd67129bbf3d99\n"
+        },
+        {
+          "sha": "e6f39db90ab8973bb5fc73c7d0c5a282bb759bdf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T18:12:38-07:00",
+          "message": "decodeAnsi's cells hold tabs and leave escapes whole, and a URL holds no census code point (rich-control-codes-xh4n.fng)\n\nReview of #536. The cell model read a tab as zero-width, so a redraw lost it and\nthe text after it; a tab now moves to the next stop. Line breaks were rewritten\nbefore tokenizing, which cut an OSC payload in two and leaked its tail as text.\nWhat has no width at the first column waited in a slot nothing cleared, so it\noutlived an erase and piled up across redraws; it now joins the next cell drawn.\n\nstripUrlControls derives from the census: an explicit bidi control or LS still\nreached the bytes in an OSC 8 URL, around `sealed`.\n"
         },
         {
           "sha": "c62e2b679c6f6285276bd6201b417df4d262095e",
