@@ -4,24 +4,27 @@
 
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
 import { closed, closing } from "./bidi.js";
-import { controlClass, type Disposition } from "./control-codes.js";
+import { controlClass, dispositionOf, pictureOf } from "./control-codes.js";
 import { directed, drawnTail, edges, hangingWhitespace, measured } from "./orient.js";
 import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
-import { stripOscTerminators } from "./osc8.js";
+import { stripUrlControls } from "./osc8.js";
 import { betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
 
-// Exhaustive, so a new `Disposition` does not compile until it says what the
-// sanitizer does with it: a variant this missed would reach the wire.
-const DELETED: Readonly<Record<Disposition, boolean>> = { strip: true, keep: false, "line-break": false, withheld: false };
+const STRIPPED = pattern(new RegExp(controlClass((disposition) => disposition === "strip"), "u"));
+const STOOD_IN_FOR = pattern(new RegExp(controlClass((disposition) => disposition === "line-break" || disposition === "pictured"), "u"));
 
-export const STRIPPED = pattern(new RegExp(controlClass((disposition) => DELETED[disposition]), "u"));
-const LINE_BREAKS = pattern(new RegExp(controlClass((disposition) => disposition === "line-break"), "u"));
+/** What content holds in place of a `line-break` or `pictured` code point. */
+function standIn(character: string): string {
+  const codePoint = character.codePointAt(0)!;
+  return dispositionOf(codePoint) === "pictured" ? pictureOf(codePoint) : "\n";
+}
 
+// `text` without its `strip` code points, all that `sanitized` deletes.
 // [LAW:single-enforcer] Single place where control chars are sanitized: every
 // string that becomes part of a Text's characters passes through `sanitized`.
 // Which ones, and why, is `CONTROL_CODES`. A code point at a time and never by its
@@ -35,13 +38,14 @@ export function stripControlChars(text: string): string {
 }
 
 /**
- * `text` as a Text's characters hold it: stripped, and every line ending an LF.
- * One code unit for one, so an offset into stripped text holds, and every reader
- * of a Text finds one line break without having to know the others.
+ * `text` as a Text's characters hold it: stripped, every line ending an LF, and
+ * every control its picture. One code unit for one, so an offset into stripped
+ * text holds, and every reader of a Text finds one line break without having to
+ * know the others.
  */
 export function sanitized(text: string): string {
   const stripped = stripControlChars(text);
-  return stripped.match(LINE_BREAKS) === null ? stripped : stripped.split(LINE_BREAKS).join("\n");
+  return stripped.match(STOOD_IN_FOR) === null ? stripped : stripped.replace(new RegExp(STOOD_IN_FOR.source, "gu"), standIn);
 }
 
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
@@ -49,11 +53,11 @@ export function sanitized(text: string): string {
 // stored string resolves to is sanitized as it leaves for a render
 // (`resolveStyle`). Wire-byte safety is enforced separately by `osc8Open`
 // (core/osc8.ts), which every link producer calls and which applies the same
-// `stripOscTerminators`.
+// `stripUrlControls`.
 function sanitizeStyleLink(style: Style): Style {
   const link = style.link;
   if (!link) return style;
-  const cleaned = stripOscTerminators(link);
+  const cleaned = stripUrlControls(link);
   if (cleaned === link) return style;
   return style.withLink(cleaned);
 }

@@ -398,6 +398,7 @@ export class Console {
   private readonly _lastLogTime = new State<string | null>(null);
   private readonly _style: Style;
   private readonly _isTerminal: boolean;
+  private readonly _attended: boolean;
   private readonly _interactive: boolean;
   private readonly _file: ConsoleSink | undefined;
   // [LAW:one-source-of-truth] The resolved output stream, not the `stderr`
@@ -447,8 +448,10 @@ export class Console {
     this._theme = options?.theme ?? DEFAULT_THEME;
     this._terminal = options?.terminal;
     this._style = this._theme.resolve(options?.style ?? NULL_STYLE);
-    // Rich's rule: a terminal is interactive unless it is a dumb one.
-    this._interactive = options?.forceInteractive ?? (this._isTerminal && !isDumbTerminal(environment.env));
+    // Rich's rule: a terminal is interactive unless it is a dumb one. Forcing that
+    // is animation policy, and says nothing of who is at the terminal.
+    this._attended = this._isTerminal && !isDumbTerminal(environment.env);
+    this._interactive = options?.forceInteractive ?? this._attended;
     this._file = options?.file;
     this._record = options?.record ?? false;
     this._markup = options?.markup !== false;
@@ -738,6 +741,16 @@ export class Console {
     // Remembered only once the row is written: a log that threw printed no
     // stamp, so the next row's must show.
     this._lastLogTime.set(stamped);
+  }
+
+  /**
+   * Sounds the terminal's bell, Rich's `Console.bell`, for whoever is at it: a
+   * pipe, a dumb terminal and a capture get nothing. It goes straight to the sink
+   * because a bell moves no cursor, and a live region would repaint its frame.
+   */
+  bell(): void {
+    refuseRenderWrite(this._madeIn);
+    if (this._attended && this._capture.get() === null) this.file.write("\x07");
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

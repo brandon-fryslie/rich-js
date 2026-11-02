@@ -48,7 +48,8 @@ describe("CONTROL_CODES", () => {
 
 describe("dispositionOf", () => {
   it("answers each code point from its row, and keeps a printing character", () => {
-    expect(dispositionOf(0x1b)).toBe("strip");
+    expect(dispositionOf(0x1b)).toBe("pictured");
+    expect(dispositionOf(0x0d)).toBe("strip");
     expect(dispositionOf(0x0a)).toBe("keep");
     expect(dispositionOf(0x202e)).toBe("keep");
     expect(dispositionOf(0x206a)).toBe("strip");
@@ -70,12 +71,10 @@ describe("the sanitizer and the measure", () => {
     expect(disagreeing.map(name)).toEqual([]);
   });
 
-  // Between `a` and `b`, which join nothing. Between joined emoji a raw string
-  // and its sanitized form rightly differ: a raw ESC reaches the wire and breaks
-  // the join, and the sanitized string has no ESC to break it.
-  it("gives no width to what it strips", () => {
+  it("gives no width to what the wire is denied", () => {
+    const denied = (codePoint: number): boolean => ["strip", "pictured"].includes(dispositionOf(codePoint));
     const widened = CENSUS.filter(
-      (codePoint) => dispositionOf(codePoint) === "strip" && cellLen(`a${String.fromCodePoint(codePoint)}b`) !== 2,
+      (codePoint) => denied(codePoint) && cellLen(`a${String.fromCodePoint(codePoint)}b`) !== 2,
     );
     expect(widened.map(name)).toEqual([]);
   });

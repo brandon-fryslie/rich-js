@@ -422,7 +422,7 @@ describe("a style tag spans a plugin pair it encloses", () => {
   });
 
   it("puts styles on the cells they name when a control character precedes them", () => {
-    expect(spans("a\x07b[shout]cd[/shout][bold]e[/bold]")).toEqual(["6-7 bold", "2-6 red"]);
+    expect(spans("a\x85b[shout]cd[/shout][bold]e[/bold]")).toEqual(["6-7 bold", "2-6 red"]);
   });
 
   it("keeps the base style of the RichText a handler returns", () => {

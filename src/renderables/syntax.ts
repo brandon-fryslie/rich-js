@@ -8,10 +8,10 @@
  * one class would be a second answer to "what colour is a keyword".
  */
 
-import { withoutExplicit } from "../core/bidi.js";
-import { cellLen, expandTabs, parseTabSize, replaceWithheld, unicodeEscape } from "../core/cells.js";
+import { escaped } from "../core/bidi.js";
+import { cellLen, expandTabs, parseTabSize, unicodeEscape } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
-import { RichText, sanitized } from "../core/text.js";
+import { RichText } from "../core/text.js";
 import {
   drawable,
   groundedStyle,
@@ -127,9 +127,11 @@ export class Syntax implements Renderable, Measurable {
     this.wordWrap = options?.wordWrap ?? false;
     const tabSize = parseTabSize(options?.tabSize ?? 4);
     this.tabSize = tabSize;
-    // Code on show: what the wire would drop is escaped, or the screen shows an
-    // identifier the source does not hold.
-    this._lines = expandTabs(replaceWithheld(sanitized(code), unicodeEscape), tabSize).text.split("\n");
+    // Code on show: what the wire would drop is escaped, and an explicit bidi
+    // control with it. That is the Trojan Source attack: the order and the lines on
+    // screen differing from what the compiler reads. A joiner stays, since a Persian
+    // comment or an emoji string needs it. Only a CRLF's CR goes, with its line ending.
+    this._lines = expandTabs(escaped(code.replace(/\r\n/g, "\n"), unicodeEscape), tabSize).text.split("\n");
   }
 
   /**
@@ -165,9 +167,7 @@ export class Syntax implements Renderable, Measurable {
 
     // Tokenized whole and then sliced, so a block comment or a triple-quoted
     // string that spans lines is one token even when the range starts inside it.
-    // Code on show: a control held here is the Trojan Source attack, the order
-    // on screen differing from the order the compiler reads.
-    const text = new RichText(withoutExplicit(this._lines.join("\n")), { end: "" });
+    const text = new RichText(this._lines.join("\n"), { end: "" });
     for (const match of text.plain.matchAll(new RegExp(GRAMMARS[this.language].source, "g"))) {
       const [token] = Object.entries(match.groups!).find(([, value]) => value !== undefined)!;
       text.stylize(`syntax.${token}`, match.index, match.index + match[0].length);

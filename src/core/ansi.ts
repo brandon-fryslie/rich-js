@@ -21,24 +21,33 @@
  *
  * Carriage returns are the other departure, and the same argument. Rich splits
  * lines with Python's `splitlines`, which also breaks at `\r`, so its `a\rb`
- * is two lines. Here a line ends only at `\n`, and `\r` returns to the first
- * column, so later text overwrites earlier text character by character:
- * `50%\r100%` is `100%`, `Downloading\rDone` is `Doneloading`, and `done\r`
- * is still `done`. Columns are counted in characters, not cells, so a wide
- * character overwritten by a narrow one is where this and a terminal differ.
- * Erase in line (`\x1b[K`) is honoured for the same reason, because a redraw
+ * is two lines. Here a line ends at `\n` and the census's other line breaks, and
+ * `\r` returns to the first column, so later text overwrites earlier text cell by
+ * cell: `50%\r100%` is `100%`, `Downloading\rDone` is `Doneloading`, and `done\r`
+ * is still `done`. Columns are a terminal's cells: a wide character takes two, a
+ * combining mark none, a tab moves to the next stop over what is there, and a wide
+ * character or a tab half overwritten leaves blanks. Erase in line (`\x1b[K`) is honoured for the same reason, because a redraw
  * is usually `\r\x1b[K` and the old text must not show through a shorter new
  * one.
  *
+ * Backspace is the third. Rich drops it; here it is nroff's overstrike, the
+ * adjacent `x BS x` bold and `_ BS x` underline that `man` writes, and a bare one
+ * moves back a column, so `12%\b\b\b13%` is the redraw it looks like. The bytes
+ * alone cannot tell `1\b1` the redraw from `1\b1` the bold, and `less` reads them
+ * as overstrike with no other evidence, so this does.
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
- * than refused, and every other escape is dropped. It is not a terminal
- * emulator — any other cursor movement is dropped, not performed.
+ * than refused, and every other escape is dropped, with every control a terminal
+ * draws nothing for. It is not a terminal emulator — any other cursor movement is
+ * dropped, not performed.
  *
  * Tier 5 of `src/core/`: it builds `RichText`, so it sits above `text`, and
  * `RichText` cannot offer a `fromAnsi` static without importing upward.
  */
 
+import { cellLen, graphemes } from "./cells.js";
 import { ColorSpec } from "./color.js";
+import { controlClass } from "./control-codes.js";
 import { osc8Sequences } from "./osc8.js";
 import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
 import type { StyleOptions } from "./style.js";
@@ -49,32 +58,55 @@ type Token =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
+  | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
   | { readonly kind: "return" }
+  | { readonly kind: "backspace" }
   | { readonly kind: "erase"; readonly mode: EraseMode };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
 type EraseMode = "0" | "1" | "2";
 
+const BOLD = new Style({ bold: true });
+const UNDERLINED = new Style({ underline: true });
+const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
+
+const STRING_ESCAPE = String.raw`\x1b[\]P_^X][^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
+
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
- * order: a carriage return; an SGR sequence (group 1, its parameters — a
- * private marker such as the `>` of `\x1b[>4;2m` makes it some other CSI);
- * erase in line (group 2, its mode); any other CSI sequence; any other string
- * escape — OSC, DCS, APC, PM, SOS — run to the terminators OSC 8 accepts or
- * cut off by the end of the line; any other escape, ECMA-48's intermediates
- * and one final byte (`\x1b(B`, `\x1b)0`, `\x1b#8`, `\x1bc`). Only the first
- * three become tokens.
+ * order: a carriage return; an SGR sequence (`sgr`, its parameters — a private
+ * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
+ * (`mode`); any other CSI sequence; any other string escape — OSC, DCS, APC, PM,
+ * SOS — run to the terminators OSC 8 accepts or cut off by the end of the line;
+ * any other escape, ECMA-48's intermediates and one final byte (`\x1b(B`,
+ * `\x1b)0`, `\x1b#8`, `\x1bc`); a character struck over itself (`struck`), over an
+ * underscore first or not (`underscore`); a character struck over an underscore
+ * alone (`underlined`); a backspace; and every control a line may not hold or a
+ * terminal draws nothing for. The silent ones are the two "any other" escapes and
+ * that last class.
  */
-const escapes = (): RegExp =>
-  /\r|\x1b\[([0-9;:]*)m|\x1b\[([012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
+const ESCAPES = [
+  String.raw`\r|\x1b\[(?<sgr>[0-9;:]*)m|\x1b\[(?<mode>[012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
+  String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
+  controlClass((disposition) => disposition !== "keep" && disposition !== "withheld"),
+].join("|");
+
+const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
+
+// A string escape goes first so a line break in its payload stays in the payload.
+const lineBreaks = (): RegExp => new RegExp(`${STRING_ESCAPE}|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
+    const { sgr, mode, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "return" };
-    if (match[1] !== undefined) yield { kind: "sgr", params: match[1] };
-    if (match[2] !== undefined) yield { kind: "erase", mode: (match[2] || "0") as EraseMode };
+    if (sgr !== undefined) yield { kind: "sgr", params: sgr };
+    if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
+    if (struck !== undefined) yield { kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED };
+    if (underlined !== undefined) yield { kind: "overstrike", character: underlined, emphasis: UNDERLINED };
+    if (match[0] === "\b") yield { kind: "backspace" };
     at = match.index + match[0].length;
   }
   if (at < bytes.length) yield { kind: "text", text: bytes.slice(at) };
@@ -177,11 +209,58 @@ function applySgr(style: Style, params: string): Style {
   return result;
 }
 
-const BLANK: readonly [string, Style] = [" ", NULL_STYLE];
+/**
+ * What a column holds: a grapheme cluster and its style, or `""` for a further
+ * column of a wide one or a tab. Columns count from 1. Index 0 is `ORIGIN`, ahead
+ * of the first column, where what has no width and nothing before it to sit on
+ * waits for the next cell drawn.
+ */
+type Cell = readonly [string, Style];
+
+const ORIGIN: Cell = ["", NULL_STYLE];
+const BLANK: Cell = [" ", NULL_STYLE];
+const TAB_STOP = 8;
+
+/** The column holding the cluster drawn across `column`. */
+function leadOf(cells: readonly Cell[], column: number): number {
+  let at = column;
+  while (at > 0 && cells[at]![0] === "") at -= 1;
+  return at;
+}
+
+/** A cluster across the edge before `column` goes blank, as on a terminal. */
+function splitWide(cells: Cell[], column: number): void {
+  if (cells[column]?.[0] !== "") return;
+  const lead = leadOf(cells, column);
+  for (let at = lead; at === lead || cells[at]?.[0] === ""; at += 1) cells[at] = BLANK;
+}
+
+/** `cluster` drawn at `column`, and the columns the cursor moves. */
+function draw(cells: Cell[], column: number, cluster: string, style: Style): number {
+  const width = cluster === "\t" ? TAB_STOP - ((column - 1) % TAB_STOP) : cellLen(cluster);
+  if (width === 0) {
+    const lead = leadOf(cells, column - 1);
+    cells[lead] = [cells[lead]![0] + cluster, cells[lead]![1]];
+    return 0;
+  }
+  if (cluster === "\t" && column < cells.length) {
+    while (cells.length < column + width) cells.push(BLANK);
+    return width;
+  }
+  splitWide(cells, column);
+  splitWide(cells, column + width);
+  cells[column] = [cells[0]![0] + cluster, style];
+  cells[0] = ORIGIN;
+  for (let at = 1; at < width; at += 1) cells[column + at] = ["", style];
+  return width;
+}
 
 /** Erase in line: the cells before the cursor go blank, the ones from it on go. */
-function erase(cells: (readonly [string, Style])[], column: number, mode: EraseMode): void {
-  if (mode !== "0") cells.fill(BLANK, 0, Math.min(column + 1, cells.length));
+function erase(cells: Cell[], column: number, mode: EraseMode): void {
+  splitWide(cells, column);
+  splitWide(cells, column + 1);
+  cells[0] = ORIGIN;
+  if (mode !== "0") cells.fill(BLANK, 1, Math.min(column + 1, cells.length));
   if (mode !== "1") cells.length = Math.min(column, cells.length);
 }
 
@@ -198,7 +277,8 @@ export class AnsiDecoder {
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    return (ansi.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
+    const lined = ansi.replace(lineBreaks(), (found) => (found.startsWith("\x1b") ? found : "\n"));
+    return (lined.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
       this.decodeLine(line.replace(/\r?\n$/, "")),
     );
   }
@@ -208,17 +288,23 @@ export class AnsiDecoder {
    * it: `\r` returns to the first column, and text overwrites from there.
    */
   decodeLine(line: string): RichText {
-    const cells: (readonly [string, Style])[] = [];
-    let column = 0;
+    const cells: Cell[] = [ORIGIN];
+    let column = 1;
     for (const token of tokens(line)) {
       switch (token.kind) {
         case "text": {
           const style = this.sgr.withLink(this.link);
-          for (const char of token.text) cells[column++] = [char, style];
+          for (const cluster of graphemes(token.text)) column += draw(cells, column, cluster, style);
           break;
         }
+        case "overstrike":
+          column += draw(cells, column, token.character, this.sgr.add(token.emphasis).withLink(this.link));
+          break;
         case "return":
-          column = 0;
+          column = 1;
+          break;
+        case "backspace":
+          column = Math.max(1, column - 1);
           break;
         case "erase":
           erase(cells, column, token.mode);
@@ -232,7 +318,7 @@ export class AnsiDecoder {
       }
     }
     const runs: [string, Style][] = [];
-    for (const [char, style] of cells) {
+    for (const [char, style] of cells.filter(([char]) => char !== "")) {
       const last = runs.at(-1);
       if (last?.[1].equals(style)) last[0] += char;
       else runs.push([char, style]);

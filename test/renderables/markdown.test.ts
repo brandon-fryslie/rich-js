@@ -1267,7 +1267,7 @@ describe("Markdown", () => {
 
   it("spans a link over exactly its text when the source carries a control character", () => {
     for (const options of [{}, { hyperlinks: false }] satisfies MarkdownOptions[]) {
-      const linked = collectSegments(new Markdown("x[a\x01b](https://e.com)", options), { maxWidth: 80 })
+      const linked = collectSegments(new Markdown("x[a\x85b](https://e.com)", options), { maxWidth: 80 })
         .filter((s) => s.style?.link === "https://e.com")
         .map((s) => s.text)
         .join("");
