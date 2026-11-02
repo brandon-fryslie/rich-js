@@ -64,9 +64,14 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   pictured(0x0e, 0x1f),
   // DEL.
   pictured(0x7f, 0x7f),
-  // The C1 controls: a terminal reads U+009B as CSI and U+009D as OSC. `TextInput`
-  // refuses them for the same reason.
-  strip(0x80, 0x9f),
+  // The C1 controls. VTE, WezTerm and xterm.js read U+009B as CSI and U+009D as
+  // OSC; xterm, kitty and others ignore them. None has a meaning in text but NEL,
+  // which Unicode treats as CR, LF and CRLF are treated (§5.8). A stray one is
+  // often windows-1252 decoded as Latin-1, but which, a code point alone cannot
+  // say, so mojibake is the caller's to repair. `TextInput` refuses them as keys.
+  pictured(0x80, 0x84),
+  lineBreak(0x85, 0x85),
+  pictured(0x86, 0x9f),
   // SOFT HYPHEN: a place a word may break, drawn as a hyphen only where one does.
   // Terminals disagree on its cell, so it never reaches them.
   withheld(0xad, 0xad),
@@ -126,8 +131,13 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   withheld(0xe0100, 0xe01ef),
 ];
 
-/** The Control Pictures symbol of a `pictured` code point: U+2400 up, and U+2421 for DEL. */
+/**
+ * What content shows for a `pictured` code point: its Control Pictures symbol,
+ * U+2400 up and U+2421 for DEL, or for a C1 control, which Unicode gives no
+ * picture, U+FFFD. Always one code unit, so offsets hold.
+ */
 export function pictureOf(codePoint: number): string {
+  if (codePoint >= 0x80) return "�";
   return String.fromCharCode(codePoint === 0x7f ? 0x2421 : 0x2400 + codePoint);
 }
 

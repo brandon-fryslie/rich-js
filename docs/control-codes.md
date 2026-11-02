@@ -49,6 +49,24 @@ A renderable that yields bytes already holding escapes, or a `print` whose `end`
 `"\r"`, gets its controls deleted, where Rich writes them. Styled bytes go through
 `decodeAnsi`, and a line that redraws itself is a `Live`.
 
+## C1 controls
+
+| Code points | The use it keeps | In content |
+|---|---|---|
+| NEL U+0085 | A line ending, which Unicode treats as CR, LF and CRLF are treated | An LF |
+| U+0080–U+0084, U+0086–U+009F | None in text | `�` |
+
+VTE, WezTerm, xterm.js and GNU screen act on a C1 control even when it arrives
+UTF-8 encoded: U+009B starts a control sequence, and U+0090, U+0098, U+009D,
+U+009E and U+009F hide everything up to a string terminator. xterm, kitty,
+Alacritty, foot, Ghostty and Windows Terminal ignore them by default. Unicode has
+no pictures for C1, so each one shows as the replacement character, which is one
+cell and one code unit like the C0 pictures.
+
+A C1 control in text is often a Windows-1252 byte decoded as Latin-1: `\x85` was
+meant as `…`. Telling that from a planted sequence takes the whole string, so
+repairing it is the caller's to do before the text reaches `RichText`.
+
 ## Format characters
 
 | Family | Code points | The use it keeps | The harm it contains |
