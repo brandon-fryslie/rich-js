@@ -26,7 +26,8 @@ const palette = GRUVBOX.palette;
 
 function engineFor(getPalette: () => typeof palette): Engine<RichText> {
   return createEngine<RichText>({
-    fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+    fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: { ...richTextFuncs(), ...paletteFuncs(getPalette) },
   });
@@ -172,7 +173,8 @@ describe("color math matches the underlying functions", () => {
     // rounds text and background to 256 colours independently.
     let depth = ColorDepth.TRUECOLOR;
     const drawnEngine = createEngine<RichText>({
-      fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+      fromString: (s) => new RichText(s),
+      isT: (v) => v instanceof RichText,
       toString: (rt) => rt.plain,
       funcs: richTextFuncs(() => ({ depth })),
     });
@@ -195,7 +197,8 @@ describe("color math matches the underlying functions", () => {
     // Rosé Pine Dawn draws navy's slot at about 2:1 on white's; the VGA table
     // calls the same pair readable.
     const engineFor = (drawnAt: DrawnAt) => createEngine<RichText>({
-      fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+      fromString: (s) => new RichText(s),
+      isT: (v) => v instanceof RichText,
       toString: (rt) => rt.plain,
       funcs: { readableOn: readableOnFunc(() => drawnAt) },
     });

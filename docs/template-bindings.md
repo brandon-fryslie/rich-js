@@ -53,7 +53,8 @@ import { richTextFuncs, paletteFuncs } from "@promptctl/rich-js/template-binding
 let theme = GRUVBOX;
 
 const engine: Engine<RichText> = createEngine<RichText>({
-  fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+  fromString: (s) => new RichText(s),
+  isT: (v) => v instanceof RichText,
   toString: (rt) => rt.plain,
   funcs: {
     ...richTextFuncs(),
@@ -174,7 +175,8 @@ const console = new Console();
 // `ramp` is a palette function — its stops may be palette names — so it is
 // registered by `paletteFuncs`, never by `createRichTextEngine()`.
 const engine = createEngine<RichText>({
-  fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+  fromString: (s) => new RichText(s),
+  isT: (v) => v instanceof RichText,
   toString: (rt) => rt.plain,
   funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette) },
 });
@@ -226,7 +228,8 @@ const console = new Console();
 let theme = GRUVBOX;
 
 const engine = createEngine<RichText>({
-  fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+  fromString: (s) => new RichText(s),
+  isT: (v) => v instanceof RichText,
   toString: (rt) => rt.plain,
   funcs: { ...richTextFuncs(), ...paletteFuncs(() => theme.palette) },
 });
@@ -265,7 +268,8 @@ let frameTime = 0;
 const engine = createEngine<RichText>(
   withAnimation(
     {
-      fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+      fromString: (s) => new RichText(s),
+      isT: (v) => v instanceof RichText,
       toString: (rt) => rt.plain,
       funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette) },
     },

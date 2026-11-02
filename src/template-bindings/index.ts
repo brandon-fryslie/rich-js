@@ -90,7 +90,8 @@ export function richTextFuncs(drawnAt?: () => DrawnAt): FuncMap {
  */
 export function createRichTextEngine(): Engine<RichText> {
   return createEngine<RichText>({
-    fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+    fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: richTextFuncs(),
   });

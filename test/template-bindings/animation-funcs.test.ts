@@ -163,7 +163,8 @@ function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, opt
   return createEngine<RichText>(
     withAnimation(
       {
-        fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+        fromString: (s) => new RichText(s),
+        isT: (v) => v instanceof RichText,
         toString: (rt) => rt.plain,
         funcs: {
           ...sprigMath(),
@@ -439,7 +440,8 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
     const engine = createEngine<RichText>(
       withAnimation(
         {
-          fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+          fromString: (s) => new RichText(s),
+          isT: (v) => v instanceof RichText,
           toString: (rt) => rt.plain,
           funcs: richTextFuncs(),
           emitted: (fragment) => {

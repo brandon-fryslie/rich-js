@@ -309,9 +309,13 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
     ...config,
     funcs: { ...config.funcs, ...funcs },
     emitted: (fragment, marks) => held(emitted(fragment, marks), marks),
+    // `finally`: a consumer hook that throws still leaves the frame told its holds.
     decided: (marks) => {
-      decided(marks);
-      told(marks);
+      try {
+        decided(marks);
+      } finally {
+        told(marks);
+      }
     },
   };
 }

@@ -89,7 +89,8 @@ import { makeAutoObservable } from "mobx";
 
 function makeEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>({
-    fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+    fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
@@ -107,7 +108,8 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
 
 function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>({
-    fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+    fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: {
       ...colorFuncs(),
@@ -125,7 +127,8 @@ function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
 // (cc-candybar swaps it per segment).
 function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<RichText> {
   return createEngine<RichText>({
-    fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+    fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
@@ -151,7 +154,8 @@ function makeAnimatedEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>(
     withAnimation(
       {
-        fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
+        fromString: (s) => new RichText(s),
+        isT: (v) => v instanceof RichText,
         toString: (rt) => rt.plain,
         funcs: { ...richTextFuncs(), ...paletteFuncs(() => theme.palette) },
       },
