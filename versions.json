@@ -4,15 +4,22 @@
     {
       "version": "pr-539",
       "ref": "refs/pull/539/merge",
-      "sha": "9b97774a0ac863a17f3ed3875fd14816a232f131",
-      "timestamp": "2026-11-02T14:45:31.723Z",
+      "sha": "892f179093653db1ccbad8ec5af0b32a630fced6",
+      "timestamp": "2026-11-02T14:53:08.637Z",
       "commits": [
         {
-          "sha": "9b97774a0ac863a17f3ed3875fd14816a232f131",
+          "sha": "892f179093653db1ccbad8ec5af0b32a630fced6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:43:25-07:00",
-          "message": "Merge 9d4274d6f556c8f8ffa9be6fee4327429abdf100 into b9316d0b160018666a6b5c1d18d18ec1d7b16694\n"
+          "timestamp": "2026-11-02T14:51:38Z",
+          "message": "Merge b0f8b78be3742804cce9f0f9b84ee77055f68dda into b9316d0b160018666a6b5c1d18d18ec1d7b16694\n"
+        },
+        {
+          "sha": "b0f8b78be3742804cce9f0f9b84ee77055f68dda",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T07:51:26-07:00",
+          "message": "Step-10 review: one reading of when a reply may arrive, and every ask's end re-arms the escape delay (rich-control-codes-xh4n.re6)\n\n- replyMayArrive (split host and an ask awaiting) is the one predicate; a\n  whole-keys host reads ESC ] the same with or without an ask.\n- An ask ending any way (answer, timeout, leave) calls replyWaitEnded, which\n  arms the escape delay afresh instead of flushing: a suspend no longer\n  strands held bytes, and a reply straddling the timeout gets the full delay.\n- A control string cut off by a non-ST ESC reads its ESC as Escape, so\n  Escape then P during an ask is two keys.\n- docs/app.md: a late reply split across reads is read as Alt keys.\n"
         },
         {
           "sha": "9d4274d6f556c8f8ffa9be6fee4327429abdf100",
