@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-538",
-      "ref": "refs/pull/538/merge",
-      "sha": "5cbbed407f3f50444bb032d6622597f8434f421c",
-      "timestamp": "2026-11-02T14:25:17.089Z",
-      "commits": [
-        {
-          "sha": "5cbbed407f3f50444bb032d6622597f8434f421c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T14:22:15Z",
-          "message": "Merge d5c22463c4270835bbcec12ef51c1709542667e6 into fc0b93d088f830f6de5446f42739ed1f2a1d62b0\n"
-        },
-        {
-          "sha": "d5c22463c4270835bbcec12ef51c1709542667e6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:22:04-07:00",
-          "message": "A held ESC before ], P or _ is Escape again, as rich-host-input-0c4f made it; the split-reply case waits on xh4n.re6 (rich-control-codes-xh4n.3xk)\n"
-        },
-        {
-          "sha": "909890752d863aae826cdf30481c4715977b3b05",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:21:17-07:00",
-          "message": "A reply split after its ESC is heard as one, an ask after the app stopped ends left, and the app builds its console one way (rich-control-codes-xh4n.3xk)\n"
-        },
-        {
-          "sha": "c61bfc821cdf488a97c169f6d83c0626481928ca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:13:36-07:00",
-          "message": "An ask whose write throws leaves nothing in flight, and a timeout must be positive and finite (rich-control-codes-xh4n.3xk)\n"
-        },
-        {
-          "sha": "1bf2e05731d698fead381c48077bc36921e8a978",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:09:20-07:00",
-          "message": "A timed-out ask's late replies reach no later ask, a throwing ask leaves the queue running, and rgba: replies are read (rich-control-codes-xh4n.3xk)\n"
-        },
-        {
-          "sha": "0a4ce1fe2fa7fe78c45edb31bec459192c20d7bc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T07:02:26-07:00",
-          "message": "A running App asks its terminal, and terminalColors reads its real foreground and background (rich-control-codes-xh4n.3xk)\n\nThe input parser reads OSC, DCS and APC strings and private-prefix CSI\nreports as TerminalReply, never as keys. App.ask writes queries then DA1\nand ends answered on DA1's reply, on a timeout, or when the app leaves;\nApp holds raw mode and the one reader, so the ask adds neither.\nterminalColors asks OSC 10/11 and app.terminal draws the next frame on\nthe answer.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "fc0b93d088f830f6de5446f42739ed1f2a1d62b0",
-      "timestamp": "2026-11-02T13:40:44.688Z",
+      "sha": "b9316d0b160018666a6b5c1d18d18ec1d7b16694",
+      "timestamp": "2026-11-02T14:38:35.944Z",
       "commits": [
         {
-          "sha": "fc0b93d088f830f6de5446f42739ed1f2a1d62b0",
+          "sha": "b9316d0b160018666a6b5c1d18d18ec1d7b16694",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T06:38:25-07:00",
-          "message": "NEL ends a line, and every other C1 control shows a stand-in (rich-control-codes-xh4n.keg) (#537)\n\n* NEL ends a line, and every other C1 control shows a stand-in (rich-control-codes-xh4n.keg)\n\nU+0085 is the one C1 code Unicode gives a meaning in text, a line ending (5.8), so content holds an LF for it and decodeAnsi breaks a capture there. Every other C1 code means nothing in text and Unicode has no picture for it, so content shows U+FFFD, one code unit for one. sealed already keeps every C1 code off the wire. Mojibake repair needs the whole string and is left to the caller.\n\n* A C1 control shows U+2426, one cell under every width setting and no decoding error (rich-control-codes-xh4n.keg)\n\nU+FFFD is East Asian Ambiguous, two cells on a CJK terminal, and indistinguishable\nfrom a real decode error. pictureOf names its ranges and refuses any other, so a\nnew pictured row cannot inherit a stand-in silently. Stale comments on Disposition\nand Pretty's escaping corrected; C1 test titles in hex.\n\n* Each pictured row carries its stand-in, so which code points are pictured has one statement (rich-control-codes-xh4n.keg)\n\npictureOf reads the row instead of restating its ranges, and a pictured row\ncannot be written without a stand-in. The C1 boundary test pins DEL and NBSP\non either side; U+00A0 no longer borders a stripped range."
+          "timestamp": "2026-11-02T07:36:19-07:00",
+          "message": "A running App asks its terminal; terminalColors reads OSC 10/11 (rich-control-codes-xh4n.3xk) (#538)\n\n* A running App asks its terminal, and terminalColors reads its real foreground and background (rich-control-codes-xh4n.3xk)\n\nThe input parser reads OSC, DCS and APC strings and private-prefix CSI\nreports as TerminalReply, never as keys. App.ask writes queries then DA1\nand ends answered on DA1's reply, on a timeout, or when the app leaves;\nApp holds raw mode and the one reader, so the ask adds neither.\nterminalColors asks OSC 10/11 and app.terminal draws the next frame on\nthe answer.\n\n* A timed-out ask's late replies reach no later ask, a throwing ask leaves the queue running, and rgba: replies are read (rich-control-codes-xh4n.3xk)\n\n* An ask whose write throws leaves nothing in flight, and a timeout must be positive and finite (rich-control-codes-xh4n.3xk)\n\n* A reply split after its ESC is heard as one, an ask after the app stopped ends left, and the app builds its console one way (rich-control-codes-xh4n.3xk)\n\n* A held ESC before ], P or _ is Escape again, as rich-host-input-0c4f made it; the split-reply case waits on xh4n.re6 (rich-control-codes-xh4n.3xk)"
         }
       ]
     }
