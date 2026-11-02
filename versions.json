@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-521",
-      "ref": "refs/pull/521/merge",
-      "sha": "27bb067f319a0826a2966bd84f7e692480d5420a",
-      "timestamp": "2026-11-02T20:25:58.641Z",
-      "commits": [
-        {
-          "sha": "27bb067f319a0826a2966bd84f7e692480d5420a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T20:23:44Z",
-          "message": "Merge 7b2b6b2ae6b41fe7049b5d22724299704c89a6c8 into a77b5abbf162c3d727a69933d1b160b6d14ff930\n"
-        },
-        {
-          "sha": "7b2b6b2ae6b41fe7049b5d22724299704c89a6c8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T13:23:21-07:00",
-          "message": "A throwing decided hook still tells the frame its holds, and isT sits on its own line (rich-animation-27tq.0gd)\n\nReview of 33f4241f3 found the frame was not told when a consumer's decided hook threw. The told call now runs in finally. isT moves onto its own line in the multi-line configs, and the smoke test records why a plain object prints instead of erroring.\n"
-        },
-        {
-          "sha": "33f4241f3ed99fa2be6d32aec90c87f7501f9e60",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T13:11:46-07:00",
-          "message": "Engine configs for RichText pass isT, the predicate go-template-js 0.12.0 requires (rich-animation-27tq.0gd)\n\ngo-template-js 0.12.0 requires isT on any EngineConfig whose T is not a string, so the devDependency and peer floor move to 0.12.0. The engine now prints a plain object as Go prints it, so the smoke test asserts that instead of the old [error] line.\n"
-        },
-        {
-          "sha": "19feadcde90d5b28c490c11ccaff26d257a88148",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T07:26:27-07:00",
-          "message": "withAnimation refuses a config that already has one of its names (rich-animation-27tq.0gd)\n"
-        },
-        {
-          "sha": "43697766fc79e00a2bf7ce9232b187893b6d8c96",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T20:43:49-06:00",
-          "message": "withAnimation installs the functions and their hooks in one call (rich-animation-27tq.0gd)\n\nThe high review of PR #521 found that animationFuncs returned the five\nfunctions and the two engine hooks as three config fields a consumer wires\nby hand, and that wiring only `funcs` compiles, draws and never says it\nmoves: every hold vanishes with nothing to say so. The binding is now\n`withAnimation(config, frame, options)`, the consumer's engine config with\nthe functions merged into its `funcs` and `emitted`/`decided` chained over\nany the config already carries, so the functions and the hooks that report\nfor them cannot be wired apart, and a consumer's own hooks still hear\neverything they did.\n\nAlso from that review: `emitted` hands back a fragment no hold reaches\ninstead of copying on every emission; `drawn` returns the marked value, so\nthe five functions no longer each unpack and re-mark it, and `stepped` maps\nthe beat to its hex inside the animation; the docs and `TemplateFrame` say\nwhat `onHold` hears by the engine's rule — a decision, a writing function,\na throwing action — rather than decisions alone. The gate the review asked\nfor, that `src/` compiles against the lowest peer the range admits, is\nfiled as rich-unfiled-791c.25dh.\n"
-        },
-        {
-          "sha": "b4f0cba341ce6f38f54bb7a7a4bef78c092ba113",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-30T20:26:51-06:00",
-          "message": "A template's hold reaches the frame only through what it draws or decides (rich-animation-27tq.0gd)\n\n`tween`, `loop`, `stepped`, `frames` and `glyphs` no longer stamp cells or\ntell the frame themselves. Each marks its return with the hold it is in\n(`marked`, go-template-js 0.11.0's evaluation provenance), and\n`animationFuncs` returns, beside its functions, the two engine hooks the\nengine reports the marks through: `emitted` stamps every emitted fragment\nwith the holds of the animated values its action read; `decided` tells\n`TemplateFrame.onHold` of a mark an if/with/range consumed, whichever arm it\ntook. A value a template computes and never draws or decides on reports\nnothing, so a still bar never claims to move, and a hold is carried through\nevery variable, printf, comparison, sprig call and template invocation the\nvalue passes, where a stamp on the fragment was lost.\n\n`textFrameAt` is removed: its only callers were the two template functions.\n`AnimationFuncs` is the engine's own `EngineConfig` fields, so a hook's\nsignature is written once.\n\nThe peer range stays at ^0.10.0 in this commit: 0.11.0 is tagged and merged\nupstream but its npm publish failed for want of a Trusted Publisher, so the\nlockfile cannot follow yet. The bump and the lockfile land together once the\nregistry has it; until then the branch is built against a tarball packed from\nthe v0.11.0 tag.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a77b5abbf162c3d727a69933d1b160b6d14ff930",
-      "timestamp": "2026-11-02T15:06:18.474Z",
+      "sha": "85606541d26e0522aa0321981dcde341f4115fb5",
+      "timestamp": "2026-11-02T20:43:43.971Z",
       "commits": [
         {
-          "sha": "a77b5abbf162c3d727a69933d1b160b6d14ff930",
+          "sha": "85606541d26e0522aa0321981dcde341f4115fb5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T08:04:04-07:00",
-          "message": "A reply is held only while an ask awaits one; otherwise ESC ], P, _ are Alt keys (rich-control-codes-xh4n.re6) (#539)\n\n* ESC ], P or _ opens a reply only while an ask awaits one, and is Alt on its key otherwise (rich-control-codes-xh4n.re6)\n\nThe parser asks its sink whether an ask is in flight. With none, an\nunterminated control string is Alt+], Alt+P or Alt+_ at once, so keys typed\nafter it in one read are not held. With one, a reply split across slow reads\nor right after its ESC is held until it ends, and the ask's timeout flushes\nwhat was held. A terminated control string is a reply either way.\n\n* Step-10 review: one reading of when a reply may arrive, and every ask's end re-arms the escape delay (rich-control-codes-xh4n.re6)\n\n- replyMayArrive (split host and an ask awaiting) is the one predicate; a\n  whole-keys host reads ESC ] the same with or without an ask.\n- An ask ending any way (answer, timeout, leave) calls replyWaitEnded, which\n  arms the escape delay afresh instead of flushing: a suspend no longer\n  strands held bytes, and a reply straddling the timeout gets the full delay.\n- A control string cut off by a non-ST ESC reads its ESC as Escape, so\n  Escape then P during an ask is two keys.\n- docs/app.md: a late reply split across reads is read as Alt keys.\n\n* Step-11 review: the parser owns whether replies are awaited; only a reply's opener outlasts the delay (rich-control-codes-xh4n.re6)\n\n- awaitReplies(boolean), told by App at the ask's start and end, replaces the\n  awaitingReply pull plus replyWaitEnded push: one fact, one channel.\n- During an ask only a lone ESC or an unterminated ESC ]/P/_ is held past the\n  escape delay; a stalled CSI settles as usual.\n- A control string cut off by a non-ST ESC is reissued again, so Alt+] during\n  an ask reads as Alt+], the same as with no ask.\n- suspend resets the parser, so a half-read reply is never typed while suspended.\n\n* Step-12 review: a cut-off control string is Alt on its key in every mode; only the wait's end restarts the delay (rich-control-codes-xh4n.re6)"
+          "timestamp": "2026-11-02T13:42:05-07:00",
+          "message": "A template's hold reaches the frame only through what it draws or decides (rich-animation-27tq.0gd) (#521)\n\n* A template's hold reaches the frame only through what it draws or decides (rich-animation-27tq.0gd)\n\n`tween`, `loop`, `stepped`, `frames` and `glyphs` no longer stamp cells or\ntell the frame themselves. Each marks its return with the hold it is in\n(`marked`, go-template-js 0.11.0's evaluation provenance), and\n`animationFuncs` returns, beside its functions, the two engine hooks the\nengine reports the marks through: `emitted` stamps every emitted fragment\nwith the holds of the animated values its action read; `decided` tells\n`TemplateFrame.onHold` of a mark an if/with/range consumed, whichever arm it\ntook. A value a template computes and never draws or decides on reports\nnothing, so a still bar never claims to move, and a hold is carried through\nevery variable, printf, comparison, sprig call and template invocation the\nvalue passes, where a stamp on the fragment was lost.\n\n`textFrameAt` is removed: its only callers were the two template functions.\n`AnimationFuncs` is the engine's own `EngineConfig` fields, so a hook's\nsignature is written once.\n\nThe peer range stays at ^0.10.0 in this commit: 0.11.0 is tagged and merged\nupstream but its npm publish failed for want of a Trusted Publisher, so the\nlockfile cannot follow yet. The bump and the lockfile land together once the\nregistry has it; until then the branch is built against a tarball packed from\nthe v0.11.0 tag.\n\n* withAnimation installs the functions and their hooks in one call (rich-animation-27tq.0gd)\n\nThe high review of PR #521 found that animationFuncs returned the five\nfunctions and the two engine hooks as three config fields a consumer wires\nby hand, and that wiring only `funcs` compiles, draws and never says it\nmoves: every hold vanishes with nothing to say so. The binding is now\n`withAnimation(config, frame, options)`, the consumer's engine config with\nthe functions merged into its `funcs` and `emitted`/`decided` chained over\nany the config already carries, so the functions and the hooks that report\nfor them cannot be wired apart, and a consumer's own hooks still hear\neverything they did.\n\nAlso from that review: `emitted` hands back a fragment no hold reaches\ninstead of copying on every emission; `drawn` returns the marked value, so\nthe five functions no longer each unpack and re-mark it, and `stepped` maps\nthe beat to its hex inside the animation; the docs and `TemplateFrame` say\nwhat `onHold` hears by the engine's rule — a decision, a writing function,\na throwing action — rather than decisions alone. The gate the review asked\nfor, that `src/` compiles against the lowest peer the range admits, is\nfiled as rich-unfiled-791c.25dh.\n\n* withAnimation refuses a config that already has one of its names (rich-animation-27tq.0gd)\n\n* Engine configs for RichText pass isT, the predicate go-template-js 0.12.0 requires (rich-animation-27tq.0gd)\n\ngo-template-js 0.12.0 requires isT on any EngineConfig whose T is not a string, so the devDependency and peer floor move to 0.12.0. The engine now prints a plain object as Go prints it, so the smoke test asserts that instead of the old [error] line.\n\n* A throwing decided hook still tells the frame its holds, and isT sits on its own line (rich-animation-27tq.0gd)\n\nReview of 33f4241f3 found the frame was not told when a consumer's decided hook threw. The told call now runs in finally. isT moves onto its own line in the multi-line configs, and the smoke test records why a plain object prints instead of erroring."
         }
       ]
     }
