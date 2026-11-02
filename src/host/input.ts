@@ -14,7 +14,7 @@
  * a host whose chunks can split a key, a UTF-8 character or an escape
  * sequence split across two chunks is completed by the second. What a chunk
  * end means is the host's `InputChunks`, and whether an ask awaits a reply is
- * the sink's (`InputSink.awaitingReply`): the two inputs to the parser that
+ * what its owner last told `awaitReplies`: the two inputs to the parser that
  * are not bytes, and both decide only what becomes of an unfinished ESC.
  *
  * An unfinished escape sequence is ambiguous: `ESC` alone is the Escape key
@@ -34,10 +34,11 @@
  * `ESC ]`, `ESC P` and `ESC _` open the control strings a terminal replies
  * in, and are also Alt+], Alt+P and Alt+_. A reply can arrive split only on
  * a split host while an ask awaits one (`replyMayArrive`), and only then is an
- * unterminated one held — past the escape delay, until the sink says the wait
- * ended (`replyWaitEnded`), which arms the delay afresh. Otherwise it is Alt
+ * unterminated one, or a lone ESC that may open one, held — past the escape
+ * delay, until `awaitReplies(false)` arms the delay afresh. Otherwise it is Alt
  * on its key at once. A terminated one is a reply either way, and one cut off
- * by an ESC that is not ST was never a reply: its ESC was Escape.
+ * by an ESC that is not ST was never a reply, and reads as its bytes would
+ * with none awaited.
  */
 
 import type { InputChunks } from "./terminal-host.js";
@@ -113,13 +114,6 @@ export interface InputSink {
   key(press: KeyPress): void;
   mouse(event: ScreenMouseEvent): void;
   reply(reply: TerminalReply): void;
-  /**
-   * Whether an ask is waiting for the terminal's replies. Only then does an
-   * unfinished `ESC ]`, `ESC P` or `ESC _` open a reply still arriving; with
-   * none awaited it is Alt on that key. The sink owns when this ends, and
-   * says so with `replyWaitEnded()`.
-   */
-  awaitingReply(): boolean;
 }
 
 // Single-byte → key name table for the trivial cases.
@@ -299,6 +293,7 @@ export class InputParser {
   // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
   // across node and browser; `setImmediate` is node-only.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
+  private awaiting = false;
 
   constructor(
     private readonly sink: InputSink,
@@ -346,21 +341,27 @@ export class InputParser {
   // timer before it reads input queued behind a long frame, so the delay's end
   // settles the hold only after one more turn of the event loop has read what
   // was waiting. The parser holds one timer, so arming it replaces any other.
-  // While a reply may arrive the delay settles nothing: a reply split over a
-  // slow link may take longer than it. The wait's end arms it afresh
-  // (`replyWaitEnded`), so what is held then gets the whole delay.
+  // While a reply may arrive the delay settles no hold that may open one: a
+  // reply split over a slow link may take longer than it. The wait's end arms
+  // it afresh (`awaitReplies`), so what is held then gets the whole delay.
   private hold(): void {
     this.cancelEscape();
     if (this.buffer[0] !== ESC) return;
     this.escTimer = setTimeout(() => {
       this.escTimer = setTimeout(() => {
-        if (!this.replyMayArrive()) this.flush();
+        if (!this.replyMayArrive() || !opensString(this.buffer)) this.flush();
       }, 0);
     }, ESCAPE_DELAY_MS);
   }
 
-  /** The sink's ask stopped awaiting a reply: what is held waits the escape delay from now. */
-  replyWaitEnded(): void {
+  /**
+   * Whether an ask is awaiting the terminal's replies, told by whoever asks
+   * at the ask's start and end. Only while one is does an unfinished
+   * `ESC ]`, `ESC P` or `ESC _` open a reply still arriving; otherwise it is
+   * Alt on that key. Either way, what is held waits the escape delay from now.
+   */
+  awaitReplies(awaiting: boolean): void {
+    this.awaiting = awaiting;
     this.hold();
   }
 
@@ -368,7 +369,7 @@ export class InputParser {
   // string may be a reply still arriving: only a split host splits one, and
   // only an ask awaits one.
   private replyMayArrive(): boolean {
-    return this.chunks === "split" && this.sink.awaitingReply();
+    return this.chunks === "split" && this.awaiting;
   }
 
   private continuesEscape(byte: number): boolean {
@@ -698,16 +699,20 @@ function decodeMouseFromCb(
 // any byte but ESC before it. Terminated, it is a reply whether or not one was
 // awaited. Unterminated, it is unfinished, and `consumeEscape` decides by
 // whether a reply may arrive if that means held or Alt on its key. An ESC that
-// is not ST ends it before it closed: it was never a reply, so its opening ESC
-// was Escape, as a lone ESC joined by the next read is (rich-host-input-0c4f),
-// and what followed is read on its own.
+// is not ST ends it before it closed: it was never a reply, and it is read as
+// the keys it holds, as it would be with no reply awaited.
+// A lone ESC, or one opening a control string: the holds a reply may be.
+function opensString(buf: Uint8Array): boolean {
+  return buf.length === 1 || STRING_REPLIES[buf[1]!] !== undefined;
+}
+
 function consumeString(buf: Uint8Array, kind: TerminalReply["kind"]): ConsumeResult {
   for (let i = 2; i < buf.length; i++) {
     const b = buf[i]!;
     if (b === BEL) return { kind: "reply", bytes: i + 1, event: { kind, body: UTF8_DECODER.decode(buf.subarray(2, i)) } };
     if (b !== ESC) continue;
     if (i + 1 === buf.length) return { kind: "incomplete" };
-    if (buf[i + 1] !== BACKSLASH) return { kind: "key", bytes: 1, event: ESCAPE };
+    if (buf[i + 1] !== BACKSLASH) return { kind: "reissued", ...reissue(buf.subarray(0, i)) };
     return { kind: "reply", bytes: i + 2, event: { kind, body: UTF8_DECODER.decode(buf.subarray(2, i)) } };
   }
   return { kind: "incomplete" };

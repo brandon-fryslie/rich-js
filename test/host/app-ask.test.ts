@@ -219,15 +219,26 @@ describe("a reply or Alt on a split host", () => {
     expect(keys).toEqual(["escape"]);
   });
 
-  it("reads Escape then P typed as two chunks during an ask as two keys", async () => {
+  it("reads Alt+] typed during an ask as Alt+] when the reply follows it", async () => {
     const { host, app, keys } = started();
     const ask = app.ask(["\x1b]11;?\x1b\\"]);
     await asked();
-    host.type("\x1b");
-    host.type("P");
+    host.type("\x1b]");
+    host.type("\x1b]11;rgb:0000/0000/0000\x1b\\" + DA1_REPLY);
+    expect((await ask).replies).toEqual([{ kind: "osc", body: "11;rgb:0000/0000/0000" }]);
+    expect(keys).toEqual(["meta+]"]);
+  });
+
+  it("settles a stalled CSI during an ask after the escape delay", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b[");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS + 1);
+    expect(keys).toEqual(["meta+["]);
     host.type(DA1_REPLY);
-    expect((await ask).ended).toBe("answered");
-    expect(keys).toEqual(["escape", "P"]);
+    await ask;
   });
 
   it("gives a reply straddling the ask's timeout the whole escape delay", async () => {
@@ -242,7 +253,7 @@ describe("a reply or Alt on a split host", () => {
     expect(keys).toEqual([]);
   });
 
-  it("settles what an ask held when a suspend ends it, apart from the keys after", async () => {
+  it("drops what an ask held when a suspend ends it", async () => {
     const { host, app, keys } = started();
     const ask = app.ask(["\x1b]11;?\x1b\\"]);
     await asked();
@@ -252,11 +263,11 @@ describe("a reply or Alt on a split host", () => {
     const suspended = app.suspend();
     expect((await ask).ended).toBe("left");
     vi.advanceTimersByTime(ESCAPE_DELAY_MS + 1);
-    expect(keys).toEqual(["meta+]", "1"]);
+    expect(keys).toEqual([]);
     host.resume();
     await suspended;
     host.type("a");
-    expect(keys).toEqual(["meta+]", "1", "a"]);
+    expect(keys).toEqual(["a"]);
   });
 });
 

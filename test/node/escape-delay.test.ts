@@ -42,7 +42,7 @@ describe("the escape delay on a split host", () => {
     const { terminal, stdin } = await terminalWire();
     const host = new NodeTerminalHost({ stdin, stdout: Object.assign(new PassThrough(), { columns: 80, rows: 24 }), env: {} });
     const keys: string[] = [];
-    const parser = new InputParser({ key: (press) => keys.push(keyName(press)), mouse: () => {}, reply: () => {}, awaitingReply: () => false }, host.inputChunks);
+    const parser = new InputParser({ key: (press) => keys.push(keyName(press)), mouse: () => {}, reply: () => {} }, host.inputChunks);
     let chunk: () => void = () => {};
     host.onData((bytes) => {
       parser.feed(bytes);
