@@ -8,8 +8,8 @@
  * one class would be a second answer to "what colour is a keyword".
  */
 
-import { EXPLICIT } from "../core/bidi.js";
-import { cellLen, expandTabs, parseTabSize, replaceWithheld, unicodeEscape } from "../core/cells.js";
+import { escaped } from "../core/bidi.js";
+import { cellLen, expandTabs, parseTabSize, unicodeEscape } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import {
@@ -128,11 +128,10 @@ export class Syntax implements Renderable, Measurable {
     const tabSize = parseTabSize(options?.tabSize ?? 4);
     this.tabSize = tabSize;
     // Code on show: what the wire would drop is escaped, and an explicit bidi
-    // control with it, or the screen shows code the source does not hold. That is
-    // the Trojan Source attack: the order and the lines on screen differing from
-    // what the compiler reads. Only a CRLF's CR goes, as part of its line ending.
-    const shown = replaceWithheld(code.replace(/\r\n/g, "\n"), unicodeEscape).replace(new RegExp(EXPLICIT.source, "gu"), unicodeEscape);
-    this._lines = expandTabs(shown, tabSize).text.split("\n");
+    // control with it. That is the Trojan Source attack: the order and the lines on
+    // screen differing from what the compiler reads. A joiner stays, since a Persian
+    // comment or an emoji string needs it. Only a CRLF's CR goes, with its line ending.
+    this._lines = expandTabs(escaped(code.replace(/\r\n/g, "\n"), unicodeEscape), tabSize).text.split("\n");
   }
 
   /**

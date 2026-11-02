@@ -7,10 +7,9 @@
  * where the console can reach it without an upward edge. [LAW:one-way-deps]
  */
 
-import { EXPLICIT } from "./bidi.js";
+import { escaped } from "./bidi.js";
 import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
-import { replaceWithheld } from "./cells.js";
 import { JSONHighlighter } from "./highlighter.js";
 import type {
   Renderable,
@@ -70,7 +69,7 @@ export class JSONRenderable implements Renderable, Measurable {
     // Data on show: one string holds every key and value, so a control left in
     // one would act on the rest of its line, and what content deletes or the wire
     // withholds would leave a document that no longer parses back to this data.
-    const text = new RichText(replaceWithheld(jsonStr, jsonEscape).replace(new RegExp(EXPLICIT.source, "gu"), jsonEscape));
+    const text = new RichText(escaped(jsonStr, jsonEscape));
 
     if (doHighlight) {
       highlighter.highlight(text);

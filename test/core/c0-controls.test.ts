@@ -177,6 +177,11 @@ describe("Syntax", () => {
     const override = String.fromCodePoint(0x202e);
     expect(written(new Syntax(`a${override}b`, "text"))).toContain("a\\u202eb");
   });
+
+  it("leaves a joiner, which a Persian comment needs", () => {
+    const word = `a${String.fromCodePoint(0x200c)}b`;
+    expect(written(new Syntax(word, "text"))).toContain(word);
+  });
 });
 
 describe("decodeAnsi", () => {

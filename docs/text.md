@@ -129,7 +129,7 @@ console.print(new Panel(decodeAnsi(captured), { title: "npm test" }));
 
 Each colour keeps the kind it was written as. `\x1b[31m` decodes to standard colour 1, not to a particular red, so the terminal or exported theme that draws the text still picks the shade. Text attributes and OSC 8 hyperlinks decode too, and so does the overstrike `man` writes: `x\bx` is bold and `_\bx` underlined. Other escapes, cursor movement included, are dropped. A carriage return goes back to the start of the line, a backspace back one cell, and the text after either overwrites what was there, and erase-in-line (`\x1b[K`) clears it, so a progress line redrawn in place decodes to its final state. A vertical tab, a form feed and a line or paragraph separator end a line, as `\n` does.
 
-To decode output as it arrives, one line at a time, keep one `AnsiDecoder` for the whole stream. A style that one line sets stays in effect on the lines after it, the way it would on a terminal:
+To decode output as it arrives, one line at a time, keep one `AnsiDecoder` for the whole stream. A style that one line sets stays in effect on the lines after it, the way it would on a terminal. `decodeLine` is handed one line, so a form feed in it is dropped; `decode` is what splits a chunk:
 
 ```typescript
 import { AnsiDecoder } from "@promptctl/rich-js";

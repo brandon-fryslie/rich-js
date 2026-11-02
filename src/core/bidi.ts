@@ -13,6 +13,7 @@
  */
 
 import { BIDI_CLASSES, BRACKET_PAIRS, CLASS_RANGES, JOINING_RANGES, JOINING_TYPES, MIRRORS, PRESENTATION_FORMS } from "./bidi-data.js";
+import { replaceWithheld } from "./cells.js";
 import { pattern } from "./pattern.js";
 import type { ParagraphLevel } from "./text-order.js";
 
@@ -91,6 +92,11 @@ const MARKS = pattern(/[\u200e\u200f\u061c]/);
 /** `text` with every explicit formatting character gone. */
 export function withoutExplicit(text: string): string {
   return text.match(EXPLICIT) === null ? text : text.replace(new RegExp(EXPLICIT.source, "g"), "");
+}
+
+/** `text` as data on show: what the wire would drop, and every explicit control, spelled by `escape`. */
+export function escaped(text: string, escape: (character: string) => string): string {
+  return replaceWithheld(text, escape).replace(new RegExp(EXPLICIT.source, "gu"), escape);
 }
 
 /** `text` with LRM, RLM and ALM gone. */

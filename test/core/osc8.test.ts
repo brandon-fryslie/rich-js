@@ -47,9 +47,14 @@ describe("osc8Sequences", () => {
     }
   });
 
-  it("removes every code point of the census from a url, and nothing else", () => {
-    const census = [0x09, 0x18, 0x9b, 0xad, 0x200d, 0x2028, 0x202e, 0xe0100].map((codePoint) => String.fromCodePoint(codePoint));
-    for (const c of census) expect(stripUrlControls(`a${c}b`)).toBe("ab");
-    expect(stripUrlControls("https://例え.jp/a%20b?q=1#x")).toBe("https://例え.jp/a%20b?q=1#x");
+  it("removes what could break the wrap or reorder the address", () => {
+    const refused = [0x09, 0x18, 0x7f, 0x9b, 0x200f, 0x2028, 0x2029, 0x202e, 0x2067].map((codePoint) => String.fromCodePoint(codePoint));
+    for (const c of refused) expect(stripUrlControls(`a${c}b`)).toBe("ab");
+  });
+
+  it("leaves what an address needs, so a link goes where it says", () => {
+    const joined = `https://fa.wikipedia.org/wiki/a${String.fromCodePoint(0x200c)}b`;
+    const selected = `https://example.com/${String.fromCodePoint(0x2764, 0xfe0f)}`;
+    for (const url of [joined, selected, "https://例え.jp/a%20b?q=1#x"]) expect(stripUrlControls(url)).toBe(url);
   });
 });
