@@ -17,8 +17,9 @@ import type { TerminalReply } from "./input.js";
 const QUERIES = ["\x1b]10;?\x1b\\", "\x1b]11;?\x1b\\"] as const;
 
 // XParseColor's `rgb:` form, 1–4 hex digits a channel, as xterm and every
-// terminal that copies it answers.
-const RGB = pattern(/^rgb:([0-9a-f]{1,4})\/([0-9a-f]{1,4})\/([0-9a-f]{1,4})$/i);
+// terminal that copies it answers, or `rgba:`, as urxvt answers with
+// transparency on; the alpha says nothing about the colour a cell is drawn in.
+const RGB = pattern(/^rgba?:([0-9a-f]{1,4})\/([0-9a-f]{1,4})\/([0-9a-f]{1,4})(?:\/[0-9a-f]{1,4})?$/i);
 
 // A channel of n hex digits is a fraction of 16ⁿ − 1, scaled to 8 bits.
 const channel = (hex: string): number => Math.round((parseInt(hex, 16) / (16 ** hex.length - 1)) * 255);

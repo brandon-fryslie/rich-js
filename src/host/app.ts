@@ -196,6 +196,10 @@ export class App implements FrameHost {
   // the next waits on the last, and `leave` ends the one in flight.
   private asking: Asking | null = null;
   private asked: Promise<unknown> = Promise.resolve();
+  // DA1 replies still owed to asks that timed out. A terminal answers in the
+  // order it was asked, so every reply before the last of them belongs to an
+  // ask that has ended, and none reaches the ask after it.
+  private owedDa1 = 0;
 
   private _phase: AppPhase = "idle";
   private _frame: readonly (readonly Segment[])[] = [];
@@ -248,15 +252,18 @@ export class App implements FrameHost {
   /**
    * Ask the terminal: write `queries`, then DA1, and resolve with the replies
    * heard before DA1's, or before the timeout or the app handing the terminal
-   * back. It never rejects. Asks run one after another, and only while the
-   * app runs: it holds raw mode and reads the input, so a reply reaches the
-   * ask and never a key handler. A reply no ask is waiting for is dropped.
+   * back. It rejects only when writing to the terminal throws. Asks run one
+   * after another, and only while the app runs: it holds raw mode and reads
+   * the input, so a reply reaches the ask and never a key handler. A reply no
+   * ask is waiting for is dropped. `queries` must not ask for DA1 itself: its
+   * reply would end the ask early.
    */
   ask(queries: readonly string[], options: AskOptions = {}): Promise<Asked> {
     if (this._phase !== "running") throw new Error(`App.ask: only a running app asks its terminal, and this one is ${this._phase}`);
     const timeout = options.timeout ?? DEFAULT_ASK_TIMEOUT;
     const turn = this.asked.then(() => this.askNow(queries, timeout));
-    this.asked = turn;
+    // One ask's failure is its caller's; the asks queued after it still run.
+    this.asked = turn.catch(() => undefined);
     return turn;
   }
 
@@ -265,7 +272,10 @@ export class App implements FrameHost {
       if (this._phase !== "running") return resolve({ ended: "left", replies: [] });
       if (!this.host.writesToTerminal) return resolve({ ended: "unasked", replies: [] });
       const replies: TerminalReply[] = [];
-      const timer = this._clock.at(this._clock.now() + timeout, () => asking.finish("timeout"));
+      const timer = this._clock.at(this._clock.now() + timeout, () => {
+        this.owedDa1++;
+        asking.finish("timeout");
+      });
       const asking: Asking = {
         replies,
         finish: (ended) => {
@@ -486,6 +496,8 @@ export class App implements FrameHost {
 
   private leave(): void {
     this.asking?.finish("left");
+    // Whatever answers the terminal sends from here reach whoever holds it next.
+    this.owedDa1 = 0;
     this.host.write(POINTER[this.surface].off);
     this.painter.handBack();
     this.host.setRawMode(false);
@@ -513,6 +525,10 @@ export class App implements FrameHost {
   // --- input ---
 
   private reply(reply: TerminalReply): void {
+    if (this.owedDa1 > 0) {
+      if (isDa1Reply(reply)) this.owedDa1--;
+      return;
+    }
     if (this.asking === null) return;
     if (isDa1Reply(reply)) return this.asking.finish("answered");
     this.asking.replies.push(reply);

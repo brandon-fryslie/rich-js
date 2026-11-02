@@ -87,7 +87,6 @@ export function keyName(press: KeyPress): string {
   return modifiers.join("") + (typed ? press.character : press.key);
 }
 
-/** Where a parser delivers what it parses. */
 /**
  * What a terminal sends back when it is asked something: an OSC, DCS or APC
  * string, its introducer and terminator taken off (`11;rgb:1e1e/1e1e/1e1e`
@@ -100,6 +99,7 @@ export interface TerminalReply {
   readonly body: string;
 }
 
+/** Where a parser delivers what it parses. */
 export interface InputSink {
   key(press: KeyPress): void;
   mouse(event: ScreenMouseEvent): void;

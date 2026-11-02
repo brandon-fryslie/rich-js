@@ -95,6 +95,34 @@ describe("App.ask", () => {
     expect((await second).ended).toBe("answered");
   });
 
+  it("credits a timed-out ask's late replies to no later ask", async () => {
+    const { host, app, clock } = started();
+    const first = app.ask(["\x1b]11;?\x1b\\"], { timeout: 0.5 });
+    const second = app.ask(["\x1b]10;?\x1b\\"]);
+    await asked();
+    clock.advance(0.5);
+    expect((await first).ended).toBe("timeout");
+    await asked();
+    host.type("\x1b]11;rgb:0/0/0\x1b\\" + DA1_REPLY);
+    host.type("\x1b]10;rgb:f/f/f\x1b\\" + DA1_REPLY);
+    expect(await second).toEqual({ ended: "answered", replies: [{ kind: "osc", body: "10;rgb:f/f/f" }] });
+  });
+
+  it("still asks after an ask whose write threw", async () => {
+    const host = scriptedHost();
+    const { app } = started(host);
+    const write = host.write.bind(host);
+    host.write = () => {
+      throw new Error("closed");
+    };
+    await expect(app.ask(["A"])).rejects.toThrow("closed");
+    host.write = write;
+    const second = app.ask(["B"]);
+    await asked();
+    host.type(DA1_REPLY);
+    expect((await second).ended).toBe("answered");
+  });
+
   it("hears a reply split across reads, BEL-terminated, as one reply", async () => {
     const { host, app } = started();
     const ask = app.ask(["\x1b]10;?\x07"]);
@@ -133,6 +161,14 @@ describe("terminalColors", () => {
     const terminal = (await colors)!;
     expect(terminal.foregroundColor).toEqual(new ColorRgba(255, 136, 0));
     expect(terminal.backgroundColor).toEqual(new ColorRgba(128, 255, 0));
+  });
+
+  it("reads XParseColor's rgba: form, as urxvt answers with transparency", async () => {
+    const { host, app } = started();
+    const colors = terminalColors(app);
+    await asked();
+    host.type("\x1b]10;rgba:ffff/ffff/ffff/dddd\x1b\\\x1b]11;rgba:0/0/0/d\x1b\\" + DA1_REPLY);
+    expect((await colors)!.backgroundColor).toEqual(new ColorRgba(0, 0, 0));
   });
 
   it("is undefined when the terminal answers only one", async () => {
