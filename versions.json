@@ -4,15 +4,22 @@
     {
       "version": "pr-535",
       "ref": "refs/pull/535/merge",
-      "sha": "1e62fbef12af6e66cd56e74cc3f65ed6d4bac078",
-      "timestamp": "2026-11-01T21:35:08.935Z",
+      "sha": "ca0a8837ca92c2f05b9272138d1c59f35bf970a6",
+      "timestamp": "2026-11-02T00:03:33.090Z",
       "commits": [
         {
-          "sha": "1e62fbef12af6e66cd56e74cc3f65ed6d4bac078",
+          "sha": "ca0a8837ca92c2f05b9272138d1c59f35bf970a6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T21:32:52Z",
-          "message": "Merge fda604e8f35117468649970e02ff692b72cea8da into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
+          "timestamp": "2026-11-02T00:01:53Z",
+          "message": "Merge 1f0ca528f6f07b875f5c2c9ba9b5bd9118e59426 into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
+        },
+        {
+          "sha": "1f0ca528f6f07b875f5c2c9ba9b5bd9118e59426",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T17:01:42-07:00",
+          "message": "Syntax escapes what the wire withholds, and a soft hyphen costs nothing it cannot draw (rich-control-codes-xh4n.5do)\n\nSecond high review of #535. Code on show escapes withheld code points through the\none unicodeEscape Pretty uses. A run of marks is one break, a zero-cell piece takes\nno hyphen, and a piece's minimum is its own cells. edges counts a tab. hyphenated\nwalks a segment once, and replaceWithheld returns text it did not touch.\n"
         },
         {
           "sha": "fda604e8f35117468649970e02ff692b72cea8da",
