@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-539",
+      "ref": "refs/pull/539/merge",
+      "sha": "9b97774a0ac863a17f3ed3875fd14816a232f131",
+      "timestamp": "2026-11-02T14:45:31.723Z",
+      "commits": [
+        {
+          "sha": "9b97774a0ac863a17f3ed3875fd14816a232f131",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T07:43:25-07:00",
+          "message": "Merge 9d4274d6f556c8f8ffa9be6fee4327429abdf100 into b9316d0b160018666a6b5c1d18d18ec1d7b16694\n"
+        },
+        {
+          "sha": "9d4274d6f556c8f8ffa9be6fee4327429abdf100",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T07:43:14-07:00",
+          "message": "ESC ], P or _ opens a reply only while an ask awaits one, and is Alt on its key otherwise (rich-control-codes-xh4n.re6)\n\nThe parser asks its sink whether an ask is in flight. With none, an\nunterminated control string is Alt+], Alt+P or Alt+_ at once, so keys typed\nafter it in one read are not held. With one, a reply split across slow reads\nor right after its ESC is held until it ends, and the ask's timeout flushes\nwhat was held. A terminated control string is a reply either way.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b9316d0b160018666a6b5c1d18d18ec1d7b16694",
