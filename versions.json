@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-521",
+      "ref": "refs/pull/521/merge",
+      "sha": "236ce6fb95b409e0fe701379fd3f2e92655bf9e6",
+      "timestamp": "2026-11-02T20:14:19.286Z",
+      "commits": [
+        {
+          "sha": "236ce6fb95b409e0fe701379fd3f2e92655bf9e6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T20:11:59Z",
+          "message": "Merge 33f4241f3ed99fa2be6d32aec90c87f7501f9e60 into a77b5abbf162c3d727a69933d1b160b6d14ff930\n"
+        },
+        {
+          "sha": "33f4241f3ed99fa2be6d32aec90c87f7501f9e60",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T13:11:46-07:00",
+          "message": "Engine configs for RichText pass isT, the predicate go-template-js 0.12.0 requires (rich-animation-27tq.0gd)\n\ngo-template-js 0.12.0 requires isT on any EngineConfig whose T is not a string, so the devDependency and peer floor move to 0.12.0. The engine now prints a plain object as Go prints it, so the smoke test asserts that instead of the old [error] line.\n"
+        },
+        {
+          "sha": "19feadcde90d5b28c490c11ccaff26d257a88148",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-01T07:26:27-07:00",
+          "message": "withAnimation refuses a config that already has one of its names (rich-animation-27tq.0gd)\n"
+        },
+        {
+          "sha": "43697766fc79e00a2bf7ce9232b187893b6d8c96",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T20:43:49-06:00",
+          "message": "withAnimation installs the functions and their hooks in one call (rich-animation-27tq.0gd)\n\nThe high review of PR #521 found that animationFuncs returned the five\nfunctions and the two engine hooks as three config fields a consumer wires\nby hand, and that wiring only `funcs` compiles, draws and never says it\nmoves: every hold vanishes with nothing to say so. The binding is now\n`withAnimation(config, frame, options)`, the consumer's engine config with\nthe functions merged into its `funcs` and `emitted`/`decided` chained over\nany the config already carries, so the functions and the hooks that report\nfor them cannot be wired apart, and a consumer's own hooks still hear\neverything they did.\n\nAlso from that review: `emitted` hands back a fragment no hold reaches\ninstead of copying on every emission; `drawn` returns the marked value, so\nthe five functions no longer each unpack and re-mark it, and `stepped` maps\nthe beat to its hex inside the animation; the docs and `TemplateFrame` say\nwhat `onHold` hears by the engine's rule — a decision, a writing function,\na throwing action — rather than decisions alone. The gate the review asked\nfor, that `src/` compiles against the lowest peer the range admits, is\nfiled as rich-unfiled-791c.25dh.\n"
+        },
+        {
+          "sha": "b4f0cba341ce6f38f54bb7a7a4bef78c092ba113",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-30T20:26:51-06:00",
+          "message": "A template's hold reaches the frame only through what it draws or decides (rich-animation-27tq.0gd)\n\n`tween`, `loop`, `stepped`, `frames` and `glyphs` no longer stamp cells or\ntell the frame themselves. Each marks its return with the hold it is in\n(`marked`, go-template-js 0.11.0's evaluation provenance), and\n`animationFuncs` returns, beside its functions, the two engine hooks the\nengine reports the marks through: `emitted` stamps every emitted fragment\nwith the holds of the animated values its action read; `decided` tells\n`TemplateFrame.onHold` of a mark an if/with/range consumed, whichever arm it\ntook. A value a template computes and never draws or decides on reports\nnothing, so a still bar never claims to move, and a hold is carried through\nevery variable, printf, comparison, sprig call and template invocation the\nvalue passes, where a stamp on the fragment was lost.\n\n`textFrameAt` is removed: its only callers were the two template functions.\n`AnimationFuncs` is the engine's own `EngineConfig` fields, so a hook's\nsignature is written once.\n\nThe peer range stays at ^0.10.0 in this commit: 0.11.0 is tagged and merged\nupstream but its npm publish failed for want of a Trusted Publisher, so the\nlockfile cannot follow yet. The bump and the lockfile land together once the\nregistry has it; until then the branch is built against a tarball packed from\nthe v0.11.0 tag.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a77b5abbf162c3d727a69933d1b160b6d14ff930",
