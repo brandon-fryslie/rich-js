@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-535",
-      "ref": "refs/pull/535/merge",
-      "sha": "ca0a8837ca92c2f05b9272138d1c59f35bf970a6",
-      "timestamp": "2026-11-02T00:03:33.090Z",
-      "commits": [
-        {
-          "sha": "ca0a8837ca92c2f05b9272138d1c59f35bf970a6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T00:01:53Z",
-          "message": "Merge 1f0ca528f6f07b875f5c2c9ba9b5bd9118e59426 into c8ae6eaac9af60ccc503b47619a5fd65c263e3d1\n"
-        },
-        {
-          "sha": "1f0ca528f6f07b875f5c2c9ba9b5bd9118e59426",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T17:01:42-07:00",
-          "message": "Syntax escapes what the wire withholds, and a soft hyphen costs nothing it cannot draw (rich-control-codes-xh4n.5do)\n\nSecond high review of #535. Code on show escapes withheld code points through the\none unicodeEscape Pretty uses. A run of marks is one break, a zero-cell piece takes\nno hyphen, and a piece's minimum is its own cells. edges counts a tab. hyphenated\nwalks a segment once, and replaceWithheld returns text it did not touch.\n"
-        },
-        {
-          "sha": "fda604e8f35117468649970e02ff692b72cea8da",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T14:32:42-07:00",
-          "message": "A row's tail and a word's ends are read from what is drawn, and Pretty shows what the wire withholds (rich-control-codes-xh4n.5do)\n\nMedium review of #535. drawnTail answers the tail once for hanging whitespace and\na filled line, in linear time, and leaves a mark on a space as content. A break\nneeds a glyph on both sides. Pretty escapes what a string would lose on the wire,\nand a value's own text is wired before it is laid out.\n"
-        },
-        {
-          "sha": "0d74461040020f9f468280a6d0596f69c5e8a5dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T14:15:02-07:00",
-          "message": "The hanging whitespace test renders the text itself, since print sets its own overflow and justify (rich-control-codes-xh4n.5do)\n"
-        },
-        {
-          "sha": "bc9d0f8eca6c397dde93c9a169fcde0dec047604",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T14:13:07-07:00",
-          "message": "A break, a measure and a document each read what is drawn (rich-control-codes-xh4n.5do)\n\nHigh review of #535. A run's start is no break, a mark with no text before it\nneither; a zero-width code point after a wrap's whitespace is not content; a\ntext's edge is the last thing drawn; a value's own separator lays out as an LF;\nJSON has one escape pass over the census; the two per-render fast paths return.\n"
-        },
-        {
-          "sha": "9091edcf9991a48f8261453e019c3ee9ef4272f2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T13:51:35-07:00",
-          "message": "Format characters keep their meaning in content, and their abuse is contained (rich-control-codes-xh4n.5do)\n\nThe census gains two dispositions. `line-break` turns U+2028 and U+2029 into an\nLF at the content boundary, code unit for code unit, so every reader of a Text\nfinds one line ending. `withheld` covers the soft hyphen, tag characters and\nvariation selectors: content keeps them, and `replaceWithheld` decides from their\nneighbours what reaches the wire. It runs in `sealed`, on text nothing cuts again,\nso a rule that reads context cannot move an offset. `cellLen` measures what it\nleaves, and a deletion keeps every cluster boundary the text had, so a cut stays\nexact.\n\nThe wrapper breaks where a word's own text says it may: after ZWSP, at a soft\nhyphen, which draws as `-` only at a break it took, and between the words of Thai,\nLao, Khmer and Burmese. U+FEFF stops counting as a space, which was JavaScript's\n`\\s` departing from Rich by accident. JSON escapes whatever content or the wire\nwould drop, so it parses back to its data.\n\nDepartures from Rich: a soft hyphen measures 0 rather than 1, and a U+2028 in a\nJSON string prints as an escape. docs/control-codes.md records each family and\nwhat tmux, Terminal.app, iTerm2 and xterm.js were measured doing.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c8ae6eaac9af60ccc503b47619a5fd65c263e3d1",
-      "timestamp": "2026-11-01T19:42:07.468Z",
+      "sha": "5fc4cdc868f19fcf180f26465efd67129bbf3d99",
+      "timestamp": "2026-11-02T00:18:43.748Z",
       "commits": [
         {
-          "sha": "c8ae6eaac9af60ccc503b47619a5fd65c263e3d1",
+          "sha": "5fc4cdc868f19fcf180f26465efd67129bbf3d99",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-01T12:39:54-07:00",
-          "message": "Bidi controls take effect inside the content that holds them, and right-to-left text reads correctly (rich-unfiled-791c.zzmy) (#534)\n\n* UAX #9 resolves a paragraph's levels and a line's visual order, proven on the UCD's conformance data (rich-unfiled-791c.zzmy)\n\n* Bidi controls take effect inside the content holding them, and a terminal's text order decides what reaches the wire (rich-unfiled-791c.zzmy)\n\n* Right-to-left text is proved on the wire, a real emulator and a browser, and documented (rich-unfiled-791c.zzmy)\n\n* Direction state ends where rendering ends it, on every path into a Text (rich-unfiled-791c.zzmy)\n\nHigh review of #534. A line is the paragraph, so advance stops resetting at\nU+2029, which paragraph resolves inside the line: an override that survived it\nwas invisible to closed. assemble's strings and tuples and Pretty's symbols,\nfunction names, opaque names and thrown messages all close now.\n\nA closer after a wrap's whitespace no longer reads as content, clusters are\nfound across a row's spans so a mark keeps its letter, a ZWJ inside a letter's\ncluster joins forward, and edgeStyle reports the cells drawn at the edge.\nNeovim and Vim terminals are plain. Openers are read off one pass over the\nline, so logical wrapping is linear again.\n\n* Long lines resolve, Markdown spans and tokens are their own content, and appends stay linear (rich-unfiled-791c.zzmy)\n\nMedium review of #534. A level run no longer spreads into a call, which threw\non a 200,000 character line holding one isolate. Each inline node of Markdown\nand each token closes what it left open, and inline code deletes the controls\na code block does. append remembers the text it closed, so a run of appends\nreads nothing twice. A row spliced into goes on from what it left open.\n\nplainOf has one home on Segment, and segmentToString says a row is encoded\nwhole.\n\n* Wrapped right-to-left rows start at their edge, and hostile nesting costs linear time (rich-unfiled-791c.zzmy)\n\nSecond high review of #534. A row a wrap closed loses its hanging whitespace\nbefore it is ordered, since L1 stood it at a right-to-left row's left edge.\nOpeners are read forward and a row reopens at most MAX_DEPTH of them, and an\nisolate count takes the scan out of an unmatched PDI. append carries the tail\nit has not closed, so alternating string and Text appends stay linear.\n\nPretty's non-string class name and JSON's undefined draw as they did on master.\nAn edge is a cell drawn, never a control.\n\nThe row-continuation map in sealed goes: it cost a stale-state bug for a case\nnobody reproduced, and containment does not need it. docs states the limit."
+          "timestamp": "2026-11-01T17:16:16-07:00",
+          "message": "Format characters keep their meaning in content, and their abuse is contained (rich-control-codes-xh4n.5do) (#535)\n\n* Format characters keep their meaning in content, and their abuse is contained (rich-control-codes-xh4n.5do)\n\nThe census gains two dispositions. `line-break` turns U+2028 and U+2029 into an\nLF at the content boundary, code unit for code unit, so every reader of a Text\nfinds one line ending. `withheld` covers the soft hyphen, tag characters and\nvariation selectors: content keeps them, and `replaceWithheld` decides from their\nneighbours what reaches the wire. It runs in `sealed`, on text nothing cuts again,\nso a rule that reads context cannot move an offset. `cellLen` measures what it\nleaves, and a deletion keeps every cluster boundary the text had, so a cut stays\nexact.\n\nThe wrapper breaks where a word's own text says it may: after ZWSP, at a soft\nhyphen, which draws as `-` only at a break it took, and between the words of Thai,\nLao, Khmer and Burmese. U+FEFF stops counting as a space, which was JavaScript's\n`\\s` departing from Rich by accident. JSON escapes whatever content or the wire\nwould drop, so it parses back to its data.\n\nDepartures from Rich: a soft hyphen measures 0 rather than 1, and a U+2028 in a\nJSON string prints as an escape. docs/control-codes.md records each family and\nwhat tmux, Terminal.app, iTerm2 and xterm.js were measured doing.\n\n* A break, a measure and a document each read what is drawn (rich-control-codes-xh4n.5do)\n\nHigh review of #535. A run's start is no break, a mark with no text before it\nneither; a zero-width code point after a wrap's whitespace is not content; a\ntext's edge is the last thing drawn; a value's own separator lays out as an LF;\nJSON has one escape pass over the census; the two per-render fast paths return.\n\n* The hanging whitespace test renders the text itself, since print sets its own overflow and justify (rich-control-codes-xh4n.5do)\n\n* A row's tail and a word's ends are read from what is drawn, and Pretty shows what the wire withholds (rich-control-codes-xh4n.5do)\n\nMedium review of #535. drawnTail answers the tail once for hanging whitespace and\na filled line, in linear time, and leaves a mark on a space as content. A break\nneeds a glyph on both sides. Pretty escapes what a string would lose on the wire,\nand a value's own text is wired before it is laid out.\n\n* Syntax escapes what the wire withholds, and a soft hyphen costs nothing it cannot draw (rich-control-codes-xh4n.5do)\n\nSecond high review of #535. Code on show escapes withheld code points through the\none unicodeEscape Pretty uses. A run of marks is one break, a zero-cell piece takes\nno hyphen, and a piece's minimum is its own cells. edges counts a tab. hyphenated\nwalks a segment once, and replaceWithheld returns text it did not touch."
         }
       ]
     }
