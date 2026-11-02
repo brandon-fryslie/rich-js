@@ -118,7 +118,7 @@ function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
  * @example
  * ```ts
  * const engine = createEngine({
- *   fromString: (s) => new RichText(s),
+ *   fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
  *   toString: (rt) => rt.plain,
  *   funcs: {
  *     ...richTextFuncs(),

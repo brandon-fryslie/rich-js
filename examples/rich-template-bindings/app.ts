@@ -60,7 +60,7 @@ import {
 import type { TerminalHost } from "@promptctl/rich-js/host";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
-  animationFuncs,
+  withAnimation,
   templateFrame, type TemplateFrame,
   richTextFuncs,
   createRichTextEngine,
@@ -90,6 +90,7 @@ import { makeAutoObservable } from "mobx";
 function makeEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
@@ -108,6 +109,7 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
 function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: {
       ...colorFuncs(),
@@ -126,6 +128,7 @@ function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
 function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
@@ -135,9 +138,12 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
   });
 }
 
-// The fourth shape: `animationFuncs(frame)` registers `frames`, `stepped`,
-// `tween`, `loop` and `glyphs`, which draw for a moment and say when what
-// they drew changes. The frame is the host's to hand in: a demo row notes
+// The fourth shape: `withAnimation(config, frame)` registers `frames`,
+// `stepped`, `tween`, `loop` and `glyphs`, which draw for a moment and say
+// when what they drew changes — through the two engine hooks it installs
+// beside them: `emitted` stamps the cells that depend on an animated value
+// with its hold, and `decided` tells the frame of one a decision read but
+// drew no cell for. The frame is the host's to hand in: a demo row notes
 // here the frame it is drawn in (`templateFrame`), the time and the reader's
 // preferences both, and every template it evaluates reads it — templates
 // compile once, so the frame is read when one is evaluated, never captured
@@ -145,15 +151,17 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
 let drawnIn: TemplateFrame = { time: 0 };
 
 function makeAnimatedEngine(theme: TerminalTheme): Engine<RichText> {
-  return createEngine<RichText>({
-    fromString: (s) => new RichText(s),
-    toString: (rt) => rt.plain,
-    funcs: {
-      ...richTextFuncs(),
-      ...paletteFuncs(() => theme.palette),
-      ...animationFuncs(() => drawnIn),
-    },
-  });
+  return createEngine<RichText>(
+    withAnimation(
+      {
+        fromString: (s) => new RichText(s),
+        isT: (v) => v instanceof RichText,
+        toString: (rt) => rt.plain,
+        funcs: { ...richTextFuncs(), ...paletteFuncs(() => theme.palette) },
+      },
+      () => drawnIn,
+    ),
+  );
 }
 
 const gruvboxEngine    = makeEngine(GRUVBOX);

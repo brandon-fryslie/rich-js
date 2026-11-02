@@ -155,10 +155,11 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs.map((s) => s.text).join("")).toBe("hi");
   });
 
-  it("renderTemplate reports a template that evaluates to something it cannot flatten as an [error: …] line", () => {
+  // Decided with go-template-js 0.12.0: `isT` admits only a RichText, so a plain
+  // object is a value the engine prints as Go does, not a template that failed.
+  it("renderTemplate prints a plain object as Go prints it, since the engine's isT admits only a RichText", () => {
     const segs = renderTemplate(createRichTextEngine(), `{{ .v }}`, { v: { a: 1 } });
-    expect(segs).toHaveLength(1);
-    expect(segs[0]!.text.startsWith("[error:")).toBe(true);
+    expect(segs.map((s) => s.text).join("")).toBe("map[a:1]");
   });
 
   it("renderTemplate hands the render every option it is given, as a renderable wrapping it forwards them", () => {

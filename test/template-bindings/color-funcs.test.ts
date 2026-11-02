@@ -27,6 +27,7 @@ const palette = GRUVBOX.palette;
 function engineFor(getPalette: () => typeof palette): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: { ...richTextFuncs(), ...paletteFuncs(getPalette) },
   });
@@ -173,6 +174,7 @@ describe("color math matches the underlying functions", () => {
     let depth = ColorDepth.TRUECOLOR;
     const drawnEngine = createEngine<RichText>({
       fromString: (s) => new RichText(s),
+      isT: (v) => v instanceof RichText,
       toString: (rt) => rt.plain,
       funcs: richTextFuncs(() => ({ depth })),
     });
@@ -196,6 +198,7 @@ describe("color math matches the underlying functions", () => {
     // calls the same pair readable.
     const engineFor = (drawnAt: DrawnAt) => createEngine<RichText>({
       fromString: (s) => new RichText(s),
+      isT: (v) => v instanceof RichText,
       toString: (rt) => rt.plain,
       funcs: { readableOn: readableOnFunc(() => drawnAt) },
     });

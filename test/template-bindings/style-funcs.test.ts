@@ -42,6 +42,7 @@ function evalOne(template: string): RichText {
 function makePaletteEngine(getPalette: () => Palette): Engine<RichText> {
   return createEngine<RichText>({
     fromString: (s) => new RichText(s),
+    isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: { ...richTextFuncs(), ...paletteFuncs(getPalette) },
   });
