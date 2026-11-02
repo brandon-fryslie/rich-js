@@ -5,18 +5,19 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 
 const PLAIN = { width: 40, colorSystem: null, hyperlinks: false } as const;
-const STAND_IN = "�";
+const STAND_IN = "\u2426";
 
 /** Every C1 control, the use it keeps, and the characters `a<code>b` is written as. */
-const C1: readonly (readonly [code: number, use: string, written: string])[] = Array.from({ length: 0x20 }, (_, at) => {
+const C1: readonly (readonly [label: string, code: number, use: string, written: string])[] = Array.from({ length: 0x20 }, (_, at) => {
   const code = 0x80 + at;
+  const label = code.toString(16).toUpperCase().padStart(4, "0");
   return code === 0x85
-    ? [code, "NEL ends a line, as CR, LF and CRLF do", "a\nb"]
-    : [code, "none in text: a terminal may read it as a directive", `a${STAND_IN}b`];
+    ? [label, code, "NEL ends a line, as CR, LF and CRLF do", "a\nb"]
+    : [label, code, "none in text: a terminal may read it as a directive", `a${STAND_IN}b`];
 });
 
 describe("each C1 control in content", () => {
-  it.each(C1)("U+%s keeps its use: %s", (code, _use, bytes) => {
+  it.each(C1)("U+%s keeps its use: %s", (_label, code, _use, bytes) => {
     expect(renderToString(new RichText(`a${String.fromCharCode(code)}b`, { end: "" }), PLAIN)).toBe(bytes);
   });
 

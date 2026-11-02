@@ -15,8 +15,8 @@
 /**
  * What `RichText` does with a code point. `strip` deletes it from content. `keep`
  * holds it as a character. `line-break` is a line ending, so content holds an LF
- * in its place. `pictured` means nothing inside a span, so content holds its
- * Control Pictures symbol in its place and the reader sees something was there.
+ * in its place. `pictured` means nothing inside a span, so content holds the
+ * stand-in `pictureOf` gives in its place and the reader sees something was there.
  * `withheld` is held in content and measured as nothing, and `wireText` decides
  * from its neighbours whether it is written.
  *
@@ -134,11 +134,16 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
 /**
  * What content shows for a `pictured` code point: its Control Pictures symbol,
  * U+2400 up and U+2421 for DEL, or for a C1 control, which Unicode gives no
- * picture, U+FFFD. Always one code unit, so offsets hold.
+ * picture, U+2426 SYMBOL FOR SUBSTITUTE. Each is one code unit, so offsets hold,
+ * and one cell under every East Asian width setting, which U+FFFD is not; U+2426
+ * also stays apart from a real decoding error. A code point outside those ranges
+ * has no stand-in, so a new `pictured` row fails here until it is given one.
  */
 export function pictureOf(codePoint: number): string {
-  if (codePoint >= 0x80) return "�";
-  return String.fromCharCode(codePoint === 0x7f ? 0x2421 : 0x2400 + codePoint);
+  if (codePoint <= 0x1f) return String.fromCharCode(0x2400 + codePoint);
+  if (codePoint === 0x7f) return "\u2421";
+  if (codePoint >= 0x80 && codePoint <= 0x9f) return "\u2426";
+  throw new RangeError(`U+${codePoint.toString(16).padStart(4, "0")} has no picture`);
 }
 
 /** A regular expression class of the code points in rows `chosen` picks, for `u`. */

@@ -5,7 +5,7 @@ Japanese glyph variant, a break hint in Thai, or an invisible payload someone
 planted. `RichText` keeps every one of these that has a use, makes it do its job,
 and stops the rest from reaching the terminal.
 
-Two stages decide. Content deletes what no text may hold and shows a picture of
+Two stages decide. Content deletes what no text may hold and shows a stand-in for
 what means nothing in it, one code point at a time. The wire then decides what
 depends on its neighbours, when a line is written, and it writes no control at all:
 a raw `Segment`, a widget's label and a `print`'s `end` go through it as content
@@ -54,14 +54,15 @@ A renderable that yields bytes already holding escapes, or a `print` whose `end`
 | Code points | The use it keeps | In content |
 |---|---|---|
 | NEL U+0085 | A line ending, which Unicode treats as CR, LF and CRLF are treated | An LF |
-| U+0080–U+0084, U+0086–U+009F | None in text | `�` |
+| U+0080–U+0084, U+0086–U+009F | None in text | `␦` |
 
 VTE, WezTerm, xterm.js and GNU screen act on a C1 control even when it arrives
 UTF-8 encoded: U+009B starts a control sequence, and U+0090, U+0098, U+009D,
 U+009E and U+009F hide everything up to a string terminator. xterm, kitty,
 Alacritty, foot, Ghostty and Windows Terminal ignore them by default. Unicode has
-no pictures for C1, so each one shows as the replacement character, which is one
-cell and one code unit like the C0 pictures.
+no pictures for C1, so each one shows as U+2426, the symbol for a substituted
+character: one cell and one code unit like the C0 pictures, and never mistaken
+for the replacement character a decoding error leaves.
 
 A C1 control in text is often a Windows-1252 byte decoded as Latin-1: `\x85` was
 meant as `…`. Telling that from a planted sequence takes the whole string, so
