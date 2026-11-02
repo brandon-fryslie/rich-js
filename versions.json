@@ -4,15 +4,22 @@
     {
       "version": "pr-521",
       "ref": "refs/pull/521/merge",
-      "sha": "236ce6fb95b409e0fe701379fd3f2e92655bf9e6",
-      "timestamp": "2026-11-02T20:14:19.286Z",
+      "sha": "27bb067f319a0826a2966bd84f7e692480d5420a",
+      "timestamp": "2026-11-02T20:25:58.641Z",
       "commits": [
         {
-          "sha": "236ce6fb95b409e0fe701379fd3f2e92655bf9e6",
+          "sha": "27bb067f319a0826a2966bd84f7e692480d5420a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T20:11:59Z",
-          "message": "Merge 33f4241f3ed99fa2be6d32aec90c87f7501f9e60 into a77b5abbf162c3d727a69933d1b160b6d14ff930\n"
+          "timestamp": "2026-11-02T20:23:44Z",
+          "message": "Merge 7b2b6b2ae6b41fe7049b5d22724299704c89a6c8 into a77b5abbf162c3d727a69933d1b160b6d14ff930\n"
+        },
+        {
+          "sha": "7b2b6b2ae6b41fe7049b5d22724299704c89a6c8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T13:23:21-07:00",
+          "message": "A throwing decided hook still tells the frame its holds, and isT sits on its own line (rich-animation-27tq.0gd)\n\nReview of 33f4241f3 found the frame was not told when a consumer's decided hook threw. The told call now runs in finally. isT moves onto its own line in the multi-line configs, and the smoke test records why a plain object prints instead of erroring.\n"
         },
         {
           "sha": "33f4241f3ed99fa2be6d32aec90c87f7501f9e60",
