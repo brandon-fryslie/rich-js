@@ -123,7 +123,7 @@
     "@codemirror/view": "^6.43.13",
     "@lezer/highlight": "^1.2.5",
     "@playwright/test": "^1.63.0",
-    "@promptctl/go-template-js": "0.10.0",
+    "@promptctl/go-template-js": "0.12.0",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.5.1",
     "@types/semver": "^7.8.0",
@@ -141,7 +141,7 @@
     "vitest": "^5.0.0"
   },
   "peerDependencies": {
-    "@promptctl/go-template-js": "^0.10.0",
+    "@promptctl/go-template-js": "^0.12.0",
     "mobx": "^7.0.3"
   },
   "peerDependenciesMeta": {

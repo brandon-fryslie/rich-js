@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createEngine, marked, sprigConversions, sprigLists, sprigMath, type Engine, type FuncMap } from "@promptctl/go-template-js";
+import { createEngine, marked, sprigConversions, sprigLists, sprigMath, type Engine, type EngineConfig, type FuncMap } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
 import { Style, type Hold } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
@@ -25,7 +25,7 @@ const COLORS = ["red", "green", "blue"];
 
 /** An engine whose templates draw for `clock.t`, which a test moves by hand. */
 function engineAt(clock: { t: number }): Engine<RichText> {
-  return createEngine<RichText>(withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: clock.t })));
+  return createEngine<RichText>(withAnimation({ fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText, toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: clock.t })));
 }
 
 const TEMPLATE = `{{ frames 1 (fg "red" "${CHEVRONS[0]}") 1 (fg "green" "${CHEVRONS[1]}") 1 (fg "blue" "${CHEVRONS[2]}") }}`;
@@ -163,7 +163,7 @@ function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, opt
   return createEngine<RichText>(
     withAnimation(
       {
-        fromString: (s) => new RichText(s),
+        fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
         toString: (rt) => rt.plain,
         funcs: {
           ...sprigMath(),
@@ -425,7 +425,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
 
   it("a config that already has one of the five names is refused, not silently replaced", () => {
     const own = { loop: { fn: () => 0, argTypes: [], arity: { kind: "exact" }, returnType: "float" } } satisfies FuncMap;
-    const config = { fromString: (s: string) => new RichText(s), toString: (rt: RichText) => rt.plain };
+    const config: EngineConfig<RichText> = { fromString: (s) => new RichText(s), toString: (rt) => rt.plain, isT: (v) => v instanceof RichText };
     expect(() => withAnimation({ ...config, funcs: own }, () => ({ time: 0 }))).toThrow(/^withAnimation registers loop, already in config\.funcs$/);
     expect(() => withAnimation(withAnimation(config, () => ({ time: 0 })), () => ({ time: 0 }))).toThrow(/frames, stepped, tween, loop, glyphs/);
   });
@@ -439,7 +439,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
     const engine = createEngine<RichText>(
       withAnimation(
         {
-          fromString: (s) => new RichText(s),
+          fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
           toString: (rt) => rt.plain,
           funcs: richTextFuncs(),
           emitted: (fragment) => {
@@ -465,7 +465,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
 // a reduced-motion host never ticks for a template's loop.
 describe("a template drawn in a frame is drawn as the frame says", () => {
   let drawnIn: TemplateFrame = { time: 0 };
-  const engine = createEngine<RichText>(withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => drawnIn));
+  const engine = createEngine<RichText>(withAnimation({ fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText, toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => drawnIn));
   const templated = (source: string): Renderable => ({
     render: (options) => {
       drawnIn = templateFrame(options);

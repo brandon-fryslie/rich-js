@@ -41,7 +41,7 @@ function evalOne(template: string): RichText {
 /** Build an engine whose `color` resolves against a caller-controlled palette. */
 function makePaletteEngine(getPalette: () => Palette): Engine<RichText> {
   return createEngine<RichText>({
-    fromString: (s) => new RichText(s),
+    fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: { ...richTextFuncs(), ...paletteFuncs(getPalette) },
   });

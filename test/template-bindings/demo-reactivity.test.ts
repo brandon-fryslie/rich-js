@@ -78,7 +78,7 @@ function makeReactiveOutput(input: TextInput, engine: Engine<RichText>): StaticI
 
 function makeEngine(): Engine<RichText> {
   return createEngine<RichText>({
-    fromString: (s) => new RichText(s),
+    fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText,
     toString: (rt) => rt.plain,
     funcs: richTextFuncs(),
   });

@@ -227,7 +227,7 @@ describe("what a host reads off a frame: when it next changes", () => {
   it("a template's frames say when they turn, read off what was drawn", () => {
     let frameTime = 0;
     const engine = createEngine<RichText>(
-      withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
+      withAnimation({ fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText, toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
     );
     const gauge = engine.compile(`{{ "effort " }}{{ frames 0.25 "›" 0.25 "››" 0.25 "›››" }}{{ " max" }}`);
     const still = engine.compile(`{{ "effort " }}{{ "›››" }}`);

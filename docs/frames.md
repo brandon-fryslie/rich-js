@@ -113,7 +113,7 @@ import { richTextFuncs, withAnimation } from "@promptctl/rich-js/template-bindin
 
 let frameTime = 0;
 const engine = createEngine<RichText>(
-  withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
+  withAnimation({ fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText, toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
 );
 
 const gauge = engine.compile(`{{ "effort " | dim }}{{ frames 1 ("›" | fg "green") 1 ("››" | fg "yellow") 1 ("›››" | fg "red") }}{{ " max" | dim }}`);
@@ -134,7 +134,7 @@ import { richTextFuncs, withAnimation } from "@promptctl/rich-js/template-bindin
 
 let frameTime = 0;
 const engine = createEngine<RichText>(
-  withAnimation({ fromString: (s) => new RichText(s), toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
+  withAnimation({ fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText, toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: frameTime })),
 );
 
 const gauge = engine.compile(`{{- $bg := "#313244" -}}
