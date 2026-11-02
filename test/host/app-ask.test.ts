@@ -214,7 +214,62 @@ describe("a reply or Alt on a split host", () => {
     expect(keys).toEqual([]);
     clock.advance(0.2);
     expect((await ask).ended).toBe("timeout");
+    expect(keys).toEqual([]);
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS + 1);
     expect(keys).toEqual(["escape"]);
+  });
+
+  it("reads Escape then P typed as two chunks during an ask as two keys", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b");
+    host.type("P");
+    host.type(DA1_REPLY);
+    expect((await ask).ended).toBe("answered");
+    expect(keys).toEqual(["escape", "P"]);
+  });
+
+  it("gives a reply straddling the ask's timeout the whole escape delay", async () => {
+    const { host, app, clock, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"], { timeout: 0.2 });
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b]11;rgb:00");
+    clock.advance(0.2);
+    expect((await ask).ended).toBe("timeout");
+    host.type("00/0000/0000\x1b\\");
+    expect(keys).toEqual([]);
+  });
+
+  it("settles what an ask held when a suspend ends it, apart from the keys after", async () => {
+    const { host, app, keys } = started();
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    vi.useFakeTimers();
+    host.type("\x1b]1");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS * 3);
+    const suspended = app.suspend();
+    expect((await ask).ended).toBe("left");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS + 1);
+    expect(keys).toEqual(["meta+]", "1"]);
+    host.resume();
+    await suspended;
+    host.type("a");
+    expect(keys).toEqual(["meta+]", "1", "a"]);
+  });
+});
+
+describe("a reply or Alt on a whole-keys host", () => {
+  it("reads ESC ] alone in a chunk as Alt+] whether or not an ask is in flight", async () => {
+    const { host, app, keys } = started({ ...scriptedHost(), inputChunks: "whole-keys" });
+    host.type("\x1b]x");
+    const ask = app.ask(["\x1b]11;?\x1b\\"]);
+    await asked();
+    host.type("\x1b]x");
+    host.type(DA1_REPLY);
+    await ask;
+    expect(keys).toEqual(["meta+]", "x", "meta+]", "x"]);
   });
 });
 

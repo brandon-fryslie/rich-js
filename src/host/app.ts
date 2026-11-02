@@ -287,14 +287,15 @@ export class App implements FrameHost {
       const timer = this._clock.at(this._clock.now() + timeout, () => {
         this.owedDa1++;
         asking.finish("timeout");
-        // What the parser held for this ask's replies is keys after all.
-        this.input.flush();
       });
       const asking: Asking = {
         replies,
         finish: (ended) => {
           timer();
           this.asking = null;
+          // [LAW:single-enforcer] Every way an ask ends goes through here, so
+          // what the parser held for its replies is settled on every one.
+          this.input.replyWaitEnded();
           resolve({ ended, replies });
         },
       };
