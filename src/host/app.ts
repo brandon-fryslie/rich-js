@@ -261,6 +261,7 @@ export class App implements FrameHost {
   ask(queries: readonly string[], options: AskOptions = {}): Promise<Asked> {
     if (this._phase !== "running") throw new Error(`App.ask: only a running app asks its terminal, and this one is ${this._phase}`);
     const timeout = options.timeout ?? DEFAULT_ASK_TIMEOUT;
+    if (!(timeout > 0 && Number.isFinite(timeout))) throw new RangeError(`App.ask: a timeout is a positive, finite number of seconds, not ${timeout}`);
     const turn = this.asked.then(() => this.askNow(queries, timeout));
     // One ask's failure is its caller's; the asks queued after it still run.
     this.asked = turn.catch(() => undefined);
@@ -271,6 +272,9 @@ export class App implements FrameHost {
     return new Promise((resolve) => {
       if (this._phase !== "running") return resolve({ ended: "left", replies: [] });
       if (!this.host.writesToTerminal) return resolve({ ended: "unasked", replies: [] });
+      // Written before the ask takes the input, so a write that throws leaves
+      // no ask in flight and no timer armed.
+      this.host.write(queries.join("") + DA1);
       const replies: TerminalReply[] = [];
       const timer = this._clock.at(this._clock.now() + timeout, () => {
         this.owedDa1++;
@@ -285,7 +289,6 @@ export class App implements FrameHost {
         },
       };
       this.asking = asking;
-      this.host.write(queries.join("") + DA1);
     });
   }
 

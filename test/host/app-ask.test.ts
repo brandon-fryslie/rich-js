@@ -110,17 +110,23 @@ describe("App.ask", () => {
 
   it("still asks after an ask whose write threw", async () => {
     const host = scriptedHost();
-    const { app } = started(host);
+    const { app, clock } = started(host);
     const write = host.write.bind(host);
     host.write = () => {
       throw new Error("closed");
     };
-    await expect(app.ask(["A"])).rejects.toThrow("closed");
+    await expect(app.ask(["A"], { timeout: 0.1 })).rejects.toThrow("closed");
     host.write = write;
-    const second = app.ask(["B"]);
+    const second = app.ask(["\x1b]11;?\x1b\\"]);
     await asked();
-    host.type(DA1_REPLY);
-    expect((await second).ended).toBe("answered");
+    clock.advance(0.1);
+    host.type("\x1b]11;rgb:0/0/0\x1b\\" + DA1_REPLY);
+    expect(await second).toEqual({ ended: "answered", replies: [{ kind: "osc", body: "11;rgb:0/0/0" }] });
+  });
+
+  it("refuses a timeout that is not a positive, finite number of seconds", () => {
+    const { app } = started();
+    for (const timeout of [0, -1, Number.NaN, Infinity]) expect(() => app.ask([], { timeout })).toThrow(RangeError);
   });
 
   it("hears a reply split across reads, BEL-terminated, as one reply", async () => {
