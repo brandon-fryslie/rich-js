@@ -217,7 +217,7 @@ export class App implements FrameHost {
   constructor(options: AppOptions) {
     this.host = options.host;
     this.input = new InputParser(
-      { key: (press) => this.key(press), mouse: (event) => this.mouse(event), reply: (reply) => this.reply(reply) },
+      { key: (press) => this.key(press), mouse: (event) => this.mouse(event), reply: (reply) => this.reply(reply), awaitingReply: () => this.asking !== null },
       options.host.inputChunks,
     );
     this.surface = options.surface;
@@ -287,6 +287,8 @@ export class App implements FrameHost {
       const timer = this._clock.at(this._clock.now() + timeout, () => {
         this.owedDa1++;
         asking.finish("timeout");
+        // What the parser held for this ask's replies is keys after all.
+        this.input.flush();
       });
       const asking: Asking = {
         replies,

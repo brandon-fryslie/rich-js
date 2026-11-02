@@ -311,6 +311,7 @@ describe("EventRouter — key parsing", () => {
       },
       mouse: () => {},
       reply: () => {},
+      awaitingReply: () => false,
     }, "split");
     parser.feed("\x1b");
     parser.feed("a\x1b");
@@ -327,6 +328,7 @@ describe("EventRouter — key parsing", () => {
       },
       mouse: () => {},
       reply: () => {},
+      awaitingReply: () => false,
     }, "split");
     parser.feed("\x1b");
     expect(() => parser.feed("ab")).toThrow("handler");
@@ -369,6 +371,7 @@ describe("InputParser on a split host", () => {
       },
       mouse: () => {},
       reply: () => {},
+      awaitingReply: () => false,
     }, "split");
     return { keys, parser };
   }
@@ -496,6 +499,7 @@ describe("InputParser on a whole-keys host", () => {
       },
       mouse: () => {},
       reply: () => {},
+      awaitingReply: () => false,
     }, "whole-keys");
     return { keys, parser };
   }

@@ -29,6 +29,12 @@
  * lone ESC is also settled early by a next chunk that opens with anything but
  * `[` or `O`, because a busy worker can queue the next key behind it.
  * `flush()` settles the hold synchronously.
+ *
+ * `ESC ]`, `ESC P` and `ESC _` open the control strings a terminal replies
+ * in, and are also Alt+], Alt+P and Alt+_. The sink says whether an ask is
+ * awaiting a reply (`InputSink.awaitingReply`): only then is an unterminated
+ * one held, past the escape delay until the sink flushes; otherwise it is Alt
+ * on its key at once. A terminated one is a reply either way.
  */
 
 import type { InputChunks } from "./terminal-host.js";
@@ -104,6 +110,13 @@ export interface InputSink {
   key(press: KeyPress): void;
   mouse(event: ScreenMouseEvent): void;
   reply(reply: TerminalReply): void;
+  /**
+   * Whether an ask is waiting for the terminal's replies. Only then does an
+   * unfinished `ESC ]`, `ESC P` or `ESC _` open a reply still arriving; with
+   * none awaited it is Alt on that key. The sink owns when this ends, and
+   * settles what the parser held for it with `flush()`.
+   */
+  awaitingReply(): boolean;
 }
 
 // Single-byte → key name table for the trivial cases.
@@ -300,7 +313,9 @@ export class InputParser {
     // Any other next chunk means Escape was its own key, even when the hold
     // timer has not run yet: a busy worker can queue the next key ahead of it,
     // and joining them would read Escape then G as Alt+G (rich-host-input-0c4f).
-    const escaped = this.holdingEscape() && next.length > 0 && next[0] !== LBRACKET && next[0] !== O_BYTE;
+    // While a reply is awaited, a next chunk opening one of its control strings
+    // continues it too: a reply split right after its ESC.
+    const escaped = this.holdingEscape() && next.length > 0 && !this.continuesEscape(next[0]!);
     this.cancelEscape();
     // The buffer is settled before the sink hears Escape, so a sink that
     // resets the parser on it (an app stopping) leaves nothing to drain.
@@ -328,12 +343,20 @@ export class InputParser {
   // timer before it reads input queued behind a long frame, so the delay's end
   // settles the hold only after one more turn of the event loop has read what
   // was waiting. The parser holds one timer, so arming it replaces any other.
+  // While a reply is awaited the delay settles nothing: a reply split over a
+  // slow link may take longer than it, and the sink ends the wait by `flush()`.
   private hold(): void {
     this.cancelEscape();
     if (this.buffer[0] !== ESC) return;
     this.escTimer = setTimeout(() => {
-      this.escTimer = setTimeout(() => this.flush(), 0);
+      this.escTimer = setTimeout(() => {
+        if (!this.sink.awaitingReply()) this.flush();
+      }, 0);
     }, ESCAPE_DELAY_MS);
+  }
+
+  private continuesEscape(byte: number): boolean {
+    return byte === LBRACKET || byte === O_BYTE || (STRING_REPLIES[byte] !== undefined && this.sink.awaitingReply());
   }
 
   // A whole-key chunk has ended, so an ESC still at the buffer head opens no
@@ -466,7 +489,13 @@ export class InputParser {
     // ESC [ ... → CSI
     if (b1 === LBRACKET) return this.consumeCSI(buf);
     const string = STRING_REPLIES[b1];
-    if (string !== undefined) return consumeString(buf, string);
+    if (string !== undefined) {
+      const result = consumeString(buf, string);
+      // Unterminated with no reply awaited, it was never a reply: Alt on its
+      // key, and what followed is read on its own.
+      if (result.kind !== "reply" && !this.sink.awaitingReply()) return { kind: "key", bytes: 2, event: altKey(b1) };
+      return result;
+    }
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
     if (b1 === ESC) {
@@ -650,9 +679,10 @@ function decodeMouseFromCb(
 }
 
 // A control string runs to its terminator, ST (`ESC \\`) or BEL, and holds
-// any byte but ESC before it. Unterminated, it is unfinished, and the hold
-// that settles every unfinished sequence reads `ESC ]` alone as Alt+]; an ESC
-// that is not ST ends it before it closed, and it is read as the keys it holds.
+// any byte but ESC before it. Terminated, it is a reply whether or not one was
+// awaited. Unterminated, it is unfinished, and `consumeEscape` decides by
+// whether a reply is awaited if that means held or Alt on its key; an ESC that
+// is not ST ends it before it closed, and it is read as the keys it holds.
 function consumeString(buf: Uint8Array, kind: TerminalReply["kind"]): ConsumeResult {
   for (let i = 2; i < buf.length; i++) {
     const b = buf[i]!;

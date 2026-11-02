@@ -14,5 +14,6 @@ export function parserFor(router: EventRouter): InputParser {
       if (event.type !== "scroll_up" && event.type !== "scroll_down") router.mouse(event);
     },
     reply: () => {},
+    awaitingReply: () => false,
   }, "split");
 }
