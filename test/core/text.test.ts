@@ -141,23 +141,6 @@ describe("RichText construction", () => {
     expect(t.length).toBe(0);
   });
 
-  it("strips control characters except tab and newline", () => {
-    const t = new RichText("hello\x00\x01world\t\n");
-    expect(t.plain).toBe("helloworld\t\n");
-  });
-
-  it("strips Rich's STRIP_CONTROL_CODES, and every other C0 control and DEL as the port's extension", () => {
-    // rich/control.py: BEL, BS, VT, FF, CR.
-    const RICH_STRIPS = [7, 8, 11, 12, 13];
-    // Port extension: the rest of C0 (ESC among them) and DEL, so content
-    // cannot write an escape sequence.
-    const PORT_STRIPS = [0, 1, 2, 3, 4, 5, 6, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 127];
-    const stripped = new Set([...RICH_STRIPS, ...PORT_STRIPS]);
-    const codes = Array.from({ length: 128 }, (_, code) => code);
-    const kept = (code: number): boolean => new RichText(`a${String.fromCharCode(code)}b`).plain.length === 3;
-    expect(codes.filter((code) => !kept(code))).toEqual(codes.filter((code) => stripped.has(code)));
-  });
-
   it("strips the C1 controls and the deprecated switches, and holds every bidi control", () => {
     const kept = (code: number): boolean => new RichText(`a${String.fromCodePoint(code)}b`).plain.length === 3;
     const range = (from: number, to: number): number[] => Array.from({ length: to - from + 1 }, (_, i) => from + i);

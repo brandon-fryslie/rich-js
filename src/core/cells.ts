@@ -3,7 +3,7 @@
  */
 
 import { codePointWidth, widensToEmoji } from "./cell-widths.js";
-import { controlClass, dispositionOf, SUBDIVISION_FLAG, type Disposition } from "./control-codes.js";
+import { controlClass, dispositionOf, SUBDIVISION_FLAG } from "./control-codes.js";
 import { Memo } from "./memo.js";
 import { pattern } from "./pattern.js";
 
@@ -27,14 +27,12 @@ function dispositionCells(codePoint: number): 0 | 1 | 2 {
     case "strip": return 0;
     case "keep": return codePointWidth(codePoint);
     case "line-break": return 0;
+    case "pictured": return 0;
     case "withheld": return 0;
   }
 }
 
-// Exhaustive, so a new `Disposition` does not compile until it says whether the
-// wire may be denied it. `strip` is content's rule, and a raw `Segment` is not content.
-const OFF_THE_WIRE: Readonly<Record<Disposition, boolean>> = { strip: false, keep: false, "line-break": true, withheld: true };
-const WITHHELD = pattern(new RegExp(controlClass((disposition) => OFF_THE_WIRE[disposition]), "u"));
+const WITHHELD = pattern(new RegExp(controlClass((disposition) => disposition !== "keep"), "u"));
 const SELECTOR = pattern(/\p{Variation_Selector}/u);
 
 /**
@@ -49,7 +47,7 @@ function selectsAGlyph(text: string, index: number): boolean {
 
 /**
  * `text` with each code point the wire may not hold given by `replacement`, one
- * at a time. A line separator and a soft hyphen never are;
+ * at a time. A control, a line separator and a soft hyphen never are;
  * a tag only in a subdivision flag, since elsewhere it is text no reader sees; a
  * variation selector only directly on a glyph, so what can hide behind one glyph
  * is one selector, and what can hide in a text is one per glyph. That last is not

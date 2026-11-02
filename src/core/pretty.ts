@@ -742,7 +742,7 @@ const BARE_KEY = pattern(/^(?![^]*\p{Default_Ignorable_Code_Point})(?:[\p{ID_Sta
 /**
  * What Python's `str.isprintable` refuses \u2014 control, format, private-use,
  * unassigned, and every separator but the space \u2014 which Rich's repr escapes
- * and JSON.stringify leaves raw past C0. Raw, DEL vanishes in `RichText`, a C1
+ * and JSON.stringify leaves raw past C0. Raw, DEL is a picture in `RichText`, a C1
  * byte reaches the terminal as a control, and a format character hides or
  * reorders what is around it.
  */

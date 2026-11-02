@@ -740,6 +740,16 @@ export class Console {
     this._lastLogTime.set(stamped);
   }
 
+  /**
+   * Sounds the terminal's bell, Rich's `Console.bell`, for whoever is at it: a
+   * pipe, a dumb terminal and a capture get nothing. It goes straight to the sink
+   * because a bell moves no cursor, and a live region would repaint its frame.
+   */
+  bell(): void {
+    refuseRenderWrite(this._madeIn);
+    if (this._interactive && this._capture.get() === null) this.file.write("\x07");
+  }
+
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of
   // it. `console.ts` used to declare its own copy and field-by-field forward
   // into this constructor, which made a second map of one shape — identical

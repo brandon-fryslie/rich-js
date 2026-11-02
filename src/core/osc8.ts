@@ -6,7 +6,7 @@
  * every link reaches the wire through) opens a link with `osc8Open` and closes
  * it with `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
  * test extracting URLs) matches them with `OSC8`; the data-model boundary
- * (RichText) cleans URLs with `stripOscTerminators`. All four read the one
+ * (RichText) cleans URLs with `stripUrlControls`. All four read the one
  * terminator set below, so the bytes a sanitizer removes and the bytes a
  * reader stops at cannot disagree.
  *
@@ -40,9 +40,13 @@ import { pattern } from "./pattern.js";
  */
 const TERMINATORS = "\\x1b\\x07\\x9c";
 
-/** Remove every byte that could break a URL out of its OSC 8 wrap. */
-export function stripOscTerminators(url: string): string {
-  return url.replace(new RegExp(`[${TERMINATORS}]`, "g"), "");
+/**
+ * `url` without a C0 control, DEL or a C1 control. RFC 3986 admits none of them:
+ * ESC, BEL and ST end the wrap, CAN and SUB abort it, and U+009B opens a sequence
+ * inside it. `sealed` reads a segment's text, so this is the one rule for a link.
+ */
+export function stripUrlControls(url: string): string {
+  return url.replace(/[\x00-\x1f\x7f-\x9f]/g, "");
 }
 
 /**
@@ -54,7 +58,7 @@ export function stripOscTerminators(url: string): string {
  * built directly with `new Style({ link })` reaches here unsanitized).
  */
 export function osc8Open(url: string): string {
-  const clean = stripOscTerminators(url);
+  const clean = stripUrlControls(url);
   // Hex digits are a legal `id=` value: no `:` or `;`.
   return `\x1b]8;id=${fnv1a(clean)};${clean}\x1b\\`;
 }

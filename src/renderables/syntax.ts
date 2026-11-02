@@ -11,7 +11,7 @@
 import { withoutExplicit } from "../core/bidi.js";
 import { cellLen, expandTabs, parseTabSize, replaceWithheld, unicodeEscape } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
-import { RichText, sanitized } from "../core/text.js";
+import { RichText, stripControlChars } from "../core/text.js";
 import {
   drawable,
   groundedStyle,
@@ -128,8 +128,9 @@ export class Syntax implements Renderable, Measurable {
     const tabSize = parseTabSize(options?.tabSize ?? 4);
     this.tabSize = tabSize;
     // Code on show: what the wire would drop is escaped, or the screen shows an
-    // identifier the source does not hold.
-    this._lines = expandTabs(replaceWithheld(sanitized(code), unicodeEscape), tabSize).text.split("\n");
+    // identifier the source does not hold. A form feed goes with them, so a line
+    // number stays the one an editor shows.
+    this._lines = expandTabs(replaceWithheld(stripControlChars(code), unicodeEscape), tabSize).text.split("\n");
   }
 
   /**

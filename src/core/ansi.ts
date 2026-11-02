@@ -30,15 +30,21 @@
  * is usually `\r\x1b[K` and the old text must not show through a shorter new
  * one.
  *
+ * Backspace is the third. Rich drops it; here it is nroff's overstrike, the
+ * adjacent `x BS x` bold and `_ BS x` underline that `man` writes, and a bare one
+ * moves back a column, so `12%\b\b\b13%` is the redraw it looks like.
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
- * than refused, and every other escape is dropped. It is not a terminal
- * emulator — any other cursor movement is dropped, not performed.
+ * than refused, and every other escape is dropped, with every control a terminal
+ * draws nothing for. It is not a terminal emulator — any other cursor movement is
+ * dropped, not performed.
  *
  * Tier 5 of `src/core/`: it builds `RichText`, so it sits above `text`, and
  * `RichText` cannot offer a `fromAnsi` static without importing upward.
  */
 
 import { ColorSpec } from "./color.js";
+import { controlClass } from "./control-codes.js";
 import { osc8Sequences } from "./osc8.js";
 import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
 import type { StyleOptions } from "./style.js";
@@ -49,11 +55,16 @@ type Token =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
+  | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
   | { readonly kind: "return" }
+  | { readonly kind: "backspace" }
   | { readonly kind: "erase"; readonly mode: EraseMode };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
 type EraseMode = "0" | "1" | "2";
+
+const BOLD = new Style({ bold: true });
+const UNDERLINED = new Style({ underline: true });
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
@@ -62,11 +73,19 @@ type EraseMode = "0" | "1" | "2";
  * erase in line (group 2, its mode); any other CSI sequence; any other string
  * escape — OSC, DCS, APC, PM, SOS — run to the terminators OSC 8 accepts or
  * cut off by the end of the line; any other escape, ECMA-48's intermediates
- * and one final byte (`\x1b(B`, `\x1b)0`, `\x1b#8`, `\x1bc`). Only the first
- * three become tokens.
+ * and one final byte (`\x1b(B`, `\x1b)0`, `\x1b#8`, `\x1bc`); a character struck
+ * over itself (group 4), over an underscore first or not (group 3); a character
+ * struck over an underscore alone (group 5); a backspace; and every control a
+ * line may not hold or a terminal draws nothing for. The silent ones are the two
+ * "any other" escapes and that last class.
  */
-const escapes = (): RegExp =>
-  /\r|\x1b\[([0-9;:]*)m|\x1b\[([012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
+const ESCAPES = [
+  String.raw`\r|\x1b\[([0-9;:]*)m|\x1b\[([012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]`,
+  String.raw`(_\x08)?(\P{Cc})(?:\x08\4)+|_\x08(\P{Cc})|\x08`,
+  controlClass((disposition) => disposition === "pictured" || disposition === "line-break"),
+].join("|");
+
+const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -75,6 +94,9 @@ function* escapeTokens(bytes: string): Generator<Token> {
     if (match[0] === "\r") yield { kind: "return" };
     if (match[1] !== undefined) yield { kind: "sgr", params: match[1] };
     if (match[2] !== undefined) yield { kind: "erase", mode: (match[2] || "0") as EraseMode };
+    if (match[4] !== undefined) yield { kind: "overstrike", character: match[4], emphasis: match[3] === undefined ? BOLD : BOLD.add(UNDERLINED) };
+    if (match[5] !== undefined) yield { kind: "overstrike", character: match[5], emphasis: UNDERLINED };
+    if (match[0] === "\b") yield { kind: "backspace" };
     at = match.index + match[0].length;
   }
   if (at < bytes.length) yield { kind: "text", text: bytes.slice(at) };
@@ -217,8 +239,14 @@ export class AnsiDecoder {
           for (const char of token.text) cells[column++] = [char, style];
           break;
         }
+        case "overstrike":
+          cells[column++] = [token.character, this.sgr.add(token.emphasis).withLink(this.link)];
+          break;
         case "return":
           column = 0;
+          break;
+        case "backspace":
+          column = Math.max(0, column - 1);
           break;
         case "erase":
           erase(cells, column, token.mode);

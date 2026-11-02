@@ -5,9 +5,42 @@ Japanese glyph variant, a break hint in Thai, or an invisible payload someone
 planted. `RichText` keeps every one of these that has a use, makes it do its job,
 and stops the rest from reaching the terminal.
 
-Two stages decide. Content deletes what no text may hold, one code point at a time.
-The wire then decides what depends on its neighbours, when a line is written. The
-measure reads that decision, so `cellLen` is the width of what is written.
+Two stages decide. Content deletes what no text may hold and shows a picture of
+what means nothing in it, one code point at a time. The wire then decides what
+depends on its neighbours, when a line is written, and it writes no control at all:
+a raw `Segment`, a widget's label and a `print`'s `end` go through it as content
+does. The measure reads that decision, so `cellLen` is the width of what is written.
+
+## C0 controls and DEL
+
+| Code points | The use it keeps | In content |
+|---|---|---|
+| TAB, LF | A tab stop, a line ending | Kept |
+| VT, FF | Mandatory breaks | An LF |
+| CR | The line ending of a CRLF, whose LF ends the line | Deleted |
+| BEL | An alert: `Console.bell()`, which rings only for a person at a terminal | `␇` |
+| BS | Overstrike, through `decodeAnsi` | `␈` |
+| ESC | Styling, through `decodeAnsi` | `␛` |
+| NUL–ACK, SO–SUB, FS–US, DEL | None in text | Its picture, `␀` to `␟` and `␡` |
+
+A picture is one cell, so the reader sees something was there, and nothing in the
+text can act on the terminal. `new RichText` never decodes a sequence: a string
+that means styling says so, because otherwise any string could set a link or
+conceal text with no caller having asked.
+
+`decodeAnsi` is the road for bytes a program already wrote, and it reads what a
+terminal or a printer would make of them. A CR returns to the first column. nroff's
+overstrike, which `man` writes, becomes styles, and a backspace that is no
+overstrike moves back a column so what follows draws over what was there:
+
+```typescript
+import { Console, decodeAnsi } from "@promptctl/rich-js";
+
+const output = new Console({ width: 30 });
+output.print(decodeAnsi("N\bNA\bAM\bME\bE  _\bm_\ba_\bn\n12%\b\b\b13%"));
+```
+
+A link URL holds no C0 or C1 code point at all: RFC 3986 admits none.
 
 ## Format characters
 

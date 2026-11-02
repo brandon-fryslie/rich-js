@@ -9,7 +9,7 @@
 
 import { EXPLICIT } from "./bidi.js";
 import { Segment } from "./segment.js";
-import { RichText, STRIPPED } from "./text.js";
+import { RichText } from "./text.js";
 import { replaceWithheld } from "./cells.js";
 import { JSONHighlighter } from "./highlighter.js";
 import type {
@@ -18,7 +18,6 @@ import type {
   RenderOptions,
 } from "./protocol.js";
 import { measure, render } from "./protocol.js";
-import { pattern } from "./pattern.js";
 
 export interface JSONOptions {
   indent?: number;
@@ -27,7 +26,6 @@ export interface JSONOptions {
 }
 
 const highlighter = new JSONHighlighter();
-const UNWRITABLE = pattern(new RegExp(`${EXPLICIT.source}|${STRIPPED.source}`, "u"));
 
 /** `character` as JSON escapes, a surrogate pair for one past the BMP. */
 const jsonEscape = (character: string): string =>
@@ -72,7 +70,7 @@ export class JSONRenderable implements Renderable, Measurable {
     // Data on show: one string holds every key and value, so a control left in
     // one would act on the rest of its line, and what content deletes or the wire
     // withholds would leave a document that no longer parses back to this data.
-    const text = new RichText(replaceWithheld(jsonStr, jsonEscape).replace(new RegExp(UNWRITABLE.source, "gu"), jsonEscape));
+    const text = new RichText(replaceWithheld(jsonStr, jsonEscape).replace(new RegExp(EXPLICIT.source, "gu"), jsonEscape));
 
     if (doHighlight) {
       highlighter.highlight(text);

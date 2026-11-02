@@ -187,12 +187,8 @@ describe("line and paragraph separators", () => {
     expect(rows(new Panel("x", { title: `a${LS}b` }), 12)).toHaveLength(3);
   });
 
-  it("gives Syntax one row and one number for each line", () => {
-    expect(rows(new Syntax(`a${LS}b\nc`, "text", { lineNumbers: true }), 20).map((row) => row.trim().at(0))).toEqual(["1", "2", "3"]);
-  });
-
-  it("starts Syntax's tab stops afresh after one", () => {
-    expect(rows(new Syntax(`abc${LS}a\tb`, "text", { tabSize: 4 }), 20)).toEqual(["abc", "a   b"]);
+  it("shows one in Syntax as its escape, so a line number stays the one an editor shows", () => {
+    expect(rows(new Syntax(`a${LS}b\nc`, "text", { lineNumbers: true }), 20).map((row) => row.trim().at(0))).toEqual(["1", "2"]);
   });
 
   it("shows one in JSON as the escape a JSON string needs", () => {

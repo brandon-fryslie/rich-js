@@ -2,7 +2,7 @@
  * The census of code points that do not print: every one in Unicode's general
  * categories Cc, Cf, Zl and Zp, and the variation selectors, with what `RichText`
  * does when content carries it. [LAW:one-source-of-truth] The sanitizer
- * (`stripControlChars`), the wire (`wireText`) and the cell-width measure
+ * (`sanitized`), the wire (`wireText`) and the cell-width measure
  * (`cellLen`) all read this table, so whether content keeps a code point has one
  * statement. `docs/control-codes.md` is each family's use and harm, and what real
  * terminals were measured doing with it.
@@ -15,10 +15,15 @@
 /**
  * What `RichText` does with a code point. `strip` deletes it from content. `keep`
  * holds it as a character. `line-break` is a line ending, so content holds an LF
- * in its place. `withheld` is held in content and measured as nothing, and
- * `wireText` decides from its neighbours whether it is written.
+ * in its place. `pictured` means nothing inside a span, so content holds its
+ * Control Pictures symbol in its place and the reader sees something was there.
+ * `withheld` is held in content and measured as nothing, and `wireText` decides
+ * from its neighbours whether it is written.
+ *
+ * Only `keep`, and a `withheld` code point `wireText` lets by, reaches the wire. A
+ * raw `Segment` is not content, so what it holds of the others is deleted there.
  */
-export type Disposition = "strip" | "keep" | "line-break" | "withheld";
+export type Disposition = "strip" | "keep" | "line-break" | "pictured" | "withheld";
 
 /** The code points `first` to `last`, inclusive, and what is done with each. */
 export interface ControlCodeRow {
@@ -30,25 +35,38 @@ export interface ControlCodeRow {
 const strip = (first: number, last: number): ControlCodeRow => ({ first, last, disposition: "strip" });
 const keep = (first: number, last: number): ControlCodeRow => ({ first, last, disposition: "keep" });
 const lineBreak = (first: number, last: number): ControlCodeRow => ({ first, last, disposition: "line-break" });
+const pictured = (first: number, last: number): ControlCodeRow => ({ first, last, disposition: "pictured" });
 const withheld = (first: number, last: number): ControlCodeRow => ({ first, last, disposition: "withheld" });
 
 /**
  * Ascending and disjoint, every Cc, Cf, Zl, Zp and Variation_Selector code point
  * in exactly one row (`test/core/control-codes.test.ts`).
  *
- * Rich's `Text` strips only `STRIP_CONTROL_CODES` (BEL, BS, VT, FF, CR); the
- * other stripped rows are the port's extension. Everything else here is kept
- * as Rich keeps it.
+ * Rich's `Text` strips only `STRIP_CONTROL_CODES` (BEL, BS, VT, FF, CR) and writes
+ * every other code point to the wire. Here a directive reaches the wire only
+ * through the library's own constructs: `Style`, a link, `Console.bell`, the paint
+ * layer.
  */
 export const CONTROL_CODES: readonly ControlCodeRow[] = [
-  // C0 and DEL but TAB and LF, so no byte of content can start an escape
-  // sequence or move the cursor on the wire.
-  strip(0x00, 0x08),
+  // NUL to BS. BEL's alert is `Console.bell`, and BS's overstrike, bold and
+  // underline in nroff output, is `decodeAnsi`: taken a code point at a time, text
+  // can turn neither into what it means.
+  pictured(0x00, 0x08),
   keep(0x09, 0x0a),
-  strip(0x0b, 0x1f),
-  // DEL and the C1 controls: a terminal reads U+009B as CSI and U+009D as OSC.
-  // `TextInput` refuses them for the same reason.
-  strip(0x7f, 0x9f),
+  // VT and FF, mandatory breaks in UAX #14 as LS and PS are.
+  lineBreak(0x0b, 0x0c),
+  // CR. A CRLF's LF ends its line however the two were chunked, and a CR's
+  // overwrite is `decodeAnsi`'s. What is given up is a classic Mac file's lines.
+  strip(0x0d, 0x0d),
+  // SO and SI switch the terminal's character set; DLE to SUB are transmission
+  // controls, and CAN and SUB abort a sequence; ESC begins one, and content that
+  // means styling says so with `decodeAnsi`; FS to US are data separators.
+  pictured(0x0e, 0x1f),
+  // DEL.
+  pictured(0x7f, 0x7f),
+  // The C1 controls: a terminal reads U+009B as CSI and U+009D as OSC. `TextInput`
+  // refuses them for the same reason.
+  strip(0x80, 0x9f),
   // SOFT HYPHEN: a place a word may break, drawn as a hyphen only where one does.
   // Terminals disagree on its cell, so it never reaches them.
   withheld(0xad, 0xad),
@@ -107,6 +125,11 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   // The ideographic variation selectors: Japanese and Chinese glyph variants.
   withheld(0xe0100, 0xe01ef),
 ];
+
+/** The Control Pictures symbol of a `pictured` code point: U+2400 up, and U+2421 for DEL. */
+export function pictureOf(codePoint: number): string {
+  return String.fromCharCode(codePoint === 0x7f ? 0x2421 : 0x2400 + codePoint);
+}
 
 /** A regular expression class of the code points in rows `chosen` picks, for `u`. */
 export function controlClass(chosen: (disposition: Disposition) => boolean): string {
