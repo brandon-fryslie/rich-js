@@ -4,51 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "760149646bd4b823cedce58f870fdd5ede40ff08",
-      "timestamp": "2026-11-03T11:55:16.698Z",
+      "sha": "c25a44a31e5c3f5a644af8160c30fbeca711497d",
+      "timestamp": "2026-11-03T12:03:19.771Z",
       "commits": [
         {
-          "sha": "760149646bd4b823cedce58f870fdd5ede40ff08",
+          "sha": "c25a44a31e5c3f5a644af8160c30fbeca711497d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:53:02-07:00",
-          "message": "A crop drops the holds of the looks it drops (rich-animation-27tq.b7e) (#542)\n\n* A crop drops the holds of the looks it drops (rich-animation-27tq.b7e)\n\nA placed animation tells the frame only the hold of which cells it draws\n(its switches); an effect's frames ride only on its cells, so a Viewport\nor scroll slot cropping them away no longer wakes the host. ScrollFrame's\nown report of its whole content is deleted: placed already tells geometry\nfrom inside it. The caret stays a told switch: its look is a caller-supplied\nStyle that may be reverse, which an effect's CellLook cannot carry.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Keep ScrollFrame's whole-content hold; scope the claim to effects in a Viewport\n\nReview of #542: dropping ScrollFrame's report lost a template's width change\ncropped left of the slot. Restored; the look/layout split moves to the stamp\nitself on its own ticket. placed skips the second walk when nothing was read.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A hidden effect stays early: placed always stamps with what was read\n\nReview of #542: the empty-reads shortcut stamped UNLAID, so an effect whose\ndrawing a container hid answered 'never' and froze. Test for the lone case;\ndocs name the containers that drop an effect's hold and the scroll slot's\nexception.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Docs claim only what a crop drops: an Effected's frames past a Viewport\n\nSecond high review of #542: lifecycle halves and other switches still tell\npast a crop; that and the double walk are on rich-animation-27tq.4dc.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-541",
-      "ref": "refs/pull/541/merge",
-      "sha": "b45fd099ce122e9ec154669479c4a8191c71b429",
-      "timestamp": "2026-11-03T11:47:37.227Z",
-      "commits": [
-        {
-          "sha": "b45fd099ce122e9ec154669479c4a8191c71b429",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T11:45:43Z",
-          "message": "Merge 0cabf933a578b074345cddba01b9ec642ade236e into 75a997116d79f6aea9a5ea0f8c52afd76d6a42d8\n"
-        },
-        {
-          "sha": "0cabf933a578b074345cddba01b9ec642ade236e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:45:19-07:00",
-          "message": "A seam test holds e2e pages to routed contexts; refusals say why (review: rich-unfiled-791c.5v4l)\n\nSpecs import test only from e2e/test.ts and route their own contexts\nthrough cdn; a refused request carries its reason; files read once per\nworker; xterm.ts names both version pins. Self-hosting for visitors is\nrich-unfiled-791c.abt1. Early failure on a refusal is not possible from\na route handler; teardown names the URL.\n"
-        },
-        {
-          "sha": "8b427f036a085d83ba92dcec160cd227488d0ea0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:38:27-07:00",
-          "message": "The CDN route sits on every context and refuses loudly (review: rich-unfiled-791c.5v4l)\n\nPages a spec makes from browser were unrouted; aborted or missing-file\nrequests vanished; installed xterm could drift from XTERM's URL.\n"
-        },
-        {
-          "sha": "759d1d8ca3f2f7d5de52a679f9416023bcdc4341",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:30:34-07:00",
-          "message": "The e2e suite serves the site's xterm.js from disk, not jsDelivr (rich-unfiled-791c.5v4l)\n\nA stalled CDN fetch left every live terminal at Run with no error, which\nread as a regression in the page. e2e/test.ts routes jsDelivr for every\nspec: XTERM's files come from the pinned @xterm/xterm devDependency (the\nbrowser's integrity check holds the two to one version), anything else\nthere is aborted.\n"
+          "timestamp": "2026-11-03T05:01:42-07:00",
+          "message": "The e2e suite serves the site's xterm.js from disk, not jsDelivr (rich-unfiled-791c.5v4l) (#541)\n\n* The e2e suite serves the site's xterm.js from disk, not jsDelivr (rich-unfiled-791c.5v4l)\n\nA stalled CDN fetch left every live terminal at Run with no error, which\nread as a regression in the page. e2e/test.ts routes jsDelivr for every\nspec: XTERM's files come from the pinned @xterm/xterm devDependency (the\nbrowser's integrity check holds the two to one version), anything else\nthere is aborted.\n\n* The CDN route sits on every context and refuses loudly (review: rich-unfiled-791c.5v4l)\n\nPages a spec makes from browser were unrouted; aborted or missing-file\nrequests vanished; installed xterm could drift from XTERM's URL.\n\n* A seam test holds e2e pages to routed contexts; refusals say why (review: rich-unfiled-791c.5v4l)\n\nSpecs import test only from e2e/test.ts and route their own contexts\nthrough cdn; a refused request carries its reason; files read once per\nworker; xterm.ts names both version pins. Self-hosting for visitors is\nrich-unfiled-791c.abt1. Early failure on a refusal is not possible from\na route handler; teardown names the URL.\n\n* The refusal list is read after its contexts close; the version pin is a unit test (review: rich-unfiled-791c.5v4l)\n\nGate reads e2e/ recursively and across lines; served() returns a tagged\nunion. Rejected: serving .map files and URL decoding — nothing requests\neither."
         }
       ]
     }
