@@ -1,5 +1,5 @@
 /**
- * A region cropped away carries none of its look changes' holds to the frame.
+ * A Viewport scrolled past an effect carries none of its frames' holds to the frame.
  *
  * An effect changes how cells look, never which exist, so its next change is
  * seen only on its own cells: cropped away with them, it wakes no host. A
@@ -16,13 +16,12 @@ import { RichText } from "../../src/core/text.js";
 import { Effected } from "../../src/renderables/effect.js";
 import { ATTRIBUTE_DEFAULTS, blink } from "../../src/renderables/effects.js";
 import { Group } from "../../src/renderables/group.js";
-import { scroll } from "../../src/renderables/scroll.js";
 import { Viewport } from "../../src/renderables/viewport.js";
 import { drawnAt } from "./in-frame.js";
 
 const OPTIONS: RenderOptions = { maxWidth: 20, colorSystem: ColorDepth.TRUECOLOR };
 const NEVER = Number.POSITIVE_INFINITY;
-/** Sample times at one frame a second and sixty, all inside the blink's first half second at 0 or later. */
+/** Sample times at one frame a second and sixty, and far out. */
 const TIMES = [0, 1, 2, 1 / 60, 2 / 60, 1e6];
 
 /** A blinking line: its next change is its next half second. */
@@ -44,11 +43,6 @@ describe("a crop drops the holds of the looks it drops", () => {
     for (const t of TIMES) {
       expect(drawnAt(view, t, OPTIONS).validUntil).toBe(Math.floor(t * 2 + 1) / 2);
     }
-  });
-
-  it("a blink cropped out of a scroll window sleeps", () => {
-    const window = scroll(tall(3), { width: 10, height: 1 });
-    for (const t of TIMES) expect(drawnAt(window, t, OPTIONS).validUntil).toBe(NEVER);
   });
 
   it("a switch of what shows still wakes the frame from out of view, since it may move the rows in view", () => {

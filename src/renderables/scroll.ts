@@ -101,6 +101,11 @@ class ScrollFrame implements Renderable, Measurable {
     const lines = Segment.splitLines(drawn);
     const blank = Math.min(width, Math.max(0, -this.col));
     const start = Math.max(0, this.col);
+    // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
+    // when anything in the content does — a row above the slot entering pushes every row down, and run
+    // backwards, leaving it pulls them up. The cut throws away the cells that hold rode on, so it is
+    // told to the frame (`RenderOptions.onValidity`).
+    options.onValidity?.({ validFrom: Segment.validFrom(drawn), validUntil: Segment.validUntil(drawn) });
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
       const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];

@@ -161,11 +161,10 @@ export interface RenderOptions {
   onVisibility?: (renderable: Renderable, visibility: Visibility) => void;
   /**
    * Told of a hold the frame is in that no cell of it may carry: an animation
-   * placed in the view reports the hold of which cells it draws, whether or
-   * not it drew one — one not yet entered draws none — and a container that
-   * crops it away still passes that on, because a switch out of view may move
-   * the rows in view. A look change (an effect's frames) is never told: it
-   * rides only on its own cells, and a crop drops it with them. It reaches whatever `frame` reaches, so a container that hands
+   * placed in the view reports its own, an effect's frames left out, whether
+   * or not it drew a cell — one not yet entered draws none — and one a
+   * container crops away is still reported, since its switch may move the
+   * rows in view. An effect's frames ride only on the effect's cells. It reaches whatever `frame` reaches, so a container that hands
    * its child the frame's time hands back the child's hold with no word about
    * either. [LAW:composability] Absent, nobody is listening. A measurement
    * (`measuring`) and a held render (`holding`) tell too: what they find

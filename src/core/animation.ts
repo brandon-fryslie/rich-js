@@ -186,12 +186,12 @@ function drawable(value: unknown): Renderable {
  * An animation placed in the frame `options` draws: its value at the frame's
  * time (`frameTimeOf`, `shownAt`), drawn whole by `draw` under the options it
  * is handed, every segment then stamped with its hold there under whatever
- * its own cells say. The frame is told (`RenderOptions.onValidity`) only the
- * hold of its geometry — its combinators' switches, never an effect's frames
- * (`UNLAID`) — because a frame of no cells, an element not yet entered, may
- * have cells later and must say when without a row to say it in, and a switch
- * cropped away may still move the rows that show. A look change is seen only
- * on its own cells, so it rides only on them, and a crop drops it with them. Drawn first,
+ * its own cells say. The frame is told (`RenderOptions.onValidity`) that
+ * hold without an effect's frames (`UNLAID`): a frame of no cells, an element
+ * not yet entered, must say when it will have some without a row to say it
+ * in, and a switch cropped away may move the rows that show. An effect's
+ * frame changes how cells look and never which exist, so its hold rides only
+ * on its cells, and a crop that drops them drops it. Drawn first,
  * because the hold is asked with what the drawing said (`Reads`); each report
  * goes on outward too, since a value drawn inside a placement in this value
  * may be a part of an animation placed further out. [LAW:single-enforcer]
@@ -211,10 +211,12 @@ export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw:
     options.onReads?.(at, key, validity);
   };
   const segments = [...draw(shown.value, { ...options, onReads })];
-  // The cells carry the whole hold, so a crop takes it away with them; the frame is told only the hold
-  // of which cells exist, because a change there moves what is visible even when it is cropped away.
-  options.onValidity?.(validityOf(shown, t, UNLAID));
-  yield* stampValidityFrame(segments, validityOf(shown, t, (at, key) => said.get(part(at, key))));
+  // The cells carry the whole hold, so a crop takes it away with them. The frame is told the hold
+  // without an effect's frames (`UNLAID`): a switch may move the rows that show even when it is
+  // cropped away, and an effect's frame never does. Nothing read, the two answers are one.
+  const laid = validityOf(shown, t, UNLAID);
+  options.onValidity?.(laid);
+  yield* stampValidityFrame(segments, said.size === 0 ? laid : validityOf(shown, t, (at, key) => said.get(part(at, key))));
 }
 
 /**
@@ -240,7 +242,8 @@ export function placedMeasure(animation: Behavior<unknown>, options: RenderOptio
 }
 
 /**
- * What a measurement's drawing would say: held for good. An effect changes
+ * What a measurement's drawing would say, and what `placed` tells the frame
+ * past its cells: held for good. An effect changes
  * how cells look and never which exist, so nothing it does can change a
  * layout; a combinator's own switches and a child's holds still reach the
  * measurement. [LAW:types-are-the-program]
