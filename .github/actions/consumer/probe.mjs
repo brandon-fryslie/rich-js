@@ -87,7 +87,9 @@ const renders = {
     return [text, ["consumer probe", "Runtime", process.version, "─"]];
   },
   // A mobx action changes observable state and the next draw must show it, so
-  // this reaches mobx's reactivity, not only its import.
+  // this reaches mobx's decorators and actions, not only its import. No
+  // reaction runs: a newest mobx that broke reaction scheduling, which
+  // WidgetApp's repaint rests on, passes here.
   "./widgets": ({ Checkbox, WidgetKeyEvent }) => {
     const box = new Checkbox({ label: "peer probe" });
     const before = renderToString(box, plain);
@@ -100,7 +102,10 @@ const renders = {
   "./template-bindings": ({ createRichTextEngine, renderTemplate }) => {
     const segments = renderTemplate(createRichTextEngine(), '{{ fg "red" "peer probe" }}', {});
     const text = segments.map((s) => s.text).join("");
-    return [text, text.startsWith("[error") ? ["a template that did not fail"] : ["peer probe"]];
+    // The text alone would pass a `fg` that returned its argument unstyled.
+    const red = segments.some((s) => s.text.includes("peer probe") && s.style?.color?.name === "red");
+    const needles = text.startsWith("[error") ? ["a template that did not fail"] : ["peer probe"];
+    return [text, red ? needles : [...needles, "a red \"peer probe\" segment"]];
   },
 };
 
