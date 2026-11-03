@@ -63,7 +63,7 @@ export function scroll(content: Renderable, options: ScrollOptions): Animation<R
   }
   return Animation.map(Animation.all([col, row]), ([c, r]) => {
     const window: Window = { col: cells("col", c), row: cells("row", r), height };
-    return new ScrollFrame(content, width, () => window);
+    return new ScrollFrame("scroll", content, width, () => window);
   });
 }
 
@@ -99,7 +99,7 @@ export function marquee(content: Renderable, options: MarqueeOptions): Animation
     validFrom: (t: number) => holds.validFrom(t),
     reduced: () => Animation.constant(0),
   });
-  return Animation.map(stepped, (n) => new ScrollFrame(content, width, (drawn) => {
+  return Animation.map(stepped, (n) => new ScrollFrame("marquee", content, width, (drawn) => {
     const span = drawn.width + drawn.slot;
     return { col: ((((n + drawn.slot) % span) + span) % span) - drawn.slot, row: 0, height: drawn.rows };
   }));
@@ -131,10 +131,10 @@ function cells(name: string, offset: number): number {
  * with no `measure` — has none, and is refused by name rather than drawn at
  * an unbounded width it cannot fill.
  */
-function naturalWidth(content: Renderable, options: RenderOptions): number {
+function naturalWidth(what: string, content: Renderable, options: RenderOptions): number {
   const natural = Measurement.get({ ...options, maxWidth: Number.POSITIVE_INFINITY }, content).maximum;
   if (!Number.isFinite(natural)) {
-    throw new RangeError("scroll: the content has no natural width — it fills whatever width it is given; give it one with new Constrain(content, width)");
+    throw new RangeError(`${what}: the content has no natural width — it fills whatever width it is given; give it one with new Constrain(content, width)`);
   }
   return natural;
 }
@@ -147,6 +147,8 @@ function naturalWidth(content: Renderable, options: RenderOptions): number {
  */
 class ScrollFrame implements Renderable, Measurable {
   constructor(
+    /** What made the frame, so a refusal names the function the caller called. */
+    readonly what: "scroll" | "marquee",
     readonly content: Renderable,
     readonly width: number,
     readonly window: (drawn: Drawn) => Window,
@@ -156,7 +158,7 @@ class ScrollFrame implements Renderable, Measurable {
     const options = withBoundedWidth(rawOptions, this);
     // The slot is cropped to the room it is given, as a `Panel` of a declared width is.
     const width = Math.min(this.width, options.maxWidth);
-    const natural = naturalWidth(this.content, options);
+    const natural = naturalWidth(this.what, this.content, options);
     const drawn = [...render(this.content, { ...options, maxWidth: natural, height: undefined })];
     const lines = Segment.splitLines(drawn);
     const { col, row, height } = this.window({ width: natural, rows: lines.length, slot: width });

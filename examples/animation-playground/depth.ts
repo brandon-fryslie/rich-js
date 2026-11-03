@@ -28,7 +28,9 @@ const detected = (host: TerminalHost, env: Env) => detectColorSystem({ env, isTT
 /** The depth `host`'s own environment gives, named as one of `DEPTHS`. */
 export function hostDepth(host: TerminalHost): Depth {
   const own = detected(host, host.env);
-  return ORDER.find((depth) => detected(host, { ...host.env, ...DEPTHS[depth] }) === own)!;
+  const depth = ORDER.find((step) => detected(host, { ...host.env, ...DEPTHS[step] }) === own);
+  if (depth === undefined) throw new RangeError(`hostDepth: the host's environment gives color system ${own}, which no step of DEPTHS reproduces`);
+  return depth;
 }
 
 /** The step after `depth`, round the list. */

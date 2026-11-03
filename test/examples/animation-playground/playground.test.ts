@@ -282,6 +282,22 @@ describe("animation playground", () => {
     near(await p.time(), 30.25);
   });
 
+  it("ends a drag whose release was never reported once the pointer moves with no button held, and seeks on no right-button press", async () => {
+    const p = await playground();
+    await p.click("play / pause");
+    const rows = await p.screen();
+    const row = rows.findIndex((line) => line.includes("●"));
+    const left = rows[row]!.search(/[━●]/);
+    p.host.type(`\x1b[<0;${left + 11};${row + 1}M`);
+    const pressed = await p.time();
+    // Motion with no button held (35): the release happened off the terminal.
+    p.host.type(`\x1b[<35;${left + 41};${row + 1}M`);
+    expect(await p.time()).toBe(pressed);
+    // A right-button press (2) is the terminal's menu, not a seek.
+    p.host.type(`\x1b[<2;${left + 21};${row + 1}M`);
+    expect(await p.time()).toBe(pressed);
+  });
+
   it("at eighty columns the controls wrap and push the gallery down, and the readout stays on screen", async () => {
     const p = await playground({ cols: 80, rows: 30 });
     const rows = await p.screen();

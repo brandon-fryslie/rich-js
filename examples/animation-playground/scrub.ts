@@ -63,6 +63,11 @@ export class ScrubBar extends WidgetBase {
     if (event.type === "mouse_down") this.#pressed = event.button === 0 && event.cell?.owner instanceof ScrubWindow ? event.cell.owner : null;
     const pressed = this.#pressed;
     if (pressed === null) return;
+    // A release the terminal never reported — let go off its window — shows as a move with the left button up.
+    if (event.type === "mouse_move" && event.button !== 0) {
+      this.#pressed = null;
+      return;
+    }
     if (event.type === "mouse_up") this.#pressed = null;
     const to = pressed.timeAt(event.x);
     this.seek(() => to);
@@ -74,7 +79,8 @@ export class ScrubBar extends WidgetBase {
   }
 
   protected draw(options: RenderOptions): Iterable<Segment> {
-    const cells = Math.min(TRACK, options.maxWidth);
+    // At least the knob's cell: squeezed below that, the row crops it rather than the track having none.
+    const cells = Math.max(1, Math.min(TRACK, options.maxWidth));
     return render(
       Animation.map(TIME, (t) => {
         const window = new ScrubWindow(Math.floor(t / WINDOW) * WINDOW, cells);
