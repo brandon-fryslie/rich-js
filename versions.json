@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-549",
+      "ref": "refs/pull/549/merge",
+      "sha": "eae8b04ac4f34dccb5100f52cf6381635d12013f",
+      "timestamp": "2026-11-03T15:51:08.453Z",
+      "commits": [
+        {
+          "sha": "eae8b04ac4f34dccb5100f52cf6381635d12013f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T08:48:54-07:00",
+          "message": "Merge b68c419c6b8db619ab4a1cb39ed3f1feded04ce4 into dd0a3f3ed82f775397d99f8d1e007cf8580a2646\n"
+        },
+        {
+          "sha": "b68c419c6b8db619ab4a1cb39ed3f1feded04ce4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T08:48:37-07:00",
+          "message": "The docs site serves its own xterm.js instead of loading it from jsDelivr (rich-unfiled-791c.abt1)\n\nxterm.js is the @xterm/xterm devDependency bundled as its own chunk, so a\nstalled CDN can no longer strand a live terminal at its Run button, and\npackage.json is the one version pin. The e2e CDN route (e2e/test.ts) and its\ngate (test/seam/e2e-cdn.test.ts) go with docs/.vitepress/theme/xterm.ts.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dd0a3f3ed82f775397d99f8d1e007cf8580a2646",
