@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-540",
+      "ref": "refs/pull/540/merge",
+      "sha": "a36a690cc32b6fa11bcfd5a61a68de7c32ff94d0",
+      "timestamp": "2026-11-03T00:24:54.314Z",
+      "commits": [
+        {
+          "sha": "a36a690cc32b6fa11bcfd5a61a68de7c32ff94d0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T17:23:23-07:00",
+          "message": "Merge 7bb19d153780be11543ed5fb652401a1ed90bf71 into 85606541d26e0522aa0321981dcde341f4115fb5\n"
+        },
+        {
+          "sha": "7bb19d153780be11543ed5fb652401a1ed90bf71",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T17:22:50-07:00",
+          "message": "Non-standard names renamed to their industry-standard terms (rich-unfiled-791c.29ge)\n\nThe interval a sampled value stays the same is ValidityInterval (validFrom, validUntil), not Hold; step durations are StepSequence, not Beat; a renderable handed no column is hidden, not held; the separator protocol is Separator; palette adjustment is adjust, not transpose; the spelling is color throughout. Effects and widgets follow: sampleAndHold, WidgetKeyEvent, KeyEvent, WheelEvent, TerminalMouseEvent, EndCaps, SeparatorSeam, CellSeparator, mask, reorder, labeled, namedCharacterReference, rapidBlink, doubleUnderline, ensureContrast, compositedColor, adjustPalette, isHueLocked. No old name is kept as an alias or deprecated export. Breaking: 0.29.0.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "85606541d26e0522aa0321981dcde341f4115fb5",
