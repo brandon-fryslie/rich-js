@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-551",
+      "ref": "refs/pull/551/merge",
+      "sha": "57a8403fc0ef7e6b30de3fe3da4240b372f49188",
+      "timestamp": "2026-11-03T17:17:58.454Z",
+      "commits": [
+        {
+          "sha": "57a8403fc0ef7e6b30de3fe3da4240b372f49188",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T10:13:41-07:00",
+          "message": "Merge 0b7ee4f1c356c36620902d8c5c9998e0447bae50 into a785d40816f3b3f98f60b9a64157eb0f5e1cb07c\n"
+        },
+        {
+          "sha": "0b7ee4f1c356c36620902d8c5c9998e0447bae50",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T10:13:29-07:00",
+          "message": "Step sequences say steps, a hidden render is hiding, and the strip's separators are called that (rich-unfiled-791c.gt81)\n\nStepSequence.holds is StepSequence.steps, and stepSequence's parameter and\nerrors say step. Kept as English: sample-and-hold (the signal term the API\nis named for) and the pulse's beat.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a785d40816f3b3f98f60b9a64157eb0f5e1cb07c",
