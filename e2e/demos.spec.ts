@@ -28,7 +28,7 @@ import { pageErrors } from "./page-errors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// The editor and the library load with the card; its terminal brings xterm.js from its CDN.
+// The editor and the library load with the card; its terminal loads the xterm.js chunk.
 const LOADED = { timeout: 20_000 };
 
 /** A demo's page, and every error the page raised. */

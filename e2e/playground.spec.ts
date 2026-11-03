@@ -42,7 +42,7 @@ async function write(page: Page, source: string): Promise<void> {
 
 // The editor and the library load with the first card that runs.
 const OPENING = { timeout: 15_000 };
-// A live terminal brings xterm.js from its CDN.
+// A live terminal loads the xterm.js chunk.
 const LIVE = { timeout: 20_000 };
 
 const HELLO_AGAIN = ['import { Console } from "@promptctl/rich-js";', 'new Console().print("[bold]Hello again[/]");'].join("\n");

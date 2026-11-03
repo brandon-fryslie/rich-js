@@ -99,7 +99,7 @@ export const MINIMUM_CONTRAST: Readonly<Record<Contrast, number>> = { readable: 
  * [LAW:one-source-of-truth] The line height is not among them. xterm makes a
  * row its measured character height times its `lineHeight` option, rounded to
  * device pixels, so no factor handed in from here lands on the element's line
- * height. `loadXterm` and `openMeasuringInPage` instead have xterm measure its
+ * height. xterm-measure.css and `openMeasuringInPage` instead have xterm measure its
  * character at the line custom.css derives that line height from, and the
  * option stays 1: a row is then the element's line height.
  */
@@ -163,12 +163,19 @@ let xterm: Promise<XtermConstructor> | undefined;
  * chunk, loaded the first time a terminal is made.
  */
 function loadXterm(): Promise<XtermConstructor> {
-  // A failed import is not retried: the browser keeps a module's failure in its
-  // module map (whatwg/html#6768), so only a reload fetches the chunk again.
-  xterm ??= import("@xterm/xterm").then(({ Terminal }) => {
-    const constructor: XtermConstructor = Terminal;
-    return constructor;
-  });
+  // A failure is forgotten so the next terminal made imports again. Whether
+  // that fetches again is the browser's: one may keep the failure in its module
+  // map (whatwg/html#6768), and then only a reload recovers.
+  xterm ??= import("@xterm/xterm").then(
+    ({ Terminal }) => {
+      const constructor: XtermConstructor = Terminal;
+      return constructor;
+    },
+    (error: unknown) => {
+      xterm = undefined;
+      throw error;
+    },
+  );
   return xterm;
 }
 
