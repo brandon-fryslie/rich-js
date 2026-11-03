@@ -125,12 +125,13 @@ export const NODE_VERSION_LITERALS: readonly NodeVersionGrant[] = [
       "above the literal.",
   },
   {
-    file: ".github/actions/node-floor/action.yml",
-    value: "${{ steps.floor.outputs.version }}",
+    file: ".github/actions/consumer/action.yml",
+    value: "${{ steps.plan.outputs.node }}",
     why:
-      "This step exists to run the lowest Node `engines.node` admits, and " +
-      "`node-version-file` resolves that range to its newest version instead. " +
-      "The value is computed from `engines.node` a step earlier, not typed. The " +
+      "At the floor end this step runs the lowest Node `engines.node` admits, " +
+      "and `node-version-file` resolves that range to its newest version " +
+      "instead. The value is computed from `engines.node` a step earlier, not " +
+      "typed, and is empty at the ceiling end, where the step is skipped. The " +
       "full argument is the comment above it.",
   },
 ];

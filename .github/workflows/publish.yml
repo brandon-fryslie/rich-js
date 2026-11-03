@@ -91,19 +91,25 @@ jobs:
           path: dist/
           retention-days: 1
 
-  # The same floor check `ci.yml` runs, because a tag can land on a commit CI
-  # never gated. Its own job because the action switches the job's Node.
+  # The same consumer check `ci.yml` runs, at both ends, because a tag can land
+  # on a commit CI never gated. One job per end because the floor switches the
+  # job's Node.
   #
   # [LAW:one-source-of-truth] It probes the gate job's `dist` artifact, the one
   # the publish job ships, not a rebuild of the same commit: a second build is
   # a second artifact, and only the first reaches the registry. `npm ci` is
-  # here only for `floor.mjs`'s `semver`, and this job holds no `id-token`.
-  node-floor:
+  # here only for `plan.mjs`'s `semver`, and this job holds no `id-token`.
+  consumer:
+    name: consumer (${{ matrix.end }})
     needs: gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        end: [floor, ceiling]
     steps:
       - uses: actions/checkout@v7
 
@@ -120,12 +126,14 @@ jobs:
           name: dist
           path: dist
 
-      - uses: ./.github/actions/node-floor
+      - uses: ./.github/actions/consumer
+        with:
+          end: ${{ matrix.end }}
 
   # [LAW:effects-at-boundaries] The irreversible step and the credential that
   # authorizes it stand alone, in the smallest job that can perform them.
   publish:
-    needs: [gate, node-floor]
+    needs: [gate, consumer]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -1,0 +1,83 @@
+# A consumer at one end of the supported range, run: the packed tarball
+# installed into an empty project on that end's Node beside that end's peers,
+# then loaded and rendered by `probe.mjs`.
+#
+# Two ends, because every other job runs neither. `node-version-file` makes
+# setup-node resolve `engines.node` to its NEWEST version, so nothing else runs
+# the Node floor; and lint, the suite and the lockfile all hold each peer at the
+# lowest version its range admits (`test/seam/peer-floor.ts`), so nothing else
+# runs the newest peer a fresh consumer install resolves. `end: floor` fails
+# when the code it reaches uses an API the floor Node does not have;
+# `end: ceiling` fails when a peer's newest in-range release breaks what `src/`
+# asks of it. `plan.mjs` owns what each end installs; `probe.mjs`'s header owns
+# what it cannot see.
+#
+# [LAW:single-enforcer] One definition, two ends, two callers: `ci.yml` runs it
+# on master and every PR, where the commit that broke it is still open for
+# review, and `publish.yml` runs it on the version tag, because a tag can land
+# on a commit CI never gated. The floor switches the job's Node, so each end
+# gets a job of its own.
+#
+# Provisioning stays with the caller, as it does for `../gate`: checkout,
+# `node_modules` from `npm ci` (the planner reads `semver` from it), and a
+# built `dist/`. The caller owns `dist/` because only the caller knows which
+# build ships. On the release road it is the gate job's artifact, the exact
+# bytes `npm publish` sends.
+#
+# It installs the TARBALL, never the checkout, and runs no repository test. The
+# repository's devDependencies do not exist for a consumer, and the suite pins
+# the peer floor, so on the ceiling tree `test/seam/peer-floor.test.ts` is red
+# by construction.
+
+name: Consumer install
+description: >-
+  Pack the caller's dist/, install the tarball on one end of the supported
+  range (Node and optional peers), and assert it loads and renders there.
+
+inputs:
+  end:
+    description: "`floor` (lowest Node, locked peers) or `ceiling` (newest Node, newest in-range peers)."
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Pack the tarball and plan the install
+      id: plan
+      shell: bash
+      env:
+        END: ${{ inputs.end }}
+        PLAN_PATH: ${{ runner.temp }}/install-plan.json
+      run: |
+        npm pack --pack-destination "$RUNNER_TEMP"
+        node "$GITHUB_ACTION_PATH/plan.mjs"
+
+    # [LAW:one-source-of-truth] The one bare `node-version:` that names a
+    # computed value. `node-version-file` cannot give the floor, because
+    # setup-node resolves a range to its newest version, and that is the whole
+    # reason the floor end exists. At the ceiling the plan names no Node and the
+    # caller's newest one stays. `NODE_VERSION_LITERALS` in
+    # `test/seam/workflow-pins.ts` grants this expression text exactly, so
+    # changing it fails that gate until the grant is reread.
+    - if: steps.plan.outputs.node != ''
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ steps.plan.outputs.node }}
+
+    # `engine-strict` makes the consumer's npm refuse any package in the install
+    # tree whose `engines` excludes this Node, which is the refusal a real
+    # consumer on it would meet. `PEERS` is unquoted on purpose: it is zero or
+    # more space-separated specs.
+    - name: Install the tarball and probe it
+      shell: bash
+      env:
+        PEERS: ${{ steps.plan.outputs.peers }}
+      run: |
+        consumer="$RUNNER_TEMP/consumer"
+        mkdir "$consumer"
+        cp "$GITHUB_ACTION_PATH/probe.mjs" "$RUNNER_TEMP/install-plan.json" "$consumer/"
+        cd "$consumer"
+        npm init -y > /dev/null
+        printf 'engine-strict=true\n' > .npmrc
+        npm install "$RUNNER_TEMP"/promptctl-rich-js-*.tgz $PEERS
+        node probe.mjs

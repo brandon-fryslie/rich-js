@@ -46,7 +46,7 @@ describe("the workflows under .github/", () => {
     expect(WORKFLOWS.map((w) => w.path)).toEqual(
       expect.arrayContaining([
         ".github/actions/gate/action.yml",
-        ".github/actions/node-floor/action.yml",
+        ".github/actions/consumer/action.yml",
         ".github/workflows/ci.yml",
         ".github/workflows/code-review.yml",
         ".github/workflows/deploy.yml",
@@ -75,7 +75,7 @@ describe("the workflows under .github/", () => {
   it("find every job, so the time-limit rule is not green for free", () => {
     const jobs = WORKFLOWS.flatMap(scanWorkflow).flatMap((f) => (f.kind === "job" ? [f.name] : []));
     expect(jobs).toEqual(
-      expect.arrayContaining(["ci", "node-floor", "gate", "publish", "slot", "deploy", "review"]),
+      expect.arrayContaining(["ci", "consumer", "gate", "publish", "slot", "deploy", "review"]),
     );
   });
 

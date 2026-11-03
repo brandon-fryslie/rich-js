@@ -2,8 +2,8 @@
  * [LAW:verifiable-goals] "This package installs on the Node versions it says it
  * does" was established the way it had to be — `npm pack`, then the tarball
  * installed into an empty project under a Node the old range excluded, and the
- * result imported and rendered. `.github/actions/node-floor/` now runs that
- * on every PR, at the floor itself. This is the other half of the claim, the
+ * result imported and rendered. `.github/actions/consumer/` now runs that
+ * on every PR, at the floor itself (`end: floor`). This is the other half of the claim, the
  * declarations, in the form the unit suite can keep.
  *
  * [LAW:behavior-not-structure] What is asserted is the fact a consumer meets at
