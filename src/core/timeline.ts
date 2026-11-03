@@ -17,11 +17,11 @@
  *
  * `run` is an animation on host time. Its `validUntil` is the host moment
  * the mapped time reaches the animation's own answer, which is what
- * `Spinner`'s speed scaled its holds for before this existed: an answer a
- * host reads is on the host's timeline, and a beat over scaled time answers
+ * `Spinner`'s speed scaled its steps for before this existed: an answer a
+ * host reads is on the host's timeline, and a step sequence over scaled time answers
  * on the scaled one. Run backwards, the host next sees a change when the
  * mapped time drops under where the value began — the animation's
- * `validFrom` — so a reversed loop turns exactly at its hold boundaries,
+ * `validFrom` — so a reversed loop turns exactly at its step boundaries,
  * and a reversed one-shot changes at its switch and never before its start.
  * Paused, nothing changes: never, and never did. The host moment is the
  * first host float the map carries past the edge, searched out from the sum
@@ -109,7 +109,7 @@ function played<T>(animation: Behavior<T>, { origin, time, rate }: Timeline & { 
   // Forwards, the host next sees the animation's own next change, and the
   // value began when the animation says it did; backwards, it next sees a
   // change where the value began, and the value began where the animation
-  // says it ends. A hold is `[validFrom, validUntil)`, so the far side of
+  // says it ends. A validity interval is `[validFrom, validUntil)`, so the far side of
   // an edge is at it going up and strictly under it coming down.
   const ahead = forward ? (t: number, moves?: Reads) => animation.validUntil(t, moves) : (t: number, moves?: Reads) => animation.validFrom(t, moves);
   const behind = forward ? (t: number, moves?: Reads) => animation.validFrom(t, moves) : (t: number, moves?: Reads) => animation.validUntil(t, moves);

@@ -1,4 +1,4 @@
-// steppedInk: a signal whose ink steps through colors on a beat, legible on
+// steppedInk: a signal whose ink steps through colors on a step sequence, legible on
 // its ground at every depth, at one redraw a second and at sixty.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -187,7 +187,7 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     expect(new Set(Array.from({ length: 60 }, (_, i) => inkAt(quarters, i / 60))).size).toBe(4);
   });
 
-  it("the search runs once for the pair it reads on: no frame inside a step, no later step, nor the beat's next pass redoes it, at t = 0 and far from it", () => {
+  it("the search runs once for the pair it reads on: no frame inside a step, no later step, nor the step sequence's next pass redoes it, at t = 0 and far from it", () => {
     // Counted, not timed: a stopwatch races whatever else the runner is
     // doing. The search weighs each color it may write as `Effected.shows`
     // draws it, so its calls are the work, and a frame making none redid
@@ -202,7 +202,7 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
     };
     for (const base of [0, 1e6]) {
       const fresh = steppedInk(STEPS);
-      // One beat at sixty frames a second, from `from`: which frames searched.
+      // One pass of the steps at sixty frames a second, from `from`: which frames searched.
       const pass = (from: number): boolean[] => Array.from({ length: 180 }, (_, i) => searched(fresh, base + from + i / 60));
       expect(pass(0)).toEqual(Array.from({ length: 180 }, (_, i) => i === 0));
       expect(pass(3)).toEqual(Array.from({ length: 180 }, () => false));

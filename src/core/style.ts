@@ -107,7 +107,7 @@ export interface StyleOptions {
   boxFrame?: object;
   bidi?: BidiStamp;
   /**
-   * The hold the style's cells are in, both ends or neither: a cell saying
+   * The validity interval the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
    * and a timeline run backwards past its change would never wake for it.
    * [LAW:types-are-the-program] Absent, the cells never change.
@@ -115,13 +115,13 @@ export interface StyleOptions {
   validity?: ValidityInterval;
 }
 
-/** A hold: since when a sample has been what it is, and until when it stays so, on one clock. */
+/** A validity interval: since when a sample has been what it is, and until when it stays so, on one clock. */
 export interface ValidityInterval {
   readonly validFrom: number;
   readonly validUntil: number;
 }
 
-/** The hold of a cell that never changes: always was, and always will be. */
+/** The validity interval of a cell that never changes: always was, and always will be. */
 export const NEVER_CHANGES: ValidityInterval = { validFrom: Number.NEGATIVE_INFINITY, validUntil: Number.POSITIVE_INFINITY };
 
 /** The moments both `a` and `b` hold through: the later `validFrom` and the sooner `validUntil`. */
@@ -183,7 +183,7 @@ export class Style {
    */
   readonly bidi: BidiStamp | undefined;
   /**
-   * The hold this style's cells are in, on the timeline of whoever drew the
+   * The validity interval this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`validFrom`), and
    * when it next changes (`validUntil`) — both `t` for a cell drawn by
    * something that moves every frame, and `-Infinity`/`Infinity` for one
@@ -193,7 +193,7 @@ export class Style {
    * holds the composed frame reads it off (`Segment.validUntil`, and
    * `Segment.validFrom` for a host running its timeline backwards), so a
    * host knows when to draw again without asking each container. Two styles
-   * laid together are in the intersection of their holds.
+   * laid together are in the intersection of their validity intervals.
    */
   readonly validity: ValidityInterval;
 
@@ -464,7 +464,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colors, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `hold` —
+   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `validity` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */

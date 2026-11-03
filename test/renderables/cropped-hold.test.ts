@@ -1,5 +1,5 @@
 /**
- * A Viewport scrolled past an effect carries none of its frames' holds to the frame.
+ * A Viewport scrolled past an effect carries none of its frames' validity intervals to the frame.
  *
  * An effect changes how cells look, never which exist, so its next change is
  * seen only on its own cells: cropped away with them, it wakes no host. A
@@ -31,7 +31,7 @@ const still = (label: string): Renderable => new RichText(label);
 /** Rows 0..n-1 of still text, then the blinking line. */
 const tall = (n: number): Renderable => new Group(...Array.from({ length: n }, (_, i) => still(`row ${i}`)), blinking());
 
-describe("a crop drops the holds of the looks it drops", () => {
+describe("a crop drops the validity intervals of the looks it drops", () => {
   it("a blink scrolled out of a Viewport sleeps; scrolled into it, wakes at its next half second", () => {
     const viewport = new Viewport({ rows: 2 });
     const view = viewport.showing(tall(5));

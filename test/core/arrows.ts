@@ -4,7 +4,7 @@ const LEFT_BG: Paint = { edge: "left", part: "bg" };
 const RIGHT_BG: Paint = { edge: "right", part: "bg" };
 
 /**
- * A powerline joiner drawn in ASCII glyphs the tests can read back: the arrow,
+ * A powerline separator drawn in ASCII glyphs the tests can read back: the arrow,
  * a lead in reverse video and a tail, `""` leaving an end flat.
  */
 export function arrows({ seam = ">", lead = "<", tail = ">" } = {}): CellSeparator {

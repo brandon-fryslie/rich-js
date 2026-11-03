@@ -287,7 +287,7 @@ describe("a lifecycle through halves written by hand", () => {
     expect(life.gone(2.5)).toBe(true);
   });
 
-  it("tells the holds the half carries: an arrival stepped on a beat wakes the host on the beats", () => {
+  it("tells the validity intervals the half carries: an arrival stepped on a step sequence wakes the host on the steps", () => {
     const stepped: Half = (element, key) => Animation.sampleAndHold(slidIn(4)(element, key), stepSequence([0.25]));
     const life = lifecycle(line, { enter: stepped, exit: slidOut(4), key: "hand" }, 1);
     expect(life.validUntil(1.1)).toBe(1.25);
@@ -306,7 +306,7 @@ describe("a lifecycle through halves written by hand", () => {
     expect([life.validFrom(1), life.validUntil(1)]).toEqual([1, 5]);
     expect([life.gone(4.99), life.gone(5)]).toEqual([false, true]);
     expect([life.validFrom(5), life.validUntil(5)]).toEqual([5, Number.POSITIVE_INFINITY]);
-    // Stepped on a beat, the same: no beat is asked about a time before the half began.
+    // Stepped on a step sequence, the same: no step sequence is asked about a time before the half began.
     const steppedAtOnce: Half = (element) => Animation.sampleAndHold(Animation.constant(element), stepSequence([0.25]));
     const stepped = lifecycle(line, { enter: steppedAtOnce, exit: vanish, key: "hand" }, 1);
     expect(bytes(draw(stepped.at(1)))).toBe(bytes(draw(line)));
@@ -322,7 +322,7 @@ describe("a lifecycle through halves written by hand", () => {
 });
 
 describe("a half reduced", () => {
-  it("cuts to the transition's end at 0, frames and hold alike, so there is nothing to wake for after", () => {
+  it("cuts to the transition's end at 0, frames and validity alike, so there is nothing to wake for after", () => {
     const half = throughColors(fadeIn(curve, 0))(line, "k").reduced();
     expect(bytes(draw(half.at(0)))).toBe(bytes(draw(half.at(5))));
     expect([half.validFrom(0), half.validUntil(0), half.validUntil(-1)]).toEqual([0, Number.POSITIVE_INFINITY, 0]);

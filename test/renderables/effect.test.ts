@@ -60,7 +60,7 @@ describe("Effected — the identity effect", () => {
     expect(seen).toEqual([DEFAULTS, DEFAULTS]);
     expect(segments).toHaveLength(1);
     // Written as it was: no byte but the glyphs. What the segment gains is
-    // when the frame next changes — now, for an effect that promises no hold.
+    // when the frame next changes — now, for an effect that promises no validity interval.
     expect(renderToString(fixed(...segments), { colorSystem: ColorDepth.TRUECOLOR })).toBe("ab");
     expect(segments[0]!.style?.validity.validUntil).toBe(0);
   });
@@ -570,7 +570,7 @@ describe("confined — an effect on its owners' cells", () => {
     expect(movedSides(new Strip(items, SEPARATOR_STYLES.powerline), items[1]!)).toEqual(["", "", "", "", "bg", "fgbg", "fgbg", "fgbg", "fg", "", "", "", ""]);
   });
 
-  it("moves the attributes of its owner's cells, and leaves a seam's as the joiner drew them", () => {
+  it("moves the attributes of its owner's cells, and leaves a seam's as the separator drew them", () => {
     const items = trio();
     const bolden: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, attributes: { ...look.attributes, bold: true } }));
     const bold = [...effected(new Strip(items, SEPARATOR_STYLES.powerline), confined(bolden, items[1]!)).render({ maxWidth: 80, colorSystem: ColorDepth.TRUECOLOR })].flatMap((s) =>
@@ -578,7 +578,7 @@ describe("confined — an effect on its owners' cells", () => {
     );
     // A join cell is no item's, so no effect is handed it: its colors are
     // resolved again from the item cells beside it, and its attributes, which
-    // a joiner never takes from a neighbour, stay as it drew them. Both arrows
+    // a separator never takes from a neighbour, stay as it drew them. Both arrows
     // beside the item keep theirs.
     expect(bold).toEqual([false, false, false, false, false, true, true, true, false, false, false, false, false]);
   });

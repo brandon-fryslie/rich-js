@@ -31,7 +31,7 @@
  *
  * [LAW:no-ambient-temporal-coupling] Pure in `t`, nothing kept between
  * frames; `at` hands over the frame alone, and placed, the scroll stamps
- * the hold it is in at the frame's time (`placedRender`).
+ * the validity interval it is in at the frame's time (`placedRender`).
  */
 
 import { Animation } from "../core/animation.js";
@@ -90,7 +90,7 @@ export function marquee(content: Renderable, options: MarqueeOptions): Animation
   const { width, step } = options;
   if (!(Number.isInteger(width) && width > 0)) throw new RangeError(`marquee: width must be a positive whole number of cells, got ${width}`);
   positiveSeconds("marquee step", step);
-  // [LAW:single-enforcer] Which step a time is in is `passAt`'s pass, and its two ends a one-hold
+  // [LAW:single-enforcer] Which step a time is in is `passAt`'s pass, and its two ends a one-step
   // step sequence's, the wrap `Animation.repeat` reads its turns through.
   const holds = stepSequence([step]);
   const stepped: Animation<number> = Animation.of({
@@ -166,7 +166,7 @@ class ScrollFrame implements Renderable, Measurable {
     const start = Math.max(0, col);
     // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
     // when anything in the content does — a row above the slot entering pushes every row down, and run
-    // backwards, leaving it pulls them up. The cut throws away the cells that hold rode on, so it is
+    // backwards, leaving it pulls them up. The cut throws away the cells that validity rode on, so it is
     // told to the frame (`RenderOptions.onValidity`).
     options.onValidity?.({ validFrom: Segment.validFrom(drawn), validUntil: Segment.validUntil(drawn) });
     for (let r = 0; r < height; r++) {

@@ -16,7 +16,7 @@
  *   palette exists. [LAW:one-way-deps]
  * - `withAnimation(config, frame)` — the engine config with `frames`,
  *   `stepped`, `tween`, `loop` and `glyphs` registered, drawn for a moment on
- *   a timeline, and the two engine hooks their holds reach the frame through
+ *   a timeline, and the two engine hooks their validity intervals reach the frame through
  *   installed beside them. It is the only registration that knows the
  *   template is evaluated at a time, and the time and the timeline are the
  *   host's to hand in (`./animation-funcs.ts`).

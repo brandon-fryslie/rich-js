@@ -1,4 +1,4 @@
-// sampleAndHold: any effect sampled and held on a beat — its time held at each
+// sampleAndHold: any effect sampled and held on a step sequence — its time held at each
 // hold's start — at one redraw a second and at sixty.
 
 import { describe, expect, it } from "vitest";
@@ -39,7 +39,7 @@ function fillAt(effect: Effect, t: number): number {
 }
 const turned = (from: number, to: number): number => (((to - from) % 360) + 360) % 360;
 
-describe("sampleAndHold — an effect sampled and held on a beat", () => {
+describe("sampleAndHold — an effect sampled and held on a step sequence", () => {
   const walk = sampleAndHold(quick, stepSequence([1]));
 
   it("holds one color within a step and changes at each step's start, sampled every 1/60 s", () => {

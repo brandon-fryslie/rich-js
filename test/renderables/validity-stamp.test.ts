@@ -63,15 +63,15 @@ describe("a frame says when it changes on the host's clock", () => {
     }
   });
 
-  it("a lifecycle arriving through a stepped fade wakes on the beats, on the host's clock", () => {
+  it("a lifecycle arriving through a stepped fade wakes on the steps, on the host's clock", () => {
     const steps = stepSequence([0.25]);
     const life = lifecycle(new RichText("a line", { style: "cyan" }), { enter: throughColors(sampleAndHold(fadeIn(curve, 0), steps)), exit: throughColors(dissolveOut(curve, 0)), key: "line" }, 5);
-    // The first host moment the time since entering reaches the beat's edge.
+    // The first host moment the time since entering reaches the step's edge.
     const edge = (local: number) => firstReaching(5 + local, (x) => x - 5 >= local);
     expect(Segment.validUntil(draw(inFrame(life, 5.1)))).toBe(edge(0.25));
     expect(Segment.validUntil(draw(inFrame(life, 5.3)))).toBe(edge(0.5));
     expect(wakes((t) => inFrame(life, t), 5.1)).toBe(edge(0.25));
-    // Played at twice the rate, the beats come twice as often on the host's clock.
+    // Played at twice the rate, the steps come twice as often on the host's clock.
     const fast = Timeline.run(Timeline.play(0, 2), life);
     const said = Segment.validUntil(draw(inFrame(fast, 2.55)));
     expect(said).toBe(fast.validUntil(2.55));

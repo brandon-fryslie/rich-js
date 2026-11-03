@@ -18,7 +18,7 @@ const oneShot = Animation.sequence(Animation.map(stepSequence([0.5, 0.5]), (i) =
 
 /**
  * Whether `animation` holds `at(h)` over `[validFrom(h), validUntil(h))` on
- * the host's clock, sampled inside — the contract: the hold an animation
+ * the host's clock, sampled inside — the contract: the validity interval an animation
  * names may be narrower than the truth and never wider. Where a boundary is
  * exact, the tests say so with the host time it falls at.
  */
@@ -141,7 +141,7 @@ describe("Timeline.run: an animation on host time", () => {
 
   it("backwards through a one-shot, the settled value changes at the switch and the first part's start is where it began, never before", () => {
     // From host 0.3, so no hold boundary lands on host 0, where the float
-    // after it is subnormal and finer than a beat's wrap resolves.
+    // after it is subnormal and finer than a step sequence's wrap resolves.
     const run = Timeline.run(Timeline.play(0.3, -1), oneShot);
     // Animation time 1e6 (host 0.3 - 1e6): settled since the switch at 2, which the host reaches at -1.7.
     expect(run.at(0.3 - 1e6)).toBe("done");
@@ -153,7 +153,7 @@ describe("Timeline.run: an animation on host time", () => {
     for (const h of [0.3 - 1e6, -1.4, 0.05, 1]) expect(holdsBetween(run, h), `h ${h}`).toBe(true);
   });
 
-  it("validFrom is the start of the host hold, forwards and backwards, and is never after the host time", () => {
+  it("validFrom is the start of the validity interval on the host's clock, forwards and backwards, and is never after the host time", () => {
     for (const rate of [1, 2.5, -1, -0.5]) {
       const timeline = Timeline.play(10, rate);
       const run = Timeline.run(timeline, signal);

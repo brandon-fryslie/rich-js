@@ -1,5 +1,5 @@
 /**
- * Frames — content that changes on a beat: a sequence of frames, each held
+ * Frames — content that changes on a step sequence: a sequence of frames, each held
  * for its own seconds and looping, drawn as the one in progress at a time
  * the host hands in.
  *
@@ -14,12 +14,12 @@
  * clock read: whoever draws frames hands each one its time
  * (`RenderOptions.frame`), so the same `t` draws the same bytes at one
  * redraw a second or sixty. The host's rate is the host's. At sixty a frame
- * shows for exactly its hold; at one a second a hold shorter than a second is
+ * shows for exactly its step; at one a second a step shorter than a second is
  * skipped and a period of whole seconds freezes on one frame, and nothing
- * here adapts to that — the beat is `core/easing.ts`'s, the one timing
+ * here adapts to that — the step sequence is `core/easing.ts`'s, the one timing
  * vocabulary, and a draw costs the same at `t = 0` and `t = 10⁶`.
  *
- * A `FrameSequence` is the frames prepared once — the beat, the one width,
+ * A `FrameSequence` is the frames prepared once — the step sequence, the one width,
  * each frame set into a line and padded — and an `Animation` of the frame
  * shown (`core/animation.ts`), placed like any other: drawn, its work is one
  * frame's — finding which, and copying it — so a draw costs the same over
@@ -27,7 +27,7 @@
  * `Spinner` holds its two, not a memo here: nothing is looked up by key.
  *
  * The frame drawn is drawn until the next begins, and its cells say so: a
- * placed sequence stamps them with its hold (`Style.hold`,
+ * placed sequence stamps them with its validity (`Style.validity`,
  * `placedRender` in `core/animation.ts`), which rides up
  * through every container to whoever holds the composed frame
  * (`Segment.validUntil`), so a host drawing at `t` knows when to draw again,
@@ -60,7 +60,7 @@ export interface Frame {
 
 /** A sequence of frames prepared to be drawn: built once, asked for the frame at a time. */
 export class FrameSequence implements Animation<RichText> {
-  /** Which frame is in progress when: the holds are the frames' seconds, in order. */
+  /** Which frame is in progress when: the steps are the frames' seconds, in order. */
   readonly stepSequence: StepSequence;
   /** The width every frame draws at: the widest frame's, in cells. */
   readonly width: number;
@@ -84,24 +84,24 @@ export class FrameSequence implements Animation<RichText> {
   /**
    * The frame in progress at `t`, at `width` cells, ending no line: a copy,
    * the caller's to change, carrying no word on when it changes — that is
-   * stamped where it is placed, at the frame's time. `beat.at`
+   * stamped where it is placed, at the frame's time. `stepSequence.at`
    * refuses a `t` that is not finite.
    */
   at(t: number): RichText {
     return this._shown[this.stepSequence.at(t)]!.copy();
   }
 
-  /** When the frame in progress at `t` gives way to the next: the beat's answer, its holds being the frames'. */
+  /** When the frame in progress at `t` gives way to the next: the step sequence's answer, its steps being the frames'. */
   validUntil(t: number): number {
     return this.stepSequence.validUntil(t);
   }
 
-  /** When the frame in progress at `t` began: the beat's answer. */
+  /** When the frame in progress at `t` began: the step sequence's answer. */
   validFrom(t: number): number {
     return this.stepSequence.validFrom(t);
   }
 
-  /** The frames with their motion taken out: the beat's first frame, held, a copy as `at`'s is. */
+  /** The frames with their motion taken out: the step sequence's first frame, held, a copy as `at`'s is. */
   reduced(): Animation<RichText> {
     return Animation.map(this.stepSequence.reduced(), (i) => this._shown[i]!.copy());
   }

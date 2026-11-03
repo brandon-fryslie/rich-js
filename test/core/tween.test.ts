@@ -3,7 +3,7 @@ import { Animation, ColorRamp, ColorRgba, EASES, spring, steps, tween, type Anim
 
 // [LAW:behavior-not-structure] What is asserted is what a host sees: the value
 // at each time it samples, that the value is the same at one sample a second
-// and sixty, that it lands on its target exactly, and that the hold the tween
+// and sixty, that it lands on its target exactly, and that the validity interval the tween
 // names — `[validFrom(t), validUntil(t))` — is never wider than the truth.
 
 const NEVER = Number.POSITIVE_INFINITY;
@@ -12,7 +12,7 @@ const ALWAYS = Number.NEGATIVE_INFINITY;
 /** Every `t` a host sampling `hz` times a second asks for over `[0, until]`, exact in the host's own integers. */
 const sampled = (hz: number, until: number): number[] => Array.from({ length: hz * until + 1 }, (_, i) => i / hz);
 
-/** Whether `animation` holds `at(t)` over the hold it names at `t`, sampled inside. */
+/** Whether `animation` holds `at(t)` over the validity interval it names at `t`, sampled inside. */
 function holdsBetween<T>(animation: AnimationOf<T>, t: number, samples = 24): boolean {
   const value = animation.at(t);
   const next = animation.validUntil(t);
@@ -87,7 +87,7 @@ describe("tween", () => {
     expect(count.validUntil(settle.seconds / 2)).toBe(settle.seconds / 2);
   });
 
-  it("names its hold: until 0 before it begins, every frame while it moves, never after", () => {
+  it("names its validity interval: until 0 before it begins, every frame while it moves, never after", () => {
     const fill = tween(0, 1, second);
     expect([fill.validFrom(-3), fill.validUntil(-3)]).toEqual([ALWAYS, 0]);
     expect([fill.validFrom(0.7), fill.validUntil(0.7)]).toEqual([0.7, 0.7]);

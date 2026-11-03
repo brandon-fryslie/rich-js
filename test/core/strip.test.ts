@@ -38,7 +38,7 @@ const OPTIONS: RenderOptions = { maxWidth: 80 };
 
 // Strip now ends its own last line (rich-flexstrip-5kf), matching FlexStrip
 // and every other composable renderable. That terminator is pinned by its
-// own tests below; stripping it here keeps the joiner/color assertions in
+// own tests below; stripping it here keeps the separator/color assertions in
 // the rest of this file about what they were always about.
 function render(strip: Strip, options: RenderOptions = OPTIONS): Segment[] {
   const segs = [...strip.render(options)];
@@ -538,11 +538,11 @@ describe("gradientSeam", () => {
   });
 });
 
-// [LAW:locality-or-seam] The bg constraint that the joiner needs lives at the
+// [LAW:locality-or-seam] The bg constraint that the separator needs lives at the
 // edge of the item, not as a uniform-bg constraint on the interior. These
 // tests pin that contract: a RichText with varying-bg spans reports its
-// edge styles accurately, and joiners paint transitions using those edges.
-describe("edge-aware joiner protocol with varying interior styling", () => {
+// edge styles accurately, and separators paint transitions using those edges.
+describe("edge-aware separator protocol with varying interior styling", () => {
   it("RichText.edgeStyle returns base style for unspanned text", () => {
     const r = cell("hello", "white on red");
     expect(r.edgeStyle("left", OPTIONS).bgcolor?.name).toBe("red");
@@ -560,14 +560,14 @@ describe("edge-aware joiner protocol with varying interior styling", () => {
   it("RichText.edgeStyle leaves out a span that ends one column short of the edge", () => {
     // A span's end is exclusive: [0, 1) covers column 0 alone, so the right
     // edge — column 1 — is the base style. An inclusive end would paint the
-    // joiner in a color that is not on the boundary column.
+    // separator in a color that is not on the boundary column.
     const r = new RichText("ab", { style: "white on red", end: "" });
     r.stylize("on green", 0, 1);
     expect(r.edgeStyle("left", OPTIONS).bgcolor?.name).toBe("green");
     expect(r.edgeStyle("right", OPTIONS).bgcolor?.name).toBe("red");
   });
 
-  it("a joiner paints the transition using the actual edge bgs", () => {
+  it("a separator paints the transition using the actual edge bgs", () => {
     const left = new RichText("ab", { style: "white on red", end: "" });
     left.stylize("on yellow", 1, 2); // right edge becomes yellow
     const right = new RichText("cd", { style: "white on blue", end: "" });
@@ -587,9 +587,9 @@ describe("edge-aware joiner protocol with varying interior styling", () => {
 });
 
 // A cell's style may be a theme name, which is a color only against the theme
-// of the render drawing it. That is why a joiner reads edges from inside the
+// of the render drawing it. That is why a separator reads edges from inside the
 // renderable it returns rather than in `join` — these pin the deferral, which
-// a joiner reading edges eagerly would pass every test above.
+// a separator reading edges eagerly would pass every test above.
 describe("edge styles resolved against the render's theme", () => {
   const THEMED: RenderOptions = {
     maxWidth: 80,
@@ -609,7 +609,7 @@ describe("edge styles resolved against the render's theme", () => {
     expect(r.edgeStyle("right", THEMED).bgcolor?.name).toBe("blue");
   });
 
-  it("a joiner paints the transition in the theme's colors", () => {
+  it("a separator paints the transition in the theme's colors", () => {
     const strip = new Strip(
       [cell(" lead ", "strip.lead"), cell(" tail ", "strip.tail")],
       arrows(),
@@ -694,7 +694,7 @@ describe("CellSeparator", () => {
   });
 
   it("refuses ground inside a mix, whose color nobody knows", () => {
-    // A shape authored as data reaches the joiner without the type's say.
+    // A shape authored as data reaches the separator without the type's say.
     const fg = { mix: [LEFT_BG, "ground", 0.5] } as unknown as JoinCell["fg"];
     expect(() => joiner({ seam: [{ glyph: ">", fg, bg: RIGHT_BG }] })).toThrow(/seam\[0\] mixes ground/);
   });

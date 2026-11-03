@@ -2,22 +2,22 @@
  * Strip + Separator — edge-aware horizontal layout primitive.
  *
  * A `Strip` renders a horizontal sequence of styled items with a `Separator`
- * deciding how each transition between adjacent items looks. The joiner is
+ * deciding how each transition between adjacent items looks. The separator is
  * a pure function of `(leftItem | null, rightItem | null) -> Renderable`,
  * so endpoint joins (the start and end of the strip) are explicit positions
- * in the protocol — the joiner names what an endpoint looks like rather than
+ * in the protocol — the separator names what an endpoint looks like rather than
  * the strip guessing.
  *
  * [LAW:one-source-of-truth] The render walk
- *   joiner(null, items[0]), items[0],
- *   joiner(items[0], items[1]), items[1], ...,
- *   joiner(items[N-1], null)
- * is the single authority for how strips lay out. Every joiner participates
+ *   separator(null, items[0]), items[0],
+ *   separator(items[0], items[1]), items[1], ...,
+ *   separator(items[N-1], null)
+ * is the single authority for how strips lay out. Every separator participates
  * in the same protocol; "look up the previous segment's bg" is no longer a
- * powerline-specific hack but the contract every joiner shares.
+ * powerline-specific hack but the contract every separator shares.
  *
- * [LAW:locality-or-seam] The joiner protocol asks each item only for its
- * *edge* style — the column adjacent to the joiner — not for a single
+ * [LAW:locality-or-seam] The separator protocol asks each item only for its
+ * *edge* style — the column adjacent to the separator — not for a single
  * whole-item style. This pushes the bg-uniformity requirement out of the
  * cell type and into the narrowest place that actually needs it: the column
  * boundary. Items with uniform styling report the same style at both edges;
@@ -38,7 +38,7 @@ import { drawable, getStyle, isAscii, render, type Measurable, type Renderable, 
 // --- StyledRenderable ---
 
 /**
- * Items in a `Strip` expose their per-edge style so joiners can paint the
+ * Items in a `Strip` expose their per-edge style so separators can paint the
  * transition glyph at each boundary.
  *
  * `edgeStyle("left", options)` reports the style of the item's leftmost cell
@@ -47,7 +47,7 @@ import { drawable, getStyle, isAscii, render, type Measurable, type Renderable, 
  * breaking the join.
  *
  * The edge is asked in a render, with that render's options, because a style
- * name only becomes a color against the render's theme. A joiner therefore
+ * name only becomes a color against the render's theme. A separator therefore
  * reads edges inside the `render` of what it returns, never in `join`.
  */
 export interface StyledRenderable extends Renderable {
@@ -70,16 +70,16 @@ export interface JoinContext {
 export interface Separator<T extends StyledRenderable = StyledRenderable> {
   /**
    * `left === null` marks the start endpoint; `right === null` marks the end
-   * endpoint. The joiner decides what an endpoint looks like — typically
+   * endpoint. The separator decides what an endpoint looks like — typically
    * fg-only with no bg so the strip blends into the terminal background.
    */
   join(left: T | null, right: T | null, context: JoinContext): Renderable;
 }
 
 /**
- * The owner every cell a strip's joiner draws is stamped with
+ * The owner every cell a strip's separator draws is stamped with
  * (`Segment.anchorLines`), whatever the separator: a seam is told by what drew
- * it, never by its glyph, which an ASCII joiner draws otherwise and a lead may
+ * it, never by its glyph, which an ASCII separator draws otherwise and a lead may
  * not draw at all. An effect reads it to leave a seam out of the words it
  * keeps legible (`drawnOf`, `../renderables/effect.ts`).
  *
@@ -125,7 +125,7 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
 
     // [LAW:dataflow-not-control-flow] The walk is the same shape every render:
     // start-cap, item, mid-join, item, ..., item, end-cap. Variability lives
-    // in `items` and in what the joiner emits at each position — never in
+    // in `items` and in what the separator emits at each position — never in
     // whether a join runs.
     //
     // The row sits its items side by side, so none is handed a justify: a
@@ -170,7 +170,7 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
 // --- CellSeparator ---
 
 /**
- * A color a joiner's cell is drawn in. Each variant names where the color
+ * A color a separator's cell is drawn in. Each variant names where the color
  * comes from when the join is drawn:
  *   • an `edge` — a neighbour's ground (`bg`) or text (`fg`) at the column
  *     facing the join, read through `StyledRenderable.edgeStyle`;
@@ -208,7 +208,7 @@ export interface JoinCell {
 }
 
 /**
- * A cell of a seam, or one of the joiner's caps standing in a seam's place:
+ * A cell of a seam, or one of the separator's caps standing in a seam's place:
  * `{ cap: "tail" }` closes the run the seam leaves, `{ cap: "lead" }` opens the
  * run it enters, drawn as whatever caps the seam is joined with. That is how
  * a seam that parts its runs — `capsule`, `metro` — ends each in the caps
@@ -217,7 +217,7 @@ export interface JoinCell {
 export type SeamCell = JoinCell | { readonly cap: "lead" | "tail" };
 
 /**
- * What a joiner draws between two neighbours, in one form: `seam`, the cells
+ * What a separator draws between two neighbours, in one form: `seam`, the cells
  * between them. Each is drawn with its ink held off its own ground
  * (`SEAM_MIN_DELTA_E`, `standOff`).
  */
@@ -226,7 +226,7 @@ export interface SeamForm {
 }
 
 /**
- * What a joiner draws at the ends of a run, in one form:
+ * What a separator draws at the ends of a run, in one form:
  *   • `lead` — where a run is entered from nothing: the strip's start, or a
  *     neighbour with no ground for the seam to paint. It cannot name `left`;
  *   • `tail` — where a run leaves into nothing. It cannot name `right`.
@@ -265,7 +265,7 @@ const PARTS: readonly Part[] = ["seam", "lead", "tail"];
 
 /**
  * The least ΔE_OK a join cell's ink must stand off its own ground by to be
- * seen. Below it the eye cannot tell the ink from the ground, so the joiner
+ * seen. Below it the eye cannot tell the ink from the ground, so the separator
  * lifts the ink to it (`standOff`). Twice the ~.02 threshold of a visible
  * difference, because a seam is one cell wide.
  */
@@ -314,7 +314,7 @@ const parseColor = (raw: CellColor, absent: "left" | "right" | undefined, refuse
   raw === "ground" ? raw : parsePaint(raw, absent, refuse);
 
 const ABSENT: Readonly<Record<Part, "left" | "right" | undefined>> = { seam: undefined, lead: "left", tail: "right" };
-// Which argument of a joiner a part is authored in, so a refusal names it.
+// Which argument of a separator a part is authored in, so a refusal names it.
 const AUTHORED_IN: Readonly<Record<Part, "seam" | "caps">> = { seam: "seam", lead: "caps", tail: "caps" };
 
 function parseCell(cell: JoinCell, form: FormName, part: Part, refuse: Refuse): JoinCell {
@@ -402,7 +402,7 @@ const readsGround = (cells: readonly JoinCell[], side: "left" | "right"): boolea
     [cell.fg, cell.bg].some((color) => color !== "ground" && [...paintsIn(color)].some((p) => "edge" in p && p.edge === side && p.part === "bg")),
   );
 
-// One form of a joiner — its shape and what is read off the shape once, so a
+// One form of a separator — its shape and what is read off the shape once, so a
 // render does not re-derive it. Which neighbours the form needs a ground from
 // belongs to the form drawn, never to the other one, and to the part drawn,
 // never to the others: the seam from either neighbour, the lead from the right
@@ -491,7 +491,7 @@ function* lightnessRay(origin: Oklch): Iterable<Oklch> {
  * color that cleared the floor, never a step one unit off its ground.
  *
  * [LAW:single-enforcer] The one place a join cell's visibility is decided:
- * nothing outside the joiner predicts whether a seam will show.
+ * nothing outside the separator predicts whether a seam will show.
  */
 function standOff(ink: ColorSpec | undefined, ground: ColorSpec | undefined, depth: ColorDepth): ColorSpec | undefined {
   if (ink === undefined || ground === undefined) return ink;
@@ -648,7 +648,7 @@ const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[
 
 /**
  * The one separator: what it draws is a `SeparatorSeam` between neighbours and a
- * `EndCaps` at the ends of each run, picked independently, so a new joiner is
+ * `EndCaps` at the ends of each run, picked independently, so a new separator is
  * a pair of values, never a class.
  *
  * Which part a join draws is read off its two neighbours. A neighbour is
@@ -760,7 +760,7 @@ const SPACE: JoinCell = { glyph: " ", fg: LEFT_FG, bg: GROUND };
 const rail = (glyph: string): JoinCell => ({ glyph, fg: { role: "strip.rail" }, bg: GROUND });
 
 /**
- * The bundled seams, by name: what a joiner draws between two neighbours.
+ * The bundled seams, by name: what a separator draws between two neighbours.
  * What each draws is `docs/strip.md`'s "Seams"; any of them ends in any of
  * `CAPS`.
  */
@@ -800,7 +800,7 @@ const pill = (open: string, close: string): CapsForm => ({
 const FLAT: CapsForm = { lead: [], tail: [] };
 
 /**
- * The bundled caps, by name: what a joiner draws where a run begins and ends.
+ * The bundled caps, by name: what a separator draws where a run begins and ends.
  * What each draws is `docs/strip.md`'s "Caps"; any of them ends any of
  * `SEPARATORS`.
  */
@@ -818,7 +818,7 @@ export const END_CAPS = Object.freeze({
 });
 
 /**
- * The bundled joiners, by name: each a seam from `SEPARATORS` ended in caps from
+ * The bundled separators, by name: each a seam from `SEPARATORS` ended in caps from
  * `CAPS`. What each draws is `docs/strip.md`'s "Built-in joiners"; a name from
  * config is read with `separatorNamed`.
  */
@@ -840,13 +840,13 @@ export const SEPARATOR_STYLES = Object.freeze({
 });
 
 /**
- * A joiner as config names it: one of `SEPARATOR_STYLES`, or a seam from `SEPARATORS` ended
+ * A separator as config names it: one of `SEPARATOR_STYLES`, or a seam from `SEPARATORS` ended
  * in caps from `CAPS`, each named apart.
  */
 export type SeparatorSpec = string | { readonly seam: string; readonly caps: string };
 
 /**
- * The joiner `spec` names — a joiner read from config, parsed. Throws on a
+ * The separator `spec` names — a separator read from config, parsed. Throws on a
  * name its table lacks, naming the ones there are; an own-key test, so
  * `toString` and the rest of `Object.prototype` are no one's name.
  */

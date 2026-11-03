@@ -40,7 +40,7 @@ const LOG = Array.from({ length: 12 }, (_, i) => new RichText(`${String(i + 1).p
 const tail = scroll(new Group(...LOG), {
   width: WIDTH,
   height: 4,
-  // One row a second down the log, then back to its top: a beat, so it wakes the host once a second, not every frame.
+  // One row a second down the log, then back to its top: a step sequence, so it wakes the host once a second, not every frame.
   row: stepSequence(Array.from({ length: LOG.length - 3 }, () => 1)),
 });
 

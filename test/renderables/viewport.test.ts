@@ -355,7 +355,7 @@ describe("the scrollbar", () => {
     expect(rows(new Viewport({ scrollbar: SCROLLBAR }).showing(numbered(2)), undefined, 0)).toEqual([]);
   });
 
-  // Held, the content tells a render nothing about its length, so that render
+  // Hidden, the content tells a render nothing about its length, so that render
   // commits nothing: it draws the scrollbar the last drawn render left.
   describe("across a render that hands its content no column", () => {
     it("keeps its offset and its thumb, under a region, a ceiling or no height", () => {
@@ -480,7 +480,7 @@ describe("showing, with a range followed", () => {
     expect(shown(following(viewport, 4, 5), { rows: 3, exact: true })).toEqual(["0", "1", "2"]);
   });
 
-  it("keeps nothing from a range followed in a frame that held it or measured it", () => {
+  it("keeps nothing from a range followed in a frame that hid it or measured it", () => {
     const viewport = new Viewport({ rows: 2 });
     const showing = viewport.showing(numbered(10));
     [...render(following(viewport, 5, 6), { maxWidth: 0 })];
@@ -550,7 +550,7 @@ describe("a viewport keeps its scroll once the frame is drawn, never while", () 
     const frame: Renderable = {
       *render(options) {
         yield* render(showing, options);
-        // One column is all the gutter: the content is held.
+        // One column is all the gutter: the content is hidden.
         yield* render(showing, { ...options, maxWidth: 1 });
       },
     };

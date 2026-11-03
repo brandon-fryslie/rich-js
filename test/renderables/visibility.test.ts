@@ -1,7 +1,7 @@
 /**
- * A renderable handed no column is held (`render` in src/core/protocol.ts):
- * drawn, with what it drew dropped, and everything it draws reported held.
- * For every renderable a consumer can import, held, it reports the probes it
+ * A renderable handed no column is hidden (`render` in src/core/protocol.ts):
+ * drawn, with what it drew dropped, and everything it draws reported hidden.
+ * For every renderable a consumer can import, hidden, it reports the probes it
  * reports drawn at a generous width, in the order it draws them — so a widget
  * a container squeezes to nothing stays in the view and in focus order — and
  * it survives being drawn under one column at all, which nothing else asks of
@@ -201,7 +201,7 @@ describe("a renderable handed no column", () => {
   });
 
   for (const [name, row] of [...Object.entries(ROWS), ...Object.entries(VARIANTS)]) {
-    it(`${name} is held, and holds the probes it draws, in the order it draws them`, () => {
+    it(`${name} is hidden, and holds the probes it draws, in the order it draws them`, () => {
       const drawn = build(row);
       const held = build(row);
       const atWidth = reports(drawn.renderable, 40);
@@ -221,8 +221,8 @@ describe("a renderable handed no column", () => {
   }
 
   // A list item's gutter is paid before its body, so a narrow frame hands the
-  // body a negative width, and the rule inside it is held.
-  it("a Markdown list too narrow for its gutters draws, a rule in its innermost item held", () => {
+  // body a negative width, and the rule inside it is hidden.
+  it("a Markdown list too narrow for its gutters draws, a rule in its innermost item hidden", () => {
     expect(() => [...render(new Markdown("- a\n  - b\n\n    ---"), { maxWidth: 5 })]).not.toThrow();
   });
 

@@ -19,7 +19,7 @@
  * through its getter. The timeline is a map the drawing runs through, not a
  * number the time is turned into first: a frame's stamp says when it changes
  * on the host's clock, which only `Timeline.run` can carry it back onto —
- * paused, never; backwards, at the hold it is about to drop under.
+ * paused, never; backwards, at the validity interval it is about to drop under.
  * [LAW:single-enforcer] `drawn` is the one place the time, the timeline
  * and the reader's preference for motion are read, for every function.
  *
@@ -58,15 +58,15 @@
  *
  * Every function says when what it drew changes, so a host paints a
  * template while it moves and not after — and says it only for what the
- * output depends on. A number or a color has no cells to carry a hold, and
+ * output depends on. A number or a color has no cells to carry a validity interval, and
  * a fragment's cells lose theirs the moment it is flattened (`printf "%s"`),
  * so no function stamps cells or tells the frame itself. Each marks its
- * return with the hold its value is in (`marked`, the engine's evaluation
+ * return with the validity interval its value is in (`marked`, the engine's evaluation
  * provenance), and the engine carries the mark beside the value into every
  * variable, dot and function the value passes through, reporting it where
  * the output depends on it. `emitted` is where a template's cells take a
- * hold: every fragment the template emits, stamped with the holds of the
- * marked values its action read. `decided` is the route for a hold no cell
+ * validity: every fragment the template emits, stamped with the validity intervals of the
+ * marked values its action read. `decided` is the route for a validity interval no cell
  * can carry, told to the frame (`TemplateFrame.onValidity`): a mark an
  * `if`/`with`/`range` consumed, whichever arm it took, because the frame may
  * show cells for it later and must say when without a cell to say it on, as
@@ -75,7 +75,7 @@
  * is the authority on when it is called. A mark bound somewhere nobody reads
  * is reported nowhere, so a value a template computes and never draws or
  * decides on tells the frame nothing (rich-animation-27tq.0gd). Early, never
- * late: an emission may carry a hold it did not strictly need, and a hold
+ * late: an emission may carry a validity interval it did not strictly need, and a validity interval
  * the output depends on is never dropped. [LAW:single-enforcer]
  *
  * The functions and the two hooks go into the host's engine config together,
@@ -107,7 +107,7 @@ export interface AnimationOptions {
 
 /**
  * The frame a template is evaluated for, in the fields a render's options
- * carry under the same names: `time` in seconds, `onValidity`, told the hold of
+ * carry under the same names: `time` in seconds, `onValidity`, told the validity interval of
  * an animated value the output may depend on with no cell to carry it — one
  * a decision read, whichever arm it took, a writing function's input, a
  * throwing action's (the engine's `decided`) — and the reader's preferences,
@@ -132,7 +132,7 @@ export function templateFrame(options: RenderOptions): TemplateFrame {
 }
 
 /**
- * The mark a function puts on its return: the hold its value is in, and the
+ * The mark a function puts on its return: the validity interval its value is in, and the
  * frame it was drawn for, which is the one `decided` tells. Only the two
  * hooks here read one; a consumer's own marks pass through them untouched,
  * and a foreign token shaped like a `ValidityInterval` is not one.
@@ -154,7 +154,7 @@ const HOST_CLOCK = Timeline.play(0);
  * as `value`'s input; what it cannot see is the pairing, or that a hold is
  * a positive number of seconds: both settled here, under the engine's
  * "error calling <function>" and nothing else, since a template author
- * knows neither `FrameSequence` nor `beat`, which refuse the same hold in their
+ * knows neither `FrameSequence` nor `stepSequence`, which refuse the same hold in their
  * own names. [LAW:parse-dont-validate]
  */
 function pairs<V>(what: string, tail: readonly unknown[], value: (v: unknown) => V): { seconds: number; value: V }[] {
@@ -202,8 +202,8 @@ function glyphEffect(name: string): (element: EffectTarget) => GlyphEffect {
  * beside its own functions, each drawn for the frame `frame` reports when
  * the template is evaluated — its time in seconds, from whatever zero the
  * host counts from — through `options.timeline`, and each marking its
- * return with the hold it is in there; and with the two hooks that carry
- * those holds to the cells (`emitted`) and the frame (`decided`) installed
+ * return with the validity interval it is in there; and with the two hooks that carry
+ * those validity intervals to the cells (`emitted`) and the frame (`decided`) installed
  * over any `config` already has, which still hear everything they did. One
  * call, so the functions and the hooks that report for them cannot be wired
  * apart: the functions alone would compile, draw, and never say they move.
@@ -222,7 +222,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   const timeline = options.timeline ?? (() => HOST_CLOCK);
   // What `animation`, on this call's timeline, shows in the frame `at`,
   // under the reader's preference, marked with how long for: the time is
-  // read once a call so a value and its hold are one frame's.
+  // read once a call so a value and its validity are one frame's.
   const drawn = <T>(what: string, animation: Animation<T>, at: TemplateFrame): Marked => {
     const t = finiteTime(what, at.time);
     const shown = shownAt(Timeline.run(timeline(), animation), t, at);
@@ -283,13 +283,13 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   }
 
   const holdMarks = (marks: ReadonlySet<unknown>): ValidityMark[] => [...marks].filter((mark): mark is ValidityMark => mark instanceof ValidityMark);
-  // The holds among `marks` layered onto the fragment's base style, which an
+  // The validity intervals among `marks` layered onto the fragment's base style, which an
   // empty text still draws as its one piece of no width: `Style.add` keeps
   // the later `validFrom` and the sooner `validUntil`, so cells that read
-  // two animated values are in the intersection of their holds, as two
-  // styles laid together are anywhere. A fragment no hold reaches is handed
+  // two animated values are in the intersection of their validity intervals, as two
+  // styles laid together are anywhere. A fragment no validity interval reaches is handed
   // back as it came — the engine calls this for every emission — and one a
-  // hold reaches is a copy, since the engine may hand the one fragment a
+  // validity interval reaches is a copy, since the engine may hand the one fragment a
   // scope holds to more than one emission.
   const held = (fragment: RichText, marks: ReadonlySet<unknown>): RichText => {
     const holds = holdMarks(marks);
@@ -309,7 +309,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
     ...config,
     funcs: { ...config.funcs, ...funcs },
     emitted: (fragment, marks) => held(emitted(fragment, marks), marks),
-    // `finally`: a consumer hook that throws still leaves the frame told its holds.
+    // `finally`: a consumer hook that throws still leaves the frame told its validity intervals.
     decided: (marks) => {
       try {
         decided(marks);

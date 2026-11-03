@@ -301,7 +301,7 @@ export class Viewport implements Scrollable {
     const lines = layout({ ...options, maxWidth: contentWidth });
     const asked = this.asked();
     const { scroll, moves } = follow === undefined ? asked : following(asked, follow);
-    // [LAW:no-ambient-temporal-coupling] Content handed no column is held, not
+    // [LAW:no-ambient-temporal-coupling] Content handed no column is hidden, not
     // drawn, so this render learns its budget but not the content's length. It
     // keeps nothing: the offset, the followed range and the queued moves wait
     // for a frame that draws, and this one draws the scrollbar against the

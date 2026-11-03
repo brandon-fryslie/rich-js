@@ -114,7 +114,7 @@ export type { ColorStop, RampMotion } from "./themes/ramp.js";
 export { EASES, WrapMode, stepSequence, cubicBezier, parseEasing, spring, steps } from "./core/easing.js";
 export type { StepSequence, Easing, SpringOptions, StepPosition, Timing } from "./core/easing.js";
 // A value for a time, and when it next changes: the one type every kind of
-// motion is an instance of — beats, frame sequences, spinners, effects.
+// motion is an instance of — step sequences, frame sequences, spinners, effects.
 export { Animation, cyclic } from "./core/animation.js";
 // What every animation answers whatever its values — the type a generic
 // animation implements, and what `Animation.of` and `map` take.

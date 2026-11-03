@@ -1,7 +1,7 @@
 /**
  * The effect catalogue: shimmer, pulse, sparkle and wheel, which loop for as
  * long as they are drawn, fade-in and dissolve-out, which run once and are
- * done, a blink and a bold pulse, which move an attribute on a beat, and a
+ * done, a blink and a bold pulse, which move an attribute on a step sequence, and a
  * gradient, which lays a color ramp across an element and may move it. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
  * in `EFFECT_CURVES` are the ones signed off by eye in the effects-feel demo
  * (`npm run effects-feel`), at 30 fps and at one frame a second, and
@@ -12,7 +12,7 @@
  * blooming in water, mist lifting — because a motion the eye recognises
  * reads as calm and alive, where a motion it has to learn reads as a widget.
  * One effect here is not ambience but a signal, and keeps none of this on
- * purpose: `steppedInk` steps its ink through colors on a beat, the news
+ * purpose: `steppedInk` steps its ink through colors on a step sequence, the news
  * that something is at its limit, and jumps from slot to slot where the
  * loops hold still. Nor is `gradient` a light: it paints an ink rather than
  * lighting it, so it may darken one, and a ramp scrolled across it jumps
@@ -760,7 +760,7 @@ function order(z: number): (cell: Placed) => number {
  * element draws: what a caller drawing the transition inside an animation —
  * a lifecycle — says its frame does, since the frame it hands over carries
  * no word of its own (`stampValidityFrame`, `../core/animation.ts`). Until done it changes
- * every frame, or on each hold of a beat (`sampleAndHold`), and from then never.
+ * every frame, or on each step of a step sequence (`sampleAndHold`), and from then never.
  * [LAW:one-source-of-truth] `done` is that schedule read as a fact — done
  * from the first moment it never changes again — so no transition carries
  * two answers to when it is over.
@@ -785,7 +785,7 @@ export class Transition<E = Effect> {
 export function transition<D, F>(seconds: number, effect: (drawn: D) => Animation<F>): Transition<(drawn: D) => Animation<F>> {
   // Moving every frame until `seconds`, then never: the sequence carries the switch. [LAW:one-source-of-truth]
   // Reduced, a one-shot cuts from its start to its end at 0, and its schedule says so too, the one word on
-  // when the reduced frames change, so a half that lends this schedule to its frames tells the same hold.
+  // when the reduced frames change, so a half that lends this schedule to its frames tells the same validity.
   const schedule: Animation<undefined> = Animation.of({
     ...Animation.sequence(Animation.continuous(() => undefined), seconds, Animation.constant(undefined)),
     reduced: () => Animation.cut(undefined, undefined),
@@ -808,21 +808,21 @@ export function transition<D, F>(seconds: number, effect: (drawn: D) => Animatio
 }
 
 /**
- * `effect` sampled and held on `beat`: drawn at the moment the hold in
- * progress began (`StepSequence.validFrom`), so within a hold every frame is the frame
- * at its start, and at each hold's start it moves on. A continuous effect
+ * `effect` sampled and held on `stepSequence`: drawn at the moment the step in
+ * progress began (`StepSequence.validFrom`), so within a step every frame is the frame
+ * at its start, and at each step's start it moves on. A continuous effect
  * given a short curve becomes one that steps — a `wheel` turning a sixth of
- * a turn once a second — and at one redraw a second a hold shorter than a
+ * a turn once a second — and at one redraw a second a step shorter than a
  * second is skipped, as frames are. [LAW:no-ambient-temporal-coupling] The
  * held time is a function of `t`, so the same `t` draws the same bytes at
- * any rate. The frame next changes at a hold's start, and only one the
+ * any rate. The frame next changes at a step's start, and only one the
  * sampled effect has moved by (`Animation.sampleAndHold`): an effect that moves
- * every frame turns the beat at the end of this hold, and one that is done
- * and says never leaves the beat saying never too.
+ * every frame turns the step sequence at the end of this step, and one that is done
+ * and says never leaves the step sequence saying never too.
  *
  * A transition steps the same way, its schedule with it, so a fade-in on a
- * beat arrives a hold at a time and is done at the first hold that starts
- * after it was: an element arriving through it wakes its host on the beats.
+ * step sequence arrives a step at a time and is done at the first step that starts
+ * after it was: an element arriving through it wakes its host on the steps.
  */
 export function sampleAndHold(effect: Effect, stepSequence: StepSequence): Effect;
 export function sampleAndHold<E extends (drawn: never) => Animation<unknown>>(transition: Transition<E>, stepSequence: StepSequence): Transition<E>;
@@ -998,11 +998,11 @@ const ownPlace = (cell: Placed, width: number): Place => ({ row: cell.row, centr
  * So a panel's ground is one segment whatever words lie on it, a blank
  * carrying the ink keeps a styled paragraph one segment across its spaces
  * and lines, a caption in a bar's color written under the bar turns with
- * it, and a blank in the terminal's ink splits a segment. A seam a joiner
+ * it, and a blank in the terminal's ink splits a segment. A seam a separator
  * drew is in none, since its colors are its neighbours' edges: each color
  * of a seam cell turns with the region of that color past the seam on
  * either side — a two-cell rail reads past its other cell — so a powerline
- * cap keeps the color of the cell it caps, a custom joiner's handed cap
+ * cap keeps the color of the cell it caps, a custom separator's handed cap
  * included, and with the cell's own place where none is beside it — a
  * neighbour's edge the frame does not show, handed at the seam's cell. Any
  * other cell's colors turn with the region covering it: a letter in a
@@ -1093,7 +1093,7 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
  * ground or, on the terminal's ground, as their ink (`segmentsOf`), and it
  * paces by where it sits, not by its color: two
  * regions of one fill at two places turn apart, and each color of the seam
- * a joiner drew between them turns with the region of that color beside
+ * a separator drew between them turns with the region of that color beside
  * it, so a powerline cap keeps the color of the cell it caps. An ink that
  * is no fill turns with the ground it sits on, so a cell's words and fill
  * turn together. A segment's stray is slow noise at its place, at
@@ -1438,8 +1438,8 @@ export interface ColorStep {
 }
 
 /**
- * A signal: every cell's ink stepping through `steps`' colors on a beat,
- * one color a hold, looping, for the time it is handed — a gauge's
+ * A signal: every cell's ink stepping through `steps`' colors on a step sequence,
+ * one color a step, looping, for the time it is handed — a gauge's
  * chevrons in bright changing colors. The ground is left as the cell draws
  * it, and the words stay legible on it: each step's ink is written as the
  * color nearest the step's (OKLab's ΔE) that the depth draws and that
@@ -1455,15 +1455,15 @@ export interface ColorStep {
  *
  * The search is settled once for each ground and step — below truecolor,
  * which colors read on a ground once for that ground — so a frame
- * inside a step redoes none, and nor does a later pass of the beat: at sixty
+ * inside a step redoes none, and nor does a later pass of the step sequence: at sixty
  * frames a second a one-second step is sixty identical frames, and the
- * frame changes when the beat does: the signal is the beat mapped to inks.
- * [LAW:no-ambient-temporal-coupling] The beat is `core/easing.ts`'s, and
+ * frame changes when the step sequence does: the signal is the step sequence mapped to inks.
+ * [LAW:no-ambient-temporal-coupling] The step sequence is `core/easing.ts`'s, and
  * nothing here reads a clock.
  */
 export function steppedInk(steps: readonly ColorStep[]): Effect {
   const rhythm = stepSequence(steps.map((step) => step.seconds));
-  // A copy, as `beat` keeps of the holds: what the signal plays stays what
+  // A copy, as `stepSequence` keeps of the steps: what the signal plays stays what
   // `steps` said whatever the caller does to its array.
   const inks = steps.map((step) => step.color);
   const legible = legibleInks();
@@ -1521,7 +1521,7 @@ function legibleAmong(pair: Pair, offered: readonly Measured[], depth: ColorDept
 }
 
 /**
- * A text attribute turned on and off on a beat: each pass, the cell as its
+ * A text attribute turned on and off on a step sequence: each pass, the cell as its
  * element drew it for `off` seconds, then with `attribute` on for `on`.
  */
 export interface Blink {
@@ -1531,9 +1531,9 @@ export interface Blink {
 }
 
 /**
- * `spec.attribute` blinking: off, the cell as drawn, so that hold's frame is
+ * `spec.attribute` blinking: off, the cell as drawn, so that step's frame is
  * the identity and writes the element's own bytes; on, the attribute set.
- * It changes when its beat does, at a hold's end, and never between.
+ * It changes when its step sequence does, at a step's end, and never between.
  * A blink and a bold pulse are this one function at two specs
  * (`ATTRIBUTE_DEFAULTS`) [LAW:one-type-per-behavior].
  */
@@ -1559,7 +1559,7 @@ export const ATTRIBUTE_DEFAULTS = {
 /**
  * What a catalogue effect is made for: the element it is drawn on, at `z` in
  * the noise, so two elements under one effect drawn from noise do not move in
- * lockstep. An effect on a beat alone (a blink) draws no noise, and keeps
+ * lockstep. An effect on a step sequence alone (a blink) draws no noise, and keeps
  * every element in step, as a terminal's own blink does. How
  * wide the element is, the effect reads off each frame (`Drawn.cells`).
  */

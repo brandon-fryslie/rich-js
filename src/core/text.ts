@@ -74,7 +74,7 @@ function sanitizeStyleLink(style: Style): Style {
  * lays its text out anew, so a stamp naming where a cell sat in the output it
  * came from would name the wrong cell once it wraps, slices or overlaps; the
  * owner that renders the RichText is the one that stamps its cells. A
- * hold stays — `validFrom` and `validUntil`: when a span's cells began and
+ * validity interval stays — `validFrom` and `validUntil`: when a span's cells began and
  * next change is true of them wherever the text lays them, so a frame
  * appended into a line still says when it turns.
  */
@@ -364,7 +364,7 @@ export class RichText implements Renderable, Measurable {
    * them, so the cell type exposes that column rather than constraining its
    * interior to be uniform. For RichText with uniform styling, both edges
    * return the same style; for RichText with edge variation, each edge
-   * accurately reports the column the joiner actually meets.
+   * accurately reports the column the separator actually meets.
    *
    * Position is by character index (not cell column). For wide-character
    * text, the last character occupies the rightmost cell column — the bg

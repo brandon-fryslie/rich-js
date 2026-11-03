@@ -380,7 +380,7 @@ function wordSpan(clusters: Iterable<string>, skipped: (c: string) => boolean, t
 /**
  * The caret's blink, from the moment it restarts: lit for the first half
  * second, so the caret is solid the moment the field is touched, then dark
- * for the next, on a `beat`. A loop, so with its motion taken out it holds lit.
+ * for the next, on a step sequence. A loop, so with its motion taken out it holds lit.
  */
 const CARET_BLINK: Animation<boolean> = Animation.map(stepSequence([0.5, 0.5]), (validity) => validity === 0);
 

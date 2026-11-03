@@ -270,7 +270,7 @@ describe("Animation.repeat", () => {
     }
   });
 
-  it("turns on the float a beat and a loop of the same period turn on, a period not exact in binary included", () => {
+  it("turns on the float a step sequence and a loop of the same period turn on, a period not exact in binary included", () => {
     const period = 0.1;
     const repeated = turns(period);
     const pass = stepSequence([period]);
@@ -350,7 +350,7 @@ describe("an animation is pure: sampled once a second or sixty times, it is the 
 });
 
 describe("the instances already in the tree", () => {
-  it("a beat is an animation of the hold in progress", () => {
+  it("a step sequence is an animation of the hold in progress", () => {
     const b: Animation<number> = stepSequence([1, 0.5]) satisfies StepSequence;
     expect([0, 1, 1.5].map((t) => b.at(t))).toEqual([0, 1, 0]);
     expect([0, 1, 1.5].map((t) => b.validUntil(t))).toEqual([1, 1.5, 2.5]);
@@ -419,7 +419,7 @@ describe("the instances already in the tree", () => {
   it("an edge no host float reaches at this rate is never, not a hang", () => {
     const crawl = Timeline.run(Timeline.play(0, 1e-310), stepSequence([1]));
     expect(crawl.validUntil(0.5)).toBe(Number.POSITIVE_INFINITY);
-    // The start of the hold is within reach: host 0, to the floats the
+    // The start of the validity interval is within reach: host 0, to the floats the
     // product of a subnormal rate and a host time resolves.
     const began = crawl.validFrom(0.5);
     expect(began).toBeLessThanOrEqual(0);

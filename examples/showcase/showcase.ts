@@ -163,7 +163,7 @@ project.add("[magenta]renderables").add("table.ts");
 /**
  * The chevrons after the name: one, two, three, one again, a second each,
  * all drawn at one width, so the tagline never moves, and their ink stepping
- * through three bright colors on the same beat, each kept readable on the
+ * through three bright colors on the same steps, each kept readable on the
  * bubble behind it. Frames and steps are seconds, so the gauge turns at the
  * same pace however often the dashboard redraws. The name itself walks the
  * hue wheel a step a second: a wheel that would take six seconds to turn,

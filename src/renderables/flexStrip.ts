@@ -4,11 +4,11 @@
  * Pack as many items as fit on a line, then break and continue. Each line is
  * an independent sub-strip: optional `Separator` end-caps fire at every line
  * boundary (not just the strip's first/last position), so a line break looks
- * the same as an endpoint to the joiner. Composes with the Strip + Separator
+ * the same as an endpoint to the separator. Composes with the Strip + Separator
  * primitive in `core/strip` — same `Separator` protocol, no new join semantics.
  *
  * [LAW:dataflow-not-control-flow] The pack walk is the same shape every
- * render: measure each item, render every joiner form (start-cap, end-cap,
+ * render: measure each item, render every separator form (start-cap, end-cap,
  * mid-join) up-front, then sweep items into lines. Line breaks are decided by
  * width data, not by control-flow special cases.
  *
@@ -30,7 +30,7 @@ export type FlexAlign = "left" | "center" | "right" | "justify";
 export interface FlexStripOptions<T extends StyledRenderable> {
   /** Separator used between items within a line, and at line endpoints. */
   separator?: Separator<T>;
-  /** Cells of horizontal space inserted on each side of an inter-item joiner (default 0). */
+  /** Cells of horizontal space inserted on each side of an inter-item separator (default 0). */
   gap?: number;
   /** Line alignment when packed items don't fill the available width (default "left"). */
   align?: FlexAlign;
@@ -100,7 +100,7 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
     const gap = this.gap;
     const joiner = this.separator;
 
-    // Pre-render every item and every joiner form we might need. Doing this
+    // Pre-render every item and every separator form we might need. Doing this
     // up-front turns packing into a pure data computation over widths.
     const itemBlocks = items.map((it) => renderToBlock(drawItem(it), options));
     const startCap = (i: number): RenderedBlock =>
@@ -113,8 +113,8 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
     // Build lines as arrays of "blocks" (item or join). Each line begins with
     // the start-cap for its first item and ends with the end-cap for its last.
     // `itemBlockIndices` records the block index of every *item* (i.e., the
-    // packed renderable, not a gap/joiner/cap), so justify can distribute
-    // spare width across inter-item slots only — not between joiner halves.
+    // packed renderable, not a gap/separator/cap), so justify can distribute
+    // spare width across inter-item slots only — not between separator halves.
     type Line = {
       blocks: RenderedBlock[];
       width: number;
@@ -196,7 +196,7 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
     //
     // Putting the variability in data means the emit loop is the same shape
     // every render, and "what happens between two items" can never accidentally
-    // become "what happens between joiner halves" — the data decides.
+    // become "what happens between separator halves" — the data decides.
     const align = this.align;
     for (let li = 0; li < lines.length; li++) {
       const ln = lines[li]!;

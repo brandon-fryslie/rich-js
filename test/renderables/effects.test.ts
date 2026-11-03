@@ -200,7 +200,7 @@ describe("the wheel", () => {
     expect(turned(ink, text.fg)).toBeGreaterThan(0);
   });
 
-  /** A cell of a listed row at `col` showing `fg` on `bg`: a run's cell, or a cap drawn by hand; `seam` for one a joiner drew. */
+  /** A cell of a listed row at `col` showing `fg` on `bg`: a run's cell, or a cap drawn by hand; `seam` for one a separator drew. */
   const shownAt = (col: number, fg: ColorRgba, bg: ColorRgba, seam = false): EffectCell & ListedCell => ({ ...cellAt(0, col), pair: { fg, bg, terminal: written, reverse: false }, seam });
   /** A run of `span` cells of `ink` on `fill` from column `from`. */
   const run = (fill: ColorRgba, from: number, span: number): (EffectCell & ListedCell)[] => Array.from({ length: span }, (_, i) => shownAt(from + i, ink, fill));
@@ -213,9 +213,9 @@ describe("the wheel", () => {
     return ((got - ((360 * t) / 907) % 360 + 540) % 360) - 180;
   };
 
-  it("keeps a joiner's cap the color of the run it caps: each color of a seam turns with the run of that color beside it", () => {
+  it("keeps a separator's cap the color of the run it caps: each color of a seam turns with the run of that color beside it", () => {
     const [a, b] = [fills[0]!, fills[1]!];
-    // Eight cells of `a`, a joiner's cap of `a` on `b`, seven of `b`, and a tail of `b` on the terminal's ground.
+    // Eight cells of `a`, a separator's cap of `a` on `b`, seven of `b`, and a tail of `b` on the terminal's ground.
     const tail = { ...shownAt(16, b, ground, true), terminal: { fg: false, bg: true }, pair: { fg: b, bg: ground, terminal: { fg: false, bg: true }, reverse: false } };
     const listed = [...run(a, 0, 8), shownAt(8, a, b, true), ...run(b, 9, 7), tail];
     for (const t of [150, 300, 700]) {
@@ -299,7 +299,7 @@ describe("the wheel", () => {
     }
   });
 
-  it("a gap of the terminal's ground or a joiner's seam splits a run; one run turns as one", () => {
+  it("a gap of the terminal's ground or a separator's seam splits a run; one run turns as one", () => {
     const a = fills[0]!;
     const t = 300;
     const hueAt = (listed: readonly (EffectCell & ListedCell)[], col: number): string => lookAt(listed, listed.find((cell) => cell.col === col)!, t).bg.hex;

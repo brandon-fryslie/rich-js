@@ -44,8 +44,8 @@
  *   so the identity effect is byte-identical. A changed segment keeps its
  *   style whole, link, meta and anchor included; no cell has moved, so the
  *   anchor's offsets are still true and hit testing still finds the owner.
- * - Placed as a `GlyphEffected`, every cell carries the hold the frame is in
- *   (`Style.hold`), under whatever the child said,
+ * - Placed as a `GlyphEffected`, every cell carries the validity interval the frame is in
+ *   (`Style.validity`), under whatever the child said,
  *   as under `Effected`; drawn as a `Reglyphed`, a value, none.
  *
  * Positions are the child's own: row and column count from the top-left of
@@ -107,7 +107,7 @@ export interface GlyphEffectedOptions {
 /**
  * A `GlyphEffected` at `t`, or an element through a glyph effect at a time an
  * animation's `at` was handed: `renderable` with its cells' glyphs passed
- * through `effect` at `t`, telling the hold it drew in as a `Recolored` does
+ * through `effect` at `t`, telling the validity interval it drew in as a `Recolored` does
  * (`RenderOptions.onReads`, `./effect.ts`). [LAW:one-type-per-behavior]
  */
 export class Reglyphed implements Renderable, Measurable {
@@ -142,7 +142,7 @@ export class Reglyphed implements Renderable, Measurable {
  * `renderable` under a glyph effect over time, an `Animation<Renderable>`
  * as an `Effected` is (`./effect.ts`): with nothing drawn its answer is `t`,
  * and placed, on its own or as a part of any combinator, it says the glyph
- * effect's exact hold at that time and the output's `asciiOnly`, which the
+ * effect's exact validity at that time and the output's `asciiOnly`, which the
  * frame's drawing told (`Reads`).
  */
 export class GlyphEffected implements Animation<Renderable> {
@@ -175,7 +175,7 @@ export class GlyphEffected implements Animation<Renderable> {
     return new GlyphEffected(this.renderable, (drawn) => effect(drawn).reduced(), this);
   }
 
-  /** Drawn at the frame's time, its cells stamped with the glyph effect's exact hold there. */
+  /** Drawn at the frame's time, its cells stamped with the glyph effect's exact validity there. */
   render(options: RenderOptions): Iterable<Segment> {
     return placedRender(this, options);
   }

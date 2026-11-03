@@ -13,14 +13,14 @@
  * Each half is a `Half`: handed the element, an `Animation<Renderable>` of
  * it on the half's own clock from 0, in the shape of the library's other
  * one-shot from renderables to an animation (`Change`, `./change.ts`). One
- * value carries the half's frames and its holds, so neither is kept in
+ * value carries the half's frames and its validity intervals, so neither is kept in
  * agreement with the other by hand, and nothing here measures progress
  * itself: a half's schedule carried onto the host's clock by `Timeline.run`
- * is that half's hold — every frame for a fade, once a hold for one on a
- * beat — and the moment it says it never changes again (`Animation.done`)
+ * is that half's validity — every frame for a fade, once a step for one on a
+ * step sequence — and the moment it says it never changes again (`Animation.done`)
  * is where the arrival ends and where the element is gone. The frames carry
  * no word of their own on when they change: placed, the lifecycle stamps
- * them with its hold at the frame's time (`placedRender`). The exit is
+ * them with its validity at the frame's time (`placedRender`). The exit is
  * drawn over whatever the arrival draws, so an element told to leave while
  * it is still arriving leaves from where it is, never shown whole first —
  * though a color exit is spread over the cells each frame shows, so a cell
@@ -54,7 +54,7 @@ import type { GlyphTransition } from "./glyph-effects.js";
 /**
  * One half of an element's lifecycle: handed the element and `key`, which
  * names it for the half's seeds, the element as the half draws it from
- * `t = 0`, the moment the half began, on its own clock. Its holds are the
+ * `t = 0`, the moment the half began, on its own clock. Its validity intervals are the
  * half's own, whatever element it is handed, and it is done from the first
  * moment it says it never changes again (`Animation.done`): an arrival is
  * the element from then, and an exit is gone. A half that never ends is
@@ -156,8 +156,8 @@ function doneAt(half: Animation<Renderable>, start: number): number {
  * by its `role` and the element's `key` when it never does. [LAW:no-silent-failure]
  * Kept, it would never arrive, or never be gone, and wake the host every frame
  * for good; asked here, the refusal lands where the options were written and
- * not at the first `leave`. A half on a beat that never ends is refused by the
- * beat instead, where the walk asks it past what its holds resolve.
+ * not at the first `leave`. A half on a step sequence that never ends is refused by the
+ * step sequence instead, where the walk asks it past what its steps resolve.
  */
 function ending(half: Animation<Renderable>, role: "enter" | "exit", key: string): Animation<Renderable> {
   if (doneAt(half, 0) === Number.POSITIVE_INFINITY) {
@@ -171,16 +171,16 @@ function ending(half: Animation<Renderable>, role: "enter" | "exit", key: string
 function life(element: Renderable, options: LifecycleOptions, halves: Halves, entered: number, left: number): Lifecycle {
   const { exit, key } = options;
   const { arrival, arrived, departure } = halves;
-  // Where the exit is gone, and the exit's hold, are read off the exit over the element; the frame while
-  // leaving is the exit over what is shown, whose holds are the same by `Half`'s contract.
+  // Where the exit is gone, and the exit's validity, are read off the exit over the element; the frame while
+  // leaving is the exit over what is shown, whose validity intervals are the same by `Half`'s contract.
   const goneAt = doneAt(departure, left);
   // The arrival on the host's clock: when its frame next changes, and since when it has been what it is.
   const arriving = Timeline.run(Timeline.play(entered), arrival);
   // What the element draws by `t` if it is not leaving: arriving through `enter`, then itself.
   const shown = (t: number): Renderable => (t < arrived ? arrival.at(t - entered) : element);
   const held = (schedule: Animation<unknown>, t: number) => ({ last: schedule.validFrom(t), next: schedule.validUntil(t) });
-  // [LAW:one-source-of-truth] Each phase's frame and its hold, side by side, so the two cannot disagree.
-  // The frames say nothing of when they change — the hold does, stamped where the lifecycle is placed.
+  // [LAW:one-source-of-truth] Each phase's frame and its validity, side by side, so the two cannot disagree.
+  // The frames say nothing of when they change — the validity does, stamped where the lifecycle is placed.
   const phase = (t: number): { readonly frame: Renderable; readonly last: number; readonly next: number } => {
     if (t < entered) return { frame: NOTHING, last: Number.NEGATIVE_INFINITY, next: entered };
     if (t >= goneAt) return { frame: NOTHING, last: goneAt, next: Number.POSITIVE_INFINITY };

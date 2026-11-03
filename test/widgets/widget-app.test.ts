@@ -856,7 +856,7 @@ describe("WidgetApp and the wheel", () => {
   });
 });
 
-// A pane handed no column holds what is in it without drawing it, so nothing
+// A pane handed no column hides what is in it without drawing it, so nothing
 // in it that keeps state while it renders commits that state at a width that
 // is not shown. Drawn at one column instead, both of these lost their place.
 describe("WidgetApp across a pane squeezed to no column", () => {
@@ -885,7 +885,7 @@ describe("WidgetApp across a pane squeezed to no column", () => {
     expect(scroll.offset).toBe(40);
   });
 
-  it("paints no overlay for a held widget, and paints it again once the widget is back", async () => {
+  it("paints no overlay for a hidden widget, and paints it again once the widget is back", async () => {
     // The terminal keeps ten columns, so an overlay painted there would show.
     const host = scriptedHost({ cols: 30, rows: 6 });
     const dropdown = new Dropdown({ options: ["Red", "Green", "Blue"], selectedIndex: 0, id: "dd" });

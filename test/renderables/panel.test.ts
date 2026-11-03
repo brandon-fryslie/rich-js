@@ -453,7 +453,7 @@ describe("Panel", () => {
     }
 
     // A `bottomRightAccessory` function is handed the rows the body drew this
-    // frame. Where the content is left no column it is held, and draws none —
+    // frame. Where the content is left no column it is hidden, and draws none —
     // Rich's `Console.render` under one column.
     it("hands the accessory the rows the body drew this frame, and none where the content is left no column", () => {
       const content: Renderable = {

@@ -9,7 +9,7 @@
  *
  * - Focus moves in document order: the order the view reports its widgets in
  *   (`RenderOptions.onVisibility`), among those with a cell on the frame on screen.
- *   A widget its container hands no column is reported held, not drawn: it is
+ *   A widget its container hands no column is reported hidden, not drawn: it is
  *   in the view, so it keeps focus, and it has no cell, so Tab passes it.
  *   Not reading order — in a `Layout` split into columns, reading order
  *   zigzags between the columns row by row.
@@ -56,7 +56,7 @@ export interface WidgetAppOptions extends AppOptions {
   readonly focusOnClick?: boolean;
 }
 
-/** A widget the view reported for a frame, and whether it was drawn or held. */
+/** A widget the view reported for a frame, and whether it was drawn or hidden. */
 export interface WidgetVisibility {
   readonly widget: WidgetBase;
   readonly visibility: Visibility;
@@ -141,7 +141,7 @@ export class WidgetApp implements FrameSource, FrameHost {
 
   /**
    * The widgets the view reported for the frame on screen, in document order,
-   * each drawn or held (`RenderOptions.onVisibility`). A held widget is one its
+   * each drawn or hidden (`RenderOptions.onVisibility`). A hidden widget is one its
    * container handed no column: in the view, with no cell on the frame.
    */
   get mounted(): readonly WidgetVisibility[] {
@@ -234,7 +234,7 @@ export class WidgetApp implements FrameSource, FrameHost {
     // view shows — paints the next frame when it changes.
     // An overlay reports what it draws too: a widget in it is in the view,
     // and visiting `present` in report order paints its overlay in turn. A
-    // held widget has no footprint on the frame, and so paints none.
+    // hidden widget has no footprint on the frame, and so paints none.
     const drawing = { ...options, onVisibility };
     const lines = tracked(this.reaction, () => {
       const base = Segment.splitLines(render(view, drawing));

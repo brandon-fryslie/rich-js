@@ -11,7 +11,7 @@
  * so what those gates ask of every renderable, one of that kind answers only
  * where a test names it (test/renderables/spinner.test.ts holds the line
  * `Spinner.at` leaves and what it draws ASCII-only; the `VARIANTS` of
- * test/renderables/held.test.ts hold `Viewport.showing` held).
+ * test/renderables/visibility.test.ts hold `Viewport.showing` hidden).
  */
 
 import ts from "typescript";

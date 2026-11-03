@@ -815,7 +815,7 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
   });
 
   // Inside a frame of its own host, the frame it draws its table in is the one it was handed, so the
-  // held walk, which hands its contents that frame too, reports what a drawn frame would.
+  // hidden walk, which hands its contents that frame too, reports what a drawn frame would.
   it("in a frame of its own host, holds what it would draw", () => {
     const host = settable(0);
     const [a, b] = [new RichText("a"), new RichText("b")];

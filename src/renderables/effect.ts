@@ -14,7 +14,7 @@
  * them, which are no one's to paint: a seam's colors are its neighbours'
  * edges, so once the effect has painted every other cell, each such cell is
  * resolved again from the cells beside it as the effect left them
- * (`JoinedCell`, `../core/strip.ts`), the way the joiner drew it. Shimmer,
+ * (`JoinedCell`, `../core/strip.ts`), the way the separator drew it. Shimmer,
  * pulse, fade, dissolve and a blinking attribute are all this one shape,
  * differing by what the function does with its inputs
  * [LAW:one-type-per-behavior]; two effects stack as layers of one effect
@@ -55,7 +55,7 @@
  *   one whose attributes come back as its style set them keeps them, and a
  *   segment whose every cell is unchanged is yielded with its look as
  *   it was, so the identity effect is byte-identical; what an `Effected` gains is when
- *   the frame next changes (`Style.hold`), which writes no byte.
+ *   the frame next changes (`Style.validity`), which writes no byte.
  *   Neighbouring cells the output depth
  *   writes alike stay one segment: a segment is cut only where the written
  *   colors or the attributes change, so two colors that land on one index
@@ -140,7 +140,7 @@ export type Placed = Pick<EffectCell, "row" | "col" | "anchor" | "boxFrame">;
 /**
  * A cell as `Drawn.all` lists it: where it sits and who drew it, the
  * columns its glyph takes, its ink and ground as the screen shows them, and
- * whether a strip's joiner drew it — a seam, no item's, whose colors are its
+ * whether a strip's separator drew it — a seam, no item's, whose colors are its
  * neighbours' edges. Each is read off the one look and the one walk the cell
  * is later handed with, so an effect that groups cells into the runs they
  * are drawn in — `wheel`'s segments — reads what the frame hands, never a
@@ -179,7 +179,7 @@ export interface Pair extends CellColors {
  * is handed, and the colors the element draws its words in, as the screen
  * shows them — what an effect that must keep the words legible is measured
  * against. A word cell is one whose glyph is not blank and that a strip's
- * joiner did not draw (`JOIN`): a seam's ink is the fill beside it, not words.
+ * separator did not draw (`JOIN`): a seam's ink is the fill beside it, not words.
  */
 export interface Drawn {
   /**
@@ -246,7 +246,7 @@ export interface EffectedOptions {
 }
 
 /**
- * The hold an effect drawn at `t` tells: its animation's there, or held for
+ * The validity interval an effect drawn at `t` tells: its animation's there, or held for
  * good over no cell, since it changes how cells look and never which exist.
  * What drew none says for itself when it will (a lifecycle not yet entered).
  */
@@ -258,7 +258,7 @@ export function validityOver(anyCell: boolean, shown: Shown<unknown>, t: number)
  * An `Effected` at `t`, or an element through an effect at a time an
  * animation's `at` was handed — a lifecycle's time since it entered: `renderable`
  * with its cells' looks passed through `effect` at `t`. Its cells say nothing
- * of when that changes, since `t` is not the frame's clock: it tells the hold
+ * of when that changes, since `t` is not the frame's clock: it tells the validity interval
  * it drew in (`RenderOptions.onReads`), and whatever placed the animation
  * carries that onto the frame's and stamps it. [LAW:one-type-per-behavior]
  */
@@ -370,7 +370,7 @@ export class Recolored implements Renderable, Measurable {
     const [at] = cells;
     if (at === undefined) return segment;
     // [LAW:one-source-of-truth] A moved edge is the spec the depth writes its
-    // slot in, the spec the joiner reads of an item drawn so: a palette slot
+    // slot in, the spec the separator reads of an item drawn so: a palette slot
     // stays that slot, which the lift tells apart by number, never an RGB read
     // back through a palette the writer did not use. Only the terminal's own
     // color names none, and the terminal the effect draws on says what it is.
@@ -460,7 +460,7 @@ export class Recolored implements Renderable, Measurable {
  * renderable goes. An `Effect` is made from what the element draws, so with
  * nothing drawn its answer to when it changes is `t`, at every time: early,
  * never false. Placed, on its own or as a part of any combinator, it says
- * exactly: the frame's drawing told the effect's hold at that time and the
+ * exactly: the frame's drawing told the effect's validity at that time and the
  * output's depth (`Reads`), so at a depth that shows no motion a loop says it
  * never changes there and the host sleeps.
  */
@@ -494,7 +494,7 @@ export class Effected implements Animation<Renderable> {
     return new Effected(this.renderable, (drawn) => effect(drawn).reduced(), this);
   }
 
-  /** Drawn at the frame's time, its cells stamped with the effect's exact hold there. */
+  /** Drawn at the frame's time, its cells stamped with the effect's exact validity there. */
   render(options: RenderOptions): Iterable<Segment> {
     return placedRender(this, options);
   }
@@ -547,7 +547,7 @@ interface Look {
   /** The attributes an effect is handed, as the style sets them. */
   readonly attributes: CellAttributes;
   /**
-   * Whether a strip's joiner drew the segment (`JOIN`): a seam, whose ink is
+   * Whether a strip's separator drew the segment (`JOIN`): a seam, whose ink is
    * the fill beside it, not words. [LAW:single-enforcer] Decided here once,
    * for the cells listed and the words measured alike.
    */

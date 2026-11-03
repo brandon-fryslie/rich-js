@@ -223,7 +223,7 @@ describe("an animation placed showing nothing", () => {
     ["Rows", (child) => new Rows(new RichText("above", { end: "" }), child, new RichText("below", { end: "" }))],
     ...CONTAINERS,
     ["Tree", (child) => new Tree("root").add(child)],
-    // Each sizes the child from what it measures, 0 before it enters, so draws it held at no width.
+    // Each sizes the child from what it measures, 0 before it enters, so draws it hidden at no width.
     ["fitted Panel", (child) => Panel.fit(child)],
     ["header-less Table", (child) => {
       const table = new Table({ showHeader: false });
@@ -338,9 +338,9 @@ describe("Animation.of keeps what it is handed", () => {
   });
 });
 
-describe("a cell's hold is both its ends or neither", () => {
+describe("a cell's validity interval is both its ends or neither", () => {
   it("refuses a style saying only when it next changes", () => {
-    // @ts-expect-error a hold with one end would claim the cell always was
+    // @ts-expect-error a validity interval with one end would claim the cell always was
     void (() => new Style({ validUntil: 3 }));
     expect(new Style({ validity: { validFrom: 1, validUntil: 3 } }).validity.validFrom).toBe(1);
   });
