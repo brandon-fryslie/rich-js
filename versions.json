@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-548",
+      "ref": "refs/pull/548/merge",
+      "sha": "880173aec42961425b72088e1a0194513e641c78",
+      "timestamp": "2026-11-03T14:55:47.778Z",
+      "commits": [
+        {
+          "sha": "880173aec42961425b72088e1a0194513e641c78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T14:53:26Z",
+          "message": "Merge 83f986d8e3e8ab600266f2dff16ea6f7b8f1c2f4 into 86819f00c52ec1fa4bac59cb3daafe21664cedf2\n"
+        },
+        {
+          "sha": "83f986d8e3e8ab600266f2dff16ea6f7b8f1c2f4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T07:53:15-07:00",
+          "message": "Review: step/phase names where validity and stepSequence leaked, END_CAPS, visibility pointer (rich-unfiled-791c.oqod)\n"
+        },
+        {
+          "sha": "ba52be7d58680536ec295652fc080bc59bbe9e02",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T07:45:42-07:00",
+          "message": "Comments and test titles use the renamed vocabulary: step sequence, validity, hidden, separator (rich-unfiled-791c.oqod)\n\nIdentifiers, runtime strings and the docs heading that still carry the old words are rich-unfiled-791c.gt81.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "86819f00c52ec1fa4bac59cb3daafe21664cedf2",
