@@ -277,6 +277,24 @@ function membersOf(source: object): Record<PropertyKey, unknown> {
   return copy;
 }
 
+/**
+ * Item `n` of `items` for every integer `n`, counted round the list both
+ * ways: `n mod items.length`, the Euclidean remainder, so `-1` is the last.
+ * What a rotation through a list is indexed by — `Animation.repeat(period,
+ * cyclic(turns))` plays the turns in order for ever, before 0 too.
+ * [LAW:no-silent-failure] An empty list has no item for any `n`, and is
+ * refused when the rotation is made rather than when it is first read.
+ */
+export function cyclic<T>(items: readonly T[]): (n: number) => T {
+  if (items.length === 0) throw new RangeError("cyclic: the list is empty, so no turn has an item");
+  // Copied, so it stays the list it was made from whatever the caller does to its array.
+  const held = [...items];
+  return (n) => {
+    if (!Number.isInteger(n)) throw new RangeError(`cyclic: a turn is a whole number, got ${n}`);
+    return held[((n % held.length) + held.length) % held.length]!;
+  };
+}
+
 export const Animation = {
   /**
    * `timed` as an animation: every member it carries kept (`membersOf`),

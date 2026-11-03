@@ -115,7 +115,7 @@ export { EASES, WrapMode, stepSequence, cubicBezier, parseEasing, spring, steps 
 export type { StepSequence, Easing, SpringOptions, StepPosition, Timing } from "./core/easing.js";
 // A value for a time, and when it next changes: the one type every kind of
 // motion is an instance of — beats, frame sequences, spinners, effects.
-export { Animation } from "./core/animation.js";
+export { Animation, cyclic } from "./core/animation.js";
 // What every animation answers whatever its values — the type a generic
 // animation implements, and what `Animation.of` and `map` take.
 export type { Reads, Behavior } from "./core/animation.js";
@@ -327,8 +327,8 @@ export { crossfade, wipe } from "./renderables/change.js";
 export type { Between, Change } from "./renderables/change.js";
 export { lifecycle, throughColors, throughGlyphs } from "./renderables/lifecycle.js";
 export type { Half, Lifecycle, LifecycleOptions } from "./renderables/lifecycle.js";
-export { scroll } from "./renderables/scroll.js";
-export type { ScrollOptions } from "./renderables/scroll.js";
+export { marquee, scroll } from "./renderables/scroll.js";
+export type { MarqueeOptions, ScrollOptions } from "./renderables/scroll.js";
 export { GlyphEffected } from "./renderables/glyph-effect.js";
 export type { DrawnGlyphs, GlyphCell, GlyphEffect, GlyphEffectedOptions, GlyphFrame } from "./renderables/glyph-effect.js";
 export { GLYPH_DEFAULTS, GLYPH_EFFECT_CATALOGUE, backspace, caseWave, marchingAnts, particles, scramble, scrambleOut, typewriter } from "./renderables/glyph-effects.js";
