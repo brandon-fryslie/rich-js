@@ -92,11 +92,11 @@ export function marquee(content: Renderable, options: MarqueeOptions): Animation
   positiveSeconds("marquee step", step);
   // [LAW:single-enforcer] Which step a time is in is `passAt`'s pass, and its two ends a one-step
   // step sequence's, the wrap `Animation.repeat` reads its turns through.
-  const holds = stepSequence([step]);
+  const steps = stepSequence([step]);
   const stepped: Animation<number> = Animation.of({
     at: (t: number) => passAt("marquee", t, step).pass,
-    validUntil: (t: number) => holds.validUntil(t),
-    validFrom: (t: number) => holds.validFrom(t),
+    validUntil: (t: number) => steps.validUntil(t),
+    validFrom: (t: number) => steps.validFrom(t),
     reduced: () => Animation.constant(0),
   });
   return Animation.map(stepped, (n) => new ScrollFrame("marquee", content, width, (drawn) => {

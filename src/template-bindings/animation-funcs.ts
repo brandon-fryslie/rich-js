@@ -35,7 +35,7 @@
  * 4.5` — and the ground it must read on is the template's to name, as it
  * is for any color. Either argument list is one float/value cycle end to
  * end, so the engine's `alternating` gate types every slot and lifts each
- * string frame to a fragment; the pairing — a trailing hold with no frame or
+ * string frame to a fragment; the pairing — a trailing step with no frame or
  * color — is parsed in `pairs`, once. [LAW:types-are-the-program]
  *
  * The rest start at a moment the template names, on the timeline's clock —
@@ -159,13 +159,13 @@ const HOST_CLOCK = Timeline.play(0);
  */
 function pairs<V>(what: string, tail: readonly unknown[], value: (v: unknown) => V): { seconds: number; value: V }[] {
   if (tail.length % 2 !== 0) {
-    throw new RangeError(`last hold (${String(tail[tail.length - 1])} s) has no ${what} — the arguments are <seconds> <${what}> pairs`);
+    throw new RangeError(`last step (${String(tail[tail.length - 1])} s) has no ${what} — the arguments are <seconds> <${what}> pairs`);
   }
   const paired: { seconds: number; value: V }[] = [];
   for (let i = 0; i < tail.length; i += 2) {
     const seconds = tail[i] as number;
     if (!Number.isFinite(seconds) || seconds <= 0) {
-      throw new RangeError(`hold ${i / 2} must be a positive number of seconds, got ${seconds}`);
+      throw new RangeError(`step ${i / 2} must be a positive number of seconds, got ${seconds}`);
     }
     paired.push({ seconds, value: value(tail[i + 1]) });
   }
@@ -282,7 +282,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
     throw new RangeError(`withAnimation registers ${taken.join(", ")}, already in config.funcs`);
   }
 
-  const holdMarks = (marks: ReadonlySet<unknown>): ValidityMark[] => [...marks].filter((mark): mark is ValidityMark => mark instanceof ValidityMark);
+  const validityMarks = (marks: ReadonlySet<unknown>): ValidityMark[] => [...marks].filter((mark): mark is ValidityMark => mark instanceof ValidityMark);
   // The validity intervals among `marks` layered onto the fragment's base style, which an
   // empty text still draws as its one piece of no width: `Style.add` keeps
   // the later `validFrom` and the sooner `validUntil`, so cells that read
@@ -292,14 +292,14 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   // validity interval reaches is a copy, since the engine may hand the one fragment a
   // scope holds to more than one emission.
   const held = (fragment: RichText, marks: ReadonlySet<unknown>): RichText => {
-    const holds = holdMarks(marks);
-    if (holds.length === 0) return fragment;
+    const marked = validityMarks(marks);
+    if (marked.length === 0) return fragment;
     const result = fragment.copy();
-    result.style = holds.reduce<TextStyle>((style, mark) => layerStyle(style, stampValidity(mark.validity)), fragment.style);
+    result.style = marked.reduce<TextStyle>((style, mark) => layerStyle(style, stampValidity(mark.validity)), fragment.style);
     return result;
   };
   const told = (marks: ReadonlySet<unknown>): void => {
-    for (const mark of holdMarks(marks)) mark.frame.onValidity?.(mark.validity);
+    for (const mark of validityMarks(marks)) mark.frame.onValidity?.(mark.validity);
   };
   // The hooks `config` brought run first and hear everything they did; a
   // consumer that stamps or listens on its own loses nothing to this binding.

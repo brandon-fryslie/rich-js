@@ -72,7 +72,7 @@ describe("frames in a template", () => {
     expect(compiled({})[0]!.resolvedStyle({ maxWidth: 10 }).bold).toBe(true);
   });
 
-  it("holds are seconds, so the same template plays at one redraw a second and at sixty", () => {
+  it("steps are seconds, so the same template plays at one redraw a second and at sixty", () => {
     const clock = { t: 0 };
     const compiled = engineAt(clock).compile(`{{ frames 0.25 "a" 0.25 "b" 0.25 "c" 0.25 "d" }}`);
     const at = (t: number): string => {
@@ -88,11 +88,11 @@ describe("frames in a template", () => {
   });
 
   it("a trailing hold with no frame is refused, naming the pairs", () => {
-    expect(() => engineAt({ t: 0 }).parse(`{{ frames 1 "a" 2 }}`).evaluate({})).toThrow(/^error calling frames: last hold \(2 s\) has no frame — the arguments are <seconds> <frame> pairs$/);
+    expect(() => engineAt({ t: 0 }).parse(`{{ frames 1 "a" 2 }}`).evaluate({})).toThrow(/^error calling frames: last step \(2 s\) has no frame — the arguments are <seconds> <frame> pairs$/);
   });
 
   it("a hold that is not a positive number of seconds is refused", () => {
-    expect(() => engineAt({ t: 0 }).parse(`{{ frames 0 "a" }}`).evaluate({})).toThrow(/^error calling frames: hold 0 must be a positive number of seconds, got 0$/);
+    expect(() => engineAt({ t: 0 }).parse(`{{ frames 0 "a" }}`).evaluate({})).toThrow(/^error calling frames: step 0 must be a positive number of seconds, got 0$/);
   });
 
   it("a hold where a frame belongs fails the type gate before the body runs", () => {
@@ -136,7 +136,7 @@ describe("stepped in a template", () => {
   });
 
   it("a trailing hold with no color is refused, naming the pairs", () => {
-    expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "#ff5555" 2 }}`).evaluate({})).toThrow(/^error calling stepped: last hold \(2 s\) has no color — the arguments are <seconds> <color> pairs$/);
+    expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "#ff5555" 2 }}`).evaluate({})).toThrow(/^error calling stepped: last step \(2 s\) has no color — the arguments are <seconds> <color> pairs$/);
   });
 
   it("a value that is not a color is refused as every color function refuses one", () => {
@@ -144,7 +144,7 @@ describe("stepped in a template", () => {
   });
 
   it("a hold that is not a positive number of seconds is refused", () => {
-    expect(() => engineAt({ t: 0 }).parse(`{{ stepped 0 "#ff5555" }}`).evaluate({})).toThrow(/^error calling stepped: hold 0 must be a positive number of seconds, got 0$/);
+    expect(() => engineAt({ t: 0 }).parse(`{{ stepped 0 "#ff5555" }}`).evaluate({})).toThrow(/^error calling stepped: step 0 must be a positive number of seconds, got 0$/);
   });
 });
 

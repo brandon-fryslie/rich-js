@@ -69,7 +69,7 @@ describe("sampleAndHold — an effect sampled and held on a step sequence", () =
     expect(fillAt(frozen, 1.1)).toBe(fillAt(quick, 1));
   });
 
-  it("holds may differ: each is drawn at its own start", () => {
+  it("steps may differ: each is drawn at its own start", () => {
     const uneven = sampleAndHold(quick, stepSequence([1, 0.5, 2.5]));
     expect(fillAt(uneven, 1.4)).toBe(fillAt(quick, 1));
     expect(fillAt(uneven, 1.5)).toBe(fillAt(quick, 1.5));

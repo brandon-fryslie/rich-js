@@ -819,7 +819,7 @@ export const END_CAPS = Object.freeze({
 
 /**
  * The bundled separators, by name: each a seam from `SEPARATORS` ended in caps from
- * `END_CAPS`. What each draws is `docs/strip.md`'s "Built-in joiners"; a name from
+ * `END_CAPS`. What each draws is `docs/strip.md`'s "Built-in separators"; a name from
  * config is read with `separatorNamed`.
  */
 export const SEPARATOR_STYLES = Object.freeze({

@@ -39,7 +39,7 @@ import { inFrame } from "./in-frame.js";
 // off a rendered frame, never which object put it there.
 
 const OPTIONS = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR, terminal: CATPPUCCIN_MOCHA } as const;
-const frames = (holds: readonly number[]): FrameSequence => new FrameSequence(holds.map((seconds, i) => ({ text: new RichText("abcd"[i]!), seconds })));
+const frames = (steps: readonly number[]): FrameSequence => new FrameSequence(steps.map((seconds, i) => ({ text: new RichText("abcd"[i]!), seconds })));
 const validUntilOf = (renderable: Renderable, options: Parameters<Renderable["render"]>[0] = OPTIONS): number => Segment.validUntil(renderable.render(options));
 const lit = (child: Renderable, effect: Effect, t: number): Renderable => inFrame(new Effected(child, effect, { key: "k" }), t);
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });

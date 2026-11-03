@@ -135,7 +135,7 @@ describe("Animation.sequence", () => {
     expect(Animation.sequence(first, 2, Animation.constant("done")).validUntil(9)).toBe(NEVER);
   });
 
-  it("answers the first moment the next part's change shows, to the float, far from zero and on holds not exact in binary", () => {
+  it("answers the first moment the next part's change shows, to the float, far from zero and on steps not exact in binary", () => {
     for (const seconds of [0.1, 0.3, 2.7]) {
       const steps = Animation.sequence(Animation.constant(-1), seconds, stepSequence([0.1, 0.2, 0.3]));
       for (const base of [0, 1e3, 1e6]) {
@@ -163,7 +163,7 @@ describe("Animation.sequence", () => {
     expect(Animation.sequence(first, 2, then).validFrom(3)).toBe(3);
   });
 
-  it("answers the first moment the next part's value shows, to the float, far from zero and on holds not exact in binary", () => {
+  it("answers the first moment the next part's value shows, to the float, far from zero and on steps not exact in binary", () => {
     for (const seconds of [0.1, 0.3, 2.7]) {
       const steps = Animation.sequence(Animation.constant(-1), seconds, stepSequence([0.1, 0.2, 0.3]));
       for (const base of [0, 1e3, 1e6]) {
