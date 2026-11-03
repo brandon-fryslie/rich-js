@@ -62,6 +62,7 @@ import {
   shares,
   shimmer,
   sparkle,
+  strengthOf,
   wheel,
   type AttributeLoopName,
   type Curve,
@@ -858,16 +859,16 @@ describe("the loops never jump", () => {
       const move = loop(z);
       const element = listing(strip);
       // `touch` is pure in (color, share), so a frame touches each fill once per
-      // share it holds. The share is the field's raw value, not the level the
-      // renderer snaps it to; measured snapped, pulse and shimmer exceed the bar.
+      // share it holds. The share is the level the renderer draws the field at
+      // (`strengthOf`), and level 0 leaves the color as it is.
       const frame = (t: number): Oklch[][] => {
         const field = move.field(t, element);
-        const shares = strip.map((cell) => field(cell));
+        const shares = strip.map((cell) => strengthOf(field(cell)));
         return fills.map((color) => {
           const touched = new Map<number, Oklch>();
           return shares.map((share) => {
             let at = touched.get(share);
-            if (at === undefined) touched.set(share, (at = Oklch.fromRgba(move.touch(color, share))));
+            if (at === undefined) touched.set(share, (at = Oklch.fromRgba(share === 0 ? color : move.touch(color, share))));
             return at;
           });
         });
