@@ -17,7 +17,9 @@
  * so a program's newlines reach the screen the way a tty delivers them.
  */
 // The site's stylesheet carries xterm's, so a terminal is styled the moment its chunk arrives.
+import type { ITheme } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
+import "./xterm-measure.css";
 import type { Contrast } from "../example-card.js";
 import { BrowserTerminalHost, type XtermDisposable, type XtermTerminal } from "../../../src/host/index.js";
 import type { TerminalTheme } from "../../../src/index.js";
@@ -107,7 +109,7 @@ export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
 }
 
 /** xterm's color options, from the theme a program's output is drawn in everywhere else. */
-function xtermTheme(theme: TerminalTheme): Record<string, string> {
+function xtermTheme(theme: TerminalTheme): ITheme {
   const names = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
   const ansi = Object.fromEntries(
     [...names, ...names.map((n) => `bright${n[0]!.toUpperCase()}${n.slice(1)}`)].map((name, i) => [name, theme.ansiColors.get(i).hex]),
@@ -136,7 +138,7 @@ interface Xterm extends XtermTerminal {
   attachCustomWheelEventHandler(handler: (event: WheelEvent) => boolean): void;
   /** `"none"` while the program has asked for no pointer reports. */
   readonly modes: { readonly mouseTrackingMode: string };
-  options: { theme: Record<string, string>; fontFamily: string; fontSize: number };
+  options: { theme?: ITheme; fontFamily?: string; fontSize?: number };
 }
 
 /** Keys pressed only to change another: Shift between Escape and Tab still leaves. */
@@ -161,32 +163,18 @@ let xterm: Promise<XtermConstructor> | undefined;
  * chunk, loaded the first time a terminal is made.
  */
 function loadXterm(): Promise<XtermConstructor> {
-  xterm ??= (async () => {
-    // xterm makes a row the height it measures a character at, in whole CSS
-    // pixels rounded up to whole device pixels, and measures it in the page
-    // (`openMeasuringInPage`) at line-height: normal. Measured at the
-    // element's --rich-fragment-line, a whole CSS pixel, a row is the line
-    // height custom.css derives from it the same way (`elementFont`).
-    const measure = Object.assign(document.createElement("style"), {
-      textContent: ".xterm .xterm-char-measure-element { line-height: var(--rich-fragment-line, normal); }",
-    });
-    document.head.append(measure);
-    try {
-      const { Terminal } = await import("@xterm/xterm");
-      return Terminal as unknown as XtermConstructor;
-    } catch (error) {
-      // Forgotten, so the next terminal made tries again rather than reusing a failure.
-      xterm = undefined;
-      measure.remove();
-      throw error;
-    }
-  })();
+  // A failed import is not retried: the browser keeps a module's failure in its
+  // module map (whatwg/html#6768), so only a reload fetches the chunk again.
+  xterm ??= import("@xterm/xterm").then(({ Terminal }) => {
+    const constructor: XtermConstructor = Terminal;
+    return constructor;
+  });
   return xterm;
 }
 
 /**
  * `screen` opened in `parent`, measuring its character in the page, where
- * the stylesheet `loadXterm` adds sets the measure's line height.
+ * xterm-measure.css sets the measure's line height.
  *
  * xterm 6 measures on an `OffscreenCanvas` when the page has one, as the
  * font's ascent plus its descent, which no stylesheet reaches; and a factor

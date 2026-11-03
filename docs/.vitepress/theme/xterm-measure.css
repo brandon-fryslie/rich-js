@@ -1,0 +1,9 @@
+/*
+ * xterm makes a row the height it measures a character at, in whole CSS pixels
+ * rounded up to whole device pixels, and measures it in the page
+ * (`openMeasuringInPage` in live-terminal.ts) at line-height: normal. Measured
+ * at the element's --rich-fragment-line, a whole CSS pixel, a row is the line
+ * height custom.css derives from it the same way (`elementFont`). Imported
+ * after xterm.css, so it wins the cascade.
+ */
+.xterm .xterm-char-measure-element { line-height: var(--rich-fragment-line, normal); }
