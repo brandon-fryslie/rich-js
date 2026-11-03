@@ -949,7 +949,6 @@ export class RichText implements Renderable, Measurable {
     };
   }
 
-
   // --- Internal ---
 
   /**
@@ -1115,7 +1114,7 @@ function* placed(
 
 /**
  * For one row, whether the cell at an offset is covered by no span. `covered`
- * is `_buildSegments`'s answer per piece.
+ * is `drawnSegments`'s answer per piece.
  */
 function spanFree(segments: readonly Segment[], covered: readonly boolean[]): (cell: number) => boolean {
   // The cell each run ends at.
@@ -1174,7 +1173,6 @@ function* padded(
   yield* line.slice(from, to);
   if (right > 0) yield new Segment((tail ? line[last]!.text : "") + pad(right), style);
 }
-
 
 // --- Rows ---
 

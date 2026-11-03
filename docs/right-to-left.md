@@ -105,6 +105,11 @@ bidi line, because a row alone cannot find its line's direction again. The row
 also starts with the controls its line still had open at that point. It refuses
 `visual`, where a row is ordered by levels resolved over its whole line.
 
+The direction is the row's own format, and `append` carries a text's
+characters and spans, not its format. A bidi row appended after a prefix is
+ordered by the combined text's direction, so draw it as its own renderable, for
+example in a [`Strip`](./strip.md) beside the prefix.
+
 ## Known limits
 
 - **VTE at column 0.** VTE discards zero-width characters at the start of a row,
