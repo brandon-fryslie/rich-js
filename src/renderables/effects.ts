@@ -100,7 +100,7 @@ const strengthOf = (field: number): number => Math.round(clamp01(field) * LEVELS
  * `share` of the touch. [LAW:single-enforcer] The one draw step, which the
  * renderer draws through and a test measures through.
  */
-export function drawnAt(touch: ColorModifier, color: ColorRgba, field: number, share = 1): ColorRgba {
+export function drawnAt(touch: ColorModifier, color: ColorRgba, field: number, share: number): ColorRgba {
   return touchedAt(touch, color, share * strengthOf(field));
 }
 
@@ -163,7 +163,7 @@ export function shares({ pairs, depth, terminal }: Drawn, colors: ReadonlySet<st
     const holds = (share: number): boolean =>
       facing.every(([pair, mine, theirs]) => {
         const floor = floorOf(pair, depth);
-        const at = (side: Side, w: number): ColorRgba => touchedAt(touch, pair[side], (side === mine ? share : theirs) * w);
+        const at = (side: Side, w: number): ColorRgba => drawnAt(touch, pair[side], w, side === mine ? share : theirs);
         return STRENGTHS.every((w) => {
           const shown = Effected.shows(pair, { fg: at("fg", w), bg: at("bg", w) }, depth, terminal);
           return contrastRatio(shown.fg, shown.bg) >= floor;

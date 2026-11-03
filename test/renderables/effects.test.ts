@@ -867,7 +867,7 @@ describe("the loops never jump", () => {
           const drawn = new Map<number, Oklch>();
           return values.map((value) => {
             let at = drawn.get(value);
-            if (at === undefined) drawn.set(value, (at = Oklch.fromRgba(drawnAt(move.touch, color, value))));
+            if (at === undefined) drawn.set(value, (at = Oklch.fromRgba(drawnAt(move.touch, color, value, 1))));
             return at;
           });
         });
