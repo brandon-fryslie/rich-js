@@ -37,7 +37,7 @@ describe("FrameSequence — the frame in progress at the frame's time", () => {
     expect(text(chevrons, 3.0)).toBe(CHEVRONS[0]);
   });
 
-  it("each frame keeps its own colours", () => {
+  it("each frame keeps its own colors", () => {
     expect(drawn(chevrons, 0, 1)).toContain("\x1b[31m");
     expect(drawn(chevrons, 1, 1)).toContain("\x1b[32m");
     expect(drawn(chevrons, 2, 1)).toContain("\x1b[34m");
@@ -172,6 +172,6 @@ describe("FrameSequence — at the host's rate, whatever it is", () => {
     const sequence = new FrameSequence(chevrons);
     expect(() => sequence.at(Number.POSITIVE_INFINITY)).toThrow(/finite t/);
     expect(() => new FrameSequence([{ text: new RichText("a"), seconds: 0 }])).toThrow(/positive number of seconds/);
-    expect(() => new FrameSequence([])).toThrow(/at least one hold/);
+    expect(() => new FrameSequence([])).toThrow(/at least one step/);
   });
 });

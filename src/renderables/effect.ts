@@ -1,5 +1,5 @@
 /**
- * Effected — a renderable whose finished cells' looks — colours and text
+ * Effected — a renderable whose finished cells' looks — colors and text
  * attributes — pass through an effect at a moment `t`.
  *
  * An effect is, for what an element draws in a frame, an `Animation`
@@ -11,7 +11,7 @@
  * function `at(t)` returns, but for those a wrapper keeps back — `confined`
  * hands over only the cells its owners drew, so an effect never counts on
  * seeing them all — and for a strip's join cells painted from the items beside
- * them, which are no one's to paint: a seam's colours are its neighbours'
+ * them, which are no one's to paint: a seam's colors are its neighbours'
  * edges, so once the effect has painted every other cell, each such cell is
  * resolved again from the cells beside it as the effect left them
  * (`JoinedCell`, `../core/strip.ts`), the way the joiner drew it. Shimmer,
@@ -22,16 +22,16 @@
  * a cell by what the element drew (`EffectCell.pair`), or by nesting one
  * wrapper in another, which measures the inner one's output instead.
  *
- * A cell's look is one value, its colours and its attributes together
- * (`CellLook`), rather than an attribute stage beside the colour one, so
- * everything that takes an `Effect` — `confined`, `onBeat`,
+ * A cell's look is one value, its colors and its attributes together
+ * (`CellLook`), rather than an attribute stage beside the color one, so
+ * everything that takes an `Effect` — `confined`, `sampleAndHold`,
  * `Animation.all`, nesting over a glyph effect — takes one that moves
  * attributes with no second copy of itself. `reverse` is the one attribute
  * a look leaves out (`CellAttributes`): it decides which of a style's slots
- * a colour on screen is in, and a swap of the two is already a colour move.
+ * a color on screen is in, and a swap of the two is already a color move.
  *
  * What the element draws (`Drawn`) — the cells the effect will be handed,
- * and the colours of its words — is measured here, in the render, off the
+ * and the colors of its words — is measured here, in the render, off the
  * same reading of each segment its cells are drawn from, and handed to the
  * effect once a frame. It is what an effect keeping words legible is settled
  * against (`onColors`, `./effects.ts`), so no caller derives it a second time
@@ -51,18 +51,18 @@
  *   to the effect and is never cut, and a run cut out of a segment keeps that
  *   segment's link and meta and carries its anchor shifted to the run's first
  *   cell (`Style.shiftedBy`), so hit testing still finds the owner.
- * - A cell whose colours come back unchanged keeps its original `ColorSpec`,
+ * - A cell whose colors come back unchanged keeps its original `ColorSpec`,
  *   one whose attributes come back as its style set them keeps them, and a
  *   segment whose every cell is unchanged is yielded with its look as
  *   it was, so the identity effect is byte-identical; what an `Effected` gains is when
  *   the frame next changes (`Style.hold`), which writes no byte.
  *   Neighbouring cells the output depth
  *   writes alike stay one segment: a segment is cut only where the written
- *   colours or the attributes change, so two colours that land on one index
+ *   colors or the attributes change, so two colors that land on one index
  *   are one run.
- * - New colours are built with `ColorSpec.fromRgba`, never parsed from a
+ * - New colors are built with `ColorSpec.fromRgba`, never parsed from a
  *   string, so no frame adds an entry to a parse cache.
- * - With no colour output (`colorSystem: null`) no style is written at all,
+ * - With no color output (`colorSystem: null`) no style is written at all,
  *   attributes included, so there is nothing for an effect to change, and
  *   the child's segments pass through untouched.
  *
@@ -71,7 +71,7 @@
  */
 
 import { drawnBy, shiftAnchor, type Anchor } from "../core/anchor.js";
-import { Animation, holdOf, placedRender, shownAt, type Moves, type Shown } from "../core/animation.js";
+import { Animation, validityOf, placedRender, shownAt, type Reads, type Shown } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, type TerminalColors } from "../core/color.js";
 import { fnv1a } from "../core/fnv1a.js";
@@ -80,13 +80,13 @@ import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js"
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, joinedCell, type EdgeMove, type JoinedCell } from "../core/strip.js";
-import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes, type Hold } from "../core/style.js";
+import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes, type ValidityInterval } from "../core/style.js";
 import { finiteTime } from "../core/easing.js";
 
 /**
  * A cell's foreground and background as they appear on screen — the glyph's
- * colour and the colour behind it — which are the colours an effect moves.
- * Under `reverse` they are the style's two colours swapped.
+ * color and the color behind it — which are the colors an effect moves.
+ * Under `reverse` they are the style's two colors swapped.
  */
 export interface CellColors {
   readonly fg: ColorRgba;
@@ -100,7 +100,7 @@ export interface CellColors {
  */
 export type CellAttributes = Omit<Attributes, "reverse">;
 
-/** What an effect moves in a cell: its colours as the screen shows them, and its attributes. */
+/** What an effect moves in a cell: its colors as the screen shows them, and its attributes. */
 export interface CellLook extends CellColors {
   readonly attributes: CellAttributes;
 }
@@ -118,29 +118,29 @@ export interface EffectCell {
   /**
    * The ink and ground the element drew the cell in: what the cell is, where
    * the `CellLook` beside it is what is there now. Under one effect they are
-   * the same colours; under `layered` (`./effects.ts`) the look is what the
+   * the same colors; under `layered` (`./effects.ts`) the look is what the
    * layers beneath left, so an effect recognises a cell by its pair and moves
    * its look. [LAW:one-source-of-truth] A pair's `terminal` is what tells a
-   * colour the terminal resolved from one the element wrote at the same hex.
+   * color the terminal resolved from one the element wrote at the same hex.
    */
   readonly pair: Pair;
   /**
    * Who drew the cell, and where it sits in their output, as
    * `Segment.anchorAt` reads it off a frame: what tells one owner's cells
-   * from another's when their colours are alike (`confined`).
+   * from another's when their colors are alike (`confined`).
    */
   readonly anchor: Anchor | undefined;
   /** The drawing of a box the cell is the frame of (`Style.boxFrame`), or none. */
   readonly boxFrame: object | undefined;
 }
 
-/** Where a cell sits and who drew it: an `EffectCell` before it has a seed or colours. */
+/** Where a cell sits and who drew it: an `EffectCell` before it has a seed or colors. */
 export type Placed = Pick<EffectCell, "row" | "col" | "anchor" | "boxFrame">;
 
 /**
  * A cell as `Drawn.all` lists it: where it sits and who drew it, the
  * columns its glyph takes, its ink and ground as the screen shows them, and
- * whether a strip's joiner drew it — a seam, no item's, whose colours are its
+ * whether a strip's joiner drew it — a seam, no item's, whose colors are its
  * neighbours' edges. Each is read off the one look and the one walk the cell
  * is later handed with, so an effect that groups cells into the runs they
  * are drawn in — `wheel`'s segments — reads what the frame hands, never a
@@ -159,15 +159,15 @@ export interface ListedCell extends Placed {
  */
 export interface Pair extends CellColors {
   /**
-   * Whether the glyph's colour and the colour behind it, as the screen shows
+   * Whether the glyph's color and the color behind it, as the screen shows
    * them, are the terminal's own: a slot the element's style leaves unset or
-   * sets to `default`. Such a colour is resolved through the terminal, so its
+   * sets to `default`. Such a color is resolved through the terminal, so its
    * hex can equal one the element wrote; this is what tells them apart.
    */
   readonly terminal: { readonly fg: boolean; readonly bg: boolean };
   /**
    * Whether the ink is written in the style's ground slot and the ground in
-   * its ink slot. Below truecolor the slot decides what a moved colour can
+   * its ink slot. Below truecolor the slot decides what a moved color can
    * land on: a slot set to `default` draws the terminal's foreground in one
    * and its background in the other.
    */
@@ -176,7 +176,7 @@ export interface Pair extends CellColors {
 
 /**
  * What the element an effect wraps draws in one frame: the cells the effect
- * is handed, and the colours the element draws its words in, as the screen
+ * is handed, and the colors the element draws its words in, as the screen
  * shows them — what an effect that must keep the words legible is measured
  * against. A word cell is one whose glyph is not blank and that a strip's
  * joiner did not draw (`JOIN`): a seam's ink is the fill beside it, not words.
@@ -207,11 +207,11 @@ export interface Drawn {
   cells(): readonly ListedCell[];
   /** Every distinct ink and ground of a word cell. */
   readonly pairs: readonly Pair[];
-  /** The colours the element sets itself in its word cells, by hex: never the terminal's, whatever its hex. */
+  /** The colors the element sets itself in its word cells, by hex: never the terminal's, whatever its hex. */
   readonly colors: ReadonlySet<string>;
   /** Of `colors`, the ones a word cell has for its ground. */
   readonly fills: ReadonlySet<string>;
-  /** The depth the frame is written at: below truecolor a moved colour lands on a palette colour. */
+  /** The depth the frame is written at: below truecolor a moved color lands on a palette color. */
   readonly depth: ColorDepth;
   /** The terminal the frame is drawn on. */
   readonly terminal: TerminalColors;
@@ -226,7 +226,7 @@ export type EffectFrame = (look: CellLook, cell: EffectCell) => CellLook;
  * frame by the shape of the call, never by a cache asking whether this cell's
  * frame is the last one's.
  *
- * Its `nextChange` is when the frame next changes: a stepped effect its next
+ * Its `validUntil` is when the frame next changes: a stepped effect its next
  * step's start, a transition `t` until it is done and `Infinity` after, a
  * loop that holds every cell still, at the frame's depth or with nothing in
  * it to move, `Infinity` there, and a loop that moves `t`
@@ -250,8 +250,8 @@ export interface EffectedOptions {
  * good over no cell, since it changes how cells look and never which exist.
  * What drew none says for itself when it will (a lifecycle not yet entered).
  */
-export function holdOver(anyCell: boolean, shown: Shown<unknown>, t: number): Hold {
-  return anyCell ? holdOf(shown, t) : NEVER_CHANGES;
+export function validityOver(anyCell: boolean, shown: Shown<unknown>, t: number): ValidityInterval {
+  return anyCell ? validityOf(shown, t) : NEVER_CHANGES;
 }
 
 /**
@@ -259,7 +259,7 @@ export function holdOver(anyCell: boolean, shown: Shown<unknown>, t: number): Ho
  * animation's `at` was handed — a lifecycle's time since it entered: `renderable`
  * with its cells' looks passed through `effect` at `t`. Its cells say nothing
  * of when that changes, since `t` is not the frame's clock: it tells the hold
- * it drew in (`RenderOptions.onMoved`), and whatever placed the animation
+ * it drew in (`RenderOptions.onReads`), and whatever placed the animation
  * carries that onto the frame's and stamps it. [LAW:one-type-per-behavior]
  */
 export class Recolored implements Renderable, Measurable {
@@ -277,15 +277,15 @@ export class Recolored implements Renderable, Measurable {
 
   render(options: RenderOptions): Iterable<Segment> {
     const segments = render(this.renderable, options);
-    // With no colour output nothing the effect does is written, so the child
+    // With no color output nothing the effect does is written, so the child
     // is what is shown, and it changes when the child says it does.
     if (options.colorSystem === null) {
-      options.onMoved?.(this._t, this.key, NEVER_CHANGES);
+      options.onReads?.(this._t, this.key, NEVER_CHANGES);
       return segments;
     }
     // No depth named is no downgrade, as `drawnColors` reads it.
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
-    // [LAW:one-source-of-truth] Every colour below resolves on the frame's
+    // [LAW:one-source-of-truth] Every color below resolves on the frame's
     // terminal, so two effects in a frame cannot disagree.
     const terminal = resolveTerminal(options.terminal, depth);
     // [LAW:one-source-of-truth] The frame is measured before any cell is
@@ -295,7 +295,7 @@ export class Recolored implements Renderable, Measurable {
     const walked = walk(looked);
     const drawn = measured(looked, () => walked, depth, terminal);
     const shown = shownAt(this.effect(drawn), this._t, options);
-    options.onMoved?.(this._t, this.key, holdOver(walked.some(({ glyphs }) => glyphs.some(({ cell }) => cell !== undefined)), shown, this._t));
+    options.onReads?.(this._t, this.key, validityOver(walked.some(({ glyphs }) => glyphs.some(({ cell }) => cell !== undefined)), shown, this._t));
     return this._recolored(walked, shown.value, drawn);
   }
 
@@ -323,7 +323,7 @@ export class Recolored implements Renderable, Measurable {
   private *_repainted(segment: Segment, look: Look, glyphs: readonly WalkedGlyph[], moved: readonly CellLook[], drawn: Drawn): Iterable<Segment> {
     const { style: base, wire, slots, pair, attributes } = look;
     // [LAW:one-source-of-truth] A run is cells the wire writes alike: each
-    // cell is drawn at the output depth first and merged on the colours that
+    // cell is drawn at the output depth first and merged on the colors that
     // writes and on its attributes, so two truecolors landing on one index
     // stay one run. A cell the effect gave its neighbour's look is drawn as
     // that neighbour was.
@@ -373,9 +373,9 @@ export class Recolored implements Renderable, Measurable {
     // slot in, the spec the joiner reads of an item drawn so: a palette slot
     // stays that slot, which the lift tells apart by number, never an RGB read
     // back through a palette the writer did not use. Only the terminal's own
-    // colour names none, and the terminal the effect draws on says what it is.
+    // color names none, and the terminal the effect draws on says what it is.
     // Each such spec is kept, so the writer below knows it by identity: an
-    // RGB a blend or another colour lands on is not the terminal's own.
+    // RGB a blend or another color lands on is not the terminal's own.
     const terminals = new Set<ColorSpec>();
     const edgeOf = (spec: ColorSpec | undefined, foreground: boolean): ColorSpec | undefined => {
       if (!spec?.isDefault) return spec;
@@ -414,9 +414,9 @@ export class Recolored implements Renderable, Measurable {
     // [LAW:one-source-of-truth] Each slot is written as the depth writes what
     // it resolved to, by the writer the lift measured it with
     // (`Style.drawnColors`), so a lifted ink stands off its ground in the bytes
-    // as it did when measured. A slot resolved to the colour it was before
+    // as it did when measured. A slot resolved to the color it was before
     // keeps the spec it was written in, as a painted cell's unmoved slot does.
-    // The terminal's own colours, which stand in a moved edge as the spec of
+    // The terminal's own colors, which stand in a moved edge as the spec of
     // the RGB the effect's terminal gives them and reach a slot unchanged or
     // not at all, are written by the writer that wrote them on the item
     // beside, on that terminal, which writes its own ground below truecolor as
@@ -428,7 +428,7 @@ export class Recolored implements Renderable, Measurable {
     const written = (now: ColorSpec | undefined, before: ColorSpec | undefined, wrote: ColorSpec | undefined, drew: ColorSpec | undefined, round: ColorSpec | undefined): ColorSpec | undefined => {
       if (sameSpec(now, before)) return wrote;
       // [LAW:no-silent-failure] Unreachable: a move only fills an edge in, so
-      // a slot that resolved to a colour when drawn resolves to one after.
+      // a slot that resolved to a color when drawn resolves to one after.
       if (now === undefined) throw new Error(`a seam cell resolved to ${before?.name ?? "nothing"} when drawn and to nothing after an effect moved its neighbours`);
       return terminals.has(now) ? round : drew;
     };
@@ -444,7 +444,7 @@ export class Recolored implements Renderable, Measurable {
   }
 
   /**
-   * The specs that draw a cell's slot colours `to` where the segment drew
+   * The specs that draw a cell's slot colors `to` where the segment drew
    * `from` with `wire`: each moved slot in the spec `movedSpecs` writes it
    * in, the rest as `wire` wrote them.
    */
@@ -461,7 +461,7 @@ export class Recolored implements Renderable, Measurable {
  * nothing drawn its answer to when it changes is `t`, at every time: early,
  * never false. Placed, on its own or as a part of any combinator, it says
  * exactly: the frame's drawing told the effect's hold at that time and the
- * output's depth (`Moves`), so at a depth that shows no motion a loop says it
+ * output's depth (`Reads`), so at a depth that shows no motion a loop says it
  * never changes there and the host sleeps.
  */
 export class Effected implements Animation<Renderable> {
@@ -480,12 +480,12 @@ export class Effected implements Animation<Renderable> {
     return new Recolored(this.renderable, this.effect, { t, key: this.key });
   }
 
-  nextChange(t: number, moves?: Moves): number {
-    return moves?.(t, this.key)?.nextChange ?? t;
+  validUntil(t: number, moves?: Reads): number {
+    return moves?.(t, this.key)?.validUntil ?? t;
   }
 
-  lastChange(t: number, moves?: Moves): number {
-    return moves?.(t, this.key)?.lastChange ?? t;
+  validFrom(t: number, moves?: Reads): number {
+    return moves?.(t, this.key)?.validFrom ?? t;
   }
 
   /** The element under the effect with its motion taken out. */
@@ -504,9 +504,9 @@ export class Effected implements Animation<Renderable> {
   }
 
   /**
-   * The colours the screen shows for `pair` once it is drawn moved to `to`,
+   * The colors the screen shows for `pair` once it is drawn moved to `to`,
    * both as the screen shows them, at `depth` on `terminal`: what an effect
-   * moving a pair's colours leaves its words reading in.
+   * moving a pair's colors leaves its words reading in.
    * [LAW:one-source-of-truth] Read through `movedSpecs`, the one writer a
    * moved slot is written with.
    */
@@ -519,7 +519,7 @@ export class Effected implements Animation<Renderable> {
 
 /**
  * A cell's seed: FNV-1a of the element's key and the cell's position, scaled
- * into [0, 1). [LAW:one-source-of-truth] One rule for a colour effect's seeds
+ * into [0, 1). [LAW:one-source-of-truth] One rule for a color effect's seeds
  * and a glyph effect's, so one element under both twinkles from one seed.
  */
 export function cellSeed(key: string, row: number, col: number): number {
@@ -540,7 +540,7 @@ interface Look {
   readonly style: Style;
   /** The specs the wire writes. */
   readonly wire: DrawnColors;
-  /** The style's two slots, as colours. */
+  /** The style's two slots, as colors. */
   readonly slots: CellColors;
   /** The slots as the screen shows them, `reverse` applied. */
   readonly pair: Pair;
@@ -592,7 +592,7 @@ interface Walked extends Looked {
  * column, and its anchor shifted to that column as `Style.shiftedBy` shifts
  * a run's. A control segment draws nothing and has none.
  * [LAW:one-source-of-truth] The one walk: what `Drawn.cells` lists, what the
- * render hands a colour effect, and what a glyph effect (`./glyph-effect.ts`)
+ * render hands a color effect, and what a glyph effect (`./glyph-effect.ts`)
  * is handed are all read off it.
  */
 export function walkGlyphs(segments: readonly Segment[]): (readonly WalkedGlyph[])[] {
@@ -616,7 +616,7 @@ export function walkGlyphs(segments: readonly Segment[]): (readonly WalkedGlyph[
 
 /**
  * Whether `text` draws ink: anything but blanks. [LAW:one-source-of-truth]
- * The one test, so the words a colour effect lights are the words a glyph
+ * The one test, so the words a color effect lights are the words a glyph
  * effect (`./glyph-effects.ts`) scrambles and its particles pass behind.
  */
 export function inked(text: string): boolean {
@@ -690,7 +690,7 @@ function edgesBeside(walked: readonly Walked[], drawings: readonly (Drawing | un
 
 /** Whether `style` draws in its ink on a blank glyph: a line under, through or over it, or a frame round it. */
 function drawsLines(style: Style): boolean {
-  return [style.underline, style.underline2, style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
+  return [style.underline, style.doubleUnderline, style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
 }
 
 /**
@@ -716,7 +716,7 @@ function measured(looked: readonly Looked[], walked: () => readonly Walked[], de
   let shown: readonly ListedCell[] | undefined;
   const words = looked.flatMap(({ segment, look }) => (look !== undefined && inked(segment.text) && !look.seam ? [look.pair] : []));
   const pairs = [...new Map(words.map((pair): [string, Pair] => [`${pair.fg.hex}/${pair.bg.hex}/${pair.terminal.fg}/${pair.terminal.bg}/${pair.reverse}`, pair])).values()];
-  // [LAW:one-source-of-truth] A slot the terminal fills is no colour of the element's, whatever its hex.
+  // [LAW:one-source-of-truth] A slot the terminal fills is no color of the element's, whatever its hex.
   const own = (slot: "fg" | "bg"): string[] => pairs.flatMap((pair) => (pair.terminal[slot] ? [] : [pair[slot].hex]));
   return {
     all: () => (all ??= listed().map(({ cell }) => cell)),
@@ -769,7 +769,7 @@ export function drawnOf(segments: Iterable<Segment>, depth: ColorDepth, terminal
 }
 
 /**
- * A style's colour slots as the screen shows them, or the reverse: `reverse`
+ * A style's color slots as the screen shows them, or the reverse: `reverse`
  * swaps glyph and ground, and swapping twice is where you started.
  */
 function onScreen<T>(slots: { readonly fg: T; readonly bg: T }, reverse: boolean): { readonly fg: T; readonly bg: T } {
@@ -777,23 +777,23 @@ function onScreen<T>(slots: { readonly fg: T; readonly bg: T }, reverse: boolean
 }
 
 /**
- * The specs a cell's slots are written in once their colours move from
+ * The specs a cell's slots are written in once their colors move from
  * `from`, what the written specs draw, to `to`: each laid on what is beneath
  * it — the ground on `SURFACE_BLACK`, the glyph on that ground, as the writer
- * lays any translucent colour (`Style.drawnColors`) — then matched at `depth`
+ * lays any translucent color (`Style.drawnColors`) — then matched at `depth`
  * (`ColorSpec.matchMove`). A slot the depth shows no move in has none, and
  * keeps the spec it was written in.
  */
 function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, terminal: TerminalColors): { readonly fg?: ColorSpec; readonly bg?: ColorSpec } {
-  // [LAW:one-source-of-truth] The writer's surface, so one translucent colour draws one way in a frame.
+  // [LAW:one-source-of-truth] The writer's surface, so one translucent color draws one way in a frame.
   const ground = to.bg.compositeOver(SURFACE_BLACK);
   const glyph = to.fg.compositeOver(ground);
   return { fg: ColorSpec.matchMove(from.fg, glyph, depth, terminal, true), bg: ColorSpec.matchMove(from.bg, ground, depth, terminal, false) };
 }
 
 /**
- * Whether two cells' colours are written alike. A slot with no colour is not
- * the default colour: it writes nothing, so a style a container lays beneath
+ * Whether two cells' colors are written alike. A slot with no color is not
+ * the default color: it writes nothing, so a style a container lays beneath
  * (`Segment.applyStyle`) still shows through it, where `39`/`49` would not.
  */
 function writesAlike(a: DrawnColors, b: DrawnColors): boolean {
@@ -838,7 +838,7 @@ function sameAttributes(a: CellAttributes, b: CellAttributes): boolean {
   return a === b || MOVED.every((name) => a[name] === b[name]);
 }
 
-/** Whether two specs are one colour as written: the same kind, naming the same colour. */
+/** Whether two specs are one color as written: the same kind, naming the same color. */
 function sameSpec(a: ColorSpec | undefined, b: ColorSpec | undefined): boolean {
   return a === b || (a !== undefined && b !== undefined && a.type === b.type && a.name === b.name);
 }

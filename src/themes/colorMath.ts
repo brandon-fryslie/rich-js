@@ -96,7 +96,7 @@ export function lighten(color: ColorRgba, levels: number): ColorRgba {
   return darken(color, -levels);
 }
 
-/** sRGB → CIE L*a*b* (D65, 2°): the space `shiftLightness` moves a colour in. */
+/** sRGB → CIE L*a*b* (D65, 2°): the space `shiftLightness` moves a color in. */
 function rgbToLab(c: ColorRgba): readonly [number, number, number] {
   const [r, g, b] = [c.red, c.green, c.blue].map((v) => srgbToLinear(v / 255)) as [number, number, number];
   const [x, y, z] = [
@@ -122,7 +122,7 @@ function labToRgb(l: number, a: number, b: number, alpha: number): ColorRgba {
 }
 
 /**
- * Move a colour's CIE L* by `amount` (0..1 of the L* scale), keeping its alpha.
+ * Move a color's CIE L* by `amount` (0..1 of the L* scale), keeping its alpha.
  * Textual's `Color.lighten`, which drew every shade ladder in the bundled
  * themes, so a ladder derived here continues the ones authored there.
  */
@@ -160,8 +160,8 @@ export function contrastFor(
 }
 
 // [LAW:one-way-deps] The WCAG measures live in core/color.ts, beside the
-// ColorTable whose `matchReadable` needs them to pick a drawn text colour, and
-// below the theme math here. Re-exported so this module stays the colour-math
+// ColorTable whose `matchReadable` needs them to pick a drawn text color, and
+// below the theme math here. Re-exported so this module stays the color-math
 // surface.
 export { relativeLuminance, contrastRatio };
 
@@ -186,16 +186,16 @@ const CONTRAST_ITERS = 20;
  * in, so the ratio is measured on what the eye actually sees and the returned
  * color is opaque.
  *
- * `drawnAt` is the depth the terminal will draw the pair at. At 256 colours
+ * `drawnAt` is the depth the terminal will draw the pair at. At 256 colors
  * the terminal rounds text and background independently, and two roundings
  * can meet in the middle, so the ratio is measured on the drawn pair: a
- * colour that loses the floor there is replaced by the nearest cube/grey entry
+ * color that loses the floor there is replaced by the nearest cube/grey entry
  * that clears it (whose own rounding is itself). At ANSI the terminal draws
- * each index in its own theme's colour, so the ratio is measured on
+ * each index in its own theme's color, so the ratio is measured on
  * `terminal`'s sixteen: a theme whose black is light and white dark (Rosé Pine
- * Dawn) turns the nominal table's sides over. A replacement is the colour the
+ * Dawn) turns the nominal table's sides over. A replacement is the color the
  * writer emits as the index nearest `fg` that clears the floor as `terminal`
- * draws it. Truecolor draws the colour chosen.
+ * draws it. Truecolor draws the color chosen.
  *
  * [LAW:single-enforcer] The one place "is this text readable, and if not fix
  * it" is decided. Callers route every fg/bg pair through here and the
@@ -224,20 +224,20 @@ export function ensureContrast(
 
 /**
  * `chosen` (composited opaque over `substrate`), or — when the depth the
- * terminal draws at rounds it to a colour `accept` refuses — the colour the
+ * terminal draws at rounds it to a color `accept` refuses — the color the
  * writer emits as the nearest entry `accept` takes. `accept` sees the
- * candidate as drawn, and `drawn`, the same rounding for any other colour it
+ * candidate as drawn, and `drawn`, the same rounding for any other color it
  * measures against, so the caller states a floor once and it holds on the
- * colours the terminal shows — at ANSI, `terminal`'s own sixteen, as
+ * colors the terminal shows — at ANSI, `terminal`'s own sixteen, as
  * `ensureContrast` measures there. Truecolor
- * draws from no table, so a colour refused there has no replacement;
+ * draws from no table, so a color refused there has no replacement;
  * `undefined` means nothing the depth draws is accepted.
  *
  * `ensureContrast` is this with a contrast ratio as the floor; this is for a
  * floor that is not text on its background (an open state standing off every
  * closed cell, two planes standing off each other).
  */
-export function ensureDrawn(
+export function ensureMinimumDelta(
   chosen: ColorRgba,
   drawnAt: ColorDepth,
   accept: (candidate: ColorRgba, drawn: (c: ColorRgba) => ColorRgba) => boolean,
@@ -245,8 +245,8 @@ export function ensureDrawn(
   terminal?: TerminalColors,
 ): ColorRgba | undefined {
   // The floor was measured on `chosen` composited over `substrate`, so that
-  // opaque colour is what is returned — never a translucent one a different
-  // ground would composite into a colour `accept` never saw.
+  // opaque color is what is returned — never a translucent one a different
+  // ground would composite into a color `accept` never saw.
   const opaque = drawnBackground(chosen, substrate);
   const table = drawnTable(drawnAt, terminal);
   const drawn = (c: ColorRgba): ColorRgba => shownAs(table, drawnBackground(c, substrate));
@@ -258,23 +258,23 @@ export function ensureDrawn(
 }
 
 /**
- * The colour a ground is shown as at `drawnAt`: composited over `substrate`
+ * The color a ground is shown as at `drawnAt`: composited over `substrate`
  * (the SGR writer's black by default), rounded to the index the writer emits
  * at that depth, and shown as the terminal shows that index — at ANSI, in
- * `terminal`'s own colour. The one account `ensureDrawn` and `ensureContrast`
+ * `terminal`'s own color. The one account `ensureMinimumDelta` and `ensureContrast`
  * measure by, for a caller that measures a floor of its own.
  */
-export function drawnColour(
-  colour: ColorRgba,
+export function compositedColor(
+  color: ColorRgba,
   drawnAt: ColorDepth,
   substrate: ColorRgba = SURFACE_BLACK,
   terminal?: TerminalColors,
 ): ColorRgba {
-  return shownAs(drawnTable(drawnAt, terminal), drawnBackground(colour, substrate));
+  return shownAs(drawnTable(drawnAt, terminal), drawnBackground(color, substrate));
 }
 
 /**
- * An opaque colour as the terminal shows it: downgraded to the index the
+ * An opaque color as the terminal shows it: downgraded to the index the
  * writer emits and drawn as the terminal draws that index.
  * [LAW:one-source-of-truth] That rounding is `ColorSpec.downgrade`'s, the one
  * `Style.drawnColors` writes; the tables here only list the candidates.
@@ -288,13 +288,13 @@ function shownAs(table: DrawnTable | undefined, opaque: ColorRgba): ColorRgba {
  * surface is a fact about where the pair is drawn, so it arrives as a value:
  * the SGR writer (`Style.toSgrCodes`) and the exports that picture its output
  * composite over `SURFACE_BLACK`, the default here; a caller that composites
- * its colours onto a different surface itself names that one.
+ * its colors onto a different surface itself names that one.
  * [LAW:no-silent-failure] A surface has nothing under it, so a translucent one
- * has no drawn colour to offer; `compositeOver` would read its raw RGB as if
+ * has no drawn color to offer; `compositeOver` would read its raw RGB as if
  * it were opaque, so it is refused here rather than measured wrong.
- * [LAW:one-source-of-truth] Text is chosen against the colour the surface will
- * show — measuring the raw RGBA reads a colour that is drawn nowhere, and text
- * that "clears" it can land below the floor. Opaque colours composite to
+ * [LAW:one-source-of-truth] Text is chosen against the color the surface will
+ * show — measuring the raw RGBA reads a color that is drawn nowhere, and text
+ * that "clears" it can land below the floor. Opaque colors composite to
  * themselves.
  */
 function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
@@ -308,9 +308,9 @@ function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
 
 /**
  * A depth's palette seen from both ends of the wire, drawn by `terminal`:
- * `written`, the colours `ColorSpec.downgrade` rounds to each index, and
- * `shown`, the colour the terminal draws at each of those indices. Candidates
- * are scanned in `shown`; a replacement is `written`'s colour for the index,
+ * `written`, the colors `ColorSpec.downgrade` rounds to each index, and
+ * `shown`, the color the terminal draws at each of those indices. Candidates
+ * are scanned in `shown`; a replacement is `written`'s color for the index,
  * which the writer rounds back to that same index.
  */
 interface DrawnTable {
@@ -321,12 +321,12 @@ interface DrawnTable {
 }
 
 /**
- * The table the terminal draws from at `drawnAt`. The 256-colour cube and
- * grey ramp are fixed by xterm, so the colour written is the colour shown.
+ * The table the terminal draws from at `drawnAt`. The 256-color cube and
+ * grey ramp are fixed by xterm, so the color written is the color shown.
  * ANSI 0–15 are the terminal theme's own: the writer still picks the index by
  * the nominal table — the Windows console's at WINDOWS — and the terminal
- * shows `terminal`'s colour there.
- * Truecolor draws the chosen colour itself, as do the depths no table stands
+ * shows `terminal`'s color there.
+ * Truecolor draws the chosen color itself, as do the depths no table stands
  * behind.
  */
 function drawnTable(drawnAt: ColorDepth, terminal: TerminalColors | undefined): DrawnTable | undefined {
@@ -346,10 +346,10 @@ function drawnTable(drawnAt: ColorDepth, terminal: TerminalColors | undefined): 
 /**
  * `fg` held to `minRatio` on `bg` in truecolor, moving in lightness toward
  * `toward` (black or white). `ensureContrast` moves toward the pole `bg`
- * itself contrasts with; a colour that already has a side (a palette's
+ * itself contrasts with; a color that already has a side (a palette's
  * `text-*` is its text, tinted) passes that side, since on a ground near the
  * 0.179 cutoff both poles clear and only one also reads on everything else
- * the colour is drawn on. Where `toward` cannot clear `minRatio` on `bg`,
+ * the color is drawn on. Where `toward` cannot clear `minRatio` on `bg`,
  * the floor wins over the side: the answer is `contrastFor(bg)`.
  */
 export function ensureContrastToward(

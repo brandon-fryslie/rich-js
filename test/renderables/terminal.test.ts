@@ -107,7 +107,7 @@ describe("drawnOf", () => {
 });
 
 describe("a pulsing bar reads the frame's terminal", () => {
-  // A back in an ANSI colour: only the terminal says what shade the light falls on.
+  // A back in an ANSI color: only the terminal says what shade the light falls on.
   const pulsing = inFrame(new ProgressBar({ width: 40, pulse: true, style: "red" }), 3);
   const drawn = (terminal?: TerminalColors): string => renderToString(pulsing, { width: 40, colorSystem: "truecolor", terminal });
 

@@ -573,8 +573,8 @@ describe("App on a timeline", () => {
         drawn.push({ t, value });
         return text(`${value}`);
       },
-      nextChange: (t) => animation.nextChange(t),
-      lastChange: (t) => animation.lastChange(t),
+      validUntil: (t) => animation.validUntil(t),
+      validFrom: (t) => animation.validFrom(t),
       reduced: () => Animation.map(animation.reduced(), (value) => text(`${value}`)),
     });
     return { target: new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(perSecond), view, timeline }), drawn };
@@ -672,7 +672,7 @@ describe("App on a timeline", () => {
       render: ({ frame }) => {
         draws += 1;
         const whole = Math.floor(frame!.time);
-        return [new Segment("x", new Style({ hold: { lastChange: whole, nextChange: whole + 1 } }))];
+        return [new Segment("x", new Style({ validity: { validFrom: whole, validUntil: whole + 1 } }))];
       },
     };
     const target = new App({ host: scriptedHost(), surface: "alternate", clock, rate: frameRate(1), view: stamped, timeline: Timeline.play(100, 2) });
@@ -696,10 +696,10 @@ describe("App on a timeline", () => {
     const settled: Animation<Renderable> = Animation.of({
       at: (t) => {
         times.push(t);
-        return { render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t } }))] };
+        return { render: () => [new Segment("x", new Style({ validity: { validFrom: t, validUntil: t } }))] };
       },
-      nextChange: () => Number.POSITIVE_INFINITY,
-      lastChange: () => 2,
+      validUntil: () => Number.POSITIVE_INFINITY,
+      validFrom: () => 2,
       reduced: () => Animation.constant<Renderable>({ render: () => [new Segment("x")] }),
     });
     const timeline = Timeline.seek(Timeline.play(0, -1), 0, 10);

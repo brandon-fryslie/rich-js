@@ -57,9 +57,9 @@
  *         ("escaped-no-tag", "\\[1] kept"),
  *         ("mixed", "text [INFO] more [red]x[/red]"),
  *         ("nested-styles", "[bold]a[italic]b[/italic]c[/bold]"),
- *         ("nested-colour", "[red]a[blue]b[/blue]c[/red]"),
- *         ("nested-colour-tie", "[red][blue]x[/blue][/red]"),
- *         ("nested-colour-unclosed", "[red][blue]x"),
+ *         ("nested-color", "[red]a[blue]b[/blue]c[/red]"),
+ *         ("nested-color-tie", "[red][blue]x[/blue][/red]"),
+ *         ("nested-color-unclosed", "[red][blue]x"),
  *         ("negated-attribute", "[bold red]a[not bold]b[/not bold]c[/]"),
  *         ("negated-absent", "[red]a[not bold]b[/not bold]c[/red]"),
  *         ("adjacent-equal", "[red]a[/red][red]b[/red]"),
@@ -80,7 +80,7 @@
  *     sys.stdout.write("\n\n".join(blocks) + "\n")
  *     PY
  *
- * It goes end to end through `Console.print` with colour forced on, rather than
+ * It goes end to end through `Console.print` with color forced on, rather than
  * comparing the `Span` lists `markup.render` returns, and the difference is not
  * cosmetic. The reference keeps an unresolvable style name on the span as a
  * string and discards it later; this port maps it to the null style at
@@ -91,7 +91,7 @@
  * side happens to reach it.
  *
  * `highlight=False` is load-bearing on both sides: the default `ReprHighlighter`
- * styles bare numbers and URLs, which would paint half this corpus with colour
+ * styles bare numbers and URLs, which would paint half this corpus with color
  * that has nothing to do with markup.
  *
  * WHY THIS CORPUS. Every case buys one arm of `RE_TAGS` that no other buys, and
@@ -142,12 +142,12 @@
  * one. `nested-styles` *adds*: two attributes accumulate, and the run reads the
  * same whichever span is applied last — which is why this port applied them
  * innermost-first for as long as attribute nesting was the only nesting pinned
- * here. The three `nested-colour` cases *override*: an inner colour replaces
+ * here. The three `nested-color` cases *override*: an inner color replaces
  * the outer one, so the order the spans are painted in is visible in the bytes.
- * They differ in where the spans start — `nested-colour` at distinct offsets,
+ * They differ in where the spans start — `nested-color` at distinct offsets,
  * where sorting by start is the whole answer, and the `-tie` and `-unclosed`
  * pair both at 0, where the sort has nothing to separate them and only the
- * tie-break decides which colour survives (rich-markup-krk).
+ * tie-break decides which color survives (rich-markup-krk).
  *
  * `negated-attribute` overrides too, but it takes an attribute away: `b` must be
  * red and not bold. The reference writes only the codes that are on, so `b` is
@@ -195,9 +195,9 @@ const CASES: readonly (readonly [string, string])[] = [
   ["escaped-no-tag", "\\[1] kept"],
   ["mixed", "text [INFO] more [red]x[/red]"],
   ["nested-styles", "[bold]a[italic]b[/italic]c[/bold]"],
-  ["nested-colour", "[red]a[blue]b[/blue]c[/red]"],
-  ["nested-colour-tie", "[red][blue]x[/blue][/red]"],
-  ["nested-colour-unclosed", "[red][blue]x"],
+  ["nested-color", "[red]a[blue]b[/blue]c[/red]"],
+  ["nested-color-tie", "[red][blue]x[/blue][/red]"],
+  ["nested-color-unclosed", "[red][blue]x"],
   ["negated-attribute", "[bold red]a[not bold]b[/not bold]c[/]"],
   ["negated-absent", "[red]a[not bold]b[/not bold]c[/red]"],
   ["adjacent-equal", "[red]a[/red][red]b[/red]"],
@@ -211,7 +211,7 @@ function esc(value: string): string {
     .replace(/\t/g, "\\t");
 }
 
-/** What `Console.print` puts on the wire for one markup string, colour forced on. */
+/** What `Console.print` puts on the wire for one markup string, color forced on. */
 function printed(markup: string): string {
   const chunks: string[] = [];
   const console_ = new Console({

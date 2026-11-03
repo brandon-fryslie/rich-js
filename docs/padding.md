@@ -4,7 +4,7 @@
 
 ## Basic usage
 
-Pass a renderable or a markup string and a single value to apply equal padding on all four sides. The background colour is only there to make the padding visible — [Style and expansion](#style-and-expansion) below covers it:
+Pass a renderable or a markup string and a single value to apply equal padding on all four sides. The background color is only there to make the padding visible — [Style and expansion](#style-and-expansion) below covers it:
 
 ```typescript
 import { Console, Padding } from "@promptctl/rich-js";

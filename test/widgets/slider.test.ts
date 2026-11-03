@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import { Slider } from "../../src/widgets/slider.js";
-import { KeyEvent } from "../../src/widgets/types.js";
+import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
@@ -10,7 +10,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
 // Factory — KeyEvent carries a mutable `stopped` flag; fresh per call.
-const makeKey = (key: string): KeyEvent => new KeyEvent({
+const makeKey = (key: string): WidgetKeyEvent => new WidgetKeyEvent({
   key,
   character: "",
   shift: false,

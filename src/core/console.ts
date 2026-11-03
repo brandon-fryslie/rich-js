@@ -4,10 +4,10 @@
 
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
-import { ColorDepth, resolveDestination } from "./color.js";
+import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isDumbTerminal } from "./env.js";
 import type { TextOrder } from "./text-order.js";
-import type { ColorSystemName, Destination } from "./color.js";
+import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
@@ -92,7 +92,7 @@ export interface ConsoleOptions {
    * Color encoding. Accepts a `ColorSystemName` (`"auto"`, `"truecolor"`,
    * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for
    * `WINDOWS`, which has no name), or `null` for no color. Default `"auto"`.
-   * Colour only: an explicit depth, `null` included, keeps hyperlinks.
+   * Color only: an explicit depth, `null` included, keeps hyperlinks.
    */
   colorSystem?: ColorSystemName | ColorDepth | null;
   /**
@@ -121,8 +121,8 @@ export interface ConsoleOptions {
   reducedMotion?: boolean;
   /**
    * The terminal this console draws on (`RenderOptions.terminal`), which
-   * every effect it draws resolves its colours on. Default: the one the
-   * colour depth assumes.
+   * every effect it draws resolves its colors on. Default: the one the
+   * color depth assumes.
    */
   terminal?: TerminalColors;
   /**
@@ -157,7 +157,7 @@ export interface ConsoleOptions {
   stderr?: boolean;
   file?: ConsoleSink;
   /**
-   * Host facilities to consult for colour detection, size detection, and the
+   * Host facilities to consult for color detection, size detection, and the
    * default output sink. Defaults to the ambient `process`, or — where there
    * is no `process` — an empty environment with no streams. Pass this to drive
    * a `Console` deterministically, or to run one against a simulated terminal.
@@ -290,7 +290,7 @@ function ambientEnvironment(): ConsoleEnvironment {
 // bytes go — is a question about *that* stream. Selecting it once, here, is
 // what makes the three answers agree. When each site re-selected for itself,
 // one of them (size) silently didn't, and a `Console({ stderr: true })` keyed
-// its colour to stderr and its width to stdout.
+// its color to stderr and its width to stdout.
 function boundStream(
   environment: ConsoleEnvironment,
   useStderr: boolean,
@@ -384,7 +384,7 @@ const NO_HIGHLIGHT = new NullHighlighter();
 
 
 export class Console {
-  private readonly _destination: Destination;
+  private readonly _destination: OutputTarget;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
   // `width`/`height` options collapse into a closure that returns them; a
   // caller-supplied `getSize` overrides. Every size read in this class goes
@@ -431,7 +431,7 @@ export class Console {
     // [LAW:dataflow-not-control-flow] `isTTY` and `env` are forwarded
     // unconditionally, so detection stays inside the console's injected
     // environment rather than the ambient process's.
-    const resolved = resolveDestination(
+    const resolved = resolveOutputTarget(
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
       { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion, ...(options?.textOrder === undefined ? {} : { textOrder: options.textOrder }) },
     );
@@ -488,12 +488,12 @@ export class Console {
   }
 
   /**
-   * Where this console writes: the colour depth it draws at, whether it
+   * Where this console writes: the color depth it draws at, whether it
    * emits OSC 8 hyperlinks, and whether its reader asked for reduced motion,
    * overrides applied — the value its output is
    * encoded for, for anything that encodes on its behalf (`Live`).
    */
-  get destination(): Destination {
+  get destination(): OutputTarget {
     return this._destination;
   }
 
@@ -776,7 +776,7 @@ export class Console {
   // --- Live region ---
 
   /**
-   * Hold `region` under everything this console writes until the returned
+   * ValidityInterval `region` under everything this console writes until the returned
    * call lets it go. One region at a time: a second would be erased and
    * painted over by the first, so claiming one while another is held throws.
    */

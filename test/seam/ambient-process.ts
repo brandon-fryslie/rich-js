@@ -92,7 +92,7 @@ export const HOST_ACCESS: readonly HostAccess[] = [
     file: "src/core/color.ts",
     surface: [member("env"), member("stdout")],
     why:
-      "Colour detection's ambient default. `detectColorSystem` takes `env` and " +
+      "Color detection's ambient default. `detectColorSystem` takes `env` and " +
       "`isTTY` as options; these two reads are what it falls back to when a " +
       "caller passes neither, and both sit behind a `typeof process` guard so " +
       "the module loads in a browser.",
@@ -113,7 +113,7 @@ export const HOST_ACCESS: readonly HostAccess[] = [
     why:
       "The node `TerminalHost`'s stream and environment defaults, overridable " +
       "per instance so tests drive it over `PassThrough` and a fixed env. The " +
-      "env is what `TerminalHost.env` hands colour detection. `EventRouter` switches raw mode " +
+      "env is what `TerminalHost.env` hands color detection. `EventRouter` switches raw mode " +
       "through the `TerminalHost` seam, and this is the only implementation " +
       "where that reaches a real TTY — the browser host's is a no-op. The " +
       "whole object is the default of the host's `process` option, bounded " +

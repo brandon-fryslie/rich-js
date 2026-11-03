@@ -311,7 +311,7 @@ describe("Oklch.mix", () => {
 
   it("an achromatic result is a gray on the same terms as fromRgba's", () => {
     // t = 0 from a gray, or t = 1 toward one, must be THAT gray — hue 0
-    // included — not a zero-chroma colour wearing the other endpoint's hue.
+    // included — not a zero-chroma color wearing the other endpoint's hue.
     const gray = from(128, 128, 128);
     const blue = from(40, 80, 220);
     expect(gray.mix(blue, 0)).toEqual(gray);

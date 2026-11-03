@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Dropdown } from "../../src/widgets/dropdown.js";
-import { KeyEvent } from "../../src/widgets/types.js";
+import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
 import { ColorSpec } from "../../src/core/color.js";
@@ -10,7 +10,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
-const makeKey = (key: string): KeyEvent => new KeyEvent({
+const makeKey = (key: string): WidgetKeyEvent => new WidgetKeyEvent({
   key,
   character: "",
   shift: false,
@@ -25,7 +25,7 @@ const upEvent = () => makeKey("up");
 const downEvent = () => makeKey("down");
 const backspaceEvent = () => makeKey("backspace");
 const tabEvent = () => makeKey("tab");
-const shiftTabEvent = () => new KeyEvent({
+const shiftTabEvent = () => new WidgetKeyEvent({
   key: "tab",
   character: "",
   shift: true,
@@ -33,7 +33,7 @@ const shiftTabEvent = () => new KeyEvent({
   meta: false,
 }, 0);
 
-const charKey = (ch: string): KeyEvent => new KeyEvent({
+const charKey = (ch: string): WidgetKeyEvent => new WidgetKeyEvent({
   key: ch,
   character: ch,
   shift: false,
@@ -352,7 +352,7 @@ describe("Dropdown", () => {
       // doesn't need to know about the option flag.
       const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
       d.focus(0);
-      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
+      d.handleKey(new WidgetKeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
       const segs = Segment.splitLines(d.render({ ...RENDER, asciiOnly: true }))[0]!;
       const text = segs.map((s) => s.text).join("");
       expect(text).toContain("|");
@@ -391,7 +391,7 @@ describe("Dropdown", () => {
       // open — visible state surviving a blur is a real-world bug.
       const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
       d.focus(0);
-      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
+      d.handleKey(new WidgetKeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }, 0));
       expect(d.expanded).toBe(true);
       expect(d.filter).toBe("a");
 

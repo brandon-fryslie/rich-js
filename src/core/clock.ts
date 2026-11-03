@@ -62,7 +62,7 @@ export interface Clock {
   /**
    * Call `tick` once, when this clock reads `time` — as soon as it can for a
    * time already past — unless the returned function is called first. What
-   * a host that knows when its frame next changes (`Segment.nextChange`)
+   * a host that knows when its frame next changes (`Segment.validUntil`)
    * waits on. A `time` that is not a finite number of seconds throws; one
    * further off than a platform timer can wait is waited for in turns.
    */

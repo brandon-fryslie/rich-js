@@ -8,7 +8,7 @@
  * reads the frame the view drew:
  *
  * - Focus moves in document order: the order the view reports its widgets in
- *   (`RenderOptions.onPresent`), among those with a cell on the frame on screen.
+ *   (`RenderOptions.onVisibility`), among those with a cell on the frame on screen.
  *   A widget its container hands no column is reported held, not drawn: it is
  *   in the view, so it keeps focus, and it has no cell, so Tab passes it.
  *   Not reading order — in a `Layout` split into columns, reading order
@@ -28,13 +28,13 @@
 
 import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
-import type { HostFrame, FrameHost, Presence, Renderable, RenderOptions } from "../core/protocol.js";
+import type { HostFrame, FrameHost, Visibility, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { Clock, FrameRate } from "../core/clock.js";
 import type { Timeline } from "../core/timeline.js";
 import { hostView } from "../core/view.js";
-import { App, type AppOptions, type AppPhase, type Wheel } from "../host/app.js";
+import { App, type AppOptions, type AppPhase, type WheelEvent } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { EventRouter } from "./event-router.js";
 import { footprintOf, ownersOn } from "./hit.js";
@@ -42,7 +42,7 @@ import { hasOverlay } from "./types.js";
 import type {
   FocusManager,
   FrameSource,
-  KeyEvent,
+  WidgetKeyEvent,
   KeyHandlerOptions,
 } from "./types.js";
 import type { AppMouseEvent } from "../host/app.js";
@@ -57,9 +57,9 @@ export interface WidgetAppOptions extends AppOptions {
 }
 
 /** A widget the view reported for a frame, and whether it was drawn or held. */
-export interface WidgetPresence {
+export interface WidgetVisibility {
   readonly widget: WidgetBase;
-  readonly presence: Presence;
+  readonly visibility: Visibility;
 }
 
 export class WidgetApp implements FrameSource, FrameHost {
@@ -69,7 +69,7 @@ export class WidgetApp implements FrameSource, FrameHost {
   private readonly router: EventRouter;
   // Paints the next frame when anything the last one read changes.
   private readonly reaction: Reaction;
-  private _present: readonly WidgetPresence[] = [];
+  private _present: readonly WidgetVisibility[] = [];
 
   constructor(options: WidgetAppOptions) {
     const { focusOnClick = true } = options;
@@ -89,7 +89,7 @@ export class WidgetApp implements FrameSource, FrameHost {
       },
     });
     this.focus = new DefaultFocusManager({
-      present: () => this.widgets,
+      mounted: () => this.widgets,
       onScreen: () => {
         const owners = ownersOn(this.app.frame);
         return this.widgets.filter((widget) => owners.has(widget));
@@ -141,10 +141,10 @@ export class WidgetApp implements FrameSource, FrameHost {
 
   /**
    * The widgets the view reported for the frame on screen, in document order,
-   * each drawn or held (`RenderOptions.onPresent`). A held widget is one its
+   * each drawn or held (`RenderOptions.onVisibility`). A held widget is one its
    * container handed no column: in the view, with no cell on the frame.
    */
-  get present(): readonly WidgetPresence[] {
+  get mounted(): readonly WidgetVisibility[] {
     return this._present;
   }
 
@@ -203,7 +203,7 @@ export class WidgetApp implements FrameSource, FrameHost {
    * `normal` one after it — and after Tab has moved focus — and a handler
    * that calls `event.stop()` ends the key there.
    */
-  onKey(handler: (event: KeyEvent) => void, options?: KeyHandlerOptions): Unsubscribe {
+  onKey(handler: (event: WidgetKeyEvent) => void, options?: KeyHandlerOptions): Unsubscribe {
     return this.router.onKey(handler, options);
   }
 
@@ -217,17 +217,17 @@ export class WidgetApp implements FrameSource, FrameHost {
    * `handler`, as `App.onWheel` does: it returns whether it moved something,
    * and a turn nothing moved with is passed outward.
    */
-  onWheel(handler: (wheel: Wheel) => boolean): Unsubscribe {
+  onWheel(handler: (wheel: WheelEvent) => boolean): Unsubscribe {
     return this.app.onWheel(handler);
   }
 
   private compose(view: Renderable, options: RenderOptions): Segment[] {
     // Each widget once, where it was first reported; drawn anywhere, it is drawn.
-    const present = new Map<WidgetBase, Presence>();
+    const present = new Map<WidgetBase, Visibility>();
     // [LAW:parse-dont-validate] What the view reports is any renderable; only
     // a `WidgetBase` is a widget, so this is where a renderable becomes one.
-    const onPresent = (renderable: Renderable, presence: Presence): void => {
-      if (renderable instanceof WidgetBase) present.set(renderable, present.get(renderable) === "drawn" ? "drawn" : presence);
+    const onVisibility = (renderable: Renderable, visibility: Visibility): void => {
+      if (renderable instanceof WidgetBase) present.set(renderable, present.get(renderable) === "visible" ? "visible" : visibility);
     };
     // The view, its render and the overlays are all tracked, so an observable
     // any of them reads — a label, `focused`, the state that picks what the
@@ -235,13 +235,13 @@ export class WidgetApp implements FrameSource, FrameHost {
     // An overlay reports what it draws too: a widget in it is in the view,
     // and visiting `present` in report order paints its overlay in turn. A
     // held widget has no footprint on the frame, and so paints none.
-    const drawing = { ...options, onPresent };
+    const drawing = { ...options, onVisibility };
     const lines = tracked(this.reaction, () => {
       const base = Segment.splitLines(render(view, drawing));
       for (const widget of present.keys()) paintOverlay(base, widget, drawing);
       return base;
     });
-    this._present = [...present].map(([widget, presence]) => ({ widget, presence }));
+    this._present = [...present].map(([widget, visibility]) => ({ widget, visibility }));
     return lines.flatMap((line) => [...line, Segment.line()]);
   }
 }

@@ -11,8 +11,8 @@ exampleContext: |
     table.addColumn("load");
     for (const [i, name] of ["api", "auth", "worker", "queue", "cache", "search", "mail", "db"].entries()) {
       const cpu = Math.round(50 + 45 * Math.sin(tick / 6 + i * 1.7));
-      const colour = cpu > 80 ? "red" : cpu > 50 ? "yellow" : "green";
-      table.addRow(name, `${cpu}%`, `[${colour}]${"█".repeat(Math.round(cpu / 4))}[/]`);
+      const color = cpu > 80 ? "red" : cpu > 50 ? "yellow" : "green";
+      table.addRow(name, `${cpu}%`, `[${color}]${"█".repeat(Math.round(cpu / 4))}[/]`);
     }
     return new Panel(table, { title: "services", expand: true, borderStyle: "blue" });
   };

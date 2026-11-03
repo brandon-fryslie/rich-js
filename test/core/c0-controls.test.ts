@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AnsiDecoder, decodeAnsi } from "../../src/core/ansi.js";
 import { Console } from "../../src/core/console.js";
-import { labelled } from "../../src/core/orient.js";
+import { labeled } from "../../src/core/orient.js";
 import { renderToString } from "../../src/core/render.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
@@ -132,7 +132,7 @@ describe("what reaches the wire", () => {
   const payload = PAYLOADS.join("");
 
   it("holds none from a label a widget draws", () => {
-    expect(labelled("[ ", payload, " ]", undefined, "plain").map((segment) => written(raw(segment))).join("")).not.toMatch(DIRECTIVE);
+    expect(labeled("[ ", payload, " ]", undefined, "plain").map((segment) => written(raw(segment))).join("")).not.toMatch(DIRECTIVE);
   });
 
   it("holds none from a text's end", () => {

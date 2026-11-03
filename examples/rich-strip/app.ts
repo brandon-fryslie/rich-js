@@ -4,23 +4,23 @@
  *
  * [LAW:one-source-of-truth] It takes its whole environment from
  * `hostEnvironment(host)`, so the host is the one sink it writes to and the one
- * terminal it asks about size and colour. No second path to `process`.
+ * terminal it asks about size and color. No second path to `process`.
  */
 
 import {
   Console,
   Strip,
-  CellJoiner,
-  JOINERS,
-  SEAMS,
-  CAPS,
-  joinerNamed,
+  CellSeparator,
+  SEPARATOR_STYLES,
+  SEPARATORS,
+  END_CAPS,
+  separatorNamed,
   SEAM_MIN_DELTA_E,
   gradientSeam,
   Style,
   RichText,
   FlexStrip,
-  type JoinSeam,
+  type SeparatorSeam,
 } from "@promptctl/rich-js";
 import { hostEnvironment, type TerminalHost } from "@promptctl/rich-js/host";
 
@@ -47,25 +47,25 @@ export function runDemo(host: TerminalHost): void {
 
   // The table one joiner a row, its name the row's first item: a name has no
   // ground, so each joiner meets it as it meets the strip's start.
-  consoleOut.print(new RichText("JOINERS", { style: "bold" }));
-  const width = Math.max(...Object.keys(JOINERS).map((name) => name.length));
-  for (const name of Object.keys(JOINERS)) {
-    consoleOut.print(new Strip([new RichText(` ${name.padEnd(width)} `, { end: "", noWrap: true }), ...cells], joinerNamed(name)));
+  consoleOut.print(new RichText("SEPARATOR_STYLES", { style: "bold" }));
+  const width = Math.max(...Object.keys(SEPARATOR_STYLES).map((name) => name.length));
+  for (const name of Object.keys(SEPARATOR_STYLES)) {
+    consoleOut.print(new Strip([new RichText(` ${name.padEnd(width)} `, { end: "", noWrap: true }), ...cells], separatorNamed(name)));
   }
   // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
-  // arrow in their shared colour, so the joiner lifts the arrow's ink off it.
+  // arrow in their shared color, so the joiner lifts the arrow's ink off it.
   const shared = ["one", "two", "three"].map(
     (t) => new RichText(` ${t} `, { style: Style.parse("white on #3a3f58"), end: "", noWrap: true }),
   );
   showcase(
-    `JOINERS.powerline, shared background (ink lifted to ΔE ${SEAM_MIN_DELTA_E})`,
-    new Strip([...cells, ...shared], JOINERS.powerline),
+    `SEPARATOR_STYLES.powerline, shared background (ink lifted to ΔE ${SEAM_MIN_DELTA_E})`,
+    new Strip([...cells, ...shared], SEPARATOR_STYLES.powerline),
   );
   // The middle and the ends are picked apart: any seam ends in any caps.
-  showcase("SEAMS.prism + CAPS.bubble", new Strip(cells, new CellJoiner(SEAMS.prism, CAPS.bubble)));
+  showcase("SEPARATORS.prism + END_CAPS.bubble", new Strip(cells, new CellSeparator(SEPARATORS.prism, END_CAPS.bubble)));
   // A seam is a value: one the table does not bundle, two arrows meeting
   // point to point, the right ground reaching back into the left.
-  const meet: JoinSeam = {
+  const meet: SeparatorSeam = {
     glyph: {
       seam: [
         { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
@@ -76,7 +76,7 @@ export function runDemo(host: TerminalHost): void {
       seam: [{ glyph: "<>", fg: { edge: "left", part: "bg" }, bg: { edge: "right", part: "bg" } }],
     },
   };
-  showcase("arrows meeting + CAPS.powerline", new Strip([...cells, ...shared], new CellJoiner(meet, CAPS.powerline)));
+  showcase("arrows meeting + END_CAPS.powerline", new Strip([...cells, ...shared], new CellSeparator(meet, END_CAPS.powerline)));
 
   // "Unbounded" gradient: fill the row between two anchor cells with as many
   // steps as the terminal can show.
@@ -85,8 +85,8 @@ export function runDemo(host: TerminalHost): void {
   const anchorWidth = " #ff0066 ".length + " #00ccff ".length;
   const fillSteps = Math.max(1, consoleOut.width - anchorWidth);
   showcase(
-    `gradientSeam(${fillSteps}) + CAPS.flat, full-width fill`,
-    new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], new CellJoiner(gradientSeam(fillSteps), CAPS.flat)),
+    `gradientSeam(${fillSteps}) + END_CAPS.flat, full-width fill`,
+    new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], new CellSeparator(gradientSeam(fillSteps), END_CAPS.flat)),
   );
 
   const PALETTE = [
@@ -102,6 +102,6 @@ export function runDemo(host: TerminalHost): void {
     (t, i) => new RichText(` ${t} `, { style: Style.parse(`white on ${PALETTE[i % PALETTE.length]!}`), end: "", noWrap: true }),
   );
 
-  showcase("FlexStrip + JOINERS.powerline (wrap-to-width)", new FlexStrip(tagCells, { joiner: JOINERS.powerline }));
+  showcase("FlexStrip + SEPARATOR_STYLES.powerline (wrap-to-width)", new FlexStrip(tagCells, { separator: SEPARATOR_STYLES.powerline }));
   showcase("FlexStrip + gap (tag cloud)", new FlexStrip(tagCells, { gap: 1 }));
 }

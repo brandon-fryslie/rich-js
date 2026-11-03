@@ -5,7 +5,7 @@ import {
   type ColorSystemName,
   resolveColorSystem,
   detectColorSystem,
-  resolveDestination,
+  resolveOutputTarget,
 } from "../../src/core/color.js";
 import type { Env } from "../../src/core/env.js";
 import { renderToString } from "../../src/core/render.js";
@@ -53,14 +53,14 @@ describe("resolveColorSystem (string spec → ColorDepth)", () => {
   });
 });
 
-describe("ColorSystemName (the colour-system vocabulary)", () => {
+describe("ColorSystemName (the color-system vocabulary)", () => {
   it("types every colorSystem parameter, so a name outside it is a compile error", () => {
-    // @ts-expect-error "16" is not a colour system name
+    // @ts-expect-error "16" is not a color system name
     expect(() => resolveColorSystem("16")).toThrow(ColorParseError);
-    // @ts-expect-error a FORCE_COLOR value is not a colour system name
+    // @ts-expect-error a FORCE_COLOR value is not a color system name
     expect(() => resolveColorSystem("1")).toThrow(ColorParseError);
     // @ts-expect-error
-    expect(() => resolveDestination("16")).toThrow(ColorParseError);
+    expect(() => resolveOutputTarget("16")).toThrow(ColorParseError);
     // @ts-expect-error
     expect(() => renderToString(new RichText("x"), { colorSystem: "16" })).toThrow(ColorParseError);
     // @ts-expect-error
@@ -80,7 +80,7 @@ describe("ColorSystemName (the colour-system vocabulary)", () => {
 });
 
 describe("detectColorSystem reads the environment's vocabulary, not ColorSystemName", () => {
-  it("takes a colour system name in FORCE_COLOR or TERM as an unknown value", () => {
+  it("takes a color system name in FORCE_COLOR or TERM as an unknown value", () => {
     expect(detectColorSystem({ env: { FORCE_COLOR: "none" }, isTTY: true })).toBe(ColorDepth.STANDARD);
     expect(detectColorSystem({ env: { FORCE_COLOR: "truecolor" }, isTTY: true })).toBe(ColorDepth.STANDARD);
     expect(detectColorSystem({ env: { TERM: "none" }, isTTY: true })).toBe(ColorDepth.STANDARD);
@@ -285,8 +285,8 @@ describe("renderToString accepts ColorSystemSpec strings", () => {
   });
 });
 
-describe("resolveDestination (spec → colour depth + hyperlinks)", () => {
-  // [LAW:one-type-per-behavior] A hyperlink is not a colour: a colour choice
+describe("resolveOutputTarget (spec → color depth + hyperlinks)", () => {
+  // [LAW:one-type-per-behavior] A hyperlink is not a color: a color choice
   // never removes links; only a destination that takes no escapes does.
   const TTY = { env: { TERM: "xterm-256color" }, isTTY: true };
   it.each([
@@ -300,12 +300,12 @@ describe("resolveDestination (spec → colour depth + hyperlinks)", () => {
     ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: true }, null, true],
     ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: false }, null, false],
   ] as const)("%s %j → %s, links %s", (spec, opts, colorSystem, hyperlinks) => {
-    expect(resolveDestination(spec, opts)).toEqual({ colorSystem, hyperlinks, reducedMotion: false, textOrder: "plain" });
+    expect(resolveOutputTarget(spec, opts)).toEqual({ colorSystem, hyperlinks, reducedMotion: false, textOrder: "plain" });
   });
 
   it("an explicit null or enum depth keeps links", () => {
-    expect(resolveDestination(null, { isTTY: false })).toEqual({ colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain" });
-    expect(resolveDestination("auto", { reducedMotion: true }).reducedMotion).toBe(true);
-    expect(resolveDestination(ColorDepth.STANDARD).hyperlinks).toBe(true);
+    expect(resolveOutputTarget(null, { isTTY: false })).toEqual({ colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain" });
+    expect(resolveOutputTarget("auto", { reducedMotion: true }).reducedMotion).toBe(true);
+    expect(resolveOutputTarget(ColorDepth.STANDARD).hyperlinks).toBe(true);
   });
 });

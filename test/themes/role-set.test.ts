@@ -5,7 +5,7 @@ import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPa
 import type { Palette, PaletteRole, ShadedRole } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
-import { transposePalette } from "../../src/themes/transpose.js";
+import { adjustPalette } from "../../src/themes/adjust.js";
 import { derivedFrom } from "./derived-palette.js";
 
 const authored = listThemePalettes().map((name) => getThemePalette(name));
@@ -30,8 +30,8 @@ const palettes: readonly Palette[] = [
   built,
   buildPalette("light", false, { ...base, background: new ColorRgba(240, 240, 235), foreground: new ColorRgba(30, 30, 30) }),
   buildPalette("stated", true, { ...base, panel: new ColorRgba(1, 2, 3) }),
-  transposePalette(built, IDENTITY),
-  transposePalette(getThemePalette("nord"), { hueShift: 30, chromaScale: 1, lightnessScale: 1, lightnessShift: 0 }),
+  adjustPalette(built, IDENTITY),
+  adjustPalette(getThemePalette("nord"), { hueShift: 30, chromaScale: 1, lightnessScale: 1, lightnessShift: 0 }),
 ];
 
 describe("every palette has the same roles", () => {
@@ -66,7 +66,7 @@ describe("a bundled theme's name means one palette", () => {
 });
 
 describe("a role's ladder", () => {
-  // `boost` is a layer, so a rung of it can composite to the same colour as its neighbour.
+  // `boost` is a layer, so a rung of it can composite to the same color as its neighbour.
   const roots = PALETTE_ROLES.flatMap((role) => (role.endsWith("-lighten-1") && role !== "boost-lighten-1" ? [role.slice(0, -"-lighten-1".length) as ShadedRole] : []));
 
   it.each(authored.map((palette) => [palette.name, palette] as const))("steps through its root on %s", (_name, palette) => {
@@ -88,7 +88,7 @@ describe("a role's ladder", () => {
 });
 
 describe("a stated role", () => {
-  it("keeps its colour, and what is derived from it follows", () => {
+  it("keeps its color, and what is derived from it follows", () => {
     const panel = new ColorRgba(1, 2, 3);
     const palette = buildPalette("stated", true, { ...base, panel });
     expect(palette.get("panel")).toEqual(panel);
@@ -103,20 +103,20 @@ describe("what buildPalette is given", () => {
   });
 
   it("a key that names no role is refused by name", () => {
-    const overrides = { "scrollbar-colour": new ColorRgba(1, 2, 3) };
-    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/"t": "scrollbar-colour" is not a role/);
+    const overrides = { "scrollbar-color": new ColorRgba(1, 2, 3) };
+    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/"t": "scrollbar-color" is not a role/);
   });
 });
 
 describe("a stated role is read as it is drawn", () => {
   const light = { ...base, background: new ColorRgba(240, 240, 235), foreground: new ColorRgba(30, 30, 30) };
 
-  it("a translucent ground is measured as the colour it draws", () => {
+  it("a translucent ground is measured as the color it draws", () => {
     const palette = buildPalette("t", false, { ...light, "primary-muted": new ColorRgba(0, 0, 0, 0.1) });
     expect(contrastRatio(palette.get("text-primary"), palette.get("primary-muted"))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("what is derived from a translucent role follows the colour it draws", () => {
+  it("what is derived from a translucent role follows the color it draws", () => {
     const surface = new ColorRgba(255, 255, 255, 0.1);
     const opaque = surface.compositeOver(base.background);
     expect(buildPalette("t", true, { ...base, surface }).get("panel")).toEqual(buildPalette("t", true, { ...base, surface: opaque }).get("panel"));
@@ -158,7 +158,7 @@ describe("what a role is drawn on decides it", () => {
 });
 
 describe("a derived ladder continues the authored ones", () => {
-  // Textual's generator drew these rungs from each theme's own colours, so the
+  // Textual's generator drew these rungs from each theme's own colors, so the
   // rule run on a theme's bases lands on the authored rung.
   const RUNGS = ["darken-1", "darken-2", "darken-3", "lighten-1", "lighten-2", "lighten-3"] as const;
 

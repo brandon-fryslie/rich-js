@@ -86,7 +86,7 @@ describe("a demo's card.json", () => {
     });
   });
 
-  it("may turn on the card's sliders and show every colour as drawn", () => {
+  it("may turn on the card's sliders and show every color as drawn", () => {
     const json = '{ "terminal": { "columns": 90, "rows": 28 }, "sliders": true, "contrast": "as drawn" }';
     expect(cardJson(demo({ [CARD_OPTIONS]: json }))).toMatchObject({ screen: { contrast: "as drawn" }, options: { sliders: true } });
   });
@@ -130,7 +130,7 @@ describe("rich-strip's card", { timeout: 60_000 }, () => {
       exit: () => {},
     });
     const rows = stripAnsi(written.join("")).split(/\r?\n/);
-    expect(rows[0]).toBe("JOINERS");
+    expect(rows[0]).toBe("SEPARATOR_STYLES");
     expect(rows).toContain("FlexStrip + gap (tag cloud)");
     // Its last line ends with a line break, so the cursor stands on a row of its own: that row too must fit.
     expect(rows.length).toBeLessThanOrEqual(program.terminal.rows);

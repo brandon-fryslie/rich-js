@@ -62,7 +62,7 @@ const drawn = (subject: Renderable, effect: Effect, t: number, depth: ColorDepth
 const bytes = (segments: readonly Segment[], depth: ColorDepth): string[] =>
   segments.map(({ text, style }) => `${text}|${style?.drawnColors(depth).color?.getAnsiCodes(true).join(";")}|${style?.drawnColors(depth).color?.getAnsiCodes(false).join(";")}|${style?.drawnColors(depth).bgcolor?.getAnsiCodes(false).join(";")}|${style?.reverse}|${style?.blink}|${style?.bold}`);
 
-/** Words in colours off any palette, a fifth on the terminal's ground, a tenth in its ink, seeded. */
+/** Words in colors off any palette, a fifth on the terminal's ground, a tenth in its ink, seeded. */
 function words(count: number, seed: number): Style[] {
   const next = (): number => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const rgb = (): ColorSpec => ColorSpec.fromRgba(new ColorRgba(Math.floor(next() * 256), Math.floor(next() * 256), Math.floor(next() * 256)));
@@ -182,16 +182,16 @@ describe("layered", () => {
     expect(moved.every(([, b]) => b)).toBe(true);
   });
 
-  it("a colour one layer turned onto another of the element's is not taken for it", () => {
+  it("a color one layer turned onto another of the element's is not taken for it", () => {
     const [a, b] = [new ColorRgba(200, 60, 60), new ColorRgba(60, 200, 60)];
     const onto: Effect = () => Animation.constant<EffectFrame>((look, { pair }) => (pair.fg.hex === a.hex ? { ...look, fg: b } : look));
-    const recolourB: Effect = () => Animation.constant<EffectFrame>((look, { pair }) => (pair.fg.hex === b.hex ? { ...look, fg: new ColorRgba(137, 180, 250) } : look));
+    const recolorB: Effect = () => Animation.constant<EffectFrame>((look, { pair }) => (pair.fg.hex === b.hex ? { ...look, fg: new ColorRgba(137, 180, 250) } : look));
     const subject = element([new Style({ color: ColorSpec.fromRgba(a) }), new Style({ color: ColorSpec.fromRgba(b) })], "x");
-    const inks = cellsOf(drawn(subject, layered(onto, recolourB), 0, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).map(({ pair }) => pair.fg.hex);
+    const inks = cellsOf(drawn(subject, layered(onto, recolorB), 0, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).map(({ pair }) => pair.fg.hex);
     expect(inks).toEqual([b.hex, "#89b4fa"]);
   });
 
-  it("a colour the wheel turned onto another of the element's takes that colour's light not at all", () => {
+  it("a color the wheel turned onto another of the element's takes that color's light not at all", () => {
     const rested = ColorSpec.parse("#a6e3a1");
     const alone = cellsOf(drawn(element([new Style({ color: rested })], "x"), turning, 300, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)[0]!.pair.fg;
     const subject = element([new Style({ color: rested }), new Style({ color: ColorSpec.fromRgba(alone) })], "x");
@@ -220,8 +220,8 @@ describe("layered", () => {
     }
   });
 
-  it("the wheel holds a colour with no room still, whatever colour it is handed there", () => {
-    // The middle colour is the darker of one tight pair and the lighter of another, so it has nowhere to land.
+  it("the wheel holds a color with no room still, whatever color it is handed there", () => {
+    // The middle color is the darker of one tight pair and the lighter of another, so it has nowhere to land.
     const subject = element([Style.parse("#585b70 on #45475a"), Style.parse("#6c7086 on #585b70")], "x");
     const ground = new ColorRgba(30, 60, 30);
     const regrounded: Effect = () => Animation.constant<EffectFrame>((look, { pair }) => (pair.bg.hex === "#585b70" ? { ...look, bg: ground } : look));
@@ -243,7 +243,7 @@ describe("layered", () => {
     expect(cellsOf(drawn(subject, layered(turning, lightAtRest), 300, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)[0]!.pair.fg.hex).toBe(wheelAlone);
   });
 
-  it("a light falls on the colour the wheel left, at the share of the colour the element drew", () => {
+  it("a light falls on the color the wheel left, at the share of the color the element drew", () => {
     const subject = element([new Style({ color: ColorSpec.parse("#a6e3a1"), bgcolor: ColorSpec.parse("#1e1e2e") })], "x");
     const full = onColors({ touch: light(EFFECT_LIGHTS.sun), field: () => () => 1 });
     const inkOf = (effect: Effect): ColorRgba => cellsOf(drawn(subject, effect, 300, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)[0]!.pair.fg;
@@ -272,7 +272,7 @@ describe("layered", () => {
     }
   });
 
-  it("the wheel keeps turning a colour a light has lifted out of its rested bounds", () => {
+  it("the wheel keeps turning a color a light has lifted out of its rested bounds", () => {
     const subject = element([new Style({ color: ColorSpec.parse("#6c7086"), bgcolor: ColorSpec.parse("#1e1e2e") })], "x");
     const lift = onColors({ touch: light(EFFECT_LIGHTS.sun), field: () => () => 1 });
     const inkOf = (effect: Effect, t: number): number => Oklch.fromRgba(cellsOf(drawn(subject, effect, t, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)[0]!.pair.fg).h;
@@ -283,44 +283,44 @@ describe("layered", () => {
   it("holds still where every layer does, and says so", () => {
     const composed = layered(turning, shimmering);
     const animation = composed(drawnOf(drawn(element(words(2, 5)), identity, 0, ColorDepth.STANDARD, CATPPUCCIN_MOCHA), ColorDepth.STANDARD, CATPPUCCIN_MOCHA));
-    expect(animation.nextChange(40)).toBe(Number.POSITIVE_INFINITY);
-    expect(composed(drawnOf(drawn(element(words(2, 5)), identity, 0, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)).nextChange(40)).toBe(40);
+    expect(animation.validUntil(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(composed(drawnOf(drawn(element(words(2, 5)), identity, 0, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)).validUntil(40)).toBe(40);
   });
 
-  it("sleeps at every depth on an element with none of the colours its loops light", () => {
+  it("sleeps at every depth on an element with none of the colors its loops light", () => {
     const plain = element([new Style({})]);
     for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT]) {
       const listed = drawnOf(drawn(plain, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
-      expect(layered(turning, shimmering, ramp)(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+      expect(layered(turning, shimmering, ramp)(listed).validUntil(40)).toBe(Number.POSITIVE_INFINITY);
     }
   });
 
-  it("sleeps where a loop names a colour no cell it is handed shows", () => {
+  it("sleeps where a loop names a color no cell it is handed shows", () => {
     const words = element([new Style({ color: ColorSpec.parse("#a0c0e0") })]);
     const elsewhere = new Set(["#123456"]);
     const depth = ColorDepth.TRUECOLOR;
     const listed = drawnOf(drawn(words, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
     const moving = Animation.continuous(() => new ColorRamp(EASES.linear, [{ at: 0, color: new ColorRgba(255, 30, 20) }, { at: 1, color: new ColorRgba(255, 200, 40) }]));
-    expect(layered(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), elsewhere))(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
-    expect(gradient(moving, [...elsewhere])(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
-    expect(confined(shimmering, {})(listed).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(layered(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), elsewhere))(listed).validUntil(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(gradient(moving, [...elsewhere])(listed).validUntil(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(confined(shimmering, {})(listed).validUntil(40)).toBe(Number.POSITIVE_INFINITY);
     const fill = "#123456";
     const inked = (subject: Renderable): ReturnType<typeof drawnOf> => drawnOf(drawn(subject, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
-    // A gradient paints inks, so a colour it names as a ground, or under a blank that shows nothing, is nothing to it.
-    expect(gradient(moving, [fill])(inked(element([new Style({ color: ColorSpec.parse("#ffffff"), bgcolor: ColorSpec.parse(fill) })]))).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
-    expect(gradient(moving, [fill])(inked(element([new Style({ color: ColorSpec.parse(fill) }), new Style({ color: ColorSpec.parse("#ffffff") })], "   "))).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    // A gradient paints inks, so a color it names as a ground, or under a blank that shows nothing, is nothing to it.
+    expect(gradient(moving, [fill])(inked(element([new Style({ color: ColorSpec.parse("#ffffff"), bgcolor: ColorSpec.parse(fill) })]))).validUntil(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(gradient(moving, [fill])(inked(element([new Style({ color: ColorSpec.parse(fill) }), new Style({ color: ColorSpec.parse("#ffffff") })], "   "))).validUntil(40)).toBe(Number.POSITIVE_INFINITY);
     const unstyled = drawnOf(drawn(element([new Style({})]), identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
-    expect(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), new Set([unstyled.pairs[0]!.fg.hex]))(unstyled).nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), new Set([unstyled.pairs[0]!.fg.hex]))(unstyled).validUntil(40)).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("keeps moving a colour named for its light that lies only under blanks, which no word cell lists", () => {
+  it("keeps moving a color named for its light that lies only under blanks, which no word cell lists", () => {
     const fill = new ColorRgba(40, 90, 200);
     const blanks = element([new Style({ bgcolor: ColorSpec.fromRgba(fill) })], "   ");
     const depth = ColorDepth.TRUECOLOR;
     const listed = drawnOf(drawn(blanks, identity, 0, depth, CATPPUCCIN_MOCHA), depth, CATPPUCCIN_MOCHA);
     expect(listed.colors.size).toBe(0);
     const named = onColors(pulse(EFFECT_CURVES.pulse, EFFECT_LIGHTS.sun, z), new Set([fill.hex]));
-    expect(layered(named)(listed).nextChange(40)).toBe(40);
+    expect(layered(named)(listed).validUntil(40)).toBe(40);
   });
 
   it("holds a ground a swap takes past its bounds at the floor, though its ink read better there", () => {
@@ -349,7 +349,7 @@ describe("layered", () => {
     expect(cell.pair.fg.red).toBeLessThan(mix(176) - 8);
   });
 
-  it("at sixteen colours a layer that moves a ground leaves its words on the theme's slots at their floor", () => {
+  it("at sixteen colors a layer that moves a ground leaves its words on the theme's slots at their floor", () => {
     const lifts: readonly (readonly [string, Effect])[] = [
       ["lifted", () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: new ColorRgba(235, 235, 235) }))],
       ["sunk", () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: new ColorRgba(12, 12, 12) }))],
@@ -406,7 +406,7 @@ describe("layered", () => {
     const painting = (fg: string | undefined, bg: string | undefined): Effect => () =>
       Animation.constant<EffectFrame>((look) => ({ ...look, ...(fg === undefined ? {} : { fg: ColorSpec.parse(fg).getTruecolor() }), ...(bg === undefined ? {} : { bg: ColorSpec.parse(bg).getTruecolor() }) }));
 
-    it("reaches black in a colour that cannot keep its chroma there", () => {
+    it("reaches black in a color that cannot keep its chroma there", () => {
       const { fg, bg } = lookOn("#000088", "#ffffff", layered(painting("#000088", "#6a6a6a")), ColorDepth.TRUECOLOR);
       expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.49);
       expect(luminous(fg)).toBeLessThan(luminous(bg));
@@ -443,7 +443,7 @@ describe("layered", () => {
       for (const t of times) expect(bytes(drawn(subject, layered(identity, identity), t, ColorDepth.EIGHT_BIT, CATPPUCCIN_MOCHA), ColorDepth.EIGHT_BIT)).toEqual(bytes(drawn(subject, identity, t, ColorDepth.EIGHT_BIT, CATPPUCCIN_MOCHA), ColorDepth.EIGHT_BIT));
     });
 
-    it("the wheel turns each lit colour of one region for itself", () => {
+    it("the wheel turns each lit color of one region for itself", () => {
       const byColumn: Effect = () => Animation.constant<EffectFrame>((look, { col }) => ({ ...look, bg: col === 0 ? new ColorRgba(70, 40, 40) : new ColorRgba(40, 70, 40) }));
       const subject = element([Style.parse("#cdd6f4 on #1e1e2e")], "ab");
       const [a, b] = cellsOf(drawn(subject, layered(byColumn, turning), 300, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA);
@@ -513,7 +513,7 @@ describe("layered", () => {
     }
   });
 
-  it("a translucent colour is measured as it is written, on what lies beneath it", () => {
+  it("a translucent color is measured as it is written, on what lies beneath it", () => {
     const thin: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: new ColorRgba(255, 255, 255, 0.15) }));
     const bothThin: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: new ColorRgba(255, 255, 255, 0.15), bg: new ColorRgba(255, 255, 255, 0.1) }));
     const subject = element([Style.parse("#ffffff on #1e1e2e"), Style.parse("#cdd6f4 on #313244")]);
@@ -538,7 +538,7 @@ describe("layered", () => {
   it("reduced motion holds a composition at its first frame", () => {
     const at = drawnOf(drawn(element(words(2, 5)), identity, 0, ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA);
     const still = layered(turning, shimmering)(at).reduced();
-    expect(still.nextChange(40)).toBe(Number.POSITIVE_INFINITY);
+    expect(still.validUntil(40)).toBe(Number.POSITIVE_INFINITY);
     const look = { fg: new ColorRgba(200, 200, 200), bg: new ColorRgba(20, 20, 20), attributes: cellAttributes(Style.null()) };
     const cell = { row: 0, col: 0, seed: 0, anchor: undefined, boxFrame: undefined, pair: { ...look, terminal: { fg: false, bg: false }, reverse: false } };
     expect(still.at(40)(look, cell)).toEqual(still.at(900)(look, cell));
@@ -582,7 +582,7 @@ describe("layered", () => {
     }
   });
 
-  it.each([["random words", () => element(words(5, 19))], ["more words", () => element(words(5, 101))], ["the demo's strip", (theme: TerminalTheme) => stripSubject(theme).renderable]] as const)("over %s, a colour steps about as far between frames as the unfloored fold's", (_n, bodyOn) => {
+  it.each([["random words", () => element(words(5, 19))], ["more words", () => element(words(5, 101))], ["the demo's strip", (theme: TerminalTheme) => stripSubject(theme).renderable]] as const)("over %s, a color steps about as far between frames as the unfloored fold's", (_n, bodyOn) => {
     const step = (effect: Effect, depth: ColorDepth, theme: TerminalTheme): number => {
       const subject = bodyOn(theme);
       let largest = 0;

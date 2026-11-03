@@ -3,15 +3,15 @@
  * are done, each with its way out for an element leaving (`backspace`,
  * `scrambleOut`), and a wave of case changes, rain, stars and marching ants,
  * which loop for as long as they are drawn. Each is a `GlyphEffect` for
- * `GlyphEffected` (`./glyph-effect.ts`), built as the colour catalogue's are
+ * `GlyphEffected` (`./glyph-effect.ts`), built as the color catalogue's are
  * (`./effects.ts`): one function each over the one shape, at the defaults in
  * `GLYPH_DEFAULTS`. `GLYPH_EFFECT_CATALOGUE` makes by name those a template's
  * `glyphs` takes.
  *
- * Where a colour loop glides, a glyph cannot: a cell shows one glyph or
+ * Where a color loop glides, a glyph cannot: a cell shows one glyph or
  * another, so every loop here moves in steps, on a `beat`, and says when its
  * next step is. The transitions are `Transition`s by the one rule the
- * colour transitions follow (`transition`): they move every frame until
+ * color transitions follow (`transition`): they move every frame until
  * their seconds are up, and never after.
  *
  * [LAW:no-ambient-temporal-coupling] No effect reads a clock, and what a cell
@@ -23,7 +23,7 @@
 
 import { Animation } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
-import { EASES, Phase, beat, positiveSeconds, settled, type Timing } from "../core/easing.js";
+import { EASES, WrapMode, stepSequence, positiveSeconds, withSettlingTime, type Timing } from "../core/easing.js";
 import { hash } from "../core/noise.js";
 import { drawable, isAscii } from "../core/protocol.js";
 import { inked } from "./effect.js";
@@ -75,12 +75,12 @@ function arrived(n: number, p: number): number {
  * the change shows. The beat is made once, for every frame drawn on it.
  */
 function stepped(seconds: number): <F>(frame: (step: number) => F, still: F) => Animation<F> {
-  const pace = beat([seconds]);
+  const pace = stepSequence([seconds]);
   return (frame, still) =>
     Animation.of({
-      at: (t: number) => frame(Math.round(pace.lastChange(t) / seconds)),
-      nextChange: (t: number) => pace.nextChange(t),
-      lastChange: (t: number) => pace.lastChange(t),
+      at: (t: number) => frame(Math.round(pace.validFrom(t) / seconds)),
+      validUntil: (t: number) => pace.validUntil(t),
+      validFrom: (t: number) => pace.validFrom(t),
       reduced: () => Animation.constant(still),
     });
 }
@@ -96,9 +96,9 @@ const AS_WRITTEN: GlyphFrame = (cell) => cell.glyph;
  * with are not text, so no second is spent on them.
  */
 export function typewriter(timing: Timing): GlyphTransition {
-  const phase = Phase.once(0, timing.seconds);
+  const phase = WrapMode.once(0, timing.seconds);
   // Settled, so the last cell is typed at the seconds whatever ease was handed.
-  const ease = settled(timing.ease);
+  const ease = withSettlingTime(timing.ease);
   return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
     const { length, place } = text(cells);
     return Animation.continuous((t): GlyphFrame => {
@@ -124,9 +124,9 @@ const FLICKER = 1 / 15;
  */
 export function scramble(timing: Timing, z: number): GlyphTransition {
   requireZ("scramble", z);
-  const phase = Phase.once(0, timing.seconds);
+  const phase = WrapMode.once(0, timing.seconds);
   // Settled, so the last cell resolves at the seconds whatever ease was handed.
-  const ease = settled(timing.ease);
+  const ease = withSettlingTime(timing.ease);
   const flicker = stepped(FLICKER)((step) => step, 0);
   return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
     const { length, place } = text(cells);
@@ -150,9 +150,9 @@ function churned(cell: GlyphCell, z: number, step: number): string {
  * element ends blank and nothing is left to vanish when it goes.
  */
 export function backspace(timing: Timing): GlyphTransition {
-  const phase = Phase.once(0, timing.seconds);
+  const phase = WrapMode.once(0, timing.seconds);
   // Settled, so the first cell is erased at the seconds whatever ease was handed.
-  const ease = settled(timing.ease);
+  const ease = withSettlingTime(timing.ease);
   return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
     const { length, place } = text(cells);
     return Animation.continuous((t): GlyphFrame => {
@@ -174,9 +174,9 @@ const CHURN = 0.3;
  */
 export function scrambleOut(timing: Timing, z: number): GlyphTransition {
   requireZ("scrambleOut", z);
-  const phase = Phase.once(0, timing.seconds);
+  const phase = WrapMode.once(0, timing.seconds);
   // Settled, so the last cell is blank at the seconds whatever ease was handed.
-  const ease = settled(timing.ease);
+  const ease = withSettlingTime(timing.ease);
   const flicker = stepped(FLICKER)((step) => step, 0);
   return transition(timing.seconds, ({ cells }: DrawnGlyphs) => {
     const { length, place } = text(cells);

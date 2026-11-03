@@ -12,7 +12,7 @@
  * - It builds its own terminal, `new NodeTerminalHost()`, or prints through a
  *   `new Console()`. In the card it runs on the stand-in process
  *   (simulated-process.ts), which gives it the card's terminal, its size,
- *   its keys and its colour depth, so nothing in a demo asks where it runs.
+ *   its keys and its color depth, so nothing in a demo asks where it runs.
  * - It imports the library by its published names, `@promptctl/rich-js` and
  *   its subpaths, never `../../src/…`, and its own files by relative `./x.js`.
  *   In the card a published name is the live library's

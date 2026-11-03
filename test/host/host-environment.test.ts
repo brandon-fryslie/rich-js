@@ -15,9 +15,9 @@ import {
 /**
  * A `Console` built over `hostEnvironment(host)` asks the host — and only the
  * host — where bytes go, whether it is a terminal, how big it is and what
- * colours it draws. The browser case is the regression: with the colour
+ * colors it draws. The browser case is the regression: with the color
  * question left to the ambient `process`, every console on xterm.js drew at
- * 16-colour depth, so `#fd8019` came out ANSI yellow.
+ * 16-color depth, so `#fd8019` came out ANSI yellow.
  */
 
 interface RecordingHost extends TerminalHost {
@@ -70,7 +70,7 @@ function fakeXterm(): XtermTerminal & { written: (string | Uint8Array)[] } {
 }
 
 describe("hostEnvironment", () => {
-  it("a console on a browser host draws a hex colour as 24-bit SGR", () => {
+  it("a console on a browser host draws a hex color as 24-bit SGR", () => {
     const xterm = fakeXterm();
     const out = new Console({
       environment: hostEnvironment(new BrowserTerminalHost({ terminal: xterm, passWheel: () => {} })),
@@ -82,7 +82,7 @@ describe("hostEnvironment", () => {
     expect(xterm.written.join("")).toContain("\x1b[38;2;253;128;25mwarning");
   });
 
-  it("detects colour from the host's env, not the ambient process's", () => {
+  it("detects color from the host's env, not the ambient process's", () => {
     const noColor = makeRecordingHost({ env: { NO_COLOR: "1" }, isTTY: true });
     const truecolor = makeRecordingHost({
       env: { COLORTERM: "truecolor" },
@@ -104,7 +104,7 @@ describe("hostEnvironment", () => {
     expect(host.writes.join("")).toBe("plain\n");
   });
 
-  it("piped stdin with a terminal stdout still draws colour", () => {
+  it("piped stdin with a terminal stdout still draws color", () => {
     // The console asks whether its output is a terminal. A one-shot demo run
     // as `echo | npm run strip` is not interactive, but it draws on one.
     const written: string[] = [];

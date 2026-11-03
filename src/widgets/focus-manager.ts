@@ -10,14 +10,14 @@ import { observableRef } from "./observable.js";
 import type {
   InteractiveWidget,
   FocusManager,
-  KeyEvent,
+  WidgetKeyEvent,
 } from "./types.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
 /** What focus follows: the frame a `WidgetApp` just painted. */
 export interface FocusView {
   /** Every widget the view holds, in document order, whether or not it has a cell on screen. */
-  present(): readonly InteractiveWidget[];
+  mounted(): readonly InteractiveWidget[];
   /** The widgets with a cell on the frame on screen, in document order. */
   onScreen(): readonly InteractiveWidget[];
   /** The time a frame drawn now is drawn for (`RenderOptions.frame`), which a focus change is stamped with. */
@@ -47,12 +47,12 @@ export class DefaultFocusManager implements FocusManager {
 
   @action
   next(): void {
-    this.step(this.view.present());
+    this.step(this.view.mounted());
   }
 
   @action
   prev(): void {
-    this.step([...this.view.present()].reverse());
+    this.step([...this.view.mounted()].reverse());
   }
 
   // A widget not on screen yet can take focus: an app that is about to show
@@ -80,7 +80,7 @@ export class DefaultFocusManager implements FocusManager {
   @action
   settle(): void {
     const current = this.currentWidget;
-    if (current && takesFocus(current) && this.view.present().includes(current)) return;
+    if (current && takesFocus(current) && this.view.mounted().includes(current)) return;
     const first = this.widgets[0];
     if (first) this.setFocus(first);
     else this.clear();
@@ -95,7 +95,7 @@ export class DefaultFocusManager implements FocusManager {
   // router registers this as a normal-priority handler at construction —
   // it runs after the focused widget, so a widget can `event.stop()`
   // to suppress traversal (e.g. Dropdown when its overlay is open).
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     if (event.key !== "tab") return;
     if (event.shift) this.prev();
     else this.next();

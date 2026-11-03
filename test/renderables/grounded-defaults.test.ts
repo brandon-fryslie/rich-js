@@ -1,6 +1,6 @@
 /**
  * A default style that paints its own ground fixes both halves of the pair, so
- * at 16 colours — where each half becomes a slot the terminal paints in its
+ * at 16 colors — where each half becomes a slot the terminal paints in its
  * own theme — what reaches the terminal must still read at WCAG's 4.5 on every
  * bundled theme. Measured on the segments the renderable that draws the style
  * actually yields, so a grounded default drawn without `groundedStyle` fails
@@ -29,7 +29,7 @@ const terminals = Object.entries(terminalThemes).filter(
   (entry): entry is [string, TerminalTheme] => entry[1] instanceof TerminalTheme,
 );
 
-describe("grounded defaults at 16 colours", () => {
+describe("grounded defaults at 16 colors", () => {
   it("names the renderable that draws every grounded default", () => {
     expect(Object.keys(DRAWN_BY).sort()).toEqual([...grounded].sort());
   });

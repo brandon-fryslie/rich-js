@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EASES, Phase, SPRING_REST, beat, cubicBezier, parseEase, spring, steps, type Ease, type SpringOptions } from "../../src/core/easing.js";
+import { EASES, WrapMode, SPRING_REST, stepSequence, cubicBezier, parseEasing, spring, steps, type Easing, type SpringOptions } from "../../src/core/easing.js";
 
 /**
  * The CSS reference curve, straight from its definition: the cubic Bézier
@@ -59,7 +59,7 @@ describe("cubicBezier matches CSS's reference curves", () => {
 describe("steps matches CSS's jump terms", () => {
   // Expected values are CSS Easing Level 1's step algorithm, at 0, ½ and 1
   // for three steps: the jump term decides where the n intervals land.
-  const cases: readonly [Ease, string, [number, number, number]][] = [
+  const cases: readonly [Easing, string, [number, number, number]][] = [
     [steps(3, "jump-start"), "jump-start", [1 / 3, 2 / 3, 1]],
     [steps(3, "start"), "start", [1 / 3, 2 / 3, 1]],
     [steps(3, "jump-end"), "jump-end", [0, 1 / 3, 1]],
@@ -193,10 +193,10 @@ describe("spring matches its equation of motion", () => {
     expect(ease(2)).toBe(1);
   });
 
-  it("through Phase.once, a short spring is 0 at release and exactly 1 at every frame from its seconds on, sampled sixty times a second or once", () => {
+  it("through WrapMode.once, a short spring is 0 at release and exactly 1 at every frame from its seconds on, sampled sixty times a second or once", () => {
     const { ease, seconds } = spring({ stiffness: 900, damping: 30 });
     expect(seconds).toBeLessThan(1);
-    const phase = Phase.once(0, seconds);
+    const phase = WrapMode.once(0, seconds);
     expect(ease(phase(0))).toBe(0);
     const sixty = Array.from({ length: 181 }, (_, k) => k / 60);
     const once = [1, 2, 3];
@@ -272,21 +272,21 @@ describe("the built-in names", () => {
     expect(EASES.sine(1)).toBe(1);
   });
 
-  it("parseEase hands back the function for every listed name and nothing else", () => {
+  it("parseEasing hands back the function for every listed name and nothing else", () => {
     for (const name of Object.keys(EASES) as (keyof typeof EASES)[]) {
-      expect(parseEase(name)).toBe(EASES[name]);
+      expect(parseEasing(name)).toBe(EASES[name]);
     }
-    expect(() => parseEase("smooth")).toThrow(
+    expect(() => parseEasing("smooth")).toThrow(
       /unknown ease "smooth"; expected one of "linear", "ease", "ease-in"/,
     );
     // Prototype names are not eases.
-    expect(() => parseEase("toString")).toThrow(/unknown ease/);
+    expect(() => parseEasing("toString")).toThrow(/unknown ease/);
   });
 });
 
-describe("Phase — seconds in, progress out, no clock read", () => {
+describe("WrapMode — seconds in, progress out, no clock read", () => {
   it("once rises from start over its duration, then holds", () => {
-    const fadeIn = Phase.once(2, 4);
+    const fadeIn = WrapMode.once(2, 4);
     expect(fadeIn(0)).toBe(0);
     expect(fadeIn(2)).toBe(0);
     expect(fadeIn(3)).toBe(0.25);
@@ -295,7 +295,7 @@ describe("Phase — seconds in, progress out, no clock read", () => {
   });
 
   it("loop wraps every period, before zero too", () => {
-    const sweep = Phase.loop(2);
+    const sweep = WrapMode.loop(2);
     expect(sweep(0)).toBe(0);
     expect(sweep(0.5)).toBe(0.25);
     expect(sweep(2)).toBe(0);
@@ -304,7 +304,7 @@ describe("Phase — seconds in, progress out, no clock read", () => {
   });
 
   it("pingPong goes there in the first half of its period and back in the second", () => {
-    const pulse = Phase.pingPong(2);
+    const pulse = WrapMode.pingPong(2);
     expect(pulse(0)).toBe(0);
     expect(pulse(0.5)).toBe(0.5);
     expect(pulse(1)).toBe(1);
@@ -313,21 +313,21 @@ describe("Phase — seconds in, progress out, no clock read", () => {
   });
 
   it("refuses a span that is not a positive number of seconds", () => {
-    expect(() => Phase.once(0, 0)).toThrow(/positive number of seconds, got 0/);
-    expect(() => Phase.loop(-1)).toThrow(/Phase.loop period/);
-    expect(() => Phase.pingPong(Number.POSITIVE_INFINITY)).toThrow(/Phase.pingPong period/);
-    expect(() => Phase.once(Number.NaN, 1)).toThrow(/start must be finite/);
+    expect(() => WrapMode.once(0, 0)).toThrow(/positive number of seconds, got 0/);
+    expect(() => WrapMode.loop(-1)).toThrow(/WrapMode.loop period/);
+    expect(() => WrapMode.pingPong(Number.POSITIVE_INFINITY)).toThrow(/WrapMode.pingPong period/);
+    expect(() => WrapMode.once(Number.NaN, 1)).toThrow(/start must be finite/);
   });
 });
 
-describe("beat — holds in seconds, the hold in progress out, no clock read", () => {
+describe("stepSequence — holds in seconds, the hold in progress out, no clock read", () => {
   it("refuses a t past where a pass is a float as a period finer than time resolves there, never as an infinite t", () => {
-    expect(() => beat([0.25]).lastChange(Number.MAX_VALUE)).toThrow(/Beat.lastChange: a period of 0.25 s is finer than time resolves near t = 1.79/);
-    expect(() => beat([0.25]).nextChange(-Number.MAX_VALUE)).toThrow(/Beat.nextChange: a period of 0.25 s is finer than time resolves/);
+    expect(() => stepSequence([0.25]).validFrom(Number.MAX_VALUE)).toThrow(/StepSequence.validFrom: a period of 0.25 s is finer than time resolves near t = 1.79/);
+    expect(() => stepSequence([0.25]).validUntil(-Number.MAX_VALUE)).toThrow(/StepSequence.validUntil: a period of 0.25 s is finer than time resolves/);
   });
 
   it("counts holds from t = 0 and wraps every period, before zero too", () => {
-    const b = beat([1, 1, 1]);
+    const b = stepSequence([1, 1, 1]);
     expect(b.period).toBe(3);
     expect(b.at(0)).toBe(0);
     expect(b.at(0.999)).toBe(0);
@@ -338,7 +338,7 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
   });
 
   it("holds may differ: each is in progress for its own seconds", () => {
-    const b = beat([1, 0.25, 0.5]);
+    const b = stepSequence([1, 0.25, 0.5]);
     expect(b.period).toBe(1.75);
     expect(b.at(0.99)).toBe(0);
     expect(b.at(1)).toBe(1);
@@ -349,24 +349,24 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
 
   it("with equal holds it is steps(n) read as an index", () => {
     const n = 4;
-    const b = beat(Array.from({ length: n }, () => 0.5));
+    const b = stepSequence(Array.from({ length: n }, () => 0.5));
     const stepped = steps(n);
-    for (let t = 0; t < 4; t += 0.01) expect(b.at(t)).toBe(Math.round(stepped(Phase.loop(b.period)(t)) * n));
+    for (let t = 0; t < 4; t += 0.01) expect(b.at(t)).toBe(Math.round(stepped(WrapMode.loop(b.period)(t)) * n));
   });
 
   it("sampled sixty times a second, a one-second hold is in progress for exactly sixty consecutive samples", () => {
-    const b = beat([1, 1, 1]);
+    const b = stepSequence([1, 1, 1]);
     const samples = Array.from({ length: 180 }, (_, i) => b.at(i / 60));
     expect(samples.join("")).toBe("0".repeat(60) + "1".repeat(60) + "2".repeat(60));
   });
 
   it("sampled once a second, a period of whole seconds shows one hold forever", () => {
-    const b = beat([0.25, 0.25, 0.25, 0.25]);
+    const b = stepSequence([0.25, 0.25, 0.25, 0.25]);
     for (let t = 0; t < 100; t++) expect(b.at(t)).toBe(0);
   });
 
   it("answers the same far from zero: a lookup, never a walk through time", () => {
-    const b = beat([1, 0.5, 2.5]);
+    const b = stepSequence([1, 0.5, 2.5]);
     for (const t of [0, 1.2, 1.4, 3.6]) {
       expect(b.at(1e6 + t)).toBe(b.at(t));
       expect(b.at(1e9 + t)).toBe(b.at(t));
@@ -376,91 +376,91 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
   it("a t exactly on a boundary lands on the hold that begins there, for holds that are not exact in binary", () => {
     // 0.1 is not a dyadic fraction; a wrap by a detour through `+ period`
     // lands 0.1 one ulp short and shows every frame one sample late.
-    const tenths = beat([0.1, 0.1, 0.1]);
+    const tenths = stepSequence([0.1, 0.1, 0.1]);
     expect([0, 0.1, 0.2].map((t) => tenths.at(t))).toEqual([0, 1, 2]);
-    expect(beat([0.4, 0.4, 0.4]).at(0.4)).toBe(1);
-    expect(beat([1 / 3, 1 / 3, 1 / 3]).at(1 / 3)).toBe(1);
+    expect(stepSequence([0.4, 0.4, 0.4]).at(0.4)).toBe(1);
+    expect(stepSequence([1 / 3, 1 / 3, 1 / 3]).at(1 / 3)).toBe(1);
   });
 
   it("with one hold, every hold's two ends bracket t, sampled sixty times a second", () => {
     // 55 × 0.06 sums to 3.3, a float `at` places in pass 54: unwalked, the
     // boundary was answered as t's next change while t was still before it.
-    for (const hold of [0.06, 0.08, 0.1]) {
-      const b = beat([hold]);
+    for (const validity of [0.06, 0.08, 0.1]) {
+      const b = stepSequence([validity]);
       for (let i = 0; i < 600; i++) {
         const t = i / 60;
-        expect(b.lastChange(t)).toBeLessThanOrEqual(t);
-        expect(b.nextChange(t)).toBeGreaterThan(t);
+        expect(b.validFrom(t)).toBeLessThanOrEqual(t);
+        expect(b.validUntil(t)).toBeGreaterThan(t);
       }
     }
   });
 
-  it("refuses a t that is not finite, in at, and so does Phase.loop", () => {
-    expect(() => beat([1, 1]).at(Number.NaN)).toThrow(/Beat.at needs a finite t, got NaN/);
-    expect(() => beat([1, 1]).at(Number.POSITIVE_INFINITY)).toThrow(/finite t/);
-    expect(() => Phase.loop(1)(Number.NaN)).toThrow(/Phase.loop needs a finite t/);
+  it("refuses a t that is not finite, in at, and so does WrapMode.loop", () => {
+    expect(() => stepSequence([1, 1]).at(Number.NaN)).toThrow(/StepSequence.at needs a finite t, got NaN/);
+    expect(() => stepSequence([1, 1]).at(Number.POSITIVE_INFINITY)).toThrow(/finite t/);
+    expect(() => WrapMode.loop(1)(Number.NaN)).toThrow(/WrapMode.loop needs a finite t/);
   });
 
   it("a negative epsilon wraps to 0, never to the period itself", () => {
-    expect(Phase.loop(1)(-1e-17)).toBe(0);
-    expect(beat([1, 1]).at(-1e-17)).toBe(0);
+    expect(WrapMode.loop(1)(-1e-17)).toBe(0);
+    expect(stepSequence([1, 1]).at(-1e-17)).toBe(0);
   });
 
   it("holds is a copy: a caller's later change to the array it passed changes nothing", () => {
     const holds = [1, 1];
-    const b = beat(holds);
+    const b = stepSequence(holds);
     holds.push(1);
     expect(b.holds).toEqual([1, 1]);
     expect(b.period).toBe(2);
     expect(b.at(2.5)).toBe(0);
   });
 
-  it("lastChange is when the hold in progress began, on t's own timeline, before zero too", () => {
-    const b = beat([1, 0.5, 2.5]);
-    expect(b.lastChange(0)).toBe(0);
-    expect(b.lastChange(0.99)).toBe(0);
-    expect(b.lastChange(1)).toBe(1);
-    expect(b.lastChange(1.4)).toBe(1);
-    expect(b.lastChange(1.5)).toBe(1.5);
-    expect(b.lastChange(3.9)).toBe(1.5);
-    expect(b.lastChange(4)).toBe(4);
-    expect(b.lastChange(5.2)).toBe(5);
-    expect(b.lastChange(-0.5)).toBe(-2.5);
-    expect(b.lastChange(-3.9)).toBe(-4);
+  it("validFrom is when the hold in progress began, on t's own timeline, before zero too", () => {
+    const b = stepSequence([1, 0.5, 2.5]);
+    expect(b.validFrom(0)).toBe(0);
+    expect(b.validFrom(0.99)).toBe(0);
+    expect(b.validFrom(1)).toBe(1);
+    expect(b.validFrom(1.4)).toBe(1);
+    expect(b.validFrom(1.5)).toBe(1.5);
+    expect(b.validFrom(3.9)).toBe(1.5);
+    expect(b.validFrom(4)).toBe(4);
+    expect(b.validFrom(5.2)).toBe(5);
+    expect(b.validFrom(-0.5)).toBe(-2.5);
+    expect(b.validFrom(-3.9)).toBe(-4);
   });
 
-  it("every t inside one hold answers the same lastChange, to the bit, far from zero too", () => {
-    const b = beat([0.1, 0.1, 0.1]);
+  it("every t inside one hold answers the same validFrom, to the bit, far from zero too", () => {
+    const b = stepSequence([0.1, 0.1, 0.1]);
     for (const base of [0, 1e6, 1e9]) {
       // Samples strictly inside the second hold: a tenth past its start, a tenth short of its end.
-      const inside = Array.from({ length: 60 }, (_, i) => b.lastChange(base + 0.11 + (i / 60) * 0.08));
+      const inside = Array.from({ length: 60 }, (_, i) => b.validFrom(base + 0.11 + (i / 60) * 0.08));
       expect(new Set(inside).size).toBe(1);
       expect(inside[0]).toBeCloseTo(base + 0.1, 6);
     }
   });
 
   it("start of a t exactly on a boundary is that boundary, for holds that are not exact in binary", () => {
-    const tenths = beat([0.1, 0.1, 0.1]);
-    expect([0, 0.1, 0.2].map((t) => tenths.lastChange(t))).toEqual([0, 0.1, 0.2]);
-    expect(beat([0.4, 0.4, 0.4]).lastChange(0.4)).toBe(0.4);
+    const tenths = stepSequence([0.1, 0.1, 0.1]);
+    expect([0, 0.1, 0.2].map((t) => tenths.validFrom(t))).toEqual([0, 0.1, 0.2]);
+    expect(stepSequence([0.4, 0.4, 0.4]).validFrom(0.4)).toBe(0.4);
   });
 
-  it("lastChange and at agree: the start of a hold is a t at which that hold is in progress", () => {
-    const b = beat([1, 0.5, 2.5]);
-    for (const t of [0, 0.3, 1, 1.2, 1.5, 3, 4, 7.9, 1e6 + 1.3, -0.7]) expect(b.at(b.lastChange(t))).toBe(b.at(t));
+  it("validFrom and at agree: the start of a hold is a t at which that hold is in progress", () => {
+    const b = stepSequence([1, 0.5, 2.5]);
+    for (const t of [0, 0.3, 1, 1.2, 1.5, 3, 4, 7.9, 1e6 + 1.3, -0.7]) expect(b.at(b.validFrom(t))).toBe(b.at(t));
   });
 
-  it("lastChange and at agree for holds that are not exact in binary, at every sample, and start is never after t", () => {
+  it("validFrom and at agree for holds that are not exact in binary, at every sample, and start is never after t", () => {
     // A pass's start plus a hold's can round an ulp under the boundary, which
     // `at` would read as the hold before: for tenths, nearly half of all
     // samples did. Swept densely across many passes, before zero too.
     for (const holds of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9]]) {
-      const b = beat(holds);
+      const b = stepSequence(holds);
       const disagree: number[] = [];
       const after: number[] = [];
       for (let k = 0; k < 20_000; k++) {
         const t = (k / 20_000) * 50 - 5;
-        const began = b.lastChange(t);
+        const began = b.validFrom(t);
         if (b.at(began) !== b.at(t)) disagree.push(t);
         if (began > t) after.push(t);
       }
@@ -469,65 +469,65 @@ describe("beat — holds in seconds, the hold in progress out, no clock read", (
     }
   });
 
-  it("lastChange refuses a t that is not finite", () => {
-    expect(() => beat([1]).lastChange(Number.NaN)).toThrow(/Beat.lastChange needs a finite t, got NaN/);
+  it("validFrom refuses a t that is not finite", () => {
+    expect(() => stepSequence([1]).validFrom(Number.NaN)).toThrow(/StepSequence.validFrom needs a finite t, got NaN/);
   });
 
-  // rich-animation-xi28.6rs: `nextChange` is when what is drawn on the beat at `t`
+  // rich-animation-xi28.6rs: `validUntil` is when what is drawn on the beat at `t`
   // next changes — what a host asks before drawing again.
-  it("nextChange is when the hold in progress ends: the next hold's start, into the next pass from the last, before zero too", () => {
-    const b = beat([1, 0.5, 2.5]);
-    expect(b.nextChange(0)).toBe(1);
-    expect(b.nextChange(0.99)).toBe(1);
-    expect(b.nextChange(1)).toBe(1.5);
-    expect(b.nextChange(1.4)).toBe(1.5);
-    expect(b.nextChange(1.5)).toBe(4);
-    expect(b.nextChange(3.9)).toBe(4);
-    expect(b.nextChange(4)).toBe(5);
-    expect(b.nextChange(5.2)).toBe(5.5);
-    expect(b.nextChange(-0.5)).toBe(0);
-    expect(b.nextChange(-3.9)).toBe(-3);
+  it("validUntil is when the hold in progress ends: the next hold's start, into the next pass from the last, before zero too", () => {
+    const b = stepSequence([1, 0.5, 2.5]);
+    expect(b.validUntil(0)).toBe(1);
+    expect(b.validUntil(0.99)).toBe(1);
+    expect(b.validUntil(1)).toBe(1.5);
+    expect(b.validUntil(1.4)).toBe(1.5);
+    expect(b.validUntil(1.5)).toBe(4);
+    expect(b.validUntil(3.9)).toBe(4);
+    expect(b.validUntil(4)).toBe(5);
+    expect(b.validUntil(5.2)).toBe(5.5);
+    expect(b.validUntil(-0.5)).toBe(0);
+    expect(b.validUntil(-3.9)).toBe(-3);
   });
 
-  it("every t inside one hold answers the same nextChange, to the bit, far from zero too", () => {
-    const b = beat([0.1, 0.1, 0.1]);
+  it("every t inside one hold answers the same validUntil, to the bit, far from zero too", () => {
+    const b = stepSequence([0.1, 0.1, 0.1]);
     for (const base of [0, 1e6, 1e9]) {
-      const inside = Array.from({ length: 60 }, (_, i) => b.nextChange(base + 0.11 + (i / 60) * 0.08));
+      const inside = Array.from({ length: 60 }, (_, i) => b.validUntil(base + 0.11 + (i / 60) * 0.08));
       expect(new Set(inside).size).toBe(1);
       expect(inside[0]).toBeCloseTo(base + 0.2, 6);
     }
   });
 
-  it("nextChange and at agree at every sample: it is after t, the hold in progress at it is the next, and it is its own start", () => {
+  it("validUntil and at agree at every sample: it is after t, the hold in progress at it is the next, and it is its own start", () => {
     for (const holds of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9], [1]]) {
-      const b = beat(holds);
+      const b = stepSequence(holds);
       const wrong: number[] = [];
       for (let k = 0; k < 20_000; k++) {
         const t = (k / 20_000) * 50 - 5;
-        const ended = b.nextChange(t);
+        const ended = b.validUntil(t);
         const next = (b.at(t) + 1) % holds.length;
-        if (!(ended > t) || b.at(ended) !== next || b.lastChange(ended) !== ended) wrong.push(t);
+        if (!(ended > t) || b.at(ended) !== next || b.validFrom(ended) !== ended) wrong.push(t);
       }
       expect(wrong, `holds ${holds.join(",")}`).toEqual([]);
     }
   });
 
-  it("sampled once a second, nextChange says the next change comes before the next sample for quarter-second holds, and at it for whole ones", () => {
-    const quarters = beat([0.25, 0.25, 0.25, 0.25]);
-    const seconds = beat([1, 1, 1]);
+  it("sampled once a second, validUntil says the next change comes before the next sample for quarter-second holds, and at it for whole ones", () => {
+    const quarters = stepSequence([0.25, 0.25, 0.25, 0.25]);
+    const seconds = stepSequence([1, 1, 1]);
     for (const t of [0, 1, 2, 3, 1e6]) {
-      expect(quarters.nextChange(t)).toBeCloseTo(t + 0.25, 6);
-      expect(seconds.nextChange(t)).toBe(t + 1);
+      expect(quarters.validUntil(t)).toBeCloseTo(t + 0.25, 6);
+      expect(seconds.validUntil(t)).toBe(t + 1);
     }
   });
 
-  it("nextChange refuses a t that is not finite", () => {
-    expect(() => beat([1]).nextChange(Number.POSITIVE_INFINITY)).toThrow(/Beat.nextChange needs a finite t, got Infinity/);
+  it("validUntil refuses a t that is not finite", () => {
+    expect(() => stepSequence([1]).validUntil(Number.POSITIVE_INFINITY)).toThrow(/StepSequence.validUntil needs a finite t, got Infinity/);
   });
 
   it("refuses no holds, and a hold that is not a positive number of seconds", () => {
-    expect(() => beat([])).toThrow(/at least one hold/);
-    expect(() => beat([1, 0])).toThrow(/beat hold 1 must be a positive number of seconds, got 0/);
-    expect(() => beat([Number.NaN])).toThrow(/beat hold 0/);
+    expect(() => stepSequence([])).toThrow(/at least one step/);
+    expect(() => stepSequence([1, 0])).toThrow(/step 1 must be a positive number of seconds, got 0/);
+    expect(() => stepSequence([Number.NaN])).toThrow(/step 0/);
   });
 });

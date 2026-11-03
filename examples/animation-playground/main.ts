@@ -1,6 +1,6 @@
 /**
  * animation-playground: every kind of motion rich-js has, under pause,
- * reverse, scrub, speed, reduced motion, colour depth and frame rate.
+ * reverse, scrub, speed, reduced motion, color depth and frame rate.
  *
  * THIS IS A DEMO. The entry for `npm run animation-playground` and for the
  * demo's card on the docs site alike. In the card it runs on the page's

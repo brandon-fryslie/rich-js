@@ -105,7 +105,7 @@ describe("Syntax", () => {
 
   // --- Theme ---
 
-  it("takes its token colours from the render's theme", () => {
+  it("takes its token colors from the render's theme", () => {
     const theme = new Theme({ "syntax.keyword": "#123456" });
     const [seg] = [...new Syntax("return", "javascript").render({ maxWidth: 80, theme })];
     expect(seg!.style!.equals(theme.resolve("#123456"))).toBe(true);
@@ -164,9 +164,9 @@ describe("Syntax", () => {
     ]);
   });
 
-  it("draws a highlighted line's number on the terminal's own colours at 16 colours, as Rich does", () => {
-    // Rich drops the line-number background below 256 colours; a fixed ground
-    // rounded to a slot is drawn in whatever colour the terminal's theme gives it.
+  it("draws a highlighted line's number on the terminal's own colors at 16 colors, as Rich does", () => {
+    // Rich drops the line-number background below 256 colors; a fixed ground
+    // rounded to a slot is drawn in whatever color the terminal's theme gives it.
     const s = new Syntax("a\nb", "text", { lineNumbers: true, highlightLines: new Set([2]) });
     const number = (colorSystem: ColorDepth) =>
       [...s.render({ maxWidth: 80, colorSystem })].find((seg) => seg.text.trim() === "2")!.style!;
@@ -177,7 +177,7 @@ describe("Syntax", () => {
     expect(number(ColorDepth.EIGHT_BIT)).toEqual(highlight);
   });
 
-  it("draws a theme's slot-coloured line-number highlight as written at 16 colours", () => {
+  it("draws a theme's slot-colored line-number highlight as written at 16 colors", () => {
     const s = new Syntax("a\nb", "text", { lineNumbers: true, highlightLines: new Set([2]) });
     const theme = new Theme({ "syntax.line_number.highlight": "bold yellow" });
     const number = [...s.render({ maxWidth: 80, colorSystem: ColorDepth.STANDARD, theme })].find((seg) => seg.text.trim() === "2")!;

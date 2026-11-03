@@ -113,7 +113,7 @@ export interface NodeTerminalHostOptions {
    */
   stdout?: NodeWritable;
   /**
-   * The environment colour detection reads. Defaults to `process.env`; tests
+   * The environment color detection reads. Defaults to `process.env`; tests
    * pass a fixed map so what the host reports does not depend on the shell
    * that ran them.
    */

@@ -10,7 +10,7 @@ import { SOLARIZED_LIGHT } from "../../src/themes/terminalThemes.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] What a viewer of the exported image gets: where
-// each glyph sits, what is painted under and over it, which colours and links
+// each glyph sits, what is painted under and over it, which colors and links
 // it carries. What a look *is* under a theme is pinned in export-lines.test.ts;
 // this pins its encoding.
 
@@ -117,7 +117,7 @@ describe("encodeSvg looks", () => {
     const at = (style: string) => decorations(styled(style, "ab")).map((r) => /y="([^"]*)"/.exec(r)![1]);
     expect(decorations(styled("none"))).toEqual([]);
     expect(at("underline")).toEqual(["22"]);
-    expect(at("underline2")).toEqual(["22", "25"]);
+    expect(at("doubleUnderline")).toEqual(["22", "25"]);
     expect(at("strike")).toEqual(["14"]);
     expect(at("overline")).toEqual(["1.5"]);
     expect(decorations(styled("underline", "ab"))[0]).toBe('x="0" y="22" width="24.4" height="1.5"');
@@ -125,14 +125,14 @@ describe("encodeSvg looks", () => {
 
   it("blinks the glyph and its lines together, slow at 1s and fast at 0.5s", () => {
     expect(styled("blink")).toContain("animation:rich-svg-blink 1s step-end infinite");
-    expect(styled("blink2")).toContain("animation:rich-svg-blink 0.5s step-end infinite");
+    expect(styled("rapidBlink")).toContain("animation:rich-svg-blink 0.5s step-end infinite");
     expect(styled("none")).not.toContain("animation:");
     expect(styled("none")).toContain(
       "@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{fill:transparent}}}",
     );
   });
 
-  it("outlines a frame square and an encircle rounded, in the foreground colour", () => {
+  it("outlines a frame square and an encircle rounded, in the foreground color", () => {
     expect(rects(styled("frame"))).toEqual([
       `x="0" y="1.5" width="12.2" height="24.65" rx="0" fill="none" stroke="${INK.hex}" stroke-width="1"`,
     ]);
@@ -174,13 +174,13 @@ describe("encodeSvg chrome", () => {
     expect(document).toMatch(new RegExp(`fill="${SOLARIZED_LIGHT.foregroundColor.hex}" text-anchor="middle"[^>]*>Rich</text>`));
   });
 
-  it("frames the window in an opaque colour that shows against a light canvas", () => {
+  it("frames the window in an opaque color that shows against a light canvas", () => {
     const { fill, stroke } = frame(encodeSvg([new Segment("x")], { theme: SOLARIZED_LIGHT, title: "Rich", width: 10 }));
     expect(stroke).toMatch(/^#[0-9a-f]{6}$/);
     expect(stroke).not.toBe(fill);
   });
 
-  it("frames a black canvas in the colour Rich's white-at-35% stroke composites to", () => {
+  it("frames a black canvas in the color Rich's white-at-35% stroke composites to", () => {
     const { fill, stroke } = frame(encodeSvg([new Segment("x")], { title: "Rich", width: 10 }));
     expect(fill).toBe("#000000");
     expect(stroke).toBe("#595959");

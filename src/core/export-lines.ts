@@ -3,15 +3,15 @@
  * lines every exporter draws.
  *
  * The HTML and SVG exporters are two encodings of one picture, and this module
- * is the picture. What a styled cell *looks like* — which colour its glyph is,
+ * is the picture. What a styled cell *looks like* — which color its glyph is,
  * whether its background is painted, which decorations it carries, where it
  * links — is decided here, once, and an exporter decides only how to write
  * that down. Before it existed the decision was made twice, by a CSS method
  * on `Style` and by a private converter on `Console`, and the two had already
- * disagreed: one honoured `underline2`, the other dropped it.
+ * disagreed: one honoured `doubleUnderline`, the other dropped it.
  *
  * [LAW:types-are-the-program] `ExportLook` has no `reverse`, `dim`, `conceal`
- * or default colour, because all four are consumed by `resolveLook` and turned
+ * or default color, because all four are consumed by `resolveLook` and turned
  * into plain RGB. An exporter holding a look cannot forget to swap a reversed
  * run or to fade a dim one: there is nothing left in its hands to forget. That
  * is the whole reason the representation is resolved rather than a `Style`
@@ -47,7 +47,7 @@ export type Href = string & { readonly [_href]: true };
 
 /**
  * Where a run's background comes from. `"canvas"` is the theme background
- * showing through — nothing painted — and is distinct from a painted colour
+ * showing through — nothing painted — and is distinct from a painted color
  * that happens to equal it, because `on default` and `on #000000` are
  * different requests even over a black theme.
  */
@@ -142,8 +142,8 @@ export interface ExportCanvas {
  * The ground every export is drawn on under `theme`.
  *
  * An exporter paints its page or window with this, and a run with no
- * background of its own resolves to `"canvas"` rather than a colour, so a run
- * showing the canvas and the page around it cannot come out different colours.
+ * background of its own resolves to `"canvas"` rather than a color, so a run
+ * showing the canvas and the page around it cannot come out different colors.
  */
 export function exportCanvas(theme?: TerminalTheme): ExportCanvas {
   return {
@@ -155,18 +155,18 @@ export function exportCanvas(theme?: TerminalTheme): ExportCanvas {
 /**
  * A `Style` as it appears on screen under `theme`.
  *
- * The order is the terminal's: the colours are `Style.drawnColors`, the ones
+ * The order is the terminal's: the colors are `Style.drawnColors`, the ones
  * `toSgrCodes` writes, resolved through the theme — `reverse` swaps them,
  * `dim` fades the glyph toward whatever background it ended up on, and
  * `conceal` finally paints the glyph in that background. Every step works on
- * opaque colour, so no exporter ever draws a translucent one. Text under
+ * opaque color, so no exporter ever draws a translucent one. Text under
  * `conceal` is still present, and still selectable, in both formats.
  *
- * A translucent colour is flattened where the writer flattens it, over
+ * A translucent color is flattened where the writer flattens it, over
  * `SURFACE_BLACK`, not over this export's canvas. The writer's truecolor
  * bytes are absolute — no terminal theme retints them — so a terminal under
- * `theme` shows that colour, and an export that flattened over its own canvas
- * would picture a colour no terminal draws.
+ * `theme` shows that color, and an export that flattened over its own canvas
+ * would picture a color no terminal draws.
  *
  * `theme` omitted is `ColorSpec.getTruecolor`'s own fallback — black canvas,
  * white ink, the standard ANSI table. Choosing it there rather than naming a
@@ -194,10 +194,10 @@ export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
     background,
     bold: style.bold === true,
     italic: style.italic === true,
-    underline: style.underline2 ? "double" : style.underline ? "single" : "none",
+    underline: style.doubleUnderline ? "double" : style.underline ? "single" : "none",
     strike: style.strike === true,
     overline: style.overline === true,
-    blink: style.blink2 ? "fast" : style.blink ? "slow" : "none",
+    blink: style.rapidBlink ? "fast" : style.blink ? "slow" : "none",
     outline: style.encircle ? "encircle" : style.frame ? "frame" : "none",
     href: style.link === undefined ? null : parseHref(style.link),
   };

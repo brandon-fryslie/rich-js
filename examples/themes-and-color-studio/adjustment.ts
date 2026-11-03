@@ -1,35 +1,35 @@
 /** Section 7: a theme moved through OKLCH, light to dark and back. */
 import {
-  ANCHORED_ROOTS,
+  HUE_LOCKED_ROOTS,
   Console,
   getThemePalette,
   IDENTITY,
   INVERT_LIGHTNESS,
-  isAnchored,
+  isHueLocked,
   isIdentityKey,
   Oklch,
   parseRgbHex,
   RichText,
-  themeKeyForRoot,
-  transposePalette,
+  adjustmentForRoot,
+  adjustPalette,
 } from "@promptctl/rich-js";
 
-import type { ThemeKey } from "@promptctl/rich-js";
+import type { ColorAdjustment } from "@promptctl/rich-js";
 
 import { bgFgStyle, blank, blurb, bold, sectionHeader, SEMANTIC_VARS } from "./look.js";
 
 // ===========================================================================
-// SECTION 7 — OKLCH transposition (themes-as-melodies)
+// SECTION 7 — OKLCH adjustment (themes-as-melodies)
 // ===========================================================================
 
 export function section7Transposition(out: Console): void {
-  out.print(sectionHeader(7, "OKLCH transposition — themes-as-melodies"));
+  out.print(sectionHeader(7, "OKLCH adjustment — themes-as-melodies"));
   out.print(
     blurb(
-      "Themes are melodies; ThemeKey is the key signature. Because OKLCH is " +
+      "Themes are melodies; ColorAdjustment is the key signature. Because OKLCH is " +
         "perceptually uniform, +60° hue feels like the same jump everywhere. " +
-        "ANCHORED_ROOTS lock the hue of error/success/warning so semantics " +
-        "survive transposition.",
+        "HUE_LOCKED_ROOTS lock the hue of error/success/warning so semantics " +
+        "survive adjustment.",
     ),
   );
   out.print(blank());
@@ -57,7 +57,7 @@ export function section7Transposition(out: Console): void {
 
   // 7a — Hue circle: rotations of gruvbox at evenly-spaced hue offsets.
   // Same swatchRow shape as section 4 / 6, but the data flowing through
-  // is the *transposed* palette.
+  // is the *adjusted* palette.
   const base = getThemePalette("gruvbox");
   const HUE_ROTATIONS = [0, 60, 120, 180, 240, 300];
   out.print(
@@ -65,27 +65,27 @@ export function section7Transposition(out: Console): void {
   );
   out.print(blurb("Decorative colors rotate; anchored vars (error/success/warning) hold."));
   for (const deg of HUE_ROTATIONS) {
-    const key: ThemeKey = {
+    const key: ColorAdjustment = {
       hueShift: deg,
       chromaScale: 1,
       lightnessScale: 1,
       lightnessShift: 0,
     };
-    const t = transposePalette(base, key, `gruvbox +${deg}°`);
+    const t = adjustPalette(base, key, `gruvbox +${deg}°`);
     const tbg = t.get("background")!;
     const tfg = t.get("foreground")!;
     const row = new RichText("").append(`  +${String(deg).padStart(3)}°  `, bgFgStyle(tbg, tfg, tbg));
     for (const v of SEMANTIC_VARS) {
       const c = t.get(v)!;
-      const lock = isAnchored(v) ? "ʟ" : " ";
+      const lock = isHueLocked(v) ? "ʟ" : " ";
       row.append(` ${lock}${v.padEnd(8)} `, bgFgStyle(c, tfg, tbg));
     }
     out.print(row);
   }
-  out.print(blurb("ʟ = anchored (hue locked by ANCHORED_ROOTS)."));
+  out.print(blurb("ʟ = anchored (hue locked by HUE_LOCKED_ROOTS)."));
   out.print(blank());
 
-  // 7b — Chroma sweep on nord. Same dataflow, different ThemeKey axis.
+  // 7b — Chroma sweep on nord. Same dataflow, different ColorAdjustment axis.
   const nord = getThemePalette("nord");
   const CHROMA_SCALES = [0.3, 0.6, 1.0, 1.3, 1.6];
   out.print(
@@ -93,13 +93,13 @@ export function section7Transposition(out: Console): void {
   );
   out.print(blurb("chromaScale 0 = grayscale, 1 = identity, >1 = supersaturated."));
   for (const scale of CHROMA_SCALES) {
-    const key: ThemeKey = {
+    const key: ColorAdjustment = {
       hueShift: 0,
       chromaScale: scale,
       lightnessScale: 1,
       lightnessShift: 0,
     };
-    const t = transposePalette(nord, key, `nord ×${scale}`);
+    const t = adjustPalette(nord, key, `nord ×${scale}`);
     const tbg = t.get("background")!;
     const tfg = t.get("foreground")!;
     const row = new RichText("").append(`  ×${scale.toFixed(1)}  `, bgFgStyle(tbg, tfg, tbg));
@@ -120,7 +120,7 @@ export function section7Transposition(out: Console): void {
     ),
   );
   const solDark = getThemePalette("solarized-dark");
-  const flipped = transposePalette(solDark, INVERT_LIGHTNESS, "solarized-dark↺");
+  const flipped = adjustPalette(solDark, INVERT_LIGHTNESS, "solarized-dark↺");
   const solLight = getThemePalette("solarized-light");
   for (const [label, p] of [
     ["solarized-dark   (source)", solDark] as const,
@@ -138,12 +138,12 @@ export function section7Transposition(out: Console): void {
   }
   out.print(blank());
 
-  // 7d — themeKeyForRoot: aim a theme's *tonic* at a target hue and watch
+  // 7d — adjustmentForRoot: aim a theme's *tonic* at a target hue and watch
   // the rest follow. Anchored vars still keep their hue; everything else
   // shifts by exactly the interval that carries `primary` to 200°.
-  out.print(bold("    7d. themeKeyForRoot — aim gruvbox's primary at 200°"));
-  const key = themeKeyForRoot(base, "primary", 200);
-  const aimed = transposePalette(base, key, "gruvbox→primary@200°");
+  out.print(bold("    7d. adjustmentForRoot — aim gruvbox's primary at 200°"));
+  const key = adjustmentForRoot(base, "primary", 200);
+  const aimed = adjustPalette(base, key, "gruvbox→primary@200°");
   const abg = aimed.get("background")!;
   const afg = aimed.get("foreground")!;
   const aimedRow = new RichText("").append(
@@ -157,7 +157,7 @@ export function section7Transposition(out: Console): void {
   out.print(aimedRow);
   out.print(
     blurb(
-      `ANCHORED_ROOTS = {${[...ANCHORED_ROOTS].join(", ")}} — these stay put; the rest follow the tonic.`,
+      `HUE_LOCKED_ROOTS = {${[...HUE_LOCKED_ROOTS].join(", ")}} — these stay put; the rest follow the tonic.`,
     ),
   );
   out.print(blank());

@@ -22,7 +22,7 @@ import {
   WidgetBase,
   hasOverlay,
   widgetAt,
-  KeyEvent,
+  WidgetKeyEvent,
   type InteractiveWidget,
 } from "@promptctl/rich-js/widgets";
 import type { TerminalHost } from "@promptctl/rich-js/host";
@@ -49,7 +49,7 @@ const MUTATION_CYCLE: string[][] = [
  * widget is those, and nothing else: no focus bookkeeping, no hover state, no
  * hit-testing, no change/submit plumbing.
  *
- * This one shows the last key it was handed, which makes the KeyEvent contract
+ * This one shows the last key it was handed, which makes the WidgetKeyEvent contract
  * visible: the app hands the *focused* widget its key, and `event.stop()`
  * is how a widget claims one. Space is claimed here; Tab is not, so Tab still
  * reaches the app's focus traversal.
@@ -61,7 +61,7 @@ class KeyEchoWidget extends WidgetBase {
   @observable accessor claimed = 0;
 
   @action
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     const held = (["shift", "ctrl", "meta"] as const).filter((modifier) => event[modifier]);
     this.lastKey = [`key=${event.key}`, `char=${JSON.stringify(event.character)}`, ...held].join(" ");
     // Claim only the space bar, so Tab still reaches focus traversal.

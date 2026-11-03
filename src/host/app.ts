@@ -35,13 +35,13 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { SurfacePainter, type Surface } from "../core/paint.js";
+import { SurfaceRenderer, type Surface } from "../core/paint.js";
 import { fitHeight, render, type HostFrame, type FrameHost, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
 import { drawView, frameNow, hostView, undrawn, type FrameSays, type HostTime, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
-import { InputParser, keyName, parseKeyName, type KeyPress, type ScreenMouseEvent, type TerminalReply } from "./input.js";
+import { InputParser, keyName, parseKeyName, type KeyEvent, type TerminalMouseEvent, type TerminalReply } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
 
 /**
@@ -52,10 +52,10 @@ import type { TerminalHost } from "./terminal-host.js";
 export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 
 // [LAW:one-source-of-truth] How a frame draws — its glyphs, the terminal its
-// colours resolve on, the style names it knows, what happens to a style it
+// colors resolve on, the style names it knows, what happens to a style it
 // cannot resolve, markup and highlighting — is the console's to say, so App takes those options as the
 // console declares them. This list is both the type and what is copied: the
-// host alone decides the console's size, colours and sink, so no other
+// host alone decides the console's size, colors and sink, so no other
 // property of the options object reaches it, whatever the object carries.
 const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "textOrder", "terminal", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
 type DrawOption = (typeof DRAW_OPTIONS)[number];
@@ -123,7 +123,7 @@ const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = 
  * A turn of the wheel, where the pointer was when it turned: `lines` is
  * positive towards the end of the content, a line a notch.
  */
-export interface Wheel {
+export interface WheelEvent {
   readonly x: number;
   readonly y: number;
   readonly lines: number;
@@ -132,10 +132,10 @@ export interface Wheel {
 // The sideways wheel is not here: nothing scrolls by columns, inside an app or
 // around it.
 const WHEEL_LINES = { scroll_up: -1, scroll_down: 1 } as const;
-type WheelTurn = Extract<ScreenMouseEvent, { type: keyof typeof WHEEL_LINES }>;
+type WheelTurn = Extract<TerminalMouseEvent, { type: keyof typeof WHEEL_LINES }>;
 
 /** A pointer event `onMouse` hears: every one but the vertical wheel, which is `onWheel`'s. */
-export type AppMouseEvent = Exclude<ScreenMouseEvent, WheelTurn>;
+export type AppMouseEvent = Exclude<TerminalMouseEvent, WheelTurn>;
 
 // Primary Device Attributes. Every VT100 descendant answers it, and a terminal
 // answers in the order it was asked, so its reply, sent after an ask's queries,
@@ -168,7 +168,7 @@ interface Asking {
   finish(ended: Asked["ended"]): void;
 }
 
-const isWheelTurn = (event: ScreenMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
+const isWheelTurn = (event: TerminalMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
 
 export class App implements FrameHost {
   private readonly host: TerminalHost;
@@ -185,10 +185,10 @@ export class App implements FrameHost {
   // What the frame on screen says about when it changes, on the clock.
   // Before a frame, nothing.
   private said: FrameSays = undrawn(0);
-  // The one wait for the frame's `nextChange`, armed after each frame.
+  // The one wait for the frame's `validUntil`, armed after each frame.
   private waking: Unsubscribe | null = null;
   // [LAW:one-source-of-truth] The host is the console's whole environment:
-  // its size, its colours, where bytes go. Every frame renders with this
+  // its size, its colors, where bytes go. Every frame renders with this
   // console's options and is encoded for its destination.
   private console: Console;
   private drawing: Pick<ConsoleOptions, DrawOption>;
@@ -203,13 +203,13 @@ export class App implements FrameHost {
 
   private _phase: AppPhase = "idle";
   private _frame: readonly (readonly Segment[])[] = [];
-  private readonly painter: SurfacePainter;
+  private readonly painter: SurfaceRenderer;
   private refreshQueued = false;
   private subscriptions: Unsubscribe[] = [];
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
-  private readonly keyHandlers = new Set<(press: KeyPress) => void>();
+  private readonly keyHandlers = new Set<(press: KeyEvent) => void>();
   private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
-  private readonly wheelHandlers = new Set<(wheel: Wheel) => boolean>();
+  private readonly wheelHandlers = new Set<(wheel: WheelEvent) => boolean>();
   private readonly quitKeys: ReadonlySet<string>;
   private readonly input: InputParser;
   private settle: (outcome: Outcome) => void = () => {};
@@ -221,7 +221,7 @@ export class App implements FrameHost {
       options.host.inputChunks,
     );
     this.surface = options.surface;
-    this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
+    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes));
     this.view = hostView(options.view);
     this._clock = options.clock ?? systemClock();
     this._epoch = this._clock.now();
@@ -233,8 +233,8 @@ export class App implements FrameHost {
   }
 
   /**
-   * The terminal the app draws on: the colours a cell that sets none is drawn
-   * in, and the sixteen an ANSI colour names — as given, or as the colour
+   * The terminal the app draws on: the colors a cell that sets none is drawn
+   * in, and the sixteen an ANSI color names — as given, or as the color
    * depth assumes (`resolveTerminal`).
    */
   get terminal(): TerminalColors {
@@ -457,10 +457,10 @@ export class App implements FrameHost {
   }
 
   /**
-   * Hear every key the app does not quit on, by the `KeyPress` the terminal
+   * Hear every key the app does not quit on, by the `KeyEvent` the terminal
    * reported; `keyName` names it. A handler that throws fails the app.
    */
-  onKey(handler: (press: KeyPress) => void): Unsubscribe {
+  onKey(handler: (press: KeyEvent) => void): Unsubscribe {
     this.keyHandlers.add(handler);
     return () => this.keyHandlers.delete(handler);
   }
@@ -483,7 +483,7 @@ export class App implements FrameHost {
    * and the first that moves something takes it. A handler that throws fails
    * the app.
    */
-  onWheel(handler: (wheel: Wheel) => boolean): Unsubscribe {
+  onWheel(handler: (wheel: WheelEvent) => boolean): Unsubscribe {
     this.wheelHandlers.add(handler);
     return () => this.wheelHandlers.delete(handler);
   }
@@ -551,7 +551,7 @@ export class App implements FrameHost {
     this.asking.replies.push(reply);
   }
 
-  private key(press: KeyPress): void {
+  private key(press: KeyEvent): void {
     if (this.quitKeys.has(keyName(press))) return this.stop();
     this.hear(this.keyHandlers, press);
   }
@@ -562,11 +562,11 @@ export class App implements FrameHost {
   // the turn are one act, and an app that reads no wheel passes every turn.
   // [LAW:single-enforcer] Only a running app holds the terminal, so only a
   // running app is offered a turn or passes one on.
-  private mouse(event: ScreenMouseEvent): void {
+  private mouse(event: TerminalMouseEvent): void {
     if (!isWheelTurn(event)) return this.hear(this.mouseHandlers, event);
     if (this._phase !== "running") return;
     const lines = WHEEL_LINES[event.type];
-    const wheel: Wheel = { x: event.x, y: event.y, lines };
+    const wheel: WheelEvent = { x: event.x, y: event.y, lines };
     try {
       const moved = [...this.wheelHandlers].some((handler) => this._phase === "running" && handler(wheel));
       if (!moved && this._phase === "running") this.host.passWheel(lines);
@@ -597,8 +597,8 @@ export class App implements FrameHost {
   // says whether the view moves.
   private tick(): void {
     const running = this._phase === "running";
-    const { t, nextChange } = this.said;
-    const wanted = running && nextChange === t;
+    const { t, validUntil } = this.said;
+    const wanted = running && validUntil === t;
     if (this.ticking !== null && (!wanted || this.ticking.rate.perSecond !== this._rate.perSecond)) {
       this.ticking.stop();
       this.ticking = null;
@@ -607,7 +607,7 @@ export class App implements FrameHost {
       this.ticking = { rate: this._rate, stop: this._clock.every(this._rate, () => this.paint()) };
     }
     this.waking?.();
-    this.waking = running && t < nextChange && nextChange < Number.POSITIVE_INFINITY ? this._clock.at(nextChange, () => this.paint()) : null;
+    this.waking = running && t < validUntil && validUntil < Number.POSITIVE_INFINITY ? this._clock.at(validUntil, () => this.paint()) : null;
   }
 
   // [LAW:no-silent-failure] A frame that throws ends the app with that

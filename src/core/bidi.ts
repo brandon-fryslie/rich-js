@@ -13,7 +13,7 @@
  */
 
 import { BIDI_CLASSES, BRACKET_PAIRS, CLASS_RANGES, JOINING_RANGES, JOINING_TYPES, MIRRORS, PRESENTATION_FORMS } from "./bidi-data.js";
-import { replaceWithheld } from "./cells.js";
+import { replaceZeroWidth } from "./cells.js";
 import { pattern } from "./pattern.js";
 import type { ParagraphLevel } from "./text-order.js";
 
@@ -96,7 +96,7 @@ export function withoutExplicit(text: string): string {
 
 /** `text` as data on show: what the wire would drop, and every explicit control, spelled by `escape`. */
 export function escaped(text: string, escape: (character: string) => string): string {
-  return replaceWithheld(text, escape).replace(new RegExp(EXPLICIT.source, "gu"), escape);
+  return replaceZeroWidth(text, escape).replace(new RegExp(EXPLICIT.source, "gu"), escape);
 }
 
 /** `text` with LRM, RLM and ALM gone. */
@@ -622,16 +622,16 @@ interface Joining {
   readonly toPrevious: boolean;
   readonly toNext: boolean;
   /** It holds a ZWJ, which joins across it whatever its base is. */
-  readonly joiner: boolean;
+  readonly separator: boolean;
 }
 
-const UNJOINED: Joining = { letter: false, toPrevious: false, toNext: false, joiner: false };
+const UNJOINED: Joining = { letter: false, toPrevious: false, toNext: false, separator: false };
 
 function joiningOf(cluster: string): Joining {
   const base = cluster.codePointAt(0)!;
   const type = joiningTypeOf(base);
   const toNext = (type === "D" || type === "L" || type === "C") && !cluster.includes(ZWNJ);
-  return { letter: FORMS_OF.has(base), toPrevious: type === "D" || type === "R" || type === "C", toNext, joiner: cluster.includes(ZWJ) };
+  return { letter: FORMS_OF.has(base), toPrevious: type === "D" || type === "R" || type === "C", toNext, separator: cluster.includes(ZWJ) };
 }
 
 /**
@@ -659,8 +659,8 @@ export function shaped(clusters: readonly string[]): string[] {
     const own = joinings[at]!;
     if (!own.letter) return text;
     const before = neighbour(at, -1);
-    const joinsBefore = own.toPrevious && (before.toNext || before.joiner);
-    const joinsAfter = own.toNext && (own.joiner || neighbour(at, 1).toPrevious);
+    const joinsBefore = own.toPrevious && (before.toNext || before.separator);
+    const joinsAfter = own.toNext && (own.separator || neighbour(at, 1).toPrevious);
     const forms = FORMS_OF.get(text.codePointAt(0)!)!;
     const wanted = joinsBefore ? (joinsAfter ? MEDIAL : FINAL) : joinsAfter ? INITIAL : ISOLATED;
     const form = forms[wanted] || text.codePointAt(0)!;

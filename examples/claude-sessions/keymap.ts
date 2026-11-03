@@ -4,7 +4,7 @@
  * ones. Ctrl+C is the app's own quit key and never reaches either.
  */
 
-import { keyName, type KeyPress } from "@promptctl/rich-js/host";
+import { keyName, type KeyEvent } from "@promptctl/rich-js/host";
 
 export type Action =
   | { type: "move"; delta: number }
@@ -24,7 +24,7 @@ export type Action =
   | { type: "search-next" }
   | { type: "search-prev" }
   | { type: "search-exit" }
-  | { type: "search-key"; press: KeyPress } // typing a query
+  | { type: "search-key"; press: KeyEvent } // typing a query
   | { type: "suspend" }
   | { type: "quit" }
   | { type: "none" };
@@ -74,10 +74,10 @@ const KEYMAP: Record<string, Action> = {
   ...LIFECYCLE,
 };
 
-export function lookup(press: KeyPress): Action {
+export function lookup(press: KeyEvent): Action {
   return KEYMAP[keyName(press)] ?? { type: "none" };
 }
 
-export function lookupTyping(press: KeyPress): Action {
+export function lookupTyping(press: KeyEvent): Action {
   return LIFECYCLE[keyName(press)] ?? { type: "search-key", press };
 }

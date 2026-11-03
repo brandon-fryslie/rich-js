@@ -2,10 +2,10 @@
  * Syntax — renders source code with basic syntax highlighting.
  * Uses built-in tokenization (no external dependency).
  *
- * Colours are names in the console's theme (`syntax.keyword`,
+ * Colors are names in the console's theme (`syntax.keyword`,
  * `syntax.line_number`, …), not a per-instance palette: a theme is how every
  * other renderable here is restyled, and a second styling vocabulary on this
- * one class would be a second answer to "what colour is a keyword".
+ * one class would be a second answer to "what color is a keyword".
  */
 
 import { escaped } from "../core/bidi.js";

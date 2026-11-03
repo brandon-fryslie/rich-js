@@ -44,9 +44,9 @@
  * No precision is given up: `darken`, `blendRgb`, and `contrastFor` already
  * take and return 8-bit `ColorRgba`. The one caveat is OKLCH: each of the
  * axis functions below round-trips sRGB→OKLCH→sRGB, so chaining three or more
- * of them quantizes visibly. Compose two, or reach for `transposePalette` when
+ * of them quantizes visibly. Compose two, or reach for `adjustPalette` when
  * a whole palette needs adapting — the same caveat that already applies to
- * chained transpositions.
+ * chained adjustments.
  *
  * ### Palette-free on purpose
  *
@@ -59,7 +59,7 @@
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
 import { blendRgb, ColorDepth, ColorParseError, parseHexColor, type ColorRgba, type TerminalTheme } from "../core/color.js";
 import { Oklch, IDENTITY } from "../core/oklch.js";
-import type { ThemeKey } from "../core/oklch.js";
+import type { ColorAdjustment } from "../core/oklch.js";
 import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
 
 /**
@@ -71,13 +71,13 @@ import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
  * same one — a palette name passed where a color belongs (`darken "primary" 2`)
  * — and an author who reads "wrap it: darken (color "primary")" is corrected in
  * one step, where "expected #RRGGBB" leaves them guessing. What it parses
- * must then be a colour these functions can compute with (`computable`).
+ * must then be a color these functions can compute with (`computable`).
  * [LAW:no-silent-failure]
  */
 export function asColor(value: string, func: string): ColorRgba {
-  let colour: ColorRgba;
+  let color: ColorRgba;
   try {
-    colour = parseHexColor(value.trim());
+    color = parseHexColor(value.trim());
   } catch (cause) {
     if (!(cause instanceof ColorParseError)) throw cause;
     throw new TypeError(
@@ -86,28 +86,28 @@ export function asColor(value: string, func: string): ColorRgba {
       { cause },
     );
   }
-  return computable(colour, func, JSON.stringify(value));
+  return computable(color, func, JSON.stringify(value));
 }
 
 /**
- * A colour the colour functions can compute with. A fully transparent one — a
- * theme's "no background", `#00000000` — has no colour of its own: what shows
+ * A color the color functions can compute with. A fully transparent one — a
+ * theme's "no background", `#00000000` — has no color of its own: what shows
  * through it is whatever surface it lands on, which a template cannot know.
  * Darkening, mixing or contrasting it would answer for a surface nobody named,
- * so it is refused here, for every colour function and every `ramp` stop.
+ * so it is refused here, for every color function and every `ramp` stop.
  * [LAW:single-enforcer]
  */
-export function computable(colour: ColorRgba, func: string, written: string): ColorRgba {
-  if (colour.alpha === 0) {
+export function computable(color: ColorRgba, func: string, written: string): ColorRgba {
+  if (color.alpha === 0) {
     throw new RangeError(
-      `${func} got ${written}, which is fully transparent: it draws no colour of its own, ` +
-        `so there is nothing to compute with — use the colour of the surface it sits on, e.g. (color "background")`,
+      `${func} got ${written}, which is fully transparent: it draws no color of its own, ` +
+        `so there is nothing to compute with — use the color of the surface it sits on, e.g. (color "background")`,
     );
   }
-  return colour;
+  return color;
 }
 
-// [LAW:single-enforcer] Every colour function is fixed-arity, so the engine's
+// [LAW:single-enforcer] Every color function is fixed-arity, so the engine's
 // arity gate refuses a missing or surplus argument before the body runs.
 function colorFunc(argTypes: TemplateFunc["argTypes"], fn: TemplateFunc["fn"]): TemplateFunc {
   return { fn, argTypes, arity: { kind: "exact" }, returnType: "string" };
@@ -184,7 +184,7 @@ const mixFunc = colorFunc(["string", "string", "float"], ((
 //
 // Two different questions, so two functions rather than one with a flag:
 // `contrastOn` asks "what is maximally readable here" (black or white, WCAG
-// relative-luminance cutoff); `readableOn` asks "keep this color recognizably
+// relative-luminance cutoff); `ensureContrast` asks "keep this color recognizably
 // itself, but guarantee it clears `ratio`" — it slides OKLCH lightness and
 // preserves hue, so a blue on dark blue becomes a lighter blue rather than
 // white.
@@ -208,9 +208,9 @@ const contrastOnFunc = colorFunc(["string"], ((bgHex: string) =>
   contrastFor(asColor(bgHex, "contrastOn")).hex) as TemplateFunc["fn"]);
 
 /**
- * Where `readableOn`'s text will be drawn: the depth the output is encoded at,
- * and the terminal that draws it when that is known. At sixteen colours a
- * terminal paints each slot in its own theme's colour, so the floor is measured
+ * Where `ensureContrast`'s text will be drawn: the depth the output is encoded at,
+ * and the terminal that draws it when that is known. At sixteen colors a
+ * terminal paints each slot in its own theme's color, so the floor is measured
  * in `terminal`'s sixteen; without one, in the VGA defaults (the Windows
  * console's at `WINDOWS`). Both are facts about the one place the text lands,
  * so they arrive together.
@@ -223,11 +223,11 @@ export interface DrawnAt {
 const TRUECOLOR: DrawnAt = { depth: ColorDepth.TRUECOLOR };
 
 /**
- * The `readableOn` binding, measuring where `drawnAt` says the text lands when
+ * The `ensureContrast` binding, measuring where `drawnAt` says the text lands when
  * it is evaluated — a consumer that renders to a per-call destination
  * registers its own.
  */
-export const readableOnFunc = (drawnAt: () => DrawnAt): TemplateFunc =>
+export const ensureContrastFunc = (drawnAt: () => DrawnAt): TemplateFunc =>
   colorFunc(["string", "string", "float"], ((
     fgHex: string,
     bgHex: string,
@@ -235,9 +235,9 @@ export const readableOnFunc = (drawnAt: () => DrawnAt): TemplateFunc =>
   ) => {
     const { depth, terminal } = drawnAt();
     return ensureContrast(
-      asColor(fgHex, "readableOn"),
-      asColor(bgHex, "readableOn"),
-      asAmount(ratio, "readableOn", "ratio", RATIO_RANGE),
+      asColor(fgHex, "ensureContrast"),
+      asColor(bgHex, "ensureContrast"),
+      asAmount(ratio, "ensureContrast", "ratio", RATIO_RANGE),
       depth,
       undefined,
       terminal,
@@ -246,9 +246,9 @@ export const readableOnFunc = (drawnAt: () => DrawnAt): TemplateFunc =>
 
 // --- OKLCH axes ---
 //
-// [LAW:one-source-of-truth] One function per `ThemeKey` axis, and the table is
-// keyed BY the axis so the compiler proves it total: add a field to `ThemeKey`
-// and this object stops satisfying `Record<keyof ThemeKey, string>` until a
+// [LAW:one-source-of-truth] One function per `ColorAdjustment` axis, and the table is
+// keyed BY the axis so the compiler proves it total: add a field to `ColorAdjustment`
+// and this object stops satisfying `Record<keyof ColorAdjustment, string>` until a
 // binding name is chosen for it. The same derive-registrations-from-the-real-
 // inventory trick `attributeFuncs()` uses over `ATTRIBUTE_NAMES`.
 //
@@ -260,16 +260,16 @@ const OKLCH_AXIS_FUNCS = {
   chromaScale: "scaleChroma",
   lightnessScale: "scaleLightness",
   lightnessShift: "shiftLightness",
-} as const satisfies Record<keyof ThemeKey, string>;
+} as const satisfies Record<keyof ColorAdjustment, string>;
 
 function oklchAxisFuncs(): FuncMap {
   const out: FuncMap = {};
   for (const [axis, funcName] of Object.entries(OKLCH_AXIS_FUNCS)) {
     // [LAW:dataflow-not-control-flow] Every axis takes the identical path —
     // splice one value into the identity key and apply it. The axis is data.
-    const key = axis as keyof ThemeKey;
+    const key = axis as keyof ColorAdjustment;
     out[funcName] = colorFunc(["string", "float"], ((hex: string, amount: number) => {
-      const themeKey: ThemeKey = {
+      const themeKey: ColorAdjustment = {
         ...IDENTITY,
         [key]: asAmount(amount, funcName, "amount"),
       };
@@ -288,7 +288,7 @@ function oklchAxisFuncs(): FuncMap {
  * | `darken c n` / `lighten c n` | slide HSL lightness by N 10% levels |
  * | `mix a b pct` | blend `a` toward `b` by `pct`% (0 → `a`, 100 → `b`) |
  * | `contrastOn bg` | black or white, whichever is readable on `bg` |
- * | `readableOn fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |
+ * | `ensureContrast fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |
  * | `shiftHue c deg` | rotate hue in OKLCH |
  * | `scaleChroma c f` | multiply chroma (0 → gray, 1 → identity) |
  * | `scaleLightness c f` | multiply lightness (1 → identity, -1 → invert) |
@@ -298,7 +298,7 @@ function oklchAxisFuncs(): FuncMap {
  * `richTextStyleFuncs()`'s `fg`/`bg` to paint them onto text.
  *
  * @param drawnAt where the text will be drawn — the depth, and the terminal
- *   when known — read on every `readableOn` evaluation so a host that learns
+ *   when known — read on every `ensureContrast` evaluation so a host that learns
  *   its destination per render passes one getter; defaults to truecolor.
  */
 export function colorFuncs(drawnAt: () => DrawnAt = () => TRUECOLOR): FuncMap {
@@ -307,7 +307,7 @@ export function colorFuncs(drawnAt: () => DrawnAt = () => TRUECOLOR): FuncMap {
     lighten: lightenFunc,
     mix: mixFunc,
     contrastOn: contrastOnFunc,
-    readableOn: readableOnFunc(drawnAt),
+    ensureContrast: ensureContrastFunc(drawnAt),
     ...oklchAxisFuncs(),
   };
 }

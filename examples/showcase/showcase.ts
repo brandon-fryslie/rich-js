@@ -36,8 +36,8 @@ import {
   TaskProgressColumn,
   TextColumn,
   Tree,
-  beat,
-  onBeat,
+  stepSequence,
+  sampleAndHold,
   regionRows,
   steppedInk,
   withCellWidth,
@@ -102,7 +102,7 @@ function services(t: number): Table {
 }
 
 /**
- * Truecolor: each cell is two pixels, an upper half block in one colour over
+ * Truecolor: each cell is two pixels, an upper half block in one color over
  * a background of the next, and the hues drift with time.
  */
 class Spectrum implements Renderable {
@@ -111,18 +111,18 @@ class Spectrum implements Renderable {
   *render(options: RenderOptions): Iterable<Segment> {
     const width = withCellWidth(options).maxWidth;
     const rows = regionRows(options.height) ?? 5;
-    const colour = (x: number, y: number): ColorSpec =>
+    const color = (x: number, y: number): ColorSpec =>
       hsl((x / width) * 360 + this.t * 40, 0.85, 0.72 - (y / (rows * 2)) * 0.5);
     for (let row = 0; row < rows; row++) {
       for (let x = 0; x < width; x++) {
-        yield new Segment("▀", Style.fromColor(colour(x, row * 2), colour(x, row * 2 + 1)));
+        yield new Segment("▀", Style.fromColor(color(x, row * 2), color(x, row * 2 + 1)));
       }
       yield Segment.line();
     }
   }
 }
 
-/** A truecolor colour, from a hue in degrees and a saturation and lightness in 0–1. */
+/** A truecolor color, from a hue in degrees and a saturation and lightness in 0–1. */
 function hsl(hue: number, saturation: number, lightness: number): ColorSpec {
   const a = saturation * Math.min(lightness, 1 - lightness);
   const channel = (n: number): number => {
@@ -163,7 +163,7 @@ project.add("[magenta]renderables").add("table.ts");
 /**
  * The chevrons after the name: one, two, three, one again, a second each,
  * all drawn at one width, so the tagline never moves, and their ink stepping
- * through three bright colours on the same beat, each kept readable on the
+ * through three bright colors on the same beat, each kept readable on the
  * bubble behind it. Frames and steps are seconds, so the gauge turns at the
  * same pace however often the dashboard redraws. The name itself walks the
  * hue wheel a step a second: a wheel that would take six seconds to turn,
@@ -180,7 +180,7 @@ const SIGNAL = steppedInk([
   { color: new ColorRgba(241, 250, 140), seconds: 1 },
   { color: new ColorRgba(80, 250, 123), seconds: 1 },
 ]);
-const WALK = onBeat(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), beat([1]));
+const WALK = sampleAndHold(EFFECT_CATALOGUE.loops.wheel({ z: 0 }, { seconds: 6, ease: EASES.linear, swing: 0 }), stepSequence([1]));
 // A cursor blinking after the tagline, in a cell of its own.
 const CURSOR = new FrameSequence([
   { text: new RichText("▌", { style: Style.parse("dim") }), seconds: 0.5 },
@@ -196,7 +196,7 @@ const CURSOR = new FrameSequence([
  * frame it is drawing — and a host drawing it wakes for the flash and for
  * the inner effect's steps, and rests between.
  */
-const FLASH_BEAT = beat([0.3, 9.7]);
+const FLASH_BEAT = stepSequence([0.3, 9.7]);
 function flashing(effect: Effect): Effect {
   return (drawn) => {
     const inner = effect(drawn);
@@ -205,15 +205,15 @@ function flashing(effect: Effect): Effect {
         const under = inner.at(t);
         // Dark, the frame is the inner effect's own.
         if (FLASH_BEAT.at(t) !== 0) return under;
-        const left = 1 - (t - FLASH_BEAT.lastChange(t)) / FLASH_BEAT.holds[0]!;
+        const left = 1 - (t - FLASH_BEAT.validFrom(t)) / FLASH_BEAT.holds[0]!;
         const toward = (channel: number): number => Math.round(channel + (255 - channel) * left);
         return (look, cell) => {
           const moved = under(look, cell);
           return { ...moved, bg: new ColorRgba(toward(moved.bg.red), toward(moved.bg.green), toward(moved.bg.blue)) };
         };
       },
-      nextChange: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.min(FLASH_BEAT.nextChange(t), inner.nextChange(t))),
-      lastChange: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.max(FLASH_BEAT.lastChange(t), inner.lastChange(t))),
+      validUntil: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.min(FLASH_BEAT.validUntil(t), inner.validUntil(t))),
+      validFrom: (t) => (FLASH_BEAT.at(t) === 0 ? t : Math.max(FLASH_BEAT.validFrom(t), inner.validFrom(t))),
       // Reduced there is no flash: a flash is news, and a reader who asked for no motion gets the effect alone, reduced.
       reduced: () => inner.reduced(),
     };

@@ -27,8 +27,8 @@ import { ATTRIBUTE_NAMES } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME, SOLARIZED_LIGHT } from "../../src/themes/terminalThemes.js";
 
-// A named ANSI colour on another, so the theme's ANSI table decides both, and
-// `reverse`, `dim` and `conceal` each have two different colours to act on.
+// A named ANSI color on another, so the theme's ANSI table decides both, and
+// `reverse`, `dim` and `conceal` each have two different colors to act on.
 const PAINT = "red on blue";
 
 /**
@@ -43,7 +43,7 @@ const attributeRows = ATTRIBUTE_NAMES.map((name) =>
 
 const otherRows = [
   RichText.assemble([
-    "colour".padEnd(12),
+    "color".padEnd(12),
     ["ansi", "green"],
     " ",
     ["bright", "bright_magenta"],
@@ -57,7 +57,7 @@ const otherRows = [
   RichText.assemble(["link".padEnd(12), ["allowed", "link https://example.com/a?b=1&c=2 underline"]]),
   RichText.assemble(["refused".padEnd(12), ["script", "link javascript:alert(1) bold"]]),
   // The pairs resolved together rather than one after the other: `reverse`
-  // decides which colour `dim` fades and `conceal` paints, and HTML gives a
+  // decides which color `dim` fades and `conceal` paints, and HTML gives a
   // double underline its own span so a strike beside it stays single.
   RichText.assemble([
     "combined".padEnd(12),
@@ -65,7 +65,7 @@ const otherRows = [
     " ",
     ["rev+conceal", `reverse conceal ${PAINT}`],
     " ",
-    ["u2+strike", "underline2 strike"],
+    ["u2+strike", "doubleUnderline strike"],
   ]),
   // ASCII, CJK, an emoji, and `e` carrying two combining marks: one cell each
   // for the first and last, two for the others.

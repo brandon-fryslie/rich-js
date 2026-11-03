@@ -3,7 +3,7 @@
  *
  * [LAW:one-source-of-truth] The function inventory below mirrors the
  * string-syntax style vocabulary documented in `docs/style.md` — the two
- * colour slots (`fg`/`bg`), text attributes (positive + negated), short
+ * color slots (`fg`/`bg`), text attributes (positive + negated), short
  * aliases, and the hyperlink. Each registration is a templating-time analogue
  * of a piece of `Style.parse`, so a template fragment composed by these
  * functions round-trips through `Style` without semantic drift.
@@ -12,7 +12,7 @@
  * shape: child `RichText` in, `RichText` out. The styling difference
  * lives in a captured `Style` value (or constructor closure), not in
  * branches inside a single dispatch. That is why this file is mostly
- * factories — the data (the colour, the attribute name) is the
+ * factories — the data (the color, the attribute name) is the
  * variability; the operation is fixed.
  */
 
@@ -35,26 +35,26 @@ function attrFunc(style: Style): TemplateFunc {
   };
 }
 
-// --- Colour sinks ---
+// --- Color sinks ---
 //
-// `fg` and `bg` are the only two colour-applying functions, and they are the
-// terminal step of the colour pipeline: `color` names a colour, the functions
+// `fg` and `bg` are the only two color-applying functions, and they are the
+// terminal step of the color pipeline: `color` names a color, the functions
 // in `color-funcs.ts` transform it, these paint it onto text.
 //
 // [LAW:composability] They replace five separate families — one function per
-// ANSI colour name (`red`, `bright_blue`, …), `hex`, `rgb`, `color` (256-index),
-// and `on` (background). Every one of those encoded *which colour* in the
+// ANSI color name (`red`, `bright_blue`, …), `hex`, `rgb`, `color` (256-index),
+// and `on` (background). Every one of those encoded *which color* in the
 // function's identity, so the vocabulary could only grow by adding names, and
-// a colour computed at render time could not be applied at all. Here the colour
-// is an argument, so the sink admits every colour that exists and every colour
+// a color computed at render time could not be applied at all. Here the color
+// is an argument, so the sink admits every color that exists and every color
 // that will ever exist. Two functions, unbounded reach.
 //
 // [LAW:types-are-the-program] The slot accepts the full `ColorSpec.parse`
-// vocabulary, which is wider than the hex the colour math produces — and that
-// width is deliberate, not laxity. `#7aa2f7` is a *concrete* colour; `"red"`
+// vocabulary, which is wider than the hex the color math produces — and that
+// width is deliberate, not laxity. `#7aa2f7` is a *concrete* color; `"red"`
 // and `"color(42)"` are *symbolic* ones the terminal resolves against its own
-// theme. Only concrete colours can be darkened or blended, which is why the
-// colour-math functions take hex alone; but both kinds can be painted, so the
+// theme. Only concrete colors can be darkened or blended, which is why the
+// color-math functions take hex alone; but both kinds can be painted, so the
 // sink takes the union. The type of each slot is exactly the set of values that
 // slot can mean something for.
 
@@ -161,12 +161,12 @@ const linkFunc: TemplateFunc = {
 // --- Public assembly ---
 
 /**
- * Text-styling registrations: the two colour sinks (`fg`, `bg`), text
+ * Text-styling registrations: the two color sinks (`fg`, `bg`), text
  * attributes (canonical names, short aliases, and `not_*` negations), the
  * hyperlink cell-splitter (`link`), and the multi-attribute `style` spec.
  *
- * Colours themselves come from elsewhere: `colorFuncs()` for the palette-free
- * math, `paletteFuncs()` for naming a theme colour. This module only paints.
+ * Colors themselves come from elsewhere: `colorFuncs()` for the palette-free
+ * math, `paletteFuncs()` for naming a theme color. This module only paints.
  * [LAW:one-way-deps] — nothing here imports a palette.
  */
 export function richTextStyleFuncs(): FuncMap {

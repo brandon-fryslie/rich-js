@@ -13,7 +13,7 @@ Each card below runs one of the library's [effects](/effects) on a powerline str
 
 The sliders under the code are the named numbers in it: each effect's `CURVE`, the constants it is built from, and how it plays. Moving a slider edits that number in the code, and the program runs the edit in place, as it does when you type: the clock carries on from the frame it had reached, so you see the change on the effect as it plays. Reset puts both back.
 
-A curve's `seconds` are curve time. Each frame moves curve time by `STEP`, whatever `FPS` is, so `FPS` sets only how often a frame comes. The terminal shows every colour exactly as the effect draws it, so a cell fading into the background really does lose its contrast.
+A curve's `seconds` are curve time. Each frame moves curve time by `STEP`, whatever `FPS` is, so `FPS` sets only how often a frame comes. The terminal shows every color exactly as the effect draws it, so a cell fading into the background really does lose its contrast.
 
 <template v-for="{ effect, card } in cards" :key="effect">
   <h2 :id="effect">{{ effect }}</h2>

@@ -317,7 +317,7 @@ describe("Segment.splitLines()", () => {
   });
 
   it("counts an empty piece after the last break as a row, whatever its style", () => {
-    for (const style of [undefined, Style.null(), new Style({ hold: { lastChange: 0, nextChange: 3 } })]) {
+    for (const style of [undefined, Style.null(), new Style({ validity: { validFrom: 0, validUntil: 3 } })]) {
       expect(Segment.splitLines([new Segment("a\n"), new Segment("", style)])).toHaveLength(2);
     }
   });

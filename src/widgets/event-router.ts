@@ -6,7 +6,7 @@
  * host's input (`host/input`), and `WidgetApp` hands this what the app hears.
  */
 
-import { KeyEvent } from "./types.js";
+import { WidgetKeyEvent } from "./types.js";
 import type {
   FrameSource,
   InteractiveWidget,
@@ -16,11 +16,11 @@ import type {
 import { cellOf, drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
-import type { KeyPress } from "../host/input.js";
+import type { KeyEvent } from "../host/input.js";
 import type { AppMouseEvent } from "../host/app.js";
-import type { Wheel } from "../host/app.js";
+import type { WheelEvent } from "../host/app.js";
 
-type KeyHandler = (event: KeyEvent) => void;
+type KeyHandler = (event: WidgetKeyEvent) => void;
 interface RegisteredKeyHandler {
   handler: KeyHandler;
   priority: KeyHandlerPriority;
@@ -118,8 +118,8 @@ export class EventRouter {
   }
 
   /** Route a key the app heard. */
-  key(press: KeyPress): void {
-    this.dispatchKey(new KeyEvent(press, this.source.frameNow().time));
+  key(press: KeyEvent): void {
+    this.dispatchKey(new WidgetKeyEvent(press, this.source.frameNow().time));
   }
 
   /** Route a pointer event the app heard. */
@@ -133,7 +133,7 @@ export class EventRouter {
    * Whether one moved is the answer: with none, the app passes the wheel
    * outward.
    */
-  wheel({ x, y, lines }: Wheel): boolean {
+  wheel({ x, y, lines }: WheelEvent): boolean {
     this.point(x, y);
     const target = scrollTargetAt(this.source.frame, x, y, lines);
     if (!target) return false;
@@ -157,7 +157,7 @@ export class EventRouter {
   // dispatch, only the event's `stopped` flag short-circuits later stages.
   // The router holds NO key-specific policy — Tab semantics live entirely
   // in FocusManager (registered as a normal-priority handler at construction).
-  private dispatchKey(event: KeyEvent): void {
+  private dispatchKey(event: WidgetKeyEvent): void {
     // [LAW:one-source-of-truth] Snapshot the chain once at the start of
     // dispatch. A handler that unsubscribes itself (or another handler)
     // splices the live keyChain and would shift indices under the running

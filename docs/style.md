@@ -23,7 +23,7 @@ for (const [style, meaning] of forms) {
 }
 ```
 
-The first two are ANSI magenta, so the terminal's theme picks the shade; the next two are the same exact purple wherever they are drawn. `blend(a,b,t)` is the colour `t` of the way from `a` to `b`, for any two colours but `default`. A mix reaching a theme's own colour takes that theme's shade: exported under a theme, it is mixed from the theme's `magenta`, while a live terminal is sent the mix of the standard `magenta`.
+The first two are ANSI magenta, so the terminal's theme picks the shade; the next two are the same exact purple wherever they are drawn. `blend(a,b,t)` is the color `t` of the way from `a` to `b`, for any two colors but `default`. A mix reaching a theme's own color takes that theme's shade: exported under a theme, it is mixed from the theme's `magenta`, while a live terminal is sent the mix of the standard `magenta`.
 
 Hex and RGB give access to the full 16.7 million truecolor range. rich-js automatically downsamples to the nearest available color when the terminal doesn't support truecolor.
 
@@ -50,9 +50,9 @@ for (const style of ["red on white", "#ff0000 on #ffffff", "bold cyan on dark_bl
 | `reverse` | `r` | Swaps fg/bg |
 | `dim` | | |
 | `blink` | | |
-| `blink2` | | Rapid blink; rarely supported |
+| `rapidBlink` | | Rapid blink; rarely supported |
 | `conceal` | | Rarely supported |
-| `underline2` | `uu` | Double underline |
+| `doubleUnderline` | `uu` | Double underline |
 | `overline` | `o` | |
 | `frame` | | |
 | `encircle` | | |

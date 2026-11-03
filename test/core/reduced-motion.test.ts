@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Animation } from "../../src/core/animation.js";
 import { ColorDepth, ColorRgba } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
-import { EASES, beat } from "../../src/core/easing.js";
+import { EASES, stepSequence } from "../../src/core/easing.js";
 import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
@@ -53,7 +53,7 @@ function still<T>(animation: Animation<T>): T {
   const value = reduced.at(0);
   for (const t of SAMPLES) {
     expect(reduced.at(t)).toEqual(value);
-    expect(reduced.nextChange(t)).toBe(Number.POSITIVE_INFINITY);
+    expect(reduced.validUntil(t)).toBe(Number.POSITIVE_INFINITY);
   }
   return value;
 }
@@ -62,23 +62,23 @@ describe("an animation reduced", () => {
   it("a loop holds its first value, a one-shot its end", () => {
     expect(still(Animation.constant("a"))).toBe("a");
     expect(still(Animation.continuous((t) => t + 1))).toBe(1);
-    expect(still(beat([1, 2, 3]))).toBe(0);
+    expect(still(stepSequence([1, 2, 3]))).toBe(0);
     expect(still(frames("a", "b")).plain).toBe("a");
     expect(still(tween(0, 10, { seconds: 1, ease: EASES.linear }))).toBe(10);
     expect(still(Animation.map(tween(0, 4, { seconds: 1, ease: EASES.linear }), (v) => v * 2))).toBe(8);
-    expect(still(Animation.onBeat(Animation.continuous((t) => t), beat([0.5])))).toBe(0);
+    expect(still(Animation.sampleAndHold(Animation.continuous((t) => t), stepSequence([0.5])))).toBe(0);
   });
 
   it("a sequence keeps each part on time, and wakes only at the switch", () => {
     const reduced = Animation.sequence(Animation.continuous((t) => `loading ${t}`), 2, Animation.constant("results")).reduced();
     expect([0, 1, 1.99, 2, 9].map((t) => reduced.at(t))).toEqual(["loading 0", "loading 0", "loading 0", "results", "results"]);
-    expect([0, 1, 2, 9].map((t) => reduced.nextChange(t))).toEqual([2, 2, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
+    expect([0, 1, 2, 9].map((t) => reduced.validUntil(t))).toEqual([2, 2, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
   });
 
   it("a one-shot cuts from its start to its end the moment it starts, and back again run backwards", () => {
     const reduced = tween(0, 10, { seconds: 1, ease: EASES.linear }).reduced();
     expect([-1, -0.01, 0, 0.5, 9].map((t) => reduced.at(t))).toEqual([0, 0, 10, 10, 10]);
-    expect([-1, 0, 9].map((t) => reduced.nextChange(t))).toEqual([0, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
+    expect([-1, 0, 9].map((t) => reduced.validUntil(t))).toEqual([0, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
   });
 
   it("a timeline maps time and the motion stays gone, playing, reversed or paused", () => {
@@ -94,7 +94,7 @@ describe("an animation reduced", () => {
     expect(still(Timeline.stagger(arriving, 0.5))).toEqual([1, 2, 3, 4]);
   });
 
-  it("a colour tween is its last stop", () => {
+  it("a color tween is its last stop", () => {
     const ramp = new ColorRamp(EASES.linear, [
       { at: 0, color: new ColorRgba(0, 0, 0) },
       { at: 1, color: new ColorRgba(255, 255, 255) },
@@ -131,10 +131,10 @@ describe("an animation reduced", () => {
     const reduced = life.reduced();
     expect([1, 2, 3, 4.99, 5, 9].map((t) => plain(reduced.at(t)))).toEqual(["", "line", "line", "line", "", ""]);
     // Gone once the exit would have ended, which a host is woken for, so it can drop the element then.
-    expect([1, 2, 3].map((t) => reduced.nextChange(t))).toEqual([2, 5, 5]);
-    const goneAt = reduced.nextChange(5);
+    expect([1, 2, 3].map((t) => reduced.validUntil(t))).toEqual([2, 5, 5]);
+    const goneAt = reduced.validUntil(5);
     expect([life.gone(goneAt - 0.01), life.gone(goneAt)]).toEqual([false, true]);
-    expect([goneAt, 9].map((t) => reduced.nextChange(t))).toEqual([Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
+    expect([goneAt, 9].map((t) => reduced.validUntil(t))).toEqual([Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]);
     expect(reduced.at(3)).toBe(element);
   });
 });
@@ -175,44 +175,44 @@ describe("a host under reduced motion", () => {
     for (const t of SAMPLES) {
       const drawn = drawnAt(view, t, REDUCED);
       expect(text(drawn)).toBe(first);
-      expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
+      expect(drawn.validUntil).toBe(Number.POSITIVE_INFINITY);
     }
     // The same view under full motion moves, so the sameness above is the preference's.
     expect(new Set(SAMPLES.map((t) => text(drawnAt(view, t, FULL)))).size).toBeGreaterThan(1);
-    expect(drawnAt(view, 0.5, FULL).nextChange).toBe(0.5);
+    expect(drawnAt(view, 0.5, FULL).validUntil).toBe(0.5);
   });
 
   it("draws the reduced view at the time the timeline maps to, fast, reversed, paused or sought, and is never told to look again", () => {
     for (const timeline of [Timeline.play(0, 3), Timeline.play(0, -1), Timeline.pause(Timeline.play(0), 1.2), Timeline.seek(Timeline.play(0), 0, 7)]) {
       const drawn = drawnAt(everything(), 4, REDUCED, timeline);
       expect(text(drawn)).toBe(text(drawnAt(everything(), Timeline.at(timeline, 4), REDUCED)));
-      expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
+      expect(drawn.validUntil).toBe(Number.POSITIVE_INFINITY);
     }
   });
 
   it("a view reduced still shows and drops content on time, and wakes for exactly that", () => {
     const life = lifecycle(new RichText("toast", { end: "" }), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(curve, 0)), key: "toast" }, 2).leave(5);
     expect([1, 3, 6].map((t) => text(drawnAt(life, t, REDUCED)).trim())).toEqual(["", "toast", ""]);
-    expect([1, 3, 8].map((t) => drawnAt(life, t, REDUCED).nextChange)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
+    expect([1, 3, 8].map((t) => drawnAt(life, t, REDUCED).validUntil)).toEqual([2, 5, Number.POSITIVE_INFINITY]);
   });
 
   it("the time itself reduced is still the time, so a clock mapped from it stays on time", () => {
     const elapsed = Animation.map(Animation.time(), (t) => new RichText(`elapsed ${Math.floor(t)}s`, { end: "" }));
     expect(text(drawnAt(elapsed, 3.5, REDUCED))).toBe("elapsed 3s");
-    expect(drawnAt(elapsed, 3.5, REDUCED).nextChange).toBe(3.5);
+    expect(drawnAt(elapsed, 3.5, REDUCED).validUntil).toBe(3.5);
   });
 
   it("a renderable drawn as it is reduces every animation drawn inside it for the host's time", () => {
     const view = builtForTheTime(1.3);
     const drawn = drawnAt(view, 1.3, REDUCED);
-    expect(drawn.nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(drawn.validUntil).toBe(Number.POSITIVE_INFINITY);
     expect(text(drawn)).toBe(text(drawnAt(builtForTheTime(8.9), 8.9, REDUCED)));
   });
 
   it("a frame of no cells reduced says nothing, so a host holding it wakes for nothing", () => {
-    const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), nextChange: () => 3, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
-    expect(drawnAt(empty, 0, REDUCED).nextChange).toBe(Number.POSITIVE_INFINITY);
-    expect(drawnAt(empty, 0, FULL).nextChange).toBe(3);
+    const empty: Animation<Renderable> = Animation.of({ at: () => new Group(), validUntil: () => 3, validFrom: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(new Group()) });
+    expect(drawnAt(empty, 0, REDUCED).validUntil).toBe(Number.POSITIVE_INFINITY);
+    expect(drawnAt(empty, 0, FULL).validUntil).toBe(3);
   });
 
   it.each([1, 60])("an App told once paints an animation view reduced, once and arming nothing, or at its rate beside a clock, every frame the reduced one at %s fps", (perSecond) => {
@@ -220,8 +220,8 @@ describe("a host under reduced motion", () => {
     const looping = Animation.continuous((t) => new RichText(`t=${t}`, { end: "" }));
     const view: Animation<Renderable> = Animation.of({
       at: (t) => (asked.push(`at ${t}`), looping.at(t)),
-      nextChange: (t) => looping.nextChange(t),
-      lastChange: (t) => looping.lastChange(t),
+      validUntil: (t) => looping.validUntil(t),
+      validFrom: (t) => looping.validFrom(t),
       reduced: () => (asked.push("reduced"), looping.reduced()),
     });
     const alone = fakeClock();
@@ -288,7 +288,7 @@ describe("the template animation functions under reduced motion", () => {
     expect(() => engine.compile(`{{ stepped 0.5 "#ff0000" 0.5 "#00ff00" }}`)({})).toThrow(/stepped needs a finite t, got NaN/);
   });
 
-  it("draw the first frame and the first colour at every moment", () => {
+  it("draw the first frame and the first color at every moment", () => {
     let frameTime = 0;
     const compiled = (reducedMotion: boolean) =>
       createEngine<RichText>(
@@ -324,9 +324,9 @@ describe("the terminal's own blink under reduced motion", () => {
 
   it("a console print writes no blink, whether from markup, the print's style or the console's own", () => {
     const cases: [string, (c: Console) => void, string | undefined, (c: Console) => void, string | undefined][] = [
-      ["markup", (c) => c.print("[blink]ALERT[/] [bold blink2]now[/]"), undefined, (c) => c.print("ALERT [bold]now[/]"), undefined],
+      ["markup", (c) => c.print("[blink]ALERT[/] [bold rapidBlink]now[/]"), undefined, (c) => c.print("ALERT [bold]now[/]"), undefined],
       ["print style", (c) => c.print("ALERT", { style: "blink bold" }), undefined, (c) => c.print("ALERT", { style: "bold" }), undefined],
-      ["console style", (c) => c.print("ALERT"), "blink2 red", (c) => c.print("ALERT"), "red"],
+      ["console style", (c) => c.print("ALERT"), "rapidBlink red", (c) => c.print("ALERT"), "red"],
     ];
     for (const [, blinking, blinkingStyle, steady, steadyStyle] of cases) {
       expect(written(true, blinking, blinkingStyle)).toBe(written(false, steady, steadyStyle));
@@ -374,7 +374,7 @@ describe("the terminal's own blink under reduced motion", () => {
     };
     const reduced = painted(true).filter((style) => style !== undefined);
     expect(reduced.length).toBeGreaterThan(0);
-    expect(reduced.some((style) => style.blink || style.blink2)).toBe(false);
+    expect(reduced.some((style) => style.blink || style.rapidBlink)).toBe(false);
     expect(painted(false).some((style) => style?.blink)).toBe(true);
   });
 
@@ -385,12 +385,12 @@ describe("the terminal's own blink under reduced motion", () => {
       return console;
     };
     const exports = (console: Console): string[] => [console.exportHtml({ clear: false }), console.exportSvg({ clear: false }), console.exportText()];
-    expect(exports(recorded(true, "[blink red]ALERT[/] [bold blink2]now[/]"))).toEqual(exports(recorded(false, "[red]ALERT[/] [bold]now[/]")));
+    expect(exports(recorded(true, "[blink red]ALERT[/] [bold rapidBlink]now[/]"))).toEqual(exports(recorded(false, "[red]ALERT[/] [bold]now[/]")));
     expect(recorded(false, "[blink]ALERT[/]").exportHtml()).not.toBe(recorded(false, "ALERT").exportHtml());
   });
 
   it("a style reduced keeps everything but its blink, and one that does not blink is itself", () => {
-    const blinking = Style.parse("bold blink blink2 red on blue link https://example.com");
+    const blinking = Style.parse("bold blink rapidBlink red on blue link https://example.com");
     expect(blinking.reduced().equals(Style.parse("bold red on blue link https://example.com"))).toBe(true);
     const steady = Style.parse("bold red");
     expect(steady.reduced()).toBe(steady);

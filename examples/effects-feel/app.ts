@@ -3,7 +3,7 @@
  * each effect, redrawn at the frame rate the run was given.
  *
  * THIS IS A DEMO: the library's effects (`src/renderables/effects.ts`) at
- * any frame rate, colour depth and theme, for judging how they feel.
+ * any frame rate, color depth and theme, for judging how they feel.
  *
  * [LAW:no-ambient-temporal-coupling] The `App` is the frame owner: it ticks
  * at the run's frame rate and hands each frame its `t`; a `Pace` turns that
@@ -14,7 +14,7 @@
  * one every two seconds run the same code.
  *
  * [LAW:dataflow-not-control-flow] The host is a value: the demo never asks
- * which terminal it is on, and the colour depth it is judged at arrives as
+ * which terminal it is on, and the color depth it is judged at arrives as
  * that host's environment.
  */
 
@@ -164,7 +164,7 @@ function spread(steps: Generator<void>, clock: Clock, budget: number): Unsubscri
 
 /**
  * Everything a theme decides: the subjects drawn in it, each loop settled on
- * their colours, the contrast each loop was measured at, and the styles of
+ * their colors, the contrast each loop was measured at, and the styles of
  * the lines around them. Built once per theme, so each loop's effect settles
  * its shares on the first frame and reads them on every frame after, until
  * the keys choose another theme.
@@ -212,10 +212,10 @@ function scene(theme: TerminalTheme, drawnAt: RenderOptions, curves: Settings["c
   );
   const transitions = each(TRANSITIONS, (name, s) => EFFECT_CATALOGUE.transitions[name](s, curves[name]));
 
-  // With no colour drawn there is no contrast to read: every effect is the
+  // With no color drawn there is no contrast to read: every effect is the
   // identity, and every cell is the terminal's own ink on its own ground.
   const none = drawnWith.colorSystem === null;
-  const contrast = Object.fromEntries(LOOPS.map((loop) => [loop, none ? "no colour drawn" : "measuring contrast…"])) as Record<LoopName, string>;
+  const contrast = Object.fromEntries(LOOPS.map((loop) => [loop, none ? "no color drawn" : "measuring contrast…"])) as Record<LoopName, string>;
   const ratio = (r: number): string => `${r.toFixed(2)}:1`;
   function* measure(): Generator<void> {
     if (none) return;
@@ -308,7 +308,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
   // [LAW:no-silent-failure] A run judged at one depth and drawn at another is
   // a run judged on nothing; the heading names `settings.depth` because this
-  // is what makes it true. (The first sign-off ran at 16 colours this way.)
+  // is what makes it true. (The first sign-off ran at 16 colors this way.)
   const resolved = drawnWith.colorSystem;
   if (resolved !== depthDrawn(settings.depth)) {
     const name = resolved === null ? "none" : resolved === undefined ? "nothing" : ColorDepth[resolved];

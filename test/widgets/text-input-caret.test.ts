@@ -212,7 +212,7 @@ describe("TextInput caret blink", () => {
     input.focus(0);
     const segments = [...render(input, { maxWidth: 10 })];
     expect(segments.some((s) => s.style?.reverse === true)).toBe(true);
-    expect(Segment.nextChange(segments)).toBe(0.5);
+    expect(Segment.validUntil(segments)).toBe(0.5);
     expect(segments).toEqual([...render(input, { maxWidth: 10, frame: { time: 0, host: {} } })]);
   });
 });

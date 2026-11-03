@@ -8,8 +8,8 @@ import {
   contrastFor,
   contrastRatio,
   ensureContrast,
-  ensureDrawn,
-  drawnColour,
+  ensureMinimumDelta,
+  compositedColor,
   relativeLuminance,
 } from "../../src/themes/colorMath.js";
 import { STANDARD_TABLE, SURFACE_BLACK, TerminalTheme, WINDOWS_TABLE } from "../../src/core/color.js";
@@ -203,7 +203,7 @@ describe("ensureContrast", () => {
 
 describe("a translucent background is measured as the terminal draws it", () => {
   // The SGR writer composites a translucent background over black before it
-  // draws it; the text chosen for it must clear the floor against THAT colour.
+  // draws it; the text chosen for it must clear the floor against THAT color.
   const bg = parseRgbaHex("037a8eeb");
   const flat = bg.compositeOver(new ColorRgba(0, 0, 0));
   const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
@@ -259,7 +259,7 @@ describe("a translucent background is measured as the terminal draws it", () => 
   });
 });
 
-describe("ensureContrast drawn at 256 colours", () => {
+describe("ensureContrast drawn at 256 colors", () => {
   const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
   // Every grey and three hues of text over backgrounds across the range.
   const pairs: [ColorRgba, ColorRgba][] = [];
@@ -282,7 +282,7 @@ describe("ensureContrast drawn at 256 colours", () => {
     }
   });
 
-  it("a colour that already clears the floor once drawn is the truecolor answer, unchanged", () => {
+  it("a color that already clears the floor once drawn is the truecolor answer, unchanged", () => {
     for (const [fg, bg] of pairs) {
       const truecolor = ensureContrast(fg, bg, 4.5);
       if (contrastRatio(drawn(truecolor), drawn(bg)) < 4.5) continue;
@@ -297,7 +297,7 @@ describe("ensureContrast drawn at 256 colours", () => {
     expect(contrastRatio(drawn(ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT)), drawn(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("at ansi a truecolor answer stands wherever the table's nominal colours still read it", () => {
+  it("at ansi a truecolor answer stands wherever the table's nominal colors still read it", () => {
     const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
     let stood = 0;
     for (const [fg, bg] of pairs) {
@@ -312,7 +312,7 @@ describe("ensureContrast drawn at 256 colours", () => {
 
 describe("ensureContrast drawn at ansi", () => {
   // No ratio exists at ansi, but text on its background's index is the
-  // background's colour in every terminal theme.
+  // background's color in every terminal theme.
   it("text never lands on its background's index", () => {
     const failures: string[] = [];
     let collided = 0;
@@ -329,7 +329,7 @@ describe("ensureContrast drawn at ansi", () => {
     expect(failures).toEqual([]);
   });
 
-  it("a replacement reads against its ground's nominal colour, not merely another index", () => {
+  it("a replacement reads against its ground's nominal color, not merely another index", () => {
     // Green on teal was the nearest-other-index answer: 1.08:1.
     const bg = new ColorRgba(0x1d, 0xcd, 0x56);
     const fg = new ColorRgba(0x00, 0x4f, 0x44);
@@ -339,7 +339,7 @@ describe("ensureContrast drawn at ansi", () => {
     expect(contrastRatio(nominal(chosen), nominal(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  // The terminal draws each index in its own theme's colour, so the colour
+  // The terminal draws each index in its own theme's color, so the color
   // the writer's index is shown as is the one to measure.
   const shownIn = (terminal: TerminalTheme) => (c: ColorRgba) =>
     ColorSpec.fromRgba(c).downgrade(ColorDepth.STANDARD).getTruecolor(terminal);
@@ -356,17 +356,17 @@ describe("ensureContrast drawn at ansi", () => {
     expect(contrastRatio(shown(chosen), shown(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("a replacement is the readable index the terminal draws nearest the author's colour", () => {
+  it("a replacement is the readable index the terminal draws nearest the author's color", () => {
     const { ROSE_PINE_DAWN } = terminalThemes;
     const shown = shownIn(ROSE_PINE_DAWN);
     // Dawn draws black light, so the text must be dark: the slide toward white
     // the truecolor ground asks for is the wrong way here, and the pick is
-    // ranked on the colour the author chose. Its dark entries include
+    // ranked on the color the author chose. Its dark entries include
     // green #286983 (a teal) and white #575279 (a dusk violet).
     const onBlack = (fg: ColorRgba) => shown(ensureContrast(fg, black, 4.5, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN)).hex;
     expect(onBlack(new ColorRgba(0x33, 0x00, 0xff))).toBe("#575279");
     expect(onBlack(new ColorRgba(0x33, 0x66, 0x33))).toBe("#286983");
-    // Translucent text is the author's colour over the author's ground (a
+    // Translucent text is the author's color over the author's ground (a
     // navy here), not over the light shade Dawn draws that ground in.
     expect(onBlack(new ColorRgba(0x00, 0x00, 0xff, 0.5))).toBe("#286983");
   });
@@ -417,7 +417,7 @@ describe("ensureContrast drawn at WINDOWS", () => {
     expect(failures).toEqual([]);
   });
 
-  it("with no terminal named, the floor holds in the colours the console draws", () => {
+  it("with no terminal named, the floor holds in the colors the console draws", () => {
     // Measured in the VGA sixteen, grey on navy passed at 4:1; the console
     // draws that pair at 1.81:1.
     const shown = (c: ColorRgba) => WINDOWS_TABLE.get(WINDOWS_TABLE.match(c));
@@ -427,7 +427,7 @@ describe("ensureContrast drawn at WINDOWS", () => {
   });
 });
 
-describe("ensureDrawn", () => {
+describe("ensureMinimumDelta", () => {
   const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
   const ground = new ColorRgba(0x10, 0x70, 0x30);
   // A floor that is not text on a background: stand at least ΔE .2 off
@@ -438,65 +438,65 @@ describe("ensureDrawn", () => {
   const chosen = new ColorRgba(0x00, 0x30, 0x70);
 
   it("truecolor draws what was chosen: a refusal there has no replacement", () => {
-    expect(ensureDrawn(chosen, ColorDepth.TRUECOLOR, () => true)?.hex).toBe(chosen.hex);
-    expect(ensureDrawn(chosen, ColorDepth.TRUECOLOR, () => false)).toBeUndefined();
+    expect(ensureMinimumDelta(chosen, ColorDepth.TRUECOLOR, () => true)?.hex).toBe(chosen.hex);
+    expect(ensureMinimumDelta(chosen, ColorDepth.TRUECOLOR, () => false)).toBeUndefined();
   });
 
-  it("drawnColour is the colour accept is shown: composited, then rounded", () => {
+  it("compositedColor is the color accept is shown: composited, then rounded", () => {
     const translucent = new ColorRgba(0x10, 0x70, 0x30, 0.5);
     const flat = translucent.compositeOver(black);
-    expect(drawnColour(translucent, ColorDepth.TRUECOLOR).hex).toBe(flat.hex);
-    expect(drawnColour(translucent, ColorDepth.EIGHT_BIT).hex).toBe(drawn(flat).hex);
+    expect(compositedColor(translucent, ColorDepth.TRUECOLOR).hex).toBe(flat.hex);
+    expect(compositedColor(translucent, ColorDepth.EIGHT_BIT).hex).toBe(drawn(flat).hex);
     let shown: ColorRgba | undefined;
-    ensureDrawn(translucent, ColorDepth.EIGHT_BIT, (candidate) => ((shown = candidate), true));
-    expect(shown?.hex).toBe(drawnColour(translucent, ColorDepth.EIGHT_BIT).hex);
+    ensureMinimumDelta(translucent, ColorDepth.EIGHT_BIT, (candidate) => ((shown = candidate), true));
+    expect(shown?.hex).toBe(compositedColor(translucent, ColorDepth.EIGHT_BIT).hex);
   });
 
-  it("at ansi the floor holds on the table's nominal colours", () => {
+  it("at ansi the floor holds on the table's nominal colors", () => {
     const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
     const apartAtAnsi = (candidate: ColorRgba, shown: (c: ColorRgba) => ColorRgba) =>
       STANDARD_TABLE.match(candidate) !== STANDARD_TABLE.match(shown(ground));
     const onGround = new ColorRgba(0x10, 0x60, 0x20);
     expect(STANDARD_TABLE.match(onGround)).toBe(STANDARD_TABLE.match(ground));
-    const repaired = ensureDrawn(onGround, ColorDepth.STANDARD, apartAtAnsi)!;
+    const repaired = ensureMinimumDelta(onGround, ColorDepth.STANDARD, apartAtAnsi)!;
     expect(nominal(repaired).hex).toBe(repaired.hex);
     expect(STANDARD_TABLE.match(repaired)).not.toBe(STANDARD_TABLE.match(ground));
   });
 
-  it("at ansi a named terminal's own colour is what accept is shown, and a repair is written as its index", () => {
+  it("at ansi a named terminal's own color is what accept is shown, and a repair is written as its index", () => {
     const { ROSE_PINE_DAWN } = terminalThemes;
     const white = new ColorRgba(0xff, 0xff, 0xff);
     // Nominal bright white, which Rosé Pine Dawn draws dark.
-    expect(drawnColour(white, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN).hex).toBe(ROSE_PINE_DAWN.ansiColors.get(15).hex);
+    expect(compositedColor(white, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN).hex).toBe(ROSE_PINE_DAWN.ansiColors.get(15).hex);
     const light = (candidate: ColorRgba) => relativeLuminance(candidate) > 0.5;
-    const repaired = ensureDrawn(white, ColorDepth.STANDARD, light, SURFACE_BLACK, ROSE_PINE_DAWN)!;
-    expect(light(drawnColour(repaired, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN))).toBe(true);
+    const repaired = ensureMinimumDelta(white, ColorDepth.STANDARD, light, SURFACE_BLACK, ROSE_PINE_DAWN)!;
+    expect(light(compositedColor(repaired, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN))).toBe(true);
     expect(STANDARD_TABLE.get(STANDARD_TABLE.match(repaired)).hex).toBe(repaired.hex);
   });
 
-  it("keeps the chosen colour when its drawn colour is accepted", () => {
+  it("keeps the chosen color when its drawn color is accepted", () => {
     const far = new ColorRgba(0xf0, 0xf0, 0xf0);
-    expect(ensureDrawn(far, ColorDepth.EIGHT_BIT, apart)?.hex).toBe(far.hex);
+    expect(ensureMinimumDelta(far, ColorDepth.EIGHT_BIT, apart)?.hex).toBe(far.hex);
   });
 
   it("repairs a rounding the floor refuses with the nearest entry it accepts, which draws as itself", () => {
     expect(apart(drawn(chosen), drawn)).toBe(false);
-    const repaired = ensureDrawn(chosen, ColorDepth.EIGHT_BIT, apart)!;
+    const repaired = ensureMinimumDelta(chosen, ColorDepth.EIGHT_BIT, apart)!;
     expect(drawn(repaired).hex).toBe(repaired.hex);
     expect(apart(repaired, drawn)).toBe(true);
     expect(Oklch.fromRgba(repaired).deltaE(Oklch.fromRgba(chosen))).toBeLessThan(0.2);
   });
 
-  it("returns the colour the floor was measured on: composited opaque over the substrate", () => {
+  it("returns the color the floor was measured on: composited opaque over the substrate", () => {
     const translucent = new ColorRgba(0xf0, 0xf0, 0xf0, 0.5);
     for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
-      const out = ensureDrawn(translucent, depth, () => true)!;
+      const out = ensureMinimumDelta(translucent, depth, () => true)!;
       expect(out.alpha).toBe(1);
       expect(out.hex).toBe(translucent.compositeOver(black).hex);
     }
   });
 
-  it("is undefined when no drawn colour is accepted", () => {
-    expect(ensureDrawn(chosen, ColorDepth.EIGHT_BIT, () => false)).toBeUndefined();
+  it("is undefined when no drawn color is accepted", () => {
+    expect(ensureMinimumDelta(chosen, ColorDepth.EIGHT_BIT, () => false)).toBeUndefined();
   });
 });

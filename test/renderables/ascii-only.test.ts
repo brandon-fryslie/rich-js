@@ -26,7 +26,7 @@ import {
   Align,
   Animation,
   BarColumn,
-  JOINERS,
+  SEPARATOR_STYLES,
   Columns,
   Constrain,
   Effected,
@@ -36,8 +36,8 @@ import {
   FlexStrip,
   FrameSequence,
   gradientSeam,
-  CAPS,
-  CellJoiner,
+  END_CAPS,
+  CellSeparator,
   Group,
   JSONRenderable,
   Layout,
@@ -87,10 +87,10 @@ const ROWS: Record<string, Row> = {
   Strip: {
     draws: "glyphs",
     make: () => new Group(
-      new Strip(cells(), JOINERS.powerline),
-      new Strip(cells(), JOINERS.capsule),
-      new Strip(cells(), JOINERS.plain),
-      new Strip(cells(), new CellJoiner(gradientSeam(), CAPS.bubble)),
+      new Strip(cells(), SEPARATOR_STYLES.powerline),
+      new Strip(cells(), SEPARATOR_STYLES.capsule),
+      new Strip(cells(), SEPARATOR_STYLES.plain),
+      new Strip(cells(), new CellSeparator(gradientSeam(), END_CAPS.bubble)),
     ),
   },
   Emoji: { draws: "unrendered", why: "draws the emoji its caller names — the caller's content, not a glyph the library chose" },
@@ -134,7 +134,7 @@ const ROWS: Record<string, Row> = {
     },
   },
   Columns: { draws: "glyphs", make: () => new Columns([panel(), panel()]) },
-  FlexStrip: { draws: "glyphs", make: () => new FlexStrip(cells(), { joiner: JOINERS.powerline }) },
+  FlexStrip: { draws: "glyphs", make: () => new FlexStrip(cells(), { separator: SEPARATOR_STYLES.powerline }) },
   Progress: {
     draws: "glyphs",
     make: () => {

@@ -5,11 +5,11 @@ exampleContext: |
   const primary = new ColorRgba(97, 175, 239);
 ---
 
-# Theme Transposition
+# Theme Adjustment
 
-Treat a color theme like a piece of music. A melody can be **transposed** to a different key — every note shifts by the same interval, so the tune is preserved but its tonal center moves. rich-js can do the same to a palette: rotate every color by a fixed amount in a perceptually-uniform space and you get the *same theme* in a different key. Transpose the built-in themes and you have effectively unlimited themes that still feel coherent.
+Treat a color theme like a piece of music. A melody can be **adjusted** to a different key — every note shifts by the same interval, so the tune is preserved but its tonal center moves. rich-js can do the same to a palette: rotate every color by a fixed amount in a perceptually-uniform space and you get the *same theme* in a different key. Adjust the built-in themes and you have effectively unlimited themes that still feel coherent.
 
-The machinery has three layers: the **OKLCH** color space (the substrate), the **`ThemeKey`** transform (the "key signature"), and **`transposePalette`** (applying a key to a whole palette). A musical helper, **`themeKeyForRoot`**, lets you pick a destination color instead of an interval.
+The machinery has three layers: the **OKLCH** color space (the substrate), the **`ColorAdjustment`** transform (the "key signature"), and **`adjustPalette`** (applying a key to a whole palette). A musical helper, **`adjustmentForRoot`**, lets you pick a destination color instead of an interval.
 
 ## OKLCH — the perceptual substrate
 
@@ -29,12 +29,12 @@ console.print(`[on ${back.hex}]        [/] ${back.hex}`);
 
 `Oklch` is immutable. `toRgba()` is the normalization boundary: it clamps lightness into `[0,1]`, clamps chroma to `≥ 0`, and reduces chroma by bisection to land inside the sRGB gamut — so a vivid hue desaturates near black/white rather than producing an invalid color, with hue preserved wherever the color is chromatic. (At zero chroma, or at the lightness extremes where everything collapses to black/white, hue is moot and pinned to 0.)
 
-## ThemeKey — the key signature
+## ColorAdjustment — the key signature
 
-A `ThemeKey` is the transform applied to each color. It is **data**, not code:
+A `ColorAdjustment` is the transform applied to each color. It is **data**, not code:
 
 ```typescript shape
-interface ThemeKey {
+interface ColorAdjustment {
   hueShift: number;        // degrees to rotate hue
   chromaScale: number;     // multiply chroma: 0 = grayscale, 1 = identity, >1 = more saturated
   lightnessScale: number;  // multiply lightness: 1 = identity (negative values flip the axis)
@@ -64,14 +64,14 @@ const rotated = Oklch.fromRgba(someColor).applyKey({
 console.print(`[on ${someColor.hex}]      [/] ${someColor.hex}  →  [on ${rotated.hex}]      [/] ${rotated.hex}`);
 ```
 
-## Mixing two colours
+## Mixing two colors
 
-`a.mix(b, t)` is the colour `t` of the way from `a` toward `b` in OKLCH: every axis moves by the same `t`, hue along the shorter arc, and a grey endpoint adopts the other's hue instead of rotating from 0°.
+`a.mix(b, t)` is the color `t` of the way from `a` toward `b` in OKLCH: every axis moves by the same `t`, hue along the shorter arc, and a grey endpoint adopts the other's hue instead of rotating from 0°.
 
 When the axes should move by different amounts, `mixAxes` takes one weight per axis, each in [0, 1] and all four required:
 
 ```ts
-// Most of the hue's colour, little of its lightness, the hue's own angle,
+// Most of the hue's color, little of its lightness, the hue's own angle,
 // the surface's opacity: a tint that stays near the surface it decorates.
 const tint = Oklch.fromRgba(surface)
   .mixAxes(Oklch.fromRgba(primary), { l: 0.2, c: 0.8, h: 1, alpha: 0 })
@@ -80,15 +80,15 @@ const tint = Oklch.fromRgba(surface)
 console.print(`[on ${surface.hex}]      [/] surface  [on ${tint.hex}]      [/] tint  [on ${primary.hex}]      [/] primary`);
 ```
 
-`mix(b, t)` is `mixAxes(b, { l: t, c: t, h: t, alpha: t })`. A weak `h` beside a strong `c` keeps the starting colour's hue at high chroma. Only a truly achromatic start adopts the target's hue, so to land on the target's hue from a near-grey, pass `h: 1`.
+`mix(b, t)` is `mixAxes(b, { l: t, c: t, h: t, alpha: t })`. A weak `h` beside a strong `c` keeps the starting color's hue at high chroma. Only a truly achromatic start adopts the target's hue, so to land on the target's hue from a near-grey, pass `h: 1`.
 
-`a.deltaE(b)` is the perceptual distance between two colours, ΔE_OK: Euclidean distance in OKLab. Around 0.02 is the smallest difference the eye resolves.
+`a.deltaE(b)` is the perceptual distance between two colors, ΔE_OK: Euclidean distance in OKLab. Around 0.02 is the smallest difference the eye resolves.
 
 ## Every palette has every role
 
-A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or a transposition of any of them. `PaletteRole` is the type naming them, and `get` on one is a colour, never `undefined`. Any other string, a misspelt role or one only known at run time, reads `ColorRgba | undefined`, so the compiler refuses it where a colour is required.
+A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or an adjustment of any of them. `PaletteRole` is the type naming them, and `get` on one is a color, never `undefined`. Any other string, a misspelt role or one only known at run time, reads `ColorRgba | undefined`, so the compiler refuses it where a color is required.
 
-`buildPalette` needs the eight base colours and derives the rest with Textual's formulas. Any other role you state keeps its colour, and what is derived from it follows. A stated `text-*` is the exception: it is moved as far as it must go to read on its `*-muted`.
+`buildPalette` needs the eight base colors and derives the rest with Textual's formulas. Any other role you state keeps its color, and what is derived from it follows. A stated `text-*` is the exception: it is moved as far as it must go to read on its `*-muted`.
 
 ```ts silent
 import { buildPalette, parseRgbHex } from "@promptctl/rich-js";
@@ -109,26 +109,26 @@ palette.get("footer-background"); // the stated panel
 palette.get("surface-lighten-2"); // derived
 ```
 
-`new Palette(name, dark, roles)` takes a colour for every role, so a palette with one missing does not compile; `palette.mapRoles` makes such a record from an existing palette.
+`new Palette(name, dark, roles)` takes a color for every role, so a palette with one missing does not compile; `palette.mapRoles` makes such a record from an existing palette.
 
-## transposePalette — a whole theme at once
+## adjustPalette — a whole theme at once
 
-`transposePalette(palette, key, name?)` returns a new `Palette` with every color transposed. It is pure, and `IDENTITY` is byte-exact (no lossy round-trip):
+`adjustPalette(palette, key, name?)` returns a new `Palette` with every color adjusted. It is pure, and `IDENTITY` is byte-exact (no lossy round-trip):
 
 ```typescript
-import { getThemePalette, transposePalette } from "@promptctl/rich-js";
+import { getThemePalette, adjustPalette } from "@promptctl/rich-js";
 
 const gruvbox = getThemePalette("gruvbox")!;
 
 // the same theme, rotated 120° around the hue wheel
-const shifted = transposePalette(
+const shifted = adjustPalette(
   gruvbox,
   { hueShift: 120, chromaScale: 1, lightnessScale: 1, lightnessShift: 0 },
   "gruvbox +120°",
 );
 
 // a free light variant of a dark theme
-const light = transposePalette(gruvbox, INVERT_LIGHTNESS, "gruvbox-light");
+const light = adjustPalette(gruvbox, INVERT_LIGHTNESS, "gruvbox-light");
 
 const roles = ["background", "surface", "primary", "secondary", "accent", "error", "success", "warning"];
 for (const palette of [gruvbox, shifted, light]) {
@@ -137,37 +137,37 @@ for (const palette of [gruvbox, shifted, light]) {
 }
 ```
 
-The resulting palette's `dark` flag is derived from the **actual lightness of the transposed background** (`background` var's OKLCH `L < 0.5`), not from the key — so it is honest under any transform.
+The resulting palette's `dark` flag is derived from the **actual lightness of the adjusted background** (`background` var's OKLCH `L < 0.5`), not from the key — so it is honest under any transform.
 
-## Semantic anchors — meaning that survives transposition
+## Semantic anchors — meaning that survives adjustment
 
-Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **anchored** — their hue is held while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling). The family goes with them: `error-muted`, and the `text-error` and `on-error` drawn on it.
+Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **hue-locked** — their hue is fixed while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling). The family goes with them: `error-muted`, and the `text-error` and `on-error` drawn on it.
 
 ```typescript
-import { isAnchored, ANCHORED_ROOTS } from "@promptctl/rich-js";
+import { isHueLocked, HUE_LOCKED_ROOTS } from "@promptctl/rich-js";
 
-console.print(ANCHORED_ROOTS);                // a ReadonlySet
-console.print(isAnchored("error"));
-console.print(isAnchored("error-darken-1")); // variants of an anchored root anchor too
-console.print(isAnchored("text-error"));     // so does what is drawn on one
-console.print(isAnchored("primary"));        // decorative, free to rotate
+console.print(HUE_LOCKED_ROOTS);                // a ReadonlySet
+console.print(isHueLocked("error"));
+console.print(isHueLocked("error-darken-1")); // variants of a hue-locked root lock too
+console.print(isHueLocked("text-error"));     // so does what is drawn on one
+console.print(isHueLocked("primary"));        // decorative, free to rotate
 ```
 
 This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
 
-## themeKeyForRoot — choose a destination, not an interval
+## adjustmentForRoot — choose a destination, not an interval
 
-Thinking in raw `hueShift` degrees is like transposing by counting semitones. Usually you'd rather say "play this in the key of teal." `themeKeyForRoot(palette, tonicVar, targetHueDeg)` builds the `ThemeKey` that lands a chosen **tonic** var on a target hue:
+Thinking in raw `hueShift` degrees is like adjusting by counting semitones. Usually you'd rather say "play this in the key of teal." `adjustmentForRoot(palette, tonicVar, targetHueDeg)` builds the `ColorAdjustment` that lands a chosen **tonic** var on a target hue:
 
 ```typescript
-import { getThemePalette, themeKeyForRoot, transposePalette } from "@promptctl/rich-js";
+import { getThemePalette, adjustmentForRoot, adjustPalette } from "@promptctl/rich-js";
 
 const gruvbox = getThemePalette("gruvbox")!;
 
 // rotate so the theme's `primary` color sits at 200° (a teal), everything else
 // following by the same interval; error/success/warning still hold
-const key = themeKeyForRoot(gruvbox, "primary", 200);
-const teal = transposePalette(gruvbox, key, "gruvbox in teal");
+const key = adjustmentForRoot(gruvbox, "primary", 200);
+const teal = adjustPalette(gruvbox, key, "gruvbox in teal");
 
 console.print(key);
 for (const palette of [gruvbox, teal]) {
@@ -186,4 +186,4 @@ The repo ships a terminal explorer for all of this. Run it from a checkout:
 just oklsh
 ```
 
-A full-height theme list runs down the left; the right pane shows a live preview recolored from the transposed palette. Controls (root-hue offset, chroma, lightness, minimum contrast) compose into a `ThemeKey`, and the **root-hue offset is relative to whatever theme is selected** — hold an offset and page through every theme to see each one transposed by the same interval. Press `v` to toggle between a dense single-page showcase (which exercises ~125 of a theme's ~150 vars) and a focused app-dashboard mock.
+A full-height theme list runs down the left; the right pane shows a live preview recolored from the adjusted palette. Controls (root-hue offset, chroma, lightness, minimum contrast) compose into a `ColorAdjustment`, and the **root-hue offset is relative to whatever theme is selected** — hold an offset and page through every theme to see each one adjusted by the same interval. Press `v` to toggle between a dense single-page showcase (which exercises ~125 of a theme's ~150 vars) and a focused app-dashboard mock.

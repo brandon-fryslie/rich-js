@@ -2,7 +2,7 @@ import { STANDARD_TABLE } from "../../core/color.js";
 import { ANSI_SLOTS, type AnsiColorsData } from "./types.js";
 
 /**
- * The VGA colours a terminal draws with no theme of its own: Rich's
+ * The VGA colors a terminal draws with no theme of its own: Rich's
  * `DEFAULT_TERMINAL_THEME`, and what `textual-ansi` spells its palette in.
  */
 export const VGA_ANSI = Object.fromEntries(
@@ -10,7 +10,7 @@ export const VGA_ANSI = Object.fromEntries(
 ) as AnsiColorsData;
 
 /**
- * The ANSI tables Textual draws named colours in for a theme that has no
+ * The ANSI tables Textual draws named colors in for a theme that has no
  * terminal scheme of its own: `MONOKAI` under a dark theme and `ALABASTER`
  * under a light one (`ansi_theme_dark` / `ansi_theme_light` in Textual's
  * `app.py`, values from its `_ansi_theme.py`).

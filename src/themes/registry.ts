@@ -66,8 +66,8 @@ export interface ThemeBaseColors {
 export function getThemeBaseColors(name: ThemeName): ThemeBaseColors {
   const data = THEMES[name];
   const bg = parseHex(data.vars.background, data.name, "background");
-  // The colours `getThemePalette(name)` hands out for the same names: drawn on
-  // the theme's own background, as a Palette draws every colour it holds.
+  // The colors `getThemePalette(name)` hands out for the same names: drawn on
+  // the theme's own background, as a Palette draws every color it holds.
   const draw = drawnOn(data.name, bg);
   const base = (key: BaseRole): ColorRgba => draw(parseHex(data.vars[key], data.name, key));
   return {
@@ -96,7 +96,7 @@ function hydrate(data: ThemePaletteData): Palette {
   return buildPalette(data.name, data.dark, Object.fromEntries(stated) as StatedRoles);
 }
 
-// Theme data is authored, so a malformed colour names the theme and the key it
+// Theme data is authored, so a malformed color names the theme and the key it
 // sits under; the grammar itself is `parseHexColor`'s.
 function parseHex(value: string, theme: string, key: string): ColorRgba {
   try {
@@ -108,7 +108,7 @@ function parseHex(value: string, theme: string, key: string): ColorRgba {
 }
 
 /**
- * An ANSI slot is a colour a terminal paints, never a blend, so it takes no
+ * An ANSI slot is a color a terminal paints, never a blend, so it takes no
  * alpha: `flattenAlpha` leaves a STANDARD spec alone and would pass one through.
  */
 function parseOpaqueHex(value: string, theme: string, key: string): ColorRgba {

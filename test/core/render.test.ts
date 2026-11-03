@@ -172,7 +172,7 @@ describe("segmentsToString", () => {
     expect(segmentsToString(segs, { colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain" })).toBe("hi there");
   });
 
-  it("keeps OSC 8 hyperlinks when colorSystem is null — colour depth governs SGR only", () => {
+  it("keeps OSC 8 hyperlinks when colorSystem is null — color depth governs SGR only", () => {
     const linked = new Style({ link: "https://example.com", color: "red" });
     const segs = [new Segment("click me", linked)];
     const out = segmentsToString(segs, { colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain" });
@@ -181,7 +181,7 @@ describe("segmentsToString", () => {
     expect(out).toBe(segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false, textOrder: "plain" }).replace(/\x1b\[[0-9;]*m/g, ""));
   });
 
-  it("strips OSC 8 hyperlinks when hyperlinks is false, at any colour depth", () => {
+  it("strips OSC 8 hyperlinks when hyperlinks is false, at any color depth", () => {
     const linked = new Style({ link: "https://example.com", color: "red" });
     const segs = [new Segment("click me", linked)];
     expect(segmentsToString(segs, { colorSystem: null, hyperlinks: false, reducedMotion: false, textOrder: "plain" })).toBe("click me");

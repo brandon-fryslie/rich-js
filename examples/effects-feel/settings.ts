@@ -7,7 +7,7 @@
  */
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
-import { EASES, parseEase, type Curve } from "../../src/index.js";
+import { EASES, parseEasing, type Curve } from "../../src/index.js";
 import { DEPTHS, EFFECTS, EFFECT_DEFAULTS, GROUNDS, RUN_DEFAULTS, TRANSITIONS, type Depth, type EffectName, type Ground } from "./vocabulary.js";
 
 /** A curve as the flags spelled it, so the screen can say what is running. */
@@ -75,7 +75,7 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
       const easeName = flag(`${effect}-ease`) ?? d.ease;
       const curve: NamedCurve = {
         seconds: number(`--${effect}-${secondsWord(effect)}`, flag(`${effect}-${secondsWord(effect)}`), d.seconds, [0.05, 3600]),
-        ease: named(`--${effect}-ease`, parseEase, easeName),
+        ease: named(`--${effect}-ease`, parseEasing, easeName),
         easeName,
         swing: number(`--${effect}-swing`, flag(`${effect}-swing`), d.swing, [0, 1]),
       };

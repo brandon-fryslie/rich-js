@@ -4,7 +4,7 @@ import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { asCellCol } from "../../src/core/cells.js";
 import type { Anchor } from "../../src/core/anchor.js";
-import { render, type Presence, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { render, type Visibility, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Align } from "../../src/renderables/align.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Group } from "../../src/renderables/group.js";
@@ -184,15 +184,15 @@ describe("a cell's anchor names what its owner drew there, through every contain
   });
 });
 
-// `RenderOptions.onPresent` is how a runtime learns document order — the order
+// `RenderOptions.onVisibility` is how a runtime learns document order — the order
 // focus moves in — and no container is told about it either.
 describe("an owner is reported drawn as it draws, through every container", () => {
   for (const [name, wrap] of cases) {
     it(name, () => {
       const owner = new Owner(["abcdef", "ghi", "jklmnop"]);
-      const heard: [Renderable, Presence][] = [];
-      [...render(wrap(owner), { ...OPTIONS, onPresent: (drawn, presence) => heard.push([drawn, presence]) })];
-      expect(heard).toContainEqual([owner, "drawn"]);
+      const heard: [Renderable, Visibility][] = [];
+      [...render(wrap(owner), { ...OPTIONS, onVisibility: (drawn, visibility) => heard.push([drawn, visibility]) })];
+      expect(heard).toContainEqual([owner, "visible"]);
     });
   }
 });

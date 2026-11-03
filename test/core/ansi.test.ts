@@ -42,7 +42,7 @@ describe("decodeAnsi round trip", () => {
     });
   }
 
-  it("carries all three colour kinds through at their own depth", () => {
+  it("carries all three color kinds through at their own depth", () => {
     const bytes = renderToString(sample, { colorSystem: ColorDepth.TRUECOLOR, width: 200 });
     expect(bytes).toContain("38;2;58;123;213");
     expect(bytes).toContain("38;5;200");
@@ -50,8 +50,8 @@ describe("decodeAnsi round trip", () => {
   });
 });
 
-describe("decodeAnsi colours", () => {
-  it("keeps a standard colour as the theme slot it names", () => {
+describe("decodeAnsi colors", () => {
+  it("keeps a standard color as the theme slot it names", () => {
     const color = styleAt(decodeAnsi("\x1b[31mx"), 0).color!;
     expect(color.type).toBe(ColorDepth.STANDARD);
     expect(color.number).toBe(1);
@@ -79,7 +79,7 @@ describe("decodeAnsi colours", () => {
     expect(ink(theme(new ColorRgba(255, 90, 90)))).toEqual(new ColorRgba(255, 90, 90));
   });
 
-  it("names no colour for an extended colour cut short, and spends what it read", () => {
+  it("names no color for an extended color cut short, and spends what it read", () => {
     expect(styleAt(decodeAnsi("\x1b[38;5mx"), 0).isNull).toBe(true);
     expect(styleAt(decodeAnsi("\x1b[38;2;1;2mx"), 0).isNull).toBe(true);
     expect(styleAt(decodeAnsi("\x1b[38;9;1mx"), 0).bold).toBe(true);
@@ -158,14 +158,14 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("\x1b_Gf=100;AAAA\x1b\\hi\x1bPq#0;2\x1b\\!").plain).toBe("hi!");
   });
 
-  it("spends an underline colour's arguments without applying them", () => {
+  it("spends an underline color's arguments without applying them", () => {
     expect(decodeAnsi("\x1b[58;2;1;2;3mx").spans).toEqual([]);
     expect(decodeAnsi("\x1b[58;5;196;1mx").spans.length).toBe(1);
   });
 
   it("clears both underlines at 24 and both blinks at 25", () => {
     const text = decodeAnsi("\x1b[21;6ma\x1b[24;25mb");
-    expect([styleAt(text, 1).underline2, styleAt(text, 1).blink2]).toEqual([false, false]);
+    expect([styleAt(text, 1).doubleUnderline, styleAt(text, 1).rapidBlink]).toEqual([false, false]);
   });
 
   it("drops a string escape whose payload holds a stray ESC", () => {

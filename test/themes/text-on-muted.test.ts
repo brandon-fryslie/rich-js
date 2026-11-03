@@ -2,7 +2,7 @@
  * A palette's `text-*` is the foreground it offers for a `*-muted` ground, and
  * widgets draw it on `background` too, so it reads at WCAG AA (4.5:1) on both
  * in every bundled theme — both the authored palette and what `buildPalette`
- * derives from that palette's eight base colours.
+ * derives from that palette's eight base colors.
  */
 import { describe, it, expect } from "vitest";
 import { contrastRatio } from "../../src/core/color.js";

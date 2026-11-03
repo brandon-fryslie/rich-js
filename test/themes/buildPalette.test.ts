@@ -30,7 +30,7 @@ describe("buildPalette", () => {
     expect(p.get("error")).toEqual(TEST_BASE.error);
   });
 
-  it("draws a translucent base colour onto the background before deriving from it", () => {
+  it("draws a translucent base color onto the background before deriving from it", () => {
     // 10% black on white is a pale grey, which wants black text; over the
     // terminal's black it would be black and want white.
     const white = new ColorRgba(255, 255, 255);
@@ -39,7 +39,7 @@ describe("buildPalette", () => {
     expect(p.get("on-primary")).toEqual(new ColorRgba(0, 0, 0));
   });
 
-  it("refuses a fully transparent base colour: there is no colour to derive on-*, *-muted or text-* from", () => {
+  it("refuses a fully transparent base color: there is no color to derive on-*, *-muted or text-* from", () => {
     const white = new ColorRgba(255, 255, 255);
     expect(() => buildPalette("light", false, { ...TEST_BASE, background: white, primary: new ColorRgba(0, 0, 0, 0) }))
       .toThrow(/primary is fully transparent/);

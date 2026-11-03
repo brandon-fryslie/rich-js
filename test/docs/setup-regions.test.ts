@@ -79,7 +79,7 @@ describe("a card's setup", () => {
     expect(drawn(state.update({ selection: { anchor: state.doc.length } }).state)).toEqual(unfolded);
   });
 
-  it("shows every group, labelled and locked, unfolded", () => {
+  it("shows every group, labeled and locked, unfolded", () => {
     expect(drawn(editor("unfolded"))).toEqual([
       "1-1 imports",
       "1-1 rich-setup-line",

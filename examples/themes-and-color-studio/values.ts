@@ -1,4 +1,4 @@
-/** Sections 1–3: colour as a value — parsed, downgraded, and the colour system a terminal is detected to have. */
+/** Sections 1–3: color as a value — parsed, downgraded, and the color system a terminal is detected to have. */
 import {
   ANSI_COLOR_NAMES,
   blendRgb,
@@ -13,7 +13,7 @@ import {
   parseRgbaHex,
   parseRgbHex,
   resolveColorSystem,
-  resolveDestination,
+  resolveOutputTarget,
   RichText,
   STANDARD_TABLE,
   Style,
@@ -281,15 +281,15 @@ export function section3ColorSystem(out: Console): void {
   }
   out.print(blank());
 
-  // resolveDestination: the colour depth AND whether OSC 8 links are drawn.
-  // A hyperlink is not a colour — NO_COLOR keeps links; no TTY or TERM=dumb
+  // resolveOutputTarget: the color depth AND whether OSC 8 links are drawn.
+  // A hyperlink is not a color — NO_COLOR keeps links; no TTY or TERM=dumb
   // (a destination that takes no escapes) drops them.
-  out.print(dim("    resolveDestination(\"auto\", opts):"));
+  out.print(dim("    resolveOutputTarget(\"auto\", opts):"));
   for (const c of [
     ...cases,
     { label: "TTY + TERM=dumb            ", opts: { env: { TERM: "dumb" }, isTTY: true } },
   ]) {
-    const d = resolveDestination("auto", c.opts);
+    const d = resolveOutputTarget("auto", c.opts);
     const depth = d.colorSystem === null ? "null" : ColorDepth[d.colorSystem];
     out.print(new RichText(`      ${c.label}  →  ${depth}, links ${d.hyperlinks ? "on" : "off"}`));
   }

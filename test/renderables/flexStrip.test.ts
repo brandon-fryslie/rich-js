@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { arrows } from "../core/arrows.js";
-import { CAPS, CellJoiner, type JoinCell, type SeamForm } from "../../src/core/strip.js";
+import { END_CAPS, CellSeparator, type JoinCell, type SeamForm } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
@@ -63,7 +63,7 @@ describe("FlexStrip", () => {
     expect(lines.length).toBeGreaterThan(1);
   });
 
-  it("wraps with a powerline joiner: every line opens with the lead and closes with the tail", () => {
+  it("wraps with a powerline separator: every line opens with the lead and closes with the tail", () => {
     const items = [
       cell(" main ", "white on blue"),
       cell(" foo ", "white on cyan"),
@@ -72,7 +72,7 @@ describe("FlexStrip", () => {
     ];
     // powerline: start-cap = lead fg=item.bg no bg; end-cap = tail fg=item.bg no bg;
     // mid = glyph fg=L.bg bg=R.bg. Caps distinct from the arrow so each is seen.
-    const strip = new FlexStrip(items, { joiner: arrows({ lead: "(", tail: ")" }) });
+    const strip = new FlexStrip(items, { separator: arrows({ lead: "(", tail: ")" }) });
     // Each item is 6 wide. One item per line is (+6+) = 8; a second adds
     // >+6 = 7 → 15 > 14, so every line holds exactly one item.
     const lines = renderLines(strip, OPTS(14));
@@ -125,7 +125,7 @@ describe("FlexStrip seam index", () => {
     const pick: JoinCell = { glyph: { oneOf: ["a", "b", "c", "d"] }, fg: { role: "strip.separator" }, bg: "ground" };
     const seam: SeamForm = { seam: [pick] };
     const items = Array.from({ length: 12 }, (_, i) => cell(String.fromCharCode(65 + i)));
-    const strip = new FlexStrip(items, { joiner: new CellJoiner({ glyph: seam, ascii: seam }, CAPS.flat) });
+    const strip = new FlexStrip(items, { separator: new CellSeparator({ glyph: seam, ascii: seam }, END_CAPS.flat) });
     const [wide] = renderLines(strip, OPTS(200));
     // Each seam in a wrapped line sits between the same two letters, and no two seams share a pair,, so it
     // must read the same as in the unwrapped line.

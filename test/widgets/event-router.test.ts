@@ -5,8 +5,8 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import { ESCAPE_DELAY_MS, InputParser, keyName, type ScreenMouseEvent } from "../../src/host/input.js";
-import type { KeyEvent, WidgetMouseEvent, FrameSource } from "../../src/widgets/types.js";
+import { ESCAPE_DELAY_MS, InputParser, keyName, type TerminalMouseEvent } from "../../src/host/input.js";
+import type { WidgetKeyEvent, WidgetMouseEvent, FrameSource } from "../../src/widgets/types.js";
 import { parserFor } from "./feed.js";
 
 interface Rect {
@@ -19,7 +19,7 @@ interface Rect {
 // A widget that fills whatever rectangle the test places it in, one segment
 // per cell, so `paint` can lay its stamped cells onto a frame one by one.
 class StubWidget extends WidgetBase {
-  keyEvents: KeyEvent[] = [];
+  keyEvents: WidgetKeyEvent[] = [];
   mouseEvents: WidgetMouseEvent[] = [];
   hoverChanges: boolean[] = [];
   rect: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -42,7 +42,7 @@ class StubWidget extends WidgetBase {
     this.hoverChanges.push(value);
   }
 
-  override handleKey(event: KeyEvent): void {
+  override handleKey(event: WidgetKeyEvent): void {
     this.keyEvents.push(event);
   }
 
@@ -70,8 +70,8 @@ interface Harness {
   fm: DefaultFocusManager;
   widgets: StubWidget[];
   source: FrameSource;
-  keyEvents: KeyEvent[];
-  mouseEvents: ScreenMouseEvent[];
+  keyEvents: WidgetKeyEvent[];
+  mouseEvents: TerminalMouseEvent[];
   setWidgets: (widgets: StubWidget[]) => void;
 }
 
@@ -95,7 +95,7 @@ function paint(widgets: readonly StubWidget[]): Segment[][] {
 
 function makeHarness(initial: StubWidget[] = []): Harness {
   let widgets = initial;
-  const fm = new DefaultFocusManager({ present: () => widgets, onScreen: () => widgets, frameTime: () => 0 });
+  const fm = new DefaultFocusManager({ mounted: () => widgets, onScreen: () => widgets, frameTime: () => 0 });
   fm.settle();
 
   const source: FrameSource = {
@@ -110,8 +110,8 @@ function makeHarness(initial: StubWidget[] = []): Harness {
   const router = new EventRouter({ source, focusOnClick: false });
   const parser = parserFor(router);
 
-  const keyEvents: KeyEvent[] = [];
-  const mouseEvents: ScreenMouseEvent[] = [];
+  const keyEvents: WidgetKeyEvent[] = [];
+  const mouseEvents: TerminalMouseEvent[] = [];
   // High priority: this is an "observe every key" hook for assertions. If
   // it sat at normal priority, FocusManager's Tab handler would stop the
   // event first and the observer would miss Tab events. Note this also
@@ -609,7 +609,7 @@ describe("EventRouter — tab navigation", () => {
 
   it("a widget that stops the tab event prevents focus traversal", () => {
     class TabConsumer extends StubWidget {
-      override handleKey(event: KeyEvent): void {
+      override handleKey(event: WidgetKeyEvent): void {
         this.keyEvents.push(event);
         if (event.key === "tab") event.stop();
       }
@@ -643,7 +643,7 @@ describe("EventRouter — tab navigation", () => {
   it("normal-priority handlers run after the focused widget", () => {
     const order: string[] = [];
     class Observer extends StubWidget {
-      override handleKey(event: KeyEvent): void {
+      override handleKey(event: WidgetKeyEvent): void {
         super.handleKey(event);
         order.push("widget");
       }

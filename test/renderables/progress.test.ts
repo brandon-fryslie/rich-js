@@ -13,7 +13,7 @@ import {
 } from "../../src/renderables/progress.js";
 import { Console } from "../../src/core/console.js";
 import { Animation } from "../../src/core/animation.js";
-import { EASES, beat } from "../../src/core/easing.js";
+import { EASES, stepSequence } from "../../src/core/easing.js";
 import { tween } from "../../src/core/tween.js";
 import { Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
@@ -132,7 +132,7 @@ describe("A squeezed row narrows its bar before its description (rich-table-frxv
   // Python Rich 9d8f9a3: `TextColumn("{task.description}")` beside
   // `BarColumn(40)` at width 30. The bar's column may wrap and the
   // description's may not, so the bar alone gives up the nine cells:
-  // "download" whole and a bar of 21, as the reference draws it in colour.
+  // "download" whole and a bar of 21, as the reference draws it in color.
   it("keeps the description whole and draws the bar 21 cells wide", () => {
     const progress = new Progress(new TextColumn("{task.description}"), new BarColumn(40));
     progress.addTask("download", { total: 10 });
@@ -433,9 +433,9 @@ describe("TimeElapsedColumn and TimeRemainingColumn (rich-progress-jj5r)", () =>
   });
 });
 
-describe("the percentage and time columns' colours (rich-progress-rihd)", () => {
+describe("the percentage and time columns' colors (rich-progress-rihd)", () => {
   // Python Rich 9d8f9a3's `Console(color_system="truecolor").print(column.render(task), end="")`
-  // for a task of 5 of 10 added with `start=False`: three columns, three colours.
+  // for a task of 5 of 10 added with `start=False`: three columns, three colors.
   const task: Task = { ...fakeTask("x"), total: 10, completed: 5, startTime: undefined, elapsed: undefined };
   it.each([
     ["TaskProgressColumn", new TaskProgressColumn(), "\x1b[35m 50%\x1b[0m"],
@@ -605,7 +605,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
   const quiet = (): Console => new Console({ file: { write: () => {} } });
   const linear = { ease: EASES.linear, seconds: 1 };
   // One bar, 10 cells, as Progress draws it at the clock's now: with no
-  // colour, so the back is blank and every bar glyph drawn is the fill.
+  // color, so the back is blank and every bar glyph drawn is the fill.
   const bar = (progress: Progress, options: Partial<RenderOptions> = {}): Segment[] =>
     [...progress.render({ ...OPTS, frame: progress.frameNow(), maxWidth: 10, colorSystem: null, ...options })];
   const filled = (segments: Segment[]): number => cellsOf(segments, "━");
@@ -619,7 +619,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const id = progress.addTask("job", { total: 100 });
     progress.updateTask(id, { completed: 50 });
     expect(filled(bar(progress))).toBe(5);
-    expect(Segment.nextChange(bar(progress))).toBe(Number.POSITIVE_INFINITY);
+    expect(Segment.validUntil(bar(progress))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("eases from where it was to the new count over the timing, then holds there", () => {
@@ -640,9 +640,9 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const id = progress.addTask("job", { total: 100 });
     progress.updateTask(id, { completed: 60 });
     clock.advance(0.25);
-    expect(Segment.nextChange(bar(progress))).toBe(0.25);
+    expect(Segment.validUntil(bar(progress))).toBe(0.25);
     clock.advance(1);
-    expect(Segment.nextChange(bar(progress))).toBe(Number.POSITIVE_INFINITY);
+    expect(Segment.validUntil(bar(progress))).toBe(Number.POSITIVE_INFINITY);
   });
 
   // The platform's clock moves between any two reads of it, which a fake one
@@ -670,12 +670,12 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const pulse = inFrame(new ProgressBar({ total: 100, width: 10, pulse: true }), 0);
     expect(renderToString(progress, { width: 10, frame: progress.frameNow() }).trimEnd()).toBe(renderToString(pulse, { width: 10 }).trimEnd());
     const truecolor = { ...OPTS, maxWidth: 10, colorSystem: ColorDepth.TRUECOLOR };
-    expect(Segment.nextChange([...progress.render({ ...truecolor, frame: progress.frameNow() })])).toBe(Segment.nextChange([...pulse.render(truecolor)]));
+    expect(Segment.validUntil([...progress.render({ ...truecolor, frame: progress.frameNow() })])).toBe(Segment.validUntil([...pulse.render(truecolor)]));
   });
 
   // A back-out ease toward 95 passes 100 on its way: the bar is drawn full,
-  // in the colour of work not yet done.
-  it("colours an overshooting bar by the task's count, not the fill it draws", () => {
+  // in the color of work not yet done.
+  it("colors an overshooting bar by the task's count, not the fill it draws", () => {
     const backOut = { ease: EASES["back-out"], seconds: 1 };
     const clock = fakeClock(10);
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock, fill: backOut });
@@ -724,7 +724,7 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     const id = progress.addTask("job", { total: 100 });
     progress.updateTask(id, { completed: 70 });
     expect(filled(bar(progress, { reducedMotion: true }))).toBe(7);
-    expect(Segment.nextChange(bar(progress, { reducedMotion: true }))).toBe(Number.POSITIVE_INFINITY);
+    expect(Segment.validUntil(bar(progress, { reducedMotion: true }))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("leaves the bar at its count on the screen when stopped mid-ease", () => {
@@ -739,14 +739,14 @@ describe("a bar's fill eases toward its count (rich-animation-42lg.k1g)", () => 
     expect(written.join("")).toContain("━".repeat(10));
   });
 
-  // Rich colours a bar finished when its count reaches its total, whenever
+  // Rich colors a bar finished when its count reaches its total, whenever
   // and however it got there: an empty total, a task that reached it before
   // it started, a count taken back after it finished.
   it.each([
     { name: "an empty total", total: 0, start: true, steps: [], completed: 0, done: true },
     { name: "a count reached before the task started", total: 10, start: false, steps: [10, "start"], completed: 10, done: true },
     { name: "a count taken back after finishing", total: 10, start: true, steps: [10, 3], completed: 3, done: false },
-  ] as const)("colours the bar by its count for $name", ({ total, start, steps, completed, done }) => {
+  ] as const)("colors the bar by its count for $name", ({ total, start, steps, completed, done }) => {
     const progress = new Progress(new BarColumn(10), { console: quiet(), clock: fakeClock(10) });
     const id = progress.addTask("job", { total, start });
     for (const step of steps) step === "start" ? progress.startTask(id) : progress.updateTask(id, { completed: step });
@@ -799,8 +799,8 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
     for (const reducedMotion of [false, true]) {
       const segments = [...render(progress, { ...OPTS, maxWidth: 40, reducedMotion, frame: { time: 15.25, host } })];
       expect(segments.map((segment) => segment.text).join("").trim()).toBe("job 0:00:05");
-      expect(Segment.lastChange(segments)).toBeCloseTo(15, 9);
-      expect(Segment.nextChange(segments)).toBeCloseTo(16, 9);
+      expect(Segment.validFrom(segments)).toBeCloseTo(15, 9);
+      expect(Segment.validUntil(segments)).toBeCloseTo(16, 9);
     }
   });
 
@@ -819,11 +819,11 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
   it("in a frame of its own host, holds what it would draw", () => {
     const host = settable(0);
     const [a, b] = [new RichText("a"), new RichText("b")];
-    const progress = new Progress({ tableColumn: {}, render: () => Animation.map(beat([1, 1]), (i) => (i === 0 ? a : b)) }, { drawnBy: host });
+    const progress = new Progress({ tableColumn: {}, render: () => Animation.map(stepSequence([1, 1]), (i) => (i === 0 ? a : b)) }, { drawnBy: host });
     progress.addTask("job");
     const heard = (maxWidth: number): Renderable[] => {
       const out: Renderable[] = [];
-      [...render(progress, { ...OPTS, maxWidth, frame: { time: 1.5, host }, onPresent: (r) => out.push(r) })];
+      [...render(progress, { ...OPTS, maxWidth, frame: { time: 1.5, host }, onVisibility: (r) => out.push(r) })];
       return out;
     };
     expect(heard(40)).toContain(b);

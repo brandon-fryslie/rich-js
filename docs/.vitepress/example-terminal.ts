@@ -1,6 +1,6 @@
 /**
  * The terminal every docs example runs in, static or live, and the theme it is
- * drawn in under each site colour mode.
+ * drawn in under each site color mode.
  *
  * [LAW:one-source-of-truth] The build-time runner and the live terminal on the
  * page both read these, so an example's static output and its live run are the
@@ -28,5 +28,5 @@ export const EXAMPLE_TERMINAL = {
  */
 export const STATIC_RUN_LIMIT_MS = 5_000;
 
-/** The site's colour modes, each with the terminal theme its output is drawn in. */
+/** The site's color modes, each with the terminal theme its output is drawn in. */
 export const EXAMPLE_THEMES = { light: ATOM_ONE_LIGHT, dark: ATOM_ONE_DARK } as const;

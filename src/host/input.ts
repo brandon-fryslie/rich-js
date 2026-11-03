@@ -1,6 +1,6 @@
 /**
  * Terminal input: the bytes a terminal sends for keys and the pointer,
- * parsed into `KeyPress` and `ScreenMouseEvent` values, and the one name
+ * parsed into `KeyEvent` and `TerminalMouseEvent` values, and the one name
  * each key goes by.
  *
  * [LAW:single-enforcer] Escape-sequence parsing lives only here. `App` owns
@@ -44,7 +44,7 @@
 import type { InputChunks } from "./terminal-host.js";
 
 /** A key as the terminal reported it: plain data, with no say over who hears it. */
-export interface KeyPress {
+export interface KeyEvent {
   readonly key: string;
   /** The printable character the key types, or "" for a key that types none. */
   readonly character: string;
@@ -59,7 +59,7 @@ export interface KeyPress {
 // union would force every consumer to handle a case that never arrives.
 // `x`/`y` are the terminal cell under the pointer. One member per `type`, so
 // a check of `type` narrows the whole event.
-export type ScreenMouseEvent = { [T in MouseEventType]: MouseEventOf<T> }[MouseEventType];
+export type TerminalMouseEvent = { [T in MouseEventType]: MouseEventOf<T> }[MouseEventType];
 
 type MouseEventType =
   | "mouse_down"
@@ -87,7 +87,7 @@ interface MouseEventOf<Type extends string> {
  * `ctrl+c`, `shift+tab`, `meta+left`. Shift is not named on a character,
  * which already carries it: Shift+G is `G`.
  */
-export function keyName(press: KeyPress): string {
+export function keyName(press: KeyEvent): string {
   const typed = press.character !== "" && press.key !== "space";
   const modifiers = [
     press.ctrl ? "ctrl+" : "",
@@ -111,8 +111,8 @@ export interface TerminalReply {
 
 /** Where a parser delivers what it parses. */
 export interface InputSink {
-  key(press: KeyPress): void;
-  mouse(event: ScreenMouseEvent): void;
+  key(press: KeyEvent): void;
+  mouse(event: TerminalMouseEvent): void;
   reply(reply: TerminalReply): void;
 }
 
@@ -254,15 +254,15 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 
 // Result of attempting to consume one event from the head of the buffer.
 type ConsumeResult =
-  | { kind: "key"; bytes: number; event: KeyPress }
-  | { kind: "mouse"; bytes: number; event: ScreenMouseEvent }
+  | { kind: "key"; bytes: number; event: KeyEvent }
+  | { kind: "mouse"; bytes: number; event: TerminalMouseEvent }
   | { kind: "reply"; bytes: number; event: TerminalReply }
-  | { kind: "reissued"; bytes: number; event: KeyPress } // a sequence that opened no key, read by `reissue`
+  | { kind: "reissued"; bytes: number; event: KeyEvent } // a sequence that opened no key, read by `reissue`
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
 // Alt on a printable byte: the glyph the terminal sent, with meta held.
-function altKey(byte: number): KeyPress {
+function altKey(byte: number): KeyEvent {
   return { key: String.fromCharCode(byte), character: "", shift: false, ctrl: false, meta: true };
 }
 
@@ -279,7 +279,7 @@ function inSequence(byte: number): boolean {
 // terminal that double-sends it means, whatever followed it; `ESC [` / `ESC O`
 // alone is the whole key Alt+[ / Alt+O; any other ESC is Escape. What followed
 // the Escape is read again on its own.
-function reissue(sequence: Uint8Array): { bytes: number; event: KeyPress } {
+function reissue(sequence: Uint8Array): { bytes: number; event: KeyEvent } {
   if (sequence[1] === ESC) return { bytes: 2, event: ESCAPE };
   return sequence.length === 2 ? { bytes: 2, event: altKey(sequence[1]!) } : { bytes: 1, event: ESCAPE };
 }
@@ -329,7 +329,7 @@ export class InputParser {
     try {
       this.drainFully();
     } finally {
-      this.hold();
+      this.validity();
     }
   }
 
@@ -344,7 +344,7 @@ export class InputParser {
   // While a reply may arrive the delay settles no hold that may open one: a
   // reply split over a slow link may take longer than it. The wait's end arms
   // it afresh (`awaitReplies`), so what is held then gets the whole delay.
-  private hold(): void {
+  private validity(): void {
     this.cancelEscape();
     if (this.buffer[0] !== ESC) return;
     this.escTimer = setTimeout(() => {
@@ -363,7 +363,7 @@ export class InputParser {
    */
   awaitReplies(awaiting: boolean): void {
     this.awaiting = awaiting;
-    if (!awaiting && this.chunks === "split") this.hold();
+    if (!awaiting && this.chunks === "split") this.validity();
   }
 
   // [LAW:single-enforcer] The one reading of whether an unfinished control
@@ -663,19 +663,19 @@ const SCROLL = ["scroll_up", "scroll_down", "scroll_left", "scroll_right"] as co
 // A C0 control byte as the Ctrl chord that types it, with Alt held or not.
 // 0x00 is Ctrl+Space; 0x01–0x1a are Ctrl+A–Z; 0x1c–0x1f are Ctrl+\ ] ^ _.
 // The bytes SINGLE_BYTE_KEYS names (tab, enter, backspace, escape) never reach here.
-function ctrlKey(byte: number): KeyPress {
+function ctrlKey(byte: number): KeyEvent {
   const key = byte === 0 ? "space" : String.fromCharCode(byte + (byte <= 0x1a ? 0x60 : 0x40));
   return { key, character: "", shift: false, ctrl: true, meta: false };
 }
 
-const ESCAPE: KeyPress = { key: "escape", character: "", shift: false, ctrl: false, meta: false };
+const ESCAPE: KeyEvent = { key: "escape", character: "", shift: false, ctrl: false, meta: false };
 
 function decodeMouseFromCb(
   cb: number,
   x: number,
   y: number,
   isPress: boolean,
-): ScreenMouseEvent {
+): TerminalMouseEvent {
   const isMotion = (cb & 32) !== 0;
   const isScroll = (cb & 64) !== 0;
   const button = cb & 3;

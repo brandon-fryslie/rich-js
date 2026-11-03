@@ -56,7 +56,7 @@ export type PaletteRole =
   | "scrollbar-background-hover"
   | "scrollbar-corner-color";
 
-/** A colour for each role: what proves a palette complete. */
+/** A color for each role: what proves a palette complete. */
 export type PaletteRoles = Readonly<Record<PaletteRole, ColorRgba>>;
 
 /**
@@ -69,20 +69,20 @@ export type PaletteRoles = Readonly<Record<PaletteRole, ColorRgba>>;
  *
  * Storage is uniformly ColorRgba; consumers that load from hex JSON
  * parse to ColorRgba at load time. `get` is a bare lookup — turning an
- * author-written *reference* (a name, or a `#RRGGBB` literal) into a colour
+ * author-written *reference* (a name, or a `#RRGGBB` literal) into a color
  * is `resolveColorRef`'s job in `colorRef.ts`, so a Palette never has to
  * know about the syntax callers write.
  *
- * Every colour a Palette hands out is opaque or fully transparent. A theme's translucent variable
+ * Every color a Palette hands out is opaque or fully transparent. A theme's translucent variable
  * (Textual's `boost`, a hover overlay) is a tint meant for that theme's own
- * background, and a colour leaving the palette no longer knows which
+ * background, and a color leaving the palette no longer knows which
  * background that was: the SGR writer would composite it over the terminal's
  * black, which is not the theme's background, and draw a tint the theme never
  * meant.
  * So it is drawn onto `background` here, once, and the writer, the exporters
- * and the contrast choosers all read the colour it has there. On any other
- * surface it keeps that colour: the tint does not follow what is under it.
- * The exception is a fully transparent colour, Textual's "no background": it
+ * and the contrast choosers all read the color it has there. On any other
+ * surface it keeps that color: the tint does not follow what is under it.
+ * The exception is a fully transparent color, Textual's "no background": it
  * draws nothing on any surface, so it needs none and is handed out as it is,
  * and a `Style` reads it as no background at all.
  *
@@ -97,10 +97,10 @@ export class Palette {
     this.name = name;
     this.dark = dark;
     // [LAW:single-enforcer] Every palette is built through here, so this is
-    // where "a palette colour is opaque or draws nothing" holds.
+    // where "a palette color is opaque or draws nothing" holds.
     const draw = drawnOn(name, roles.background);
     this.vars = new Map(
-      (Object.entries(roles) as [PaletteRole, ColorRgba][]).map(([role, colour]) => [role, draw(colour)]),
+      (Object.entries(roles) as [PaletteRole, ColorRgba][]).map(([role, color]) => [role, draw(color)]),
     );
   }
 
@@ -110,25 +110,25 @@ export class Palette {
     return this.vars.get(role as PaletteRole);
   }
 
-  /** This palette's roles, each put through `colour`: what a new palette is built from. */
-  mapRoles(colour: (colour: ColorRgba, role: PaletteRole) => ColorRgba): PaletteRoles {
-    return Object.fromEntries([...this.vars].map(([role, was]) => [role, colour(was, role)])) as PaletteRoles;
+  /** This palette's roles, each put through `color`: what a new palette is built from. */
+  mapRoles(color: (color: ColorRgba, role: PaletteRole) => ColorRgba): PaletteRoles {
+    return Object.fromEntries([...this.vars].map(([role, was]) => [role, color(was, role)])) as PaletteRoles;
   }
 }
 
 /**
- * A palette colour as it is drawn: composited onto the palette's own
+ * A palette color as it is drawn: composited onto the palette's own
  * `background`, which has nothing under it and so must itself be opaque.
  * [LAW:one-source-of-truth] The one statement of what a translucent palette
- * colour means; `buildPalette` draws its base colours through it before
+ * color means; `buildPalette` draws its base colors through it before
  * deriving from them.
  */
-export function drawnOn(name: string, background: ColorRgba): (colour: ColorRgba) => ColorRgba {
+export function drawnOn(name: string, background: ColorRgba): (color: ColorRgba) => ColorRgba {
   if (background.alpha !== 1) {
     throw new RangeError(
-      `palette ${JSON.stringify(name)}: background is the surface its translucent colours are drawn on, so it must be opaque; got ${background.hex}`,
+      `palette ${JSON.stringify(name)}: background is the surface its translucent colors are drawn on, so it must be opaque; got ${background.hex}`,
     );
   }
-  // A fully transparent colour is not a tint: it draws nothing on any surface.
-  return (colour) => (colour.alpha === 0 ? colour : colour.compositeOver(background));
+  // A fully transparent color is not a tint: it draws nothing on any surface.
+  return (color) => (color.alpha === 0 ? color : color.compositeOver(background));
 }

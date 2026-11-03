@@ -17,13 +17,13 @@
  * holds it as a character. `line-break` is a line ending, so content holds an LF
  * in its place. `pictured` means nothing inside a span, so content holds the
  * stand-in `pictureOf` gives in its place and the reader sees something was there.
- * `withheld` is held in content and measured as nothing, and `wireText` decides
+ * `zeroWidth` is held in content and measured as nothing, and `wireText` decides
  * from its neighbours whether it is written.
  *
- * Only `keep`, and a `withheld` code point `wireText` lets by, reaches the wire. A
+ * Only `keep`, and a `zeroWidth` code point `wireText` lets by, reaches the wire. A
  * raw `Segment` is not content, so what it holds of the others is deleted there.
  */
-export type Disposition = "strip" | "keep" | "line-break" | "pictured" | "withheld";
+export type Disposition = "strip" | "keep" | "line-break" | "pictured" | "zeroWidth";
 
 /**
  * The code points `first` to `last`, inclusive, and what is done with each. A
@@ -47,7 +47,7 @@ const pictured = (first: number, last: number, picture: (codePoint: number) => s
 const controlPicture = (codePoint: number): string => String.fromCharCode(0x2400 + codePoint);
 const deletePicture = (): string => "\u2421";
 const substitute = (): string => "\u2426";
-const withheld = (first: number, last: number): ControlCodeRow => ({ first, last, disposition: "withheld" });
+const zeroWidth = (first: number, last: number): ControlCodeRow => ({ first, last, disposition: "zeroWidth" });
 
 /**
  * Ascending and disjoint, every Cc, Cf, Zl, Zp and Variation_Selector code point
@@ -85,7 +85,7 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   pictured(0x86, 0x9f, substitute),
   // SOFT HYPHEN: a place a word may break, drawn as a hyphen only where one does.
   // Terminals disagree on its cell, so it never reaches them.
-  withheld(0xad, 0xad),
+  zeroWidth(0xad, 0xad),
   // The Arabic and Syriac number signs and other prepended concatenation marks,
   // which draw a glyph.
   keep(0x600, 0x605),
@@ -98,10 +98,10 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   keep(0x890, 0x891),
   keep(0x8e2, 0x8e2),
   // The Mongolian free variation selectors.
-  withheld(0x180b, 0x180d),
+  zeroWidth(0x180b, 0x180d),
   // MONGOLIAN VOWEL SEPARATOR, which shapes the vowel after it.
   keep(0x180e, 0x180e),
-  withheld(0x180f, 0x180f),
+  zeroWidth(0x180f, 0x180f),
   // ZWSP, a place a line may break (`wrap.ts`); ZWNJ, which Persian and Urdu spell
   // with; ZWJ, for emoji and conjuncts; and the bidi marks LRM and RLM, which hold
   // no state, so right-to-left text can use them. ZWJ's joining is Rich's width
@@ -121,7 +121,7 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   // the text, Unicode deprecates them, and no terminal was found honouring one.
   strip(0x206a, 0x206f),
   // VARIATION SELECTOR-1 to 16: glyph variants, and text or emoji presentation.
-  withheld(0xfe00, 0xfe0f),
+  zeroWidth(0xfe00, 0xfe0f),
   // ZERO WIDTH NO-BREAK SPACE, the byte order mark, as a word joiner.
   keep(0xfeff, 0xfeff),
   // Interlinear annotation. No terminal draws ruby, the annotating text stays
@@ -137,9 +137,9 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   // LANGUAGE TAG, deprecated.
   strip(0xe0001, 0xe0001),
   // The tag characters: an emoji subdivision flag, or text no reader can see.
-  withheld(0xe0020, 0xe007f),
+  zeroWidth(0xe0020, 0xe007f),
   // The ideographic variation selectors: Japanese and Chinese glyph variants.
-  withheld(0xe0100, 0xe01ef),
+  zeroWidth(0xe0100, 0xe01ef),
 ];
 
 /** What content shows in place of `codePoint`, whose disposition is `pictured`. */

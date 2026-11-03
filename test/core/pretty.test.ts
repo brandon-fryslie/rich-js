@@ -791,7 +791,7 @@ describe("Pretty", () => {
 
   it("formats a typed array as the sequence it is", () => {
     // Its own `toString` would answer a bare "1,2,3" — no brackets, and nothing
-    // for the highlighter to colour per element.
+    // for the highlighter to color per element.
     expect(collectText(new Pretty(new Int8Array([1, 2, 3])), { maxWidth: 80 }))
       .toBe("[1, 2, 3]\n");
   });

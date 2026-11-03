@@ -23,7 +23,7 @@ exampleContext: |
 
 ## Basic usage
 
-A common use case is laying out a directory listing — the same way `ls` does. Here `entries` is what `readdirSync(".", { withFileTypes: true })` returns, and directories are coloured the way `ls --color` colours them:
+A common use case is laying out a directory listing — the same way `ls` does. Here `entries` is what `readdirSync(".", { withFileTypes: true })` returns, and directories are colored the way `ls --color` colors them:
 
 ```typescript
 import { Console, Columns } from "@promptctl/rich-js";

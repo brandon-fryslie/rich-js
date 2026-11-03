@@ -91,14 +91,14 @@ import { afterPass, drawable, render, type RenderOptions } from "../core/protoco
 import { State } from "../core/state.js";
 import { Viewport, type Lines } from "../renderables/viewport.js";
 import { Animation } from "../core/animation.js";
-import { beat } from "../core/easing.js";
+import { stepSequence } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
 import { placed } from "../core/animation.js";
 import { levelOf, type Anchor } from "../core/anchor.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
-import type { KeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
+import type { WidgetKeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
 import { pattern } from "../core/pattern.js";
 
 /**
@@ -382,7 +382,7 @@ function wordSpan(clusters: Iterable<string>, skipped: (c: string) => boolean, t
  * second, so the caret is solid the moment the field is touched, then dark
  * for the next, on a `beat`. A loop, so with its motion taken out it holds lit.
  */
-const CARET_BLINK: Animation<boolean> = Animation.map(beat([0.5, 0.5]), (hold) => hold === 0);
+const CARET_BLINK: Animation<boolean> = Animation.map(stepSequence([0.5, 0.5]), (validity) => validity === 0);
 
 /**
  * The caret's blink restarted at `from`, as one animation of the frame's
@@ -397,8 +397,8 @@ function caretBlink(from: number): Animation<boolean> {
   const backward = Timeline.run(Timeline.play(from, -1), CARET_BLINK);
   return Animation.of({
     at: (t: number) => (t >= from ? forward : backward).at(t),
-    nextChange: (t: number) => (t >= from ? forward.nextChange(t) : Math.min(backward.nextChange(t), from)),
-    lastChange: (t: number) => (t >= from ? Math.max(forward.lastChange(t), from) : backward.lastChange(t)),
+    validUntil: (t: number) => (t >= from ? forward.validUntil(t) : Math.min(backward.validUntil(t), from)),
+    validFrom: (t: number) => (t >= from ? Math.max(forward.validFrom(t), from) : backward.validFrom(t)),
     reduced: () => CARET_BLINK.reduced(),
   });
 }
@@ -507,7 +507,7 @@ export class TextInput extends ThemedWidget {
   // A key the field handles is one it stops; only that restarts the blink,
   // so a key passing through to the app — Tab, Escape — moves nothing here.
   @action
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     this._edit(event);
     if (!event.stopped) return;
     this._blink = caretBlink(event.time);
@@ -526,7 +526,7 @@ export class TextInput extends ThemedWidget {
     this._blink = caretBlink(event.time);
   }
 
-  private _edit(event: KeyEvent): void {
+  private _edit(event: WidgetKeyEvent): void {
     if (this.disabled) return;
 
     // ─── editing keys (modifier-conscious) ───
@@ -1098,7 +1098,7 @@ export class TextInput extends ThemedWidget {
   // next flips, which is when a host draws again. A print, drawn for no
   // moment, draws it at 0 like any placed animation. Lit, the cell is the
   // cursor's; dark, it is drawn as the text around it, since the cursor is a
-  // colour pair and no attribute hides it.
+  // color pair and no attribute hides it.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }

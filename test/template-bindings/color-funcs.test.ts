@@ -3,7 +3,7 @@ import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { RichText } from "../../src/core/text.js";
 import { blendRgb, ColorDepth, ColorSpec } from "../../src/core/color.js";
 import { Oklch, IDENTITY } from "../../src/core/oklch.js";
-import { richTextFuncs, paletteFuncs, readableOnFunc, type DrawnAt } from "../../src/template-bindings/index.js";
+import { richTextFuncs, paletteFuncs, ensureContrastFunc, type DrawnAt } from "../../src/template-bindings/index.js";
 import {
   darken,
   contrastFor,
@@ -127,7 +127,7 @@ describe("color math matches the underlying functions", () => {
   });
 
   it("a missing or surplus argument is refused at the gate, naming the function", () => {
-    // [LAW:no-silent-failure] A missing level used to reach the colour math as
+    // [LAW:no-silent-failure] A missing level used to reach the color math as
     // undefined; the engine's arity gate now refuses it before the body runs.
     expect(() => colorText(`{{ darken "${a}" }}`)).toThrow(/darken: want 2 got 1/);
     expect(() => colorText(`{{ lighten "${a}" 1 2 }}`)).toThrow(/lighten: want 2 got 3/);
@@ -140,37 +140,37 @@ describe("color math matches the underlying functions", () => {
     );
   });
 
-  it("contrastOn picks the readable pole; readableOn keeps the color itself", () => {
+  it("contrastOn picks the readable pole; ensureContrast keeps the color itself", () => {
     const dark = "#101010";
     expect(colorText(`{{ contrastOn "${dark}" }}`)).toBe(contrastFor(parseHexColor(dark)).hex);
 
     // The distinction that earns two functions rather than one with a flag:
-    // contrastOn answers with black or white; readableOn answers with a
+    // contrastOn answers with black or white; ensureContrast answers with a
     // recognizably-still-blue blue.
-    const blueOnBlue = colorText(`{{ readableOn "#1a1a4a" "#101030" 4.5 }}`);
+    const blueOnBlue = colorText(`{{ ensureContrast "#1a1a4a" "#101030" 4.5 }}`);
     expect(blueOnBlue).toBe(
       ensureContrast(parseHexColor("#1a1a4a"), parseHexColor("#101030"), 4.5).hex,
     );
     expect(["#000000", "#ffffff"]).not.toContain(blueOnBlue);
   });
 
-  it("readableOn takes its ratio explicitly, and rejects a non-WCAG one", () => {
+  it("ensureContrast takes its ratio explicitly, and rejects a non-WCAG one", () => {
     // The threshold is the decision the function makes, so it is stated at the
     // call site rather than inherited from a hidden default — a caller muting
     // text on purpose wants 3, and would be silently un-muted by an implicit
     // 4.5. [LAW:no-silent-failure]
-    const quiet = colorText(`{{ readableOn "#3a3f58" "#31344a" 3 }}`);
-    const loud = colorText(`{{ readableOn "#3a3f58" "#31344a" 7 }}`);
+    const quiet = colorText(`{{ ensureContrast "#3a3f58" "#31344a" 3 }}`);
+    const loud = colorText(`{{ ensureContrast "#3a3f58" "#31344a" 7 }}`);
     expect(quiet).not.toBe(loud);
     expect(contrastRatio(parseHexColor(quiet), parseHexColor("#31344a"))).toBeGreaterThanOrEqual(2.99);
     expect(contrastRatio(parseHexColor(loud), parseHexColor("#31344a"))).toBeGreaterThanOrEqual(6.99);
-    expect(() => colorText(`{{ readableOn "#3a3f58" "#31344a" 0.5 }}`)).toThrow(/1\.\.21/);
-    expect(() => colorText(`{{ readableOn "#3a3f58" "#31344a" 30 }}`)).toThrow(/1\.\.21/);
+    expect(() => colorText(`{{ ensureContrast "#3a3f58" "#31344a" 0.5 }}`)).toThrow(/1\.\.21/);
+    expect(() => colorText(`{{ ensureContrast "#3a3f58" "#31344a" 30 }}`)).toThrow(/1\.\.21/);
   });
 
-  it("readableOn measures at the depth the caller's getter names, read per evaluation", () => {
+  it("ensureContrast measures at the depth the caller's getter names, read per evaluation", () => {
     // Magenta on plum: the truecolor answer is legible until the terminal
-    // rounds text and background to 256 colours independently.
+    // rounds text and background to 256 colors independently.
     let depth = ColorDepth.TRUECOLOR;
     const drawnEngine = createEngine<RichText>({
       fromString: (s) => new RichText(s),
@@ -179,7 +179,7 @@ describe("color math matches the underlying functions", () => {
       funcs: richTextFuncs(() => ({ depth })),
     });
     const [fg, bg] = ["#e72abb", "#2e082f"];
-    const tpl = drawnEngine.parse(`{{ readableOn "${fg}" "${bg}" 4.5 }}`);
+    const tpl = drawnEngine.parse(`{{ ensureContrast "${fg}" "${bg}" 4.5 }}`);
     const run = (): string => tpl.evaluate({}).map((f) => f.plain).join("");
     const expected = (d: ColorDepth): string =>
       ensureContrast(parseHexColor(fg), parseHexColor(bg), 4.5, d).hex;
@@ -193,17 +193,17 @@ describe("color math matches the underlying functions", () => {
     expect(contrastRatio(drawn(run()), drawn(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("readableOn measures at 16 colours in the terminal the getter names", () => {
+  it("ensureContrast measures at 16 colors in the terminal the getter names", () => {
     // Rosé Pine Dawn draws navy's slot at about 2:1 on white's; the VGA table
     // calls the same pair readable.
     const engineFor = (drawnAt: DrawnAt) => createEngine<RichText>({
       fromString: (s) => new RichText(s),
       isT: (v) => v instanceof RichText,
       toString: (rt) => rt.plain,
-      funcs: { readableOn: readableOnFunc(() => drawnAt) },
+      funcs: { ensureContrast: ensureContrastFunc(() => drawnAt) },
     });
     const run = (drawnAt: DrawnAt): string =>
-      engineFor(drawnAt).parse(`{{ readableOn "#000080" "#FFFFFF" 4.5 }}`).evaluate({}).map((f) => f.plain).join("");
+      engineFor(drawnAt).parse(`{{ ensureContrast "#000080" "#FFFFFF" 4.5 }}`).evaluate({}).map((f) => f.plain).join("");
     const shown = (hex: string) => ColorSpec.parse(hex).downgrade(ColorDepth.STANDARD).getTruecolor(ROSE_PINE_DAWN);
 
     expect(run({ depth: ColorDepth.STANDARD })).toBe("#000080");
@@ -212,8 +212,8 @@ describe("color math matches the underlying functions", () => {
     expect(contrastRatio(shown(inDawn), shown("#FFFFFF"))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("registers one function per OKLCH ThemeKey axis, each matching applyKey", () => {
-    // [LAW:one-source-of-truth] The bindings are derived from ThemeKey's field
+  it("registers one function per OKLCH ColorAdjustment axis, each matching applyKey", () => {
+    // [LAW:one-source-of-truth] The bindings are derived from ColorAdjustment's field
     // set, so this table and the registration table describe the same axes.
     const cases = [
       { call: `shiftHue "${b}" 40`, key: { ...IDENTITY, hueShift: 40 } },
@@ -259,7 +259,7 @@ describe("loud failure", () => {
     expect(() => colorText(`{{ darken (bold "x") 2 }}`)).toThrow();
   });
 
-  it("a fully transparent colour is refused by every colour function and ramp stop", () => {
+  it("a fully transparent color is refused by every color function and ramp stop", () => {
     // gruvbox's link-background is #00000000, a theme's "no background". What
     // shows through it is whatever surface it lands on, so math on it would
     // answer for a surface nobody named: composited over black, contrastOn
@@ -273,7 +273,7 @@ describe("loud failure", () => {
       `lighten (color "link-background") 1`,
       `mix (color "link-background") (color "primary") 50`,
       `contrastOn (color "link-background")`,
-      `readableOn (color "primary") (color "link-background") 4.5`,
+      `ensureContrast (color "primary") (color "link-background") 4.5`,
       `shiftHue (color "link-background") 30`,
       `ramp 0.5 "linear" 0 "link-background" 1 "primary"`,
     ]) {

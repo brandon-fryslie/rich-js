@@ -3,7 +3,7 @@
  * Where the docs content column is narrower than an example's output, the
  * output's font shrinks to fit it rather than scroll: at 1280px wide, with the
  * aside open, the full-width outputs on the panel and table pages show every
- * column, in both colour modes, while an output narrow enough to fit keeps the
+ * column, in both color modes, while an output narrow enough to fit keeps the
  * code size. A live terminal made at a wider window is refitted when the window
  * narrows. custom.css's `.rich-example-output` owns the rule.
  */

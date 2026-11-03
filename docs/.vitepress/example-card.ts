@@ -52,10 +52,10 @@ export interface CardFile {
 }
 
 /**
- * The colours a program's live terminal shows: kept readable against the
+ * The colors a program's live terminal shows: kept readable against the
  * terminal's ground (`READABLE_CONTRAST` in theme/live-terminal.ts), or every
  * one as the program drew it, for a program that paints its own ground and
- * means a colour to sink into it, as an effect fading out does.
+ * means a color to sink into it, as an effect fading out does.
  */
 export const CONTRASTS = ["readable", "as drawn"] as const;
 export type Contrast = (typeof CONTRASTS)[number];

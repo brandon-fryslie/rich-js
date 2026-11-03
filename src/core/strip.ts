@@ -1,7 +1,7 @@
 /**
- * Strip + Joiner — edge-aware horizontal layout primitive.
+ * Strip + Separator — edge-aware horizontal layout primitive.
  *
- * A `Strip` renders a horizontal sequence of styled items with a `Joiner`
+ * A `Strip` renders a horizontal sequence of styled items with a `Separator`
  * deciding how each transition between adjacent items looks. The joiner is
  * a pure function of `(leftItem | null, rightItem | null) -> Renderable`,
  * so endpoint joins (the start and end of the strip) are explicit positions
@@ -42,19 +42,19 @@ import { drawable, getStyle, isAscii, render, type Measurable, type Renderable, 
  * transition glyph at each boundary.
  *
  * `edgeStyle("left", options)` reports the style of the item's leftmost cell
- * column; `edgeStyle("right", options)` reports the rightmost. Joiners read
+ * column; `edgeStyle("right", options)` reports the rightmost. Separators read
  * only these — the item's interior may carry any per-column variation without
  * breaking the join.
  *
  * The edge is asked in a render, with that render's options, because a style
- * name only becomes a colour against the render's theme. A joiner therefore
+ * name only becomes a color against the render's theme. A joiner therefore
  * reads edges inside the `render` of what it returns, never in `join`.
  */
 export interface StyledRenderable extends Renderable {
   edgeStyle(side: "left" | "right", options: RenderOptions): Style;
 }
 
-// --- Joiner ---
+// --- Separator ---
 
 /**
  * Where a join sits in its strip. `index` counts joins from the strip's start:
@@ -67,7 +67,7 @@ export interface JoinContext {
   readonly index: number;
 }
 
-export interface Joiner<T extends StyledRenderable = StyledRenderable> {
+export interface Separator<T extends StyledRenderable = StyledRenderable> {
   /**
    * `left === null` marks the start endpoint; `right === null` marks the end
    * endpoint. The joiner decides what an endpoint looks like — typically
@@ -78,23 +78,23 @@ export interface Joiner<T extends StyledRenderable = StyledRenderable> {
 
 /**
  * The owner every cell a strip's joiner draws is stamped with
- * (`Segment.anchorLines`), whatever the joiner: a seam is told by what drew
+ * (`Segment.anchorLines`), whatever the separator: a seam is told by what drew
  * it, never by its glyph, which an ASCII joiner draws otherwise and a lead may
  * not draw at all. An effect reads it to leave a seam out of the words it
  * keeps legible (`drawnOf`, `../renderables/effect.ts`).
  *
- * Inside it, every cell a `CellJoiner` draws is stamped with what it was
+ * Inside it, every cell a `CellSeparator` draws is stamped with what it was
  * resolved from (`JoinedCell`), so a cell whose neighbours an effect moves is
  * resolved again from where they moved to.
  */
 export const JOIN: object = Object.freeze({ name: "join" });
 
 /**
- * [LAW:single-enforcer] What `joiner` draws at one join, every cell stamped
+ * [LAW:single-enforcer] What `separator` draws at one join, every cell stamped
  * as `JOIN`'s: the one way `Strip` and `FlexStrip` draw a join.
  */
-export function drawJoin<T extends StyledRenderable>(joiner: Joiner<T>, left: T | null, right: T | null, context: JoinContext): Renderable {
-  const join = joiner.join(left, right, context);
+export function drawJoin<T extends StyledRenderable>(separator: Separator<T>, left: T | null, right: T | null, context: JoinContext): Renderable {
+  const join = separator.join(left, right, context);
   return { render: (options) => Segment.anchorLines([[...render(join, options)]], JOIN)[0]! };
 }
 
@@ -112,11 +112,11 @@ export function drawItem(item: StyledRenderable): Renderable {
 
 export class Strip<T extends StyledRenderable = StyledRenderable> implements Renderable, Measurable {
   readonly items: readonly T[];
-  readonly joiner: Joiner<T>;
+  readonly separator: Separator<T>;
 
-  constructor(items: readonly T[], joiner: Joiner<T>) {
+  constructor(items: readonly T[], separator: Separator<T>) {
     this.items = items;
-    this.joiner = joiner;
+    this.separator = separator;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
@@ -132,12 +132,12 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // `left` fills the canvas, and the first item would pad over the rest of
     // the row. Where the row sits in the width is its container's to say.
     const row: RenderOptions = { ...options, justify: undefined };
-    yield* render(drawJoin(this.joiner, null, items[0]!, { index: 0 }), row);
+    yield* render(drawJoin(this.separator, null, items[0]!, { index: 0 }), row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
       yield* render(drawItem(item), row);
       const next = i + 1 < items.length ? items[i + 1]! : null;
-      yield* render(drawJoin(this.joiner, item, next, { index: i + 1 }), row);
+      yield* render(drawJoin(this.separator, item, next, { index: i + 1 }), row);
     }
 
     // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line
@@ -167,16 +167,16 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
   }
 }
 
-// --- CellJoiner ---
+// --- CellSeparator ---
 
 /**
- * A colour a joiner's cell is drawn in. Each variant names where the colour
+ * A color a joiner's cell is drawn in. Each variant names where the color
  * comes from when the join is drawn:
  *   • an `edge` — a neighbour's ground (`bg`) or text (`fg`) at the column
  *     facing the join, read through `StyledRenderable.edgeStyle`;
  *   • a `role` — a style name, resolved against the render's theme, whose
- *     foreground colour is the colour;
- *   • a `mix` — two colours blended at `t` (0 is the first, 1 the second).
+ *     foreground color is the color;
+ *   • a `mix` — two colors blended at `t` (0 is the first, 1 the second).
  */
 export type Paint =
   | { readonly edge: "left" | "right"; readonly part: "bg" | "fg" }
@@ -184,11 +184,11 @@ export type Paint =
   | { readonly mix: readonly [Paint, Paint, number] };
 
 /**
- * A `Paint`, or `"ground"`: the terminal's own background, whose colour nobody
+ * A `Paint`, or `"ground"`: the terminal's own background, whose color nobody
  * knows. That is why it is never mixed (`Paint` excludes it), and why a cell
  * may put it on one side only. As a cell's `fg` it is drawn in reverse video —
  * the glyph's ink shows the terminal's background through a cell filled with
- * the `bg` colour — so an inverted shape is the same glyph, never a glyph of
+ * the `bg` color — so an inverted shape is the same glyph, never a glyph of
  * its own.
  */
 export type CellColor = Paint | "ground";
@@ -199,7 +199,7 @@ export type CellColor = Paint | "ground";
  * measure a join by rendering it. Which member stands is hashed from the
  * join's part, its `index` and the cell's place in it, so it holds still from
  * frame to frame while the items before it do, and differs from seam to seam
- * even between the same two colours.
+ * even between the same two colors.
  */
 export interface JoinCell {
   readonly glyph: string | { readonly oneOf: readonly string[] };
@@ -237,16 +237,16 @@ export interface CapsForm {
 }
 
 /**
- * The middle of a joiner: its seam, and the `ascii` seam an ASCII-only output
+ * The middle of a separator: its seam, and the `ascii` seam an ASCII-only output
  * draws instead. Picked apart from the caps, so any seam ends in any caps.
  */
-export interface JoinSeam {
+export interface SeparatorSeam {
   readonly glyph: SeamForm;
   readonly ascii: SeamForm;
 }
 
-/** The ends of a joiner: its caps, and the `ascii` caps an ASCII-only output draws instead. */
-export interface JoinCaps {
+/** The ends of a separator: its caps, and the `ascii` caps an ASCII-only output draws instead. */
+export interface EndCaps {
   readonly glyph: CapsForm;
   readonly ascii: CapsForm;
 }
@@ -260,7 +260,7 @@ interface JoinShape {
 }
 
 type Part = keyof JoinShape;
-type FormName = keyof JoinSeam;
+type FormName = keyof SeparatorSeam;
 const PARTS: readonly Part[] = ["seam", "lead", "tail"];
 
 /**
@@ -295,7 +295,7 @@ type Refuse = (why: string) => never;
 // `raw` as a `Paint`, or refused. `absent` is the neighbour this part may not
 // name, because the part is also drawn where that neighbour does not exist.
 function parsePaint(raw: unknown, absent: "left" | "right" | undefined, refuse: Refuse): Paint {
-  if (raw === "ground") return refuse("mixes ground, whose colour is unknown");
+  if (raw === "ground") return refuse("mixes ground, whose color is unknown");
   const p = (typeof raw === "object" && raw !== null ? raw : {}) as { edge?: unknown; part?: unknown; role?: unknown; mix?: unknown };
   if ((p.edge === "left" || p.edge === "right") && (p.part === "bg" || p.part === "fg")) {
     if (p.edge === absent) refuse(`names the ${absent} neighbour, which this part is drawn without`);
@@ -307,7 +307,7 @@ function parsePaint(raw: unknown, absent: "left" | "right" | undefined, refuse: 
     if (typeof t !== "number" || !(t >= 0 && t <= 1)) refuse(`mixes at ${String(t)}, outside 0..1`);
     return Object.freeze({ mix: Object.freeze([parsePaint(from, absent, refuse), parsePaint(to, absent, refuse), t as number] as const) });
   }
-  return refuse(`has a colour that is not a Paint: ${JSON.stringify(raw)}`);
+  return refuse(`has a color that is not a Paint: ${JSON.stringify(raw)}`);
 }
 
 const parseColor = (raw: CellColor, absent: "left" | "right" | undefined, refuse: Refuse): CellColor =>
@@ -369,13 +369,13 @@ const asSeamCell = (form: FormName, part: Part) => (cell: object, refuse: Refuse
  * config — so the rules the types state are checked here too, and what comes
  * back is a frozen copy the caller can no longer change.
  */
-function parseSeam(raw: JoinSeam): JoinSeam {
+function parseSeam(raw: SeparatorSeam): SeparatorSeam {
   const parseForm = (form: FormName): SeamForm => Object.freeze({ seam: parseCells(raw, form, "seam", asSeamCell(form, "seam")) });
   return Object.freeze({ glyph: parseForm("glyph"), ascii: parseForm("ascii") });
 }
 
 /** [LAW:parse-dont-validate] `parseSeam`'s twin for the caps. */
-function parseCaps(raw: JoinCaps): JoinCaps {
+function parseCaps(raw: EndCaps): EndCaps {
   const parseForm = (form: FormName): CapsForm =>
     Object.freeze({ lead: parseCells(raw, form, "lead", asCell(form, "lead")), tail: parseCells(raw, form, "tail", asCell(form, "tail")) });
   return Object.freeze({ glyph: parseForm("glyph"), ascii: parseForm("ascii") });
@@ -427,8 +427,8 @@ function formOf(shape: JoinShape): Form {
   };
 }
 
-// A bg with a real colour to paint. `undefined` (no bg) and the terminal
-// DEFAULT colour (transparent — identical to the terminal background) are the
+// A bg with a real color to paint. `undefined` (no bg) and the terminal
+// DEFAULT color (transparent — identical to the terminal background) are the
 // two representations of "nothing to paint", so an explicit `… on default`
 // cannot smuggle a seam.
 function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
@@ -443,13 +443,13 @@ function drawnGround(bg: ColorSpec): ColorSpec {
 }
 
 // Whether ink stands off its ground, both as a depth draws them, by the floor a
-// seam is seen at. A colour whose RGB is the terminal theme's own (ANSI 0–15, a
+// seam is seen at. A color whose RGB is the terminal theme's own (ANSI 0–15, a
 // blend reaching one) has no value here, so two of them stand apart unless they
 // are one expression: the same palette slot — its `number`, never the name or
 // the depth that spells it ("red", "color(1)", an EIGHT_BIT spec on 0–15 are
 // one slot) — or the same blend, whose name spells each end by its slot for the
-// same reason. At sixteen colours, then, the floor is a different slot. The
-// terminal's default colour is nobody's to measure, and stands apart.
+// same reason. At sixteen colors, then, the floor is a different slot. The
+// terminal's default color is nobody's to measure, and stands apart.
 function standsOff(ink: ColorSpec, ground: ColorSpec): boolean {
   if (ink.isDefault || ground.isDefault) return true;
   const [a, b] = [ink.fixedValue, ground.fixedValue];
@@ -458,7 +458,7 @@ function standsOff(ink: ColorSpec, ground: ColorSpec): boolean {
     : ink.number !== undefined ? ink.number !== ground.number : ink.name !== ground.name;
 }
 
-// A step along a lightness ray: finer than the steps between the colours a
+// A step along a lightness ray: finer than the steps between the colors a
 // truecolor writer draws, so the walk passes over none of them.
 const LIFT_STEP = 0.001;
 
@@ -474,21 +474,21 @@ function* lightnessRay(origin: Oklch): Iterable<Oklch> {
 }
 
 /**
- * `ink`, a glyph's colour on `ground`, held at least `SEAM_MIN_DELTA_E` off it
+ * `ink`, a glyph's color on `ground`, held at least `SEAM_MIN_DELTA_E` off it
  * as `depth` draws both (`Style.drawnColors`). Ink that already stands off is
  * returned as it is. Ink that does not becomes the drawn form of the nearest
  * step along its own OKLCH lightness ray, chroma and hue held, that stands off:
  * the smaller step, toward white or toward black. Every step is measured as the
- * depth draws it, so at 256 colours and at sixteen the candidates are the
+ * depth draws it, so at 256 colors and at sixteen the candidates are the
  * entries the depth draws, and the side the ink moves to can differ between
- * depths. A floor measured on rounded colours is not monotone along a ray, so
- * the walk enumerates and never bisects. A side with no colour to measure is
+ * depths. A floor measured on rounded colors is not monotone along a ray, so
+ * the walk enumerates and never bisects. A side with no color to measure is
  * left alone.
  *
- * [LAW:one-source-of-truth] The colour returned is the one measured — the
+ * [LAW:one-source-of-truth] The color returned is the one measured — the
  * entry the depth draws, not the step that rounds to it — so a reader of the
  * cell at another depth (an export reads a recording in truecolor) sees the
- * colour that cleared the floor, never a step one unit off its ground.
+ * color that cleared the floor, never a step one unit off its ground.
  *
  * [LAW:single-enforcer] The one place a join cell's visibility is decided:
  * nothing outside the joiner predicts whether a seam will show.
@@ -499,14 +499,14 @@ function standOff(ink: ColorSpec | undefined, ground: ColorSpec | undefined, dep
   const { color: shown, bgcolor: under } = drawn(ink, depth);
   if (standsOff(shown!, under!)) return ink;
   // The ray starts from the ink as it is laid on its ground, before a depth
-  // rounds it; ink the terminal's theme draws starts from the colour the
+  // rounds it; ink the terminal's theme draws starts from the color the
   // default terminal theme gives it. Ink that vanishes is drawn in the same
   // kind as its ground — both fixed, or both the theme's — and every step is
   // drawn in that kind too, so it is measured as the ink was. Ink the depth
   // draws as the theme's (a slot, or a mix reaching one at truecolor) steps
-  // between slots: an RGB beside a colour only the terminal knows could be
-  // that very colour. Ink the depth fixes (that same mix is a cube entry at
-  // 256) steps between fixed colours, for the same reason turned round.
+  // between slots: an RGB beside a color only the terminal knows could be
+  // that very color. Ink the depth fixes (that same mix is a cube entry at
+  // 256) steps between fixed colors, for the same reason turned round.
   const laid = drawn(ink).color!;
   const kind = shown!.fixedValue === undefined ? ColorDepth.STANDARD : ColorDepth.TRUECOLOR;
   for (const step of lightnessRay(Oklch.fromRgba(laid.getTruecolor()))) {
@@ -515,7 +515,7 @@ function standOff(ink: ColorSpec | undefined, ground: ColorSpec | undefined, dep
   }
   // [LAW:no-silent-failure] Unreachable: the ray runs out to black and to
   // white, and no ground lies within the floor of both, nor is one slot both.
-  throw new Error(`no colour on the lightness ray of ${ink.name} stands off ${ground.name} at depth ${ColorDepth[depth]}`);
+  throw new Error(`no color on the lightness ray of ${ink.name} stands off ${ground.name} at depth ${ColorDepth[depth]}`);
 }
 
 /** A neighbour a join cell paints with, and its edge as the cell was resolved from it. */
@@ -540,7 +540,7 @@ function resolvePaint(paint: Paint, edges: Edges, options: RenderOptions): Color
   const [from, to, t] = paint.mix;
   const a = resolvePaint(from, edges, options);
   const b = resolvePaint(to, edges, options);
-  // A mix with no colour at one end has nothing to blend toward.
+  // A mix with no color at one end has nothing to blend toward.
   return a && b && ColorSpec.blend(a, b, t);
 }
 
@@ -548,8 +548,8 @@ function resolvePaint(paint: Paint, edges: Edges, options: RenderOptions): Color
 // time, and again whenever an effect moves the neighbours it reads
 // (`JoinedCell`).
 function cellStyle(cell: JoinCell, edges: Edges, options: RenderOptions): Style {
-  // [LAW:dataflow-not-control-flow] "ground" is the absence of a colour on its
-  // side; as the fg it is reverse video over the bg colour, so the glyph's ink
+  // [LAW:dataflow-not-control-flow] "ground" is the absence of a color on its
+  // side; as the fg it is reverse video over the bg color, so the glyph's ink
   // is the terminal's own background.
   if (cell.fg === "ground") return new Style({ color: cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options), reverse: true });
   const bgcolor = cell.bg === "ground" ? undefined : resolvePaint(cell.bg, edges, options);
@@ -570,19 +570,19 @@ export interface EdgeMove {
 }
 
 /**
- * A cell a `CellJoiner` drew, as what it is: one function of its two
+ * A cell a `CellSeparator` drew, as what it is: one function of its two
  * neighbours' edges. It holds the cell's paints, the neighbour each side of
  * them reads, and the edges and render it was resolved from, and it is stamped
  * on the cell as the owner of its innermost anchor level.
  *
- * [LAW:one-source-of-truth] A seam's colours are its neighbours', so nothing
+ * [LAW:one-source-of-truth] A seam's colors are its neighbours', so nothing
  * paints them but this resolution. An effect paints a strip's items and never
  * a join cell that `follows` them; once the items are painted, each such cell
  * is handed what moved at the item cells beside it and resolved again through
  * `cellStyle`, the path the join was drawn by, lift included
  * (`../renderables/effect.ts`). A seam then follows its neighbours wherever an
  * effect takes them, a mix of the two included, and an effect that paints
- * both one colour leaves the seam's ink lifted off it. A cell painted from
+ * both one color leaves the seam's ink lifted off it. A cell painted from
  * roles and the terminal's ground alone, as `plain`'s separator is, follows
  * nobody, and an effect paints it as it paints any cell.
  */
@@ -638,7 +638,7 @@ export class JoinedCell {
   }
 }
 
-/** The record a `CellJoiner` stamped on the cell `anchor` names, or none for a cell no `CellJoiner` drew. */
+/** The record a `CellSeparator` stamped on the cell `anchor` names, or none for a cell no `CellSeparator` drew. */
 export function joinedCell(anchor: Anchor | undefined): JoinedCell | undefined {
   for (let level = anchor; level; level = level.inner) if (level.owner instanceof JoinedCell) return level.owner;
   return undefined;
@@ -647,8 +647,8 @@ export function joinedCell(anchor: Anchor | undefined): JoinedCell | undefined {
 const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[part].flatMap(glyphsOf)).join("");
 
 /**
- * The one joiner: what it draws is a `JoinSeam` between neighbours and a
- * `JoinCaps` at the ends of each run, picked independently, so a new joiner is
+ * The one separator: what it draws is a `SeparatorSeam` between neighbours and a
+ * `EndCaps` at the ends of each run, picked independently, so a new joiner is
  * a pair of values, never a class.
  *
  * Which part a join draws is read off its two neighbours. A neighbour is
@@ -663,12 +663,12 @@ const shapeGlyphs = (shape: JoinShape): string => PARTS.flatMap((part) => shape[
  *
  * An ASCII-only output draws the `ascii` form of both, whole.
  */
-export class CellJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  readonly seam: JoinSeam;
-  readonly caps: JoinCaps;
+export class CellSeparator<T extends StyledRenderable = StyledRenderable> implements Separator<T> {
+  readonly seam: SeparatorSeam;
+  readonly caps: EndCaps;
   private readonly _forms: Readonly<Record<FormName, Form>>;
 
-  constructor(seam: JoinSeam, caps: JoinCaps) {
+  constructor(seam: SeparatorSeam, caps: EndCaps) {
     this.seam = parseSeam(seam);
     this.caps = parseCaps(caps);
     this._forms = { glyph: formOf(joinForms(this.seam.glyph, this.caps.glyph)), ascii: formOf(joinForms(this.seam.ascii, this.caps.ascii)) };
@@ -731,7 +731,7 @@ const BUBBLE: Family = { glyph: "\ue0b4", ascii: ")" };
 
 // `glyph` in the left ground over the right.
 const arrow = (glyph: string): SeamForm => ({ seam: [{ glyph, fg: LEFT_BG, bg: RIGHT_BG }] });
-const arrowSeam = (f: Family): JoinSeam => both(arrow(f.glyph), arrow(f.ascii));
+const arrowSeam = (f: Family): SeparatorSeam => both(arrow(f.glyph), arrow(f.ascii));
 
 // Three arrows stepping through the two thirds between the grounds.
 function prism(glyph: string): SeamForm {
@@ -764,7 +764,7 @@ const rail = (glyph: string): JoinCell => ({ glyph, fg: { role: "strip.rail" }, 
  * What each draws is `docs/strip.md`'s "Seams"; any of them ends in any of
  * `CAPS`.
  */
-export const SEAMS = Object.freeze({
+export const SEPARATORS = Object.freeze({
   powerline: parseSeam(arrowSeam(POWERLINE)),
   prism: parseSeam(both(prism(POWERLINE.glyph), prism(POWERLINE.ascii))),
   slant: parseSeam(arrowSeam(SLANT)),
@@ -785,7 +785,7 @@ export const SEAMS = Object.freeze({
 // notch whose ink is the terminal's background — and over that ground at the
 // tail, so a run reads as one chevron. ASCII opens each run flat: an ASCII
 // glyph reversed out of the terminal's ground is a block of nothing.
-const flowCaps = (f: Family): JoinCaps =>
+const flowCaps = (f: Family): EndCaps =>
   both(
     { lead: [{ glyph: f.glyph, fg: GROUND, bg: RIGHT_BG }], tail: [{ glyph: f.glyph, fg: LEFT_BG, bg: GROUND }] },
     { lead: [], tail: [{ glyph: f.ascii, fg: LEFT_BG, bg: GROUND }] },
@@ -802,9 +802,9 @@ const FLAT: CapsForm = { lead: [], tail: [] };
 /**
  * The bundled caps, by name: what a joiner draws where a run begins and ends.
  * What each draws is `docs/strip.md`'s "Caps"; any of them ends any of
- * `SEAMS`.
+ * `SEPARATORS`.
  */
-export const CAPS = Object.freeze({
+export const END_CAPS = Object.freeze({
   powerline: parseCaps(flowCaps(POWERLINE)),
   slant: parseCaps(flowCaps(SLANT)),
   backslant: parseCaps(flowCaps(BACKSLANT)),
@@ -818,42 +818,42 @@ export const CAPS = Object.freeze({
 });
 
 /**
- * The bundled joiners, by name: each a seam from `SEAMS` ended in caps from
+ * The bundled joiners, by name: each a seam from `SEPARATORS` ended in caps from
  * `CAPS`. What each draws is `docs/strip.md`'s "Built-in joiners"; a name from
- * config is read with `joinerNamed`.
+ * config is read with `separatorNamed`.
  */
-export const JOINERS = Object.freeze({
-  powerline: new CellJoiner(SEAMS.powerline, CAPS.powerline),
-  prism: new CellJoiner(SEAMS.prism, CAPS.powerline),
-  slant: new CellJoiner(SEAMS.slant, CAPS.slant),
-  backslant: new CellJoiner(SEAMS.backslant, CAPS.backslant),
-  flame: new CellJoiner(SEAMS.flame, CAPS.flame),
-  pixel: new CellJoiner(SEAMS.pixel, CAPS.pixel),
-  ice: new CellJoiner(SEAMS.ice, CAPS.ice),
-  bubble: new CellJoiner(SEAMS.bubble, CAPS.bubble),
-  capsule: new CellJoiner(SEAMS.capsule, CAPS.capsule),
-  wrapper: new CellJoiner(SEAMS.wrapper, CAPS.wrapper),
-  metro: new CellJoiner(SEAMS.metro, CAPS.capsule),
-  stitch: new CellJoiner(SEAMS.stitch, CAPS.flat),
-  torn: new CellJoiner(SEAMS.torn, CAPS.flat),
-  plain: new CellJoiner(SEAMS.plain, CAPS.flat),
+export const SEPARATOR_STYLES = Object.freeze({
+  powerline: new CellSeparator(SEPARATORS.powerline, END_CAPS.powerline),
+  prism: new CellSeparator(SEPARATORS.prism, END_CAPS.powerline),
+  slant: new CellSeparator(SEPARATORS.slant, END_CAPS.slant),
+  backslant: new CellSeparator(SEPARATORS.backslant, END_CAPS.backslant),
+  flame: new CellSeparator(SEPARATORS.flame, END_CAPS.flame),
+  pixel: new CellSeparator(SEPARATORS.pixel, END_CAPS.pixel),
+  ice: new CellSeparator(SEPARATORS.ice, END_CAPS.ice),
+  bubble: new CellSeparator(SEPARATORS.bubble, END_CAPS.bubble),
+  capsule: new CellSeparator(SEPARATORS.capsule, END_CAPS.capsule),
+  wrapper: new CellSeparator(SEPARATORS.wrapper, END_CAPS.wrapper),
+  metro: new CellSeparator(SEPARATORS.metro, END_CAPS.capsule),
+  stitch: new CellSeparator(SEPARATORS.stitch, END_CAPS.flat),
+  torn: new CellSeparator(SEPARATORS.torn, END_CAPS.flat),
+  plain: new CellSeparator(SEPARATORS.plain, END_CAPS.flat),
 });
 
 /**
- * A joiner as config names it: one of `JOINERS`, or a seam from `SEAMS` ended
+ * A joiner as config names it: one of `SEPARATOR_STYLES`, or a seam from `SEPARATORS` ended
  * in caps from `CAPS`, each named apart.
  */
-export type JoinerSpec = string | { readonly seam: string; readonly caps: string };
+export type SeparatorSpec = string | { readonly seam: string; readonly caps: string };
 
 /**
  * The joiner `spec` names — a joiner read from config, parsed. Throws on a
  * name its table lacks, naming the ones there are; an own-key test, so
  * `toString` and the rest of `Object.prototype` are no one's name.
  */
-export function joinerNamed(spec: JoinerSpec): CellJoiner {
-  if (typeof spec === "string") return named(JOINERS, "joiner", "joiners", spec);
-  if (typeof spec !== "object" || spec === null) throw new Error(`a joiner is a name or { seam, caps }, not ${JSON.stringify(spec)}`);
-  return new CellJoiner(named(SEAMS, "seam", "seams", spec.seam), named(CAPS, "caps", "caps", spec.caps));
+export function separatorNamed(spec: SeparatorSpec): CellSeparator {
+  if (typeof spec === "string") return named(SEPARATOR_STYLES, "separator", "separators", spec);
+  if (typeof spec !== "object" || spec === null) throw new Error(`a separator is a name or { seam, caps }, not ${JSON.stringify(spec)}`);
+  return new CellSeparator(named(SEPARATORS, "seam", "seams", spec.seam), named(END_CAPS, "caps", "caps", spec.caps));
 }
 
 function named<V>(table: Readonly<Record<string, V>>, kind: string, kinds: string, name: string): V {
@@ -863,14 +863,14 @@ function named<V>(table: Readonly<Record<string, V>>, kind: string, kinds: strin
 
 /**
  * A ramp of `steps` cells from the left ground to the right, each cell filled
- * with one colour: cell `i` is the colour `(i + 1/2) / steps` of the way
+ * with one color: cell `i` is the color `(i + 1/2) / steps` of the way
  * across, so no cell is either neighbour's ground. A cell is a space whose ink
- * is the terminal's ground, so its one colour is its fill, the same in ASCII.
- * Beside a neighbour with no ground there is no colour to ramp toward, so that
+ * is the terminal's ground, so its one color is its fill, the same in ASCII.
+ * Beside a neighbour with no ground there is no color to ramp toward, so that
  * join draws the caps the ramp is ended in.
  *
  * [LAW:dataflow-not-control-flow] A ramp cell is fill alone: a space has no
- * ink, and `"ground"` as its `fg` is the absence of a colour on that side
+ * ink, and `"ground"` as its `fg` is the absence of a color on that side
  * (`cellStyle`). So the lift, the path every seam cell is drawn by, has no ink
  * to hold off its ground, and the ramp is the blend, monotone however close
  * its grounds or however many its steps. Two samples to a cell, ink over
@@ -878,10 +878,10 @@ function named<V>(table: Readonly<Record<string, V>>, kind: string, kinds: strin
  * `steps` such cells rise without turning back only between grounds `steps`
  * floors apart.
  */
-export function gradientSeam(steps = 4): JoinSeam {
+export function gradientSeam(steps = 4): SeparatorSeam {
   // [LAW:no-silent-failure] A count that is no whole number of cells would draw
   // a lopsided ramp without a word, and no cells is no ramp: a seam that reads
-  // neither ground, joining a colourless neighbour where a ramp draws the caps.
+  // neither ground, joining a colorless neighbour where a ramp draws the caps.
   if (!(Number.isInteger(steps) && steps > 0)) throw new RangeError(`gradientSeam steps must be a positive whole number of cells, got ${steps}`);
   const ramp: SeamForm = {
     seam: Array.from({ length: steps }, (_, i): JoinCell => ({ glyph: " ", fg: GROUND, bg: { mix: [LEFT_BG, RIGHT_BG, (i + 1 / 2) / steps] } })),

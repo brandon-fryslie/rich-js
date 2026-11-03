@@ -83,8 +83,8 @@ export function installTraceback(options?: TracebackOptions): void {
 
     // [LAW:effects-at-boundaries] Render to a string first, then perform one
     // write. `beginCapture` redirects the console's sink without setting
-    // `file:`, so stderr's TTY status still drives colour depth — a `file:`
-    // sink would report `isTTY === false` and silently strip colour.
+    // `file:`, so stderr's TTY status still drives color depth — a `file:`
+    // sink would report `isTTY === false` and silently strip color.
     const out = new Console({ stderr: true });
     out.beginCapture();
     out.print(new Traceback(reason, options));

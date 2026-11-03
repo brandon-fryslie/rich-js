@@ -4,7 +4,7 @@
  *
  * `strip-seams.golden.json` is the bytes 0.24.1 drew for strips in which every
  * seam cell's ink already stands off its ground, under every named joiner, at
- * three depths, in both forms. The lift moves no colour that clears the floor,
+ * three depths, in both forms. The lift moves no color that clears the floor,
  * so those bytes hold. It was written once from 0.24.1's code with
  *
  *     npx vitest run test/core/strip-lift.test.ts -u
@@ -13,7 +13,7 @@
  * for a change that means to redraw a join that already shows.
  */
 import { describe, it, expect } from "vitest";
-import { JOINERS, Strip } from "../../src/core/strip.js";
+import { SEPARATOR_STYLES, Strip } from "../../src/core/strip.js";
 import { RichText } from "../../src/core/text.js";
 import { Style } from "../../src/core/style.js";
 import { ColorDepth, ColorSpec } from "../../src/core/color.js";
@@ -37,7 +37,7 @@ describe("a join whose every cell already stands off its ground", () => {
     const drawn: Record<string, string> = {};
     for (const [palette, styles] of Object.entries(APART)) {
       const items = styles.map((style, i) => cell(` ${i} `, style));
-      for (const [name, joiner] of Object.entries(JOINERS)) {
+      for (const [name, joiner] of Object.entries(SEPARATOR_STYLES)) {
         for (const [depth, colorSystem] of Object.entries(DEPTHS)) {
           for (const asciiOnly of [false, true]) {
             drawn[`${palette} ${name} ${depth}${asciiOnly ? " ascii" : ""}`] = renderToString(new Strip(items, joiner), { colorSystem, asciiOnly, width: 80 });
@@ -51,7 +51,7 @@ describe("a join whose every cell already stands off its ground", () => {
 
 describe("a join between grounds too close to tell apart", () => {
   // Each base and a ground `gap` lighter along its own lightness, which is the
-  // ΔE_OK between them but for the 8-bit rounding of the colour drawn.
+  // ΔE_OK between them but for the 8-bit rounding of the color drawn.
   const BASES = { grey: "#303030", blue: "#336699" } as const;
   const GAPS = [0, 0.01, 0.03, 0.2] as const;
   const FAR = 0.2;
@@ -60,11 +60,11 @@ describe("a join between grounds too close to tell apart", () => {
     return new Oklch(from.l + gap, from.c, from.h).toRgba().hex;
   };
   // The cells a join draws between `left` and `right`, and of those, the ones
-  // with a colour on both sides to measure: a cell on the terminal's ground, or
+  // with a color on both sides to measure: a cell on the terminal's ground, or
   // reversed out of it, has a side nobody knows.
-  const seam = (name: keyof typeof JOINERS, left: string, right: string, colorSystem: ColorDepth) =>
-    [...JOINERS[name].join(cell(" a ", `#e0e0e0 on ${left}`), cell(" b ", `#e0e0e0 on ${right}`), { index: 1 }).render({ maxWidth: 80, colorSystem })];
-  const CASES = (Object.keys(JOINERS) as (keyof typeof JOINERS)[]).flatMap((name) =>
+  const seam = (name: keyof typeof SEPARATOR_STYLES, left: string, right: string, colorSystem: ColorDepth) =>
+    [...SEPARATOR_STYLES[name].join(cell(" a ", `#e0e0e0 on ${left}`), cell(" b ", `#e0e0e0 on ${right}`), { index: 1 }).render({ maxWidth: 80, colorSystem })];
+  const CASES = (Object.keys(SEPARATOR_STYLES) as (keyof typeof SEPARATOR_STYLES)[]).flatMap((name) =>
     Object.entries(DEPTHS).map(([depth, colorSystem]) => [name, depth, colorSystem] as const),
   );
 
@@ -85,10 +85,10 @@ describe("a join between grounds too close to tell apart", () => {
     expect(failures).toEqual([]);
   });
 
-  // A mix of a slot and an RGB is the terminal theme's colour at truecolor but
-  // a cube entry at 256, so there it is lifted among fixed colours and measured
+  // A mix of a slot and an RGB is the terminal theme's color at truecolor but
+  // a cube entry at 256, so there it is lifted among fixed colors and measured
   // by ΔE, never parted from its ground only by being a slot.
-  it("lifts a mix the depth draws as a fixed colour among fixed colours", () => {
+  it("lifts a mix the depth draws as a fixed color among fixed colors", () => {
     for (const { style } of seam("prism", "blue", "#000080", ColorDepth.EIGHT_BIT).slice(1)) {
       const { color, bgcolor } = style!.drawnColors(ColorDepth.EIGHT_BIT);
       expect([color!.name, color!.fixedValue !== undefined, bgcolor!.fixedValue !== undefined]).toEqual([color!.name, true, true]);
@@ -97,8 +97,8 @@ describe("a join between grounds too close to tell apart", () => {
   });
 
   // Measured through the joiner itself: powerline's arrow between two cells of
-  // one ground, drawn at each depth — truecolor and 256 by the colour the
-  // terminal shows, sixteen colours by its slot.
+  // one ground, drawn at each depth — truecolor and 256 by the color the
+  // terminal shows, sixteen colors by its slot.
   it.each([
     ["#303030", "#262626", "#262626", 8],
     ["#336699", "#3f72a6", "#5f5faf", 8],

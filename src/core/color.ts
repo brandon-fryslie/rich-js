@@ -15,7 +15,7 @@ function hex2(byte: number): string {
   return byte.toString(16).padStart(2, "0");
 }
 
-// [LAW:one-source-of-truth] The one statement of a colour byte's range: the
+// [LAW:one-source-of-truth] The one statement of a color byte's range: the
 // constructor asserts it and the string parser reports it, from this predicate.
 function isByte(v: number): boolean {
   return Number.isInteger(v) && v >= 0 && v <= 255;
@@ -93,12 +93,12 @@ export class ColorRgba {
 }
 
 /**
- * The surface a terminal draws a translucent colour over. A terminal cannot
+ * The surface a terminal draws a translucent color over. A terminal cannot
  * know what lies under its cells, so the SGR writer (`Style.toSgrCodes`), the
  * exports that picture its output (`resolveLook`), the strip's seam test and
  * the contrast choosers (`themes/colorMath`) all composite over this one
- * colour. [LAW:one-source-of-truth] One constant, so
- * the colour text is chosen against is the colour the writer draws.
+ * color. [LAW:one-source-of-truth] One constant, so
+ * the color text is chosen against is the color the writer draws.
  */
 export const SURFACE_BLACK = new ColorRgba(0, 0, 0);
 
@@ -140,7 +140,7 @@ function luminanceRatio(la: number, lb: number): number {
 
 // [LAW:one-source-of-truth] The one distance every table scan ranks by, so
 // `matchWhere`'s "nearest by the distance `match` uses" cannot drift, and
-// `Effected` weighs a written colour against `ColorSpec.matchOn` by it too.
+// `Effected` weighs a written color against `ColorSpec.matchOn` by it too.
 export function rgbDistance(a: ColorRgba, b: ColorRgba): number {
   const dr = a.red - b.red;
   const dg = a.green - b.green;
@@ -151,7 +151,7 @@ export function rgbDistance(a: ColorRgba, b: ColorRgba): number {
 /**
  * An indexed palette: entry `i` of `colors` is terminal index `firstIndex + i`.
  * `firstIndex` lets a table hold only the part of a palette a downgrade may
- * choose (the 256-colour cube and grey ramp start at 16) while every index it
+ * choose (the 256-color cube and grey ramp start at 16) while every index it
  * reports is the terminal's own.
  */
 export class ColorTable {
@@ -159,7 +159,7 @@ export class ColorTable {
   /** Each entry's relative luminance. */
   private readonly luminances: readonly number[];
   readonly firstIndex: number;
-  // Keyed by colours a host computes without end (ramp stops, mixes), so bounded.
+  // Keyed by colors a host computes without end (ramp stops, mixes), so bounded.
   private readonly matchMemo = new Memo<number>();
   private readonly readableMemo = new Memo<number>();
 
@@ -243,7 +243,7 @@ export class ColorTable {
 
   /**
    * The nearest entry to `value` (the distance `match` uses) among those
-   * `accept` takes, given each entry's colour and terminal index; `undefined`
+   * `accept` takes, given each entry's color and terminal index; `undefined`
    * when it takes none. Entries are offered nearest-first (ties to the lower
    * index) and the first taken wins, so an expensive predicate runs only as
    * far out as the answer. Uncached: the predicate is the caller's, and a
@@ -271,7 +271,7 @@ export enum ColorDepth {
 }
 
 /**
- * How many colours a depth can name, as a rank. WINDOWS is a sixteen-colour
+ * How many colors a depth can name, as a rank. WINDOWS is a sixteen-color
  * depth whose enum value sits above TRUECOLOR, so the enum's order is not this.
  * STANDARD and WINDOWS share a rank: the same sixteen slots, drawn by
  * different terminals, so each converts to the other by keeping the slot.
@@ -299,7 +299,7 @@ export interface DetectColorOptions {
   isTTY?: boolean;
 }
 
-// The depths a colour system is named for. Its keys and "auto" are the whole
+// The depths a color system is named for. Its keys and "auto" are the whole
 // vocabulary: `ColorSystemName` is derived from them, so the type and the
 // table cannot disagree. [LAW:one-source-of-truth]
 const COLOR_SYSTEM_DEPTHS = {
@@ -310,17 +310,17 @@ const COLOR_SYSTEM_DEPTHS = {
 } as const;
 
 /**
- * A colour system by name: `"auto"` detects it from the environment, and each
- * other name is a fixed depth — `"none"` no colour. `ColorDepth.WINDOWS` has
+ * A color system by name: `"auto"` detects it from the environment, and each
+ * other name is a fixed depth — `"none"` no color. `ColorDepth.WINDOWS` has
  * no name; pass the enum value where a `ColorDepth` is accepted.
  */
 export type ColorSystemName = "auto" | keyof typeof COLOR_SYSTEM_DEPTHS;
 
-// [LAW:one-source-of-truth] What the environment says about colour, by the
+// [LAW:one-source-of-truth] What the environment says about color, by the
 // value it says it with: FORCE_COLOR values (the chalk/supports-color
-// convention), TERM_PROGRAM identifiers, and exact TERM names whose colour
+// convention), TERM_PROGRAM identifiers, and exact TERM names whose color
 // capability is known. A different vocabulary from `ColorSystemName`, so a
-// different table: `FORCE_COLOR=none` is not a request for no colour. A `Map`,
+// different table: `FORCE_COLOR=none` is not a request for no color. A `Map`,
 // so a value naming an `Object.prototype` member is unknown, not a function.
 // `null` means "no color".
 const ENV_DEPTHS: ReadonlyMap<string, ColorDepth | null> = new Map([
@@ -361,7 +361,7 @@ const ENV_DEPTHS: ReadonlyMap<string, ColorDepth | null> = new Map([
 export function detectColorSystem(
   options: DetectColorOptions = {},
 ): ColorDepth | null {
-  // NO_COLOR and FORCE_COLOR are preferences about colour, not facts about the
+  // NO_COLOR and FORCE_COLOR are preferences about color, not facts about the
   // terminal, so they sit outside the probe. NO_COLOR (any non-empty value)
   // beats FORCE_COLOR; FORCE_COLOR beats TTY/TERM detection.
   const noColor = envOf(options)["NO_COLOR"];
@@ -424,14 +424,14 @@ function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
 
 /**
  * Where segments are written, as everything the serializer (`segmentsToString`)
- * needs to know about it: the colour depth SGR is drawn at, whether OSC 8
+ * needs to know about it: the color depth SGR is drawn at, whether OSC 8
  * hyperlinks are emitted, and whether the reader there asked for reduced
  * motion — under which the terminal's own blink is not asked for
  * (`shownOn`, `./render.ts`). The serializer takes this value whole, so a
  * fact the encoding comes to need joins it here rather than the serializer's
  * signature.
  */
-export interface Destination {
+export interface OutputTarget {
   readonly colorSystem: ColorDepth | null;
   readonly hyperlinks: boolean;
   /**
@@ -445,7 +445,7 @@ export interface Destination {
 }
 
 /**
- * What `resolveDestination` is told about where it writes beyond the colour
+ * What `resolveOutputTarget` is told about where it writes beyond the color
  * spec: what detection probes, and the reader's preference for motion, which
  * no spec or terminal reports, so the program hands it in. Absent, everything
  * moves.
@@ -457,21 +457,21 @@ export interface DestinationOptions extends DetectColorOptions {
 }
 
 /**
- * Resolve a colour spec into a `Destination`.
+ * Resolve a color spec into a `OutputTarget`.
  *
  * [LAW:single-enforcer] The one place a spec becomes both facts. A hyperlink is
- * not a colour: an explicit depth — `"none"` and `null` included — states a
- * colour choice and keeps links, and under `"auto"` links follow what the
+ * not a color: an explicit depth — `"none"` and `null` included — states a
+ * color choice and keeps links, and under `"auto"` links follow what the
  * terminal can take (no TTY, TERM=dumb: none) while NO_COLOR and FORCE_COLOR=0,
- * colour preferences, leave them alone. A FORCE_COLOR that forces colour on
+ * color preferences, leave them alone. A FORCE_COLOR that forces color on
  * declares the destination takes escapes, so it keeps links on a pipe too.
  */
-export function resolveDestination(
+export function resolveOutputTarget(
   spec: ColorSystemName | ColorDepth | null,
   options: DestinationOptions = {},
-): Destination {
+): OutputTarget {
   const reducedMotion = options.reducedMotion ?? false;
-  // Ahead of both arms: a colour spec says nothing about order.
+  // Ahead of both arms: a color spec says nothing about order.
   const textOrder = options.textOrder ?? detectTextOrder(envOf(options), isTTYOf(options));
   if (spec !== "auto") {
     return {
@@ -492,7 +492,7 @@ export function resolveDestination(
 }
 
 /**
- * Resolve a colour system name into a `ColorDepth` (or `null` for no color).
+ * Resolve a color system name into a `ColorDepth` (or `null` for no color).
  *
  * `"auto"` triggers env-based detection; every other name is a fixed depth.
  * A name outside the vocabulary — reachable only from untyped JavaScript —
@@ -548,12 +548,12 @@ export class ColorSpec {
   }
 
   /**
-   * The colour every terminal draws this spec as, where that is fixed — before
+   * The color every terminal draws this spec as, where that is fixed — before
    * any alpha is flattened, so a translucent value is drawn composited over
    * its ground (`flattenAlpha`) and should be measured that way: a
-   * truecolor value, or a 256-colour cube or grey-ramp entry (xterm fixes
+   * truecolor value, or a 256-color cube or grey-ramp entry (xterm fixes
    * indices 16–255, and `fromAnsi` types only those as EIGHT_BIT). ANSI 0–15,
-   * the default colour and a blend reaching either are the terminal theme's
+   * the default color and a blend reaching either are the terminal theme's
    * own, so they have none.
    */
   get fixedValue(): ColorRgba | undefined {
@@ -683,19 +683,19 @@ export class ColorSpec {
   }
 
   /**
-   * The colour `t` of the way from `from` to `to`: what `blend(from,to,t)`
-   * parses to. Two fixed colours mix to a fixed colour. A mix reaching a
-   * theme's own colour stays a mix until it is drawn, so whatever theme draws
+   * The color `t` of the way from `from` to `to`: what `blend(from,to,t)`
+   * parses to. Two fixed colors mix to a fixed color. A mix reaching a
+   * theme's own color stays a mix until it is drawn, so whatever theme draws
    * an end draws the mix from it: exported under a theme whose `blue` is
    * #61afef, a mix with `blue` starts from #61afef. A terminal is told its RGB
    * under the standard table, the only one a render has.
    *
-   * Each end is one opaque colour: `default` is no colour to mix, and a
+   * Each end is one opaque color: `default` is no color to mix, and a
    * translucent end has no one shade until it is laid on a ground.
    */
   static blend(from: ColorSpec, to: ColorSpec, t: number): ColorSpec {
     for (const end of [from, to]) {
-      if (end.isDefault) throw new ColorParseError(`A blend cannot mix "default", which is no colour`);
+      if (end.isDefault) throw new ColorParseError(`A blend cannot mix "default", which is no color`);
       if (end.value !== undefined && end.value.alpha < 1) {
         throw new ColorParseError(`A blend's ends are opaque; "${end.name}" is translucent`);
       }
@@ -715,20 +715,20 @@ export class ColorSpec {
 
   /**
    * The spec that draws `value` nearest to it at `depth` on a terminal known
-   * to show `theme`, as the colour of the glyph (`foreground`) or of the
+   * to show `theme`, as the color of the glyph (`foreground`) or of the
    * ground. Where `downgrade` knows no terminal, and so rounds only against
-   * colours every terminal fixes (or, at sixteen colours, the stock
-   * sixteen), this rounds against every colour the depth can write whose
-   * look `theme` fixes: the default colour, the theme's sixteen, and at 256
-   * colours the cube and grey ramp too. A colour read off any of those and
-   * moved a little is drawn as the colour it came from — or, where the theme
-   * gives two slots one colour, as the lower slot, which looks the same.
+   * colors every terminal fixes (or, at sixteen colors, the stock
+   * sixteen), this rounds against every color the depth can write whose
+   * look `theme` fixes: the default color, the theme's sixteen, and at 256
+   * colors the cube and grey ramp too. A color read off any of those and
+   * moved a little is drawn as the color it came from — or, where the theme
+   * gives two slots one color, as the lower slot, which looks the same.
    *
-   * `value` is opaque: a translucent colour has no one look until it is laid
+   * `value` is opaque: a translucent color has no one look until it is laid
    * on a ground (`flattenAlpha`).
    */
   static matchOn(value: ColorRgba, depth: ColorDepth, theme: TerminalColors, foreground: boolean): ColorSpec {
-    if (value.alpha < 1) throw new RangeError(`matchOn rounds an opaque colour; got alpha ${value.alpha}`);
+    if (value.alpha < 1) throw new RangeError(`matchOn rounds an opaque color; got alpha ${value.alpha}`);
     if (depth === ColorDepth.TRUECOLOR) return ColorSpec.fromRgba(value);
     if (depth === ColorDepth.DEFAULT) return ColorSpec.default();
     // [LAW:dataflow-not-control-flow] Every candidate is scored; the depth
@@ -745,12 +745,12 @@ export class ColorSpec {
   }
 
   /**
-   * Every colour `depth` writes by index, each with the colour a terminal
+   * Every color `depth` writes by index, each with the color a terminal
    * known to show `theme` draws it in, lowest index first: the theme's
-   * sixteen, and at 256 colours the cube and grey ramp after them. Each is
-   * drawn alike as glyph and as ground, which the default colour is not, so
-   * it is not among them. Truecolor writes a colour itself and the default
-   * depth only the default, so neither writes any by index. The colours
+   * sixteen, and at 256 colors the cube and grey ramp after them. Each is
+   * drawn alike as glyph and as ground, which the default color is not, so
+   * it is not among them. Truecolor writes a color itself and the default
+   * depth only the default, so neither writes any by index. The colors
    * `matchOn` rounds to, but for the default, read off the same two tables.
    */
   static indexed(depth: ColorDepth, theme: TerminalColors): readonly (readonly [ColorSpec, ColorRgba])[] {
@@ -758,11 +758,11 @@ export class ColorSpec {
   }
 
   /**
-   * The spec a slot is written in once its colour moves from `was`, what its
+   * The spec a slot is written in once its color moves from `was`, what its
    * written spec draws on `theme`, to the opaque `now`: `matchOn`'s — or
    * none, where the written spec is as near `now` as that match. A move the
-   * depth cannot show is no move, so below truecolor a colour moved a little
-   * off any colour the depth can write — a theme slot, the default colour,
+   * depth cannot show is no move, so below truecolor a color moved a little
+   * off any color the depth can write — a theme slot, the default color,
    * the cube — keeps the spec it was written in.
    */
   static matchMove(was: ColorRgba, now: ColorRgba, depth: ColorDepth, theme: TerminalColors, foreground: boolean): ColorSpec | undefined {
@@ -781,7 +781,7 @@ export class ColorSpec {
   // --- private ---
 
   private performDowngrade(targetSystem: ColorDepth): ColorSpec {
-    // The colour as the terminal this depth assumes draws it: a blend's named
+    // The color as the terminal this depth assumes draws it: a blend's named
     // ends are the Windows console's own at WINDOWS.
     const triplet = this.getTruecolor(resolveTerminal(undefined, targetSystem));
 
@@ -791,7 +791,7 @@ export class ColorSpec {
       case ColorDepth.STANDARD:
       case ColorDepth.WINDOWS: {
         // An ANSI slot is already one of the sixteen either depth writes; only
-        // a fixed colour is matched against the depth's table, as Rich does.
+        // a fixed color is matched against the depth's table, as Rich does.
         const index = this.number !== undefined && this.number < 16 ? this.number : downgradeTable(targetSystem).match(triplet);
         return new ColorSpec(`color(${index})`, targetSystem, index);
       }
@@ -803,7 +803,7 @@ export class ColorSpec {
   }
 }
 
-/** The cube or grey-ramp entry nearest `value`, and its colour. */
+/** The cube or grey-ramp entry nearest `value`, and its color. */
 function cubeCandidate(value: ColorRgba): [ColorSpec, ColorRgba] {
   const index = EIGHT_BIT_DOWNGRADE_TABLE.match(value);
   return [ColorSpec.fromAnsi(index), EIGHT_BIT_DOWNGRADE_TABLE.get(index)];
@@ -834,7 +834,7 @@ function mix(from: ColorSpec, to: ColorSpec, t: number, theme?: TerminalColors):
 }
 
 // How a blend spells an end: by what it draws as, so every spelling of one
-// colour ("blue", "color(4)", an EIGHT_BIT 4) gives the blend one name.
+// color ("blue", "color(4)", an EIGHT_BIT 4) gives the blend one name.
 function blendTerm(end: ColorSpec): string {
   return end.fixedValue?.hex ?? (end.number !== undefined ? `color(${end.number})` : end.name);
 }
@@ -949,8 +949,8 @@ function parseByte(key: string, digits: string, field: "red" | "green" | "blue" 
 
 // --- Utility functions ---
 
-// [LAW:single-enforcer] The hex colour grammar, checked here and nowhere else:
-// every string spelling a colour in hex — a ColorSpec, a theme's data, a colour
+// [LAW:single-enforcer] The hex color grammar, checked here and nowhere else:
+// every string spelling a color in hex — a ColorSpec, a theme's data, a color
 // reference, a template argument — becomes one through the three parsers below,
 // and each is this check at the lengths it admits. Each digit pair is a byte, so
 // the grammar holding is what keeps `ColorRgba`'s channels in range.
@@ -963,13 +963,13 @@ const HEX_GRAMMARS = { 6: "RRGGBB", 8: "RRGGBBAA" } as const;
 function hexColor(input: string, lead: "" | "#", digits: string, lengths: readonly (keyof typeof HEX_GRAMMARS)[]): ColorRgba {
   if (!(lengths as readonly number[]).includes(digits.length) || !HEX_DIGITS_RE.test(digits)) {
     const expected = lengths.map((n) => lead + HEX_GRAMMARS[n]).join(" or ");
-    throw new ColorParseError(`Invalid hex colour ${JSON.stringify(input)} (expected ${expected})`);
+    throw new ColorParseError(`Invalid hex color ${JSON.stringify(input)} (expected ${expected})`);
   }
   const byte = (at: number): number => parseInt(digits.slice(at, at + 2), 16);
   return new ColorRgba(byte(0), byte(2), byte(4), digits.length === 8 ? byte(6) / 255 : 1);
 }
 
-/** Six hex digits, no `#`, as an opaque colour. @throws {ColorParseError} on anything else. */
+/** Six hex digits, no `#`, as an opaque color. @throws {ColorParseError} on anything else. */
 export function parseRgbHex(hex: string): ColorRgba {
   return hexColor(hex, "", hex, [6]);
 }
@@ -1003,7 +1003,7 @@ export function blendRgb(
 // --- TerminalTheme ---
 
 /**
- * What a terminal draws with: the part of a `TerminalTheme` a colour resolves
+ * What a terminal draws with: the part of a `TerminalTheme` a color resolves
  * against.
  */
 export class TerminalColors {
@@ -1020,19 +1020,19 @@ export class TerminalColors {
     // terminal's sixteen, so a theme is the proof it holds exactly those.
     if (ansiColors.firstIndex !== 0 || ansiColors.size !== 16) {
       throw new RangeError(
-        `a TerminalTheme's ansiColors are the sixteen ANSI colours, indices 0–15; got ${ansiColors.size} from index ${ansiColors.firstIndex}`,
+        `a TerminalTheme's ansiColors are the sixteen ANSI colors, indices 0–15; got ${ansiColors.size} from index ${ansiColors.firstIndex}`,
       );
     }
   }
 }
 
 /**
- * A terminal theme — surface/foreground baseline, the sixteen ANSI colours,
+ * A terminal theme — surface/foreground baseline, the sixteen ANSI colors,
  * and a semantic palette.
  *
- * **`ansiColors` is the theme's own sixteen colours**, the shades a terminal
+ * **`ansiColors` is the theme's own sixteen colors**, the shades a terminal
  * showing this theme draws `red`, `blue` and the rest in. `ColorSpec.parse("red")`
- * is ANSI colour 1 under every theme; which red that is, is the theme's to say,
+ * is ANSI color 1 under every theme; which red that is, is the theme's to say,
  * as it is in Rich, where each `TerminalTheme` carries its own table.
  */
 export class TerminalTheme extends TerminalColors {
@@ -1093,8 +1093,8 @@ function build256Table(): ColorRgba[] {
 
 /**
  * The Windows console's own sixteen (its default Campbell scheme), in ANSI
- * index order: a WINDOWS colour is written as the same `30+n`/`90+n` SGR a
- * STANDARD one is, so slot `n` here is the colour the console draws for it.
+ * index order: a WINDOWS color is written as the same `30+n`/`90+n` SGR a
+ * STANDARD one is, so slot `n` here is the color the console draws for it.
  */
 function buildWindowsTable(): ColorRgba[] {
   return [
@@ -1120,8 +1120,8 @@ function buildWindowsTable(): ColorRgba[] {
 export const STANDARD_TABLE = new ColorTable(buildStandard16());
 export const EIGHT_BIT_TABLE = new ColorTable(build256Table());
 /**
- * What a downgrade to 256 colours may choose: the cube and the grey ramp,
- * indices 16–255. Indices 0–15 are the terminal's own ANSI colours, which
+ * What a downgrade to 256 colors may choose: the cube and the grey ramp,
+ * indices 16–255. Indices 0–15 are the terminal's own ANSI colors, which
  * every theme redefines, so their RGB is unknown and a match against them is
  * a guess; Python Rich never picks them either.
  */
@@ -1139,16 +1139,16 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // `themes/* -> core/color`, with no runtime back-edge.
 //
 // `getTruecolor()` retains a fallback for callers that omit `theme`: the
-// terminal a colour's depth assumes, its own sixteen and no palette, which the
+// terminal a color's depth assumes, its own sixteen and no palette, which the
 // lookups it serves never read.
 
 const INTERNAL_DEFAULT_TERMINAL = new TerminalColors(new ColorRgba(0, 0, 0), new ColorRgba(255, 255, 255), STANDARD_TABLE);
 
-/** The Windows console in its default Campbell scheme: a WINDOWS colour's terminal. */
+/** The Windows console in its default Campbell scheme: a WINDOWS color's terminal. */
 const WINDOWS_CONSOLE_TERMINAL = new TerminalColors(WINDOWS_TABLE.get(0), WINDOWS_TABLE.get(7), WINDOWS_TABLE);
 
 /**
- * The terminal a colour at `depth` is drawn by: `theme`, or when a caller names
+ * The terminal a color at `depth` is drawn by: `theme`, or when a caller names
  * none, the one the depth assumes — the Windows console at WINDOWS, the VGA
  * sixteen otherwise — for `ColorSpec.getTruecolor` and the contrast measurement
  * that reads it. (Widgets fall back to `DEFAULT_TERMINAL_THEME`, which carries a
@@ -1159,9 +1159,9 @@ export function resolveTerminal(theme: TerminalColors | undefined, depth: ColorD
 }
 
 /**
- * The table a downgrade to `depth` rounds a fixed colour against.
- * [LAW:one-source-of-truth] `ColorSpec.downgrade` picks the index a colour is
- * written as from it, and colorMath hands back its entries as colours the
+ * The table a downgrade to `depth` rounds a fixed color against.
+ * [LAW:one-source-of-truth] `ColorSpec.downgrade` picks the index a color is
+ * written as from it, and colorMath hands back its entries as colors the
  * writer rounds to those same indices.
  */
 export function downgradeTable(depth: ColorDepth.EIGHT_BIT | ColorDepth.STANDARD | ColorDepth.WINDOWS): ColorTable {

@@ -10,12 +10,12 @@ import {
   Table,
   Timeline,
   Tree,
-  beat,
+  stepSequence,
   dissolveOut,
   fadeIn,
   lifecycle,
   throughColors,
-  onBeat,
+  sampleAndHold,
   render,
   segmentsToString,
   type Lifecycle,
@@ -43,7 +43,7 @@ const sampled = (rate: number, from: number, to: number): number[] => Array.from
  */
 const row = (i: number, seconds: number, steps?: number): Lifecycle => {
   const fade = fadeIn({ seconds, ease: EASES.linear, swing: 1 }, i);
-  const enter = steps === undefined ? fade : onBeat(fade, beat([steps]));
+  const enter = steps === undefined ? fade : sampleAndHold(fade, stepSequence([steps]));
   return lifecycle(new RichText(`row ${i} arrived`, { style: "bold cyan" }), { enter: throughColors(enter), exit: throughColors(dissolveOut({ seconds, ease: EASES.linear, swing: 1 }, i)), key: `row-${i}` }, 0);
 };
 const rows = (seconds: number, steps?: number): Lifecycle[] => [0, 1, 2].map((i) => row(i, seconds, steps));
@@ -65,7 +65,7 @@ describe("Timeline.stagger", () => {
   it("a child before its turn is asked for its own time before 0: a lifecycle draws nothing, a loop is shifted in phase", () => {
     const staggered = Timeline.stagger(rows(1), 0.5);
     expect(staggered.at(0.2).slice(1).map(bytes)).toEqual(["", ""]);
-    const signal = Animation.map(beat([1, 1]), (i) => ["on", "off"][i]!);
+    const signal = Animation.map(stepSequence([1, 1]), (i) => ["on", "off"][i]!);
     const pulse = Timeline.stagger([signal, signal, signal], 0.5);
     for (const t of [0, 0.25, 0.75, 1.6, 1e6, 1e6 + 0.7]) expect(pulse.at(t)).toEqual([0, 1, 2].map((i) => signal.at(t - i * 0.5)));
   });
@@ -75,7 +75,7 @@ describe("Timeline.stagger", () => {
     const children = rows(1, 0.25);
     const staggered = Timeline.stagger(children, delay);
     // At 0.8, row 0 turns at 1 and row 2 enters at 1.2, but row 1, 0.2 into its arrival, turns its first beat at 0.25 on its clock.
-    const next = staggered.nextChange(0.8);
+    const next = staggered.validUntil(0.8);
     expect(next).toBeCloseTo(0.85, 12);
     // Exact to the float: the frame before it is still row 1's frame of the last beat.
     const before = (x: number) => bytes(staggered.at(x)[1]!);
@@ -85,18 +85,18 @@ describe("Timeline.stagger", () => {
 
   it("holds still between one child arriving and the next entering, and never changes once every child has arrived", () => {
     const staggered = Timeline.stagger(rows(0.4), 1);
-    expect(staggered.nextChange(0.2)).toBe(0.2);
-    expect(staggered.nextChange(0.6)).toBe(1);
+    expect(staggered.validUntil(0.2)).toBe(0.2);
+    expect(staggered.validUntil(0.6)).toBe(1);
     // Row 0 finished arriving at 0.4, and nothing has moved since.
-    expect(staggered.lastChange(0.6)).toBe(0.4);
-    expect(staggered.nextChange(2.5)).toBe(Number.POSITIVE_INFINITY);
+    expect(staggered.validFrom(0.6)).toBe(0.4);
+    expect(staggered.validUntil(2.5)).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("run backwards, turns exactly where the latest child became what it shows", () => {
-    const signal = Animation.map(beat([1, 1]), (i) => ["on", "off"][i]!);
+    const signal = Animation.map(stepSequence([1, 1]), (i) => ["on", "off"][i]!);
     // Host h asks the stagger for 3 - h: at host 1.4 the children are at 1.6, 1.1 and 0.6, and child 1 drops back under 1 first.
     const backwards = Timeline.run(Timeline.seek(Timeline.play(0, -1), 0, 3), Timeline.stagger([signal, signal, signal], 0.5));
-    const next = backwards.nextChange(1.4);
+    const next = backwards.validUntil(1.4);
     expect(next).toBeCloseTo(1.5, 12);
     expect(backwards.at(next)).not.toEqual(backwards.at(1.4));
     expect(backwards.at(nextDown(next))).toEqual(backwards.at(1.4));
@@ -116,7 +116,7 @@ describe("Timeline.stagger", () => {
     // 1e308 is finite, but two of it is not: the last child's origin is refused by the delay's name too.
     for (const delay of [Number.NaN, Number.POSITIVE_INFINITY, 1e308]) expect(() => Timeline.stagger(rows(1), delay)).toThrow(/Timeline\.stagger delay/);
     const none = Timeline.stagger<string>([], 0.5);
-    expect([none.at(3), none.nextChange(3), none.lastChange(3)]).toEqual([[], Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]);
+    expect([none.at(3), none.validUntil(3), none.validFrom(3)]).toEqual([[], Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]);
   });
 });
 
@@ -149,7 +149,7 @@ describe("a stagger over any container, by composition", () => {
         const fast = shown(steps);
         for (const t of sampled(60, 0, 3)) {
           const frame = inFrame(fast, t);
-          expect(Segment.nextChange(draw(frame))).toBe(fast.nextChange(t));
+          expect(Segment.validUntil(draw(frame))).toBe(fast.validUntil(t));
           if (slow.has(t)) expect(bytes(frame)).toBe(slow.get(t));
         }
       }

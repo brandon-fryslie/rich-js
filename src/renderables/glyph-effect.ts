@@ -3,8 +3,8 @@
  * glyph effect at a moment `t`: the glyph half of `Effected` (`./effect.ts`),
  * built to its contract.
  *
- * A glyph effect is the colour effect's two-stage shape with a glyph where
- * the colours were: for the cells an element draws in a frame, an
+ * A glyph effect is the color effect's two-stage shape with a glyph where
+ * the colors were: for the cells an element draws in a frame, an
  * `Animation` (`../core/animation.ts`) of what is done to them. The first
  * stage is handed every cell once a frame (`GlyphCell`), blanks included —
  * rain and stars live there — and whether the output draws ASCII alone
@@ -14,15 +14,15 @@
  * scramble, a wave of case changes and particles on blank cells are all this
  * one shape (`./glyph-effects.ts`) [LAW:one-type-per-behavior].
  *
- * Colour and glyph are not two kinds of animation: each is an `Animation` of
+ * Color and glyph are not two kinds of animation: each is an `Animation` of
  * a per-cell map, and they differ only in what a cell is mapped to. The
- * wrappers are two because the stages are handed different facts. A colour
- * effect is settled against the depth, the terminal and the colours of the
- * words (`Drawn`), and with no colour output there is nothing for it to
+ * wrappers are two because the stages are handed different facts. A color
+ * effect is settled against the depth, the terminal and the colors of the
+ * words (`Drawn`), and with no color output there is nothing for it to
  * change. A glyph effect needs none of that, and is written at every depth,
- * with no colour too. Over one element the two compose by nesting:
- * `new Effected(new GlyphEffected(child, glyphs, …), colours, …)` moves the
- * colours of the glyphs the glyph effect left, since each wrapper measures
+ * with no color too. Over one element the two compose by nesting:
+ * `new Effected(new GlyphEffected(child, glyphs, …), colors, …)` moves the
+ * colors of the glyphs the glyph effect left, since each wrapper measures
  * what its child drew.
  *
  * A `GlyphEffected` is the element under its glyph effect over time, an
@@ -52,7 +52,7 @@
  * what the child drew.
  */
 
-import { Animation, placedRender, shownAt, type Moves } from "../core/animation.js";
+import { Animation, placedRender, shownAt, type Reads } from "../core/animation.js";
 import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
@@ -60,7 +60,7 @@ import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { finiteTime } from "../core/easing.js";
 import { sanitized, type RichText } from "../core/text.js";
-import { cellSeed, holdOver, walkGlyphs, type Placed } from "./effect.js";
+import { cellSeed, validityOver, walkGlyphs, type Placed } from "./effect.js";
 import { pattern } from "../core/pattern.js";
 
 /**
@@ -95,7 +95,7 @@ export interface DrawnGlyphs {
 
 /**
  * For an element drawing `drawn`, the animation of what is done to its
- * glyphs. Its `nextChange` is when the frame next changes, as an `Effect`'s is.
+ * glyphs. Its `validUntil` is when the frame next changes, as an `Effect`'s is.
  */
 export type GlyphEffect = (drawn: DrawnGlyphs) => Animation<GlyphFrame>;
 
@@ -108,7 +108,7 @@ export interface GlyphEffectedOptions {
  * A `GlyphEffected` at `t`, or an element through a glyph effect at a time an
  * animation's `at` was handed: `renderable` with its cells' glyphs passed
  * through `effect` at `t`, telling the hold it drew in as a `Recolored` does
- * (`RenderOptions.onMoved`, `./effect.ts`). [LAW:one-type-per-behavior]
+ * (`RenderOptions.onReads`, `./effect.ts`). [LAW:one-type-per-behavior]
  */
 export class Reglyphed implements Renderable, Measurable {
   private readonly _t: number;
@@ -129,7 +129,7 @@ export class Reglyphed implements Renderable, Measurable {
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
     const frame = shownAt(animation, this._t, options);
     const shown = showGlyphs(placed, frame.value);
-    options.onMoved?.(this._t, this.key, holdOver(cells.length > 0, frame, this._t));
+    options.onReads?.(this._t, this.key, validityOver(cells.length > 0, frame, this._t));
     return segments.map((segment, i) => (shown[i]!.every((text, j) => text === placed[i]![j]!.glyph) ? segment : new Segment(shown[i]!.join(""), segment.style)));
   }
 
@@ -143,7 +143,7 @@ export class Reglyphed implements Renderable, Measurable {
  * as an `Effected` is (`./effect.ts`): with nothing drawn its answer is `t`,
  * and placed, on its own or as a part of any combinator, it says the glyph
  * effect's exact hold at that time and the output's `asciiOnly`, which the
- * frame's drawing told (`Moves`).
+ * frame's drawing told (`Reads`).
  */
 export class GlyphEffected implements Animation<Renderable> {
   readonly key: string;
@@ -161,12 +161,12 @@ export class GlyphEffected implements Animation<Renderable> {
     return new Reglyphed(this.renderable, this.effect, { t, key: this.key });
   }
 
-  nextChange(t: number, moves?: Moves): number {
-    return moves?.(t, this.key)?.nextChange ?? t;
+  validUntil(t: number, moves?: Reads): number {
+    return moves?.(t, this.key)?.validUntil ?? t;
   }
 
-  lastChange(t: number, moves?: Moves): number {
-    return moves?.(t, this.key)?.lastChange ?? t;
+  validFrom(t: number, moves?: Reads): number {
+    return moves?.(t, this.key)?.validFrom ?? t;
   }
 
   /** The element under the glyph effect with its motion taken out. */

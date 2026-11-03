@@ -35,21 +35,21 @@ console.print(new UserReport([
 ```
 
 The `render` method:
-- Receives `RenderOptions` with `maxWidth` and other context, including `colorSystem`, the depth the output will be encoded at, and `terminal`, the [terminal it is drawn on](/console#the-terminal-a-frame-is-drawn-on), for a renderable that decides on the colours the terminal will draw
+- Receives `RenderOptions` with `maxWidth` and other context, including `colorSystem`, the depth the output will be encoded at, and `terminal`, the [terminal it is drawn on](/console#the-terminal-a-frame-is-drawn-on), for a renderable that decides on the colors the terminal will draw
 - Returns an iterable of `Segment`s — a generator is recommended
 - Draws a child renderable (markup rendered with `renderMarkup`, a `Table`, a `Panel`, another custom renderable) through `render(child, options)` and yields its segments with `yield*`
 
 ## Containers and what they hold
 
-`render` reports every renderable it is asked for to `options.onPresent`, as it is asked, so whoever draws the frame learns what is in the view in document order: a container before what it holds, its children in the order it draws them. That is how a [`WidgetApp`](/widgets) finds its widgets. A renderable handed no column is reported `"held"` rather than `"drawn"`: it is in the view, and nothing is drawn for it.
+`render` reports every renderable it is asked for to `options.onVisibility`, as it is asked, so whoever draws the frame learns what is in the view in document order: a container before what it holds, its children in the order it draws them. That is how a [`WidgetApp`](/widgets) finds its widgets. A renderable handed no column is reported `"held"` rather than `"drawn"`: it is in the view, and nothing is drawn for it.
 
-A held renderable is still drawn, and what it draws is dropped. So what a held container holds is what its `render` draws through `render`, under the options it hands each child, and each of those is reported held as well, whatever width it was handed. A container of your own needs nothing beyond its `render` for a widget inside it to keep its place in a `WidgetApp` while it is squeezed to nothing; it does need to draw without throwing under one column.
+A hidden renderable is still drawn, and what it draws is dropped. So what a held container holds is what its `render` draws through `render`, under the options it hands each child, and each of those is reported held as well, whatever width it was handed. A container of your own needs nothing beyond its `render` for a widget inside it to keep its place in a `WidgetApp` while it is squeezed to nothing; it does need to draw without throwing under one column.
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
 import { RichText, Segment, render } from "@promptctl/rich-js";
 
-class Labelled implements Renderable {
+class Labeled implements Renderable {
   constructor(private label: string, private body: Renderable) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
@@ -58,7 +58,7 @@ class Labelled implements Renderable {
   }
 }
 
-console.print(new Labelled("Status", new RichText("all systems nominal")));
+console.print(new Labeled("Status", new RichText("all systems nominal")));
 ```
 
 Nothing a held renderable learns by drawing is kept: what it hands to `afterPass` is dropped, as a measurement's is. So content it holds that is shown through a `Viewport` leaves that viewport at the scroll offset the last frame to draw it left.

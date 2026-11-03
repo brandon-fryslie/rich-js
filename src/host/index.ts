@@ -13,8 +13,8 @@ export type {
 } from "./terminal-host.js";
 export { hostEnvironment } from "./host-environment.js";
 export { App } from "./app.js";
-export type { AppMouseEvent, AppOptions, AppPhase, Asked, AskOptions, Wheel } from "./app.js";
+export type { AppMouseEvent, AppOptions, AppPhase, Asked, AskOptions, WheelEvent } from "./app.js";
 export { terminalColors } from "./terminal-colors.js";
 export type { Surface } from "../core/paint.js";
 export { keyName } from "./input.js";
-export type { KeyPress, ScreenMouseEvent, TerminalReply } from "./input.js";
+export type { KeyEvent, TerminalMouseEvent, TerminalReply } from "./input.js";

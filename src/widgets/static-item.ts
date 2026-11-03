@@ -15,7 +15,7 @@ import { Segment } from "../core/segment.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
 import { WidgetBase } from "./widget-base.js";
-import type { KeyEvent } from "./types.js";
+import type { WidgetKeyEvent } from "./types.js";
 
 export interface StaticItemOptions {
   id: string;
@@ -47,7 +47,7 @@ export class StaticItem extends WidgetBase {
 
   // Static items don't respond to keys. WidgetBase.handleMouse / handleFocus
   // are already no-ops, so we only need to satisfy the abstract handleKey.
-  handleKey(_event: KeyEvent): void {}
+  handleKey(_event: WidgetKeyEvent): void {}
 
   protected draw(options: RenderOptions): Iterable<Segment> {
     return render(this.body, options);

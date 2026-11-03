@@ -64,7 +64,7 @@ export const guideSidebar: SidebarGroup[] = [
       { text: 'Tables', link: '/tables' },
       { text: 'Tree', link: '/tree' },
       { text: 'Columns', link: '/columns' },
-      { text: 'Strip + Joiner', link: '/strip' },
+      { text: 'Strip + Separator', link: '/strip' },
       { text: 'Group', link: '/group' },
       { text: 'Padding', link: '/padding' },
       { text: 'Viewport', link: '/viewport' },
@@ -93,7 +93,7 @@ export const guideSidebar: SidebarGroup[] = [
   {
     text: 'Color & Theming',
     items: [
-      { text: 'Theme Transposition', link: '/transpose' },
+      { text: 'Theme Adjustment', link: '/adjust' },
       { text: 'Contrast & Accessibility', link: '/contrast' },
     ],
   },

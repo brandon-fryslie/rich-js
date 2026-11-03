@@ -28,7 +28,7 @@ function fixed(...segments: Segment[]): Renderable {
 const styled = new RichText("plain hot cool 漢字\nsecond line", { style: "bold red on blue" });
 
 describe("GlyphEffected — the identity effect", () => {
-  it("draws byte-identical output at every depth, no colour included", () => {
+  it("draws byte-identical output at every depth, no color included", () => {
     for (const colorSystem of ["truecolor", "256", "ansi", null] as const) {
       expect(renderToString(glyphed(styled, identity), { width: 30, colorSystem })).toBe(renderToString(styled, { width: 30, colorSystem }));
     }
@@ -39,7 +39,7 @@ describe("GlyphEffected — the identity effect", () => {
     const out = [...glyphed(fixed(segment), identity).render({ maxWidth: 10 })];
     expect(out.map((s) => s.text)).toEqual(["ab"]);
     expect(out[0]!.style?.bold).toBe(true);
-    expect(Segment.nextChange(out)).toBe(Number.POSITIVE_INFINITY);
+    expect(Segment.validUntil(out)).toBe(Number.POSITIVE_INFINITY);
   });
 });
 
@@ -76,7 +76,7 @@ describe("GlyphEffected — what a glyph effect is handed", () => {
 });
 
 describe("GlyphEffected — what it may not change", () => {
-  it("applies with no colour output", () => {
+  it("applies with no color output", () => {
     expect(renderToString(glyphed(fixed(new Segment("ab", Style.parse("red"))), blanked), { width: 10, colorSystem: null })).toBe("  ");
   });
 
@@ -131,10 +131,10 @@ describe("GlyphEffected — what it may not change", () => {
   });
 
   it("stamps the frame's next change under the child's, the sooner winning", () => {
-    const later: GlyphEffect = () => ({ at: () => (cell) => cell.glyph, nextChange: () => 5, lastChange: () => 0, reduced: () => Animation.constant((cell: GlyphCell) => cell.glyph) });
-    const child = fixed(new Segment("a", new Style({ hold: { lastChange: 0, nextChange: 3 } })), new Segment("b"));
+    const later: GlyphEffect = () => ({ at: () => (cell) => cell.glyph, validUntil: () => 5, validFrom: () => 0, reduced: () => Animation.constant((cell: GlyphCell) => cell.glyph) });
+    const child = fixed(new Segment("a", new Style({ validity: { validFrom: 0, validUntil: 3 } })), new Segment("b"));
     const out = [...glyphed(child, later).render({ maxWidth: 10 })];
-    expect(out.map((s) => s.style?.hold.nextChange)).toEqual([3, 5]);
+    expect(out.map((s) => s.style?.validity.validUntil)).toEqual([3, 5]);
   });
 
   it("measures as its child does", () => {
@@ -148,8 +148,8 @@ describe("GlyphEffected — what it may not change", () => {
   });
 });
 
-describe("GlyphEffected — under a colour effect", () => {
-  it("has its changed glyphs drawn in the colours the colour effect moves them to", () => {
+describe("GlyphEffected — under a color effect", () => {
+  it("has its changed glyphs drawn in the colors the color effect moves them to", () => {
     const red: Effect = () => Animation.constant<EffectFrame>((colors) => ({ ...colors, fg: new ColorRgba(255, 0, 0) }));
     const upper: GlyphEffect = () => Animation.constant<GlyphFrame>((cell) => cell.glyph.toUpperCase());
     const both = new Effected(glyphed(fixed(new Segment("ab")), upper), red, { key: "k" }).at(0);

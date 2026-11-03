@@ -12,12 +12,12 @@
  *
  * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentToString`
  * and is the single way a segment becomes wire bytes. `segmentsToString` is
- * that encoding joined, and `Console._writeSegments`, `Painter` (every `Live`
+ * that encoding joined, and `Console._writeSegments`, `Renderer` (every `Live`
  * and `App` frame) and `renderToString` all go through it, so terminal output,
  * live and app frames and string export agree by construction.
  *
  * [LAW:one-source-of-truth] What the encoding needs from where it writes
- * arrives as one `Destination` value. Each caller resolves its destination
+ * arrives as one `OutputTarget` value. Each caller resolves its destination
  * once — spec, detection, and its own overrides — and hands it through whole,
  * so a depth is never paired with a link setting taken from somewhere else.
  *
@@ -34,19 +34,19 @@
  * cell lines do. A link split across segments still hovers as one link,
  * because every pair it becomes carries the id `osc8Open` derives from the URL.
  *
- * Colour and hyperlinks are two facts about the destination:
+ * Color and hyperlinks are two facts about the destination:
  * `colorSystem === null` empties every segment's SGR codes, and
- * `hyperlinks === false` drops every segment's link. A colour depth never
- * removes a link — a hyperlink is not a colour, and a NO_COLOR terminal still
+ * `hyperlinks === false` drops every segment's link. A color depth never
+ * removes a link — a hyperlink is not a color, and a NO_COLOR terminal still
  * follows OSC 8. This is where the port departs from the reference, whose
- * `Style.render` returns bare text for a null colour system.
+ * `Style.render` returns bare text for a null color system.
  *
  * The third fact, `reducedMotion`, changes the segment rather than its
  * encoding: `shownOn` takes the style's blink out before it is encoded.
  */
 
-import { ColorDepth, resolveDestination } from "./color.js";
-import type { ColorSystemName, Destination, DestinationOptions } from "./color.js";
+import { ColorDepth, resolveOutputTarget } from "./color.js";
+import type { ColorSystemName, OutputTarget, DestinationOptions } from "./color.js";
 import type { Env } from "./env.js";
 import { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
@@ -82,7 +82,7 @@ export interface RenderToStringOptions
   noColor?: boolean;
   /**
    * Whether OSC 8 hyperlinks are emitted. Independent of `colorSystem`: a
-   * null colour system strips SGR and keeps links. Default: what the
+   * null color system strips SGR and keeps links. Default: what the
    * destination takes — true for an explicit depth, detected under `"auto"`
    * (no TTY or TERM=dumb: false). `false` with `colorSystem: null` is plain text.
    */
@@ -100,7 +100,7 @@ const DEFAULT_WIDTH = 80;
  * what was drawn, after `render`. The encoder writes what this returns, and a
  * recording console records it, so every export replays what was written.
  */
-export function shownOn(segment: Segment, destination: Destination): Segment {
+export function shownOn(segment: Segment, destination: OutputTarget): Segment {
   const style = destination.reducedMotion ? segment.style?.reduced() : segment.style;
   return style === segment.style ? segment : new Segment(segment.text, style, segment.control);
 }
@@ -111,17 +111,17 @@ export function shownOn(segment: Segment, destination: Destination): Segment {
  * the segment alone, and a `logical` row's isolate spans its segments, so a row
  * goes through `segmentsToString` whole.
  */
-export function segmentToString(segment: Segment, destination: Destination): string {
+export function segmentToString(segment: Segment, destination: OutputTarget): string {
   return segmentsToString([segment], destination);
 }
 
-function encoded(segment: Segment, destination: Destination): string {
+function encoded(segment: Segment, destination: OutputTarget): string {
   if (segment.isControl) return "";
   const { text, style } = shownOn(segment, destination);
   // As the reference's `if not text` and `if style:` — no pair around nothing.
   if (text.length === 0 || style === undefined) return text;
-  // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
-  // their own fact. Coupling them let a colour setting delete every control.
+  // [LAW:one-type-per-behavior] Color depth governs SGR only; hyperlinks are
+  // their own fact. Coupling them let a color setting delete every control.
   const codes = destination.colorSystem === null ? "" : style.toSgrCodes(destination.colorSystem);
   const styled = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
   const link = destination.hyperlinks ? style.link : undefined;
@@ -132,7 +132,7 @@ function encoded(segment: Segment, destination: Destination): string {
  * Encodes a sequence of segments as ANSI bytes for `destination`, one segment
  * at a time, over what `sealed` lets reach the wire.
  */
-export function segmentsToString(segments: Iterable<Segment>, destination: Destination): string {
+export function segmentsToString(segments: Iterable<Segment>, destination: OutputTarget): string {
   const parts: string[] = [];
   for (const segment of sealed(segments, destination.textOrder)) parts.push(encoded(segment, destination));
   return parts.join("");
@@ -145,22 +145,22 @@ export function renderToString(
   const width = options?.width ?? DEFAULT_WIDTH;
   // [LAW:dataflow-not-control-flow] An absent spec is truecolor; an explicit
   // `null` stays null (`??` would collapse it).
-  // [LAW:single-enforcer] Specs resolve through `resolveDestination`.
+  // [LAW:single-enforcer] Specs resolve through `resolveOutputTarget`.
   // Stated, never detected: this call's bytes have no known destination, and
   // its output is deterministic.
   const destinationOptions: DestinationOptions = { reducedMotion: options?.reducedMotion, textOrder: options?.textOrder ?? "plain" };
   if (options?.env !== undefined) destinationOptions.env = options.env;
   if (options?.isTTY !== undefined) destinationOptions.isTTY = options.isTTY;
   const rawSpec = options?.colorSystem;
-  const resolved = resolveDestination(
+  const resolved = resolveOutputTarget(
     rawSpec === undefined ? ColorDepth.TRUECOLOR : rawSpec,
     destinationOptions,
   );
   // [LAW:single-enforcer] This call's overrides are applied here, once, to
   // make the one destination everything below is drawn for. `noColor` is a
-  // colour choice, so it overrides the depth and leaves hyperlinks to the
+  // color choice, so it overrides the depth and leaves hyperlinks to the
   // destination; an explicit `hyperlinks` overrides what the destination takes.
-  const destination: Destination = {
+  const destination: OutputTarget = {
     ...resolved,
     colorSystem: options?.noColor ? null : resolved.colorSystem,
     hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,

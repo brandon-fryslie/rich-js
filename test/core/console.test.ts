@@ -1537,7 +1537,7 @@ describe("Console environment injection", () => {
 });
 
 describe("Console and Live hyperlinks", () => {
-  // A hyperlink is not a colour: NO_COLOR keeps links, a destination that takes
+  // A hyperlink is not a color: NO_COLOR keeps links, a destination that takes
   // no escapes (no TTY, TERM=dumb) drops them, an explicit depth keeps them.
   const linked = "[link=https://example.com]go[/link]";
   const OSC8 = "\x1b]8;";
@@ -1569,7 +1569,7 @@ describe("Console and Live hyperlinks", () => {
     expect(printed({}, { TERM: "dumb" }, true)).not.toContain(OSC8);
   });
 
-  it("an explicit colour depth keeps links on a file sink; hyperlinks: false drops them", () => {
+  it("an explicit color depth keeps links on a file sink; hyperlinks: false drops them", () => {
     const keep = makeConsole({ colorSystem: "truecolor" });
     keep.console.print(linked);
     expect(keep.chunks.join("")).toContain(OSC8);
@@ -1695,7 +1695,7 @@ describe("Console style error reporting", () => {
 // Byte equality says the name drew as the theme's style; the reference Rich
 // 9d8f9a3 resolves every one of these through `console.get_style`.
 describe("Console theme resolution", () => {
-  /** The bytes one print writes, with colour on. */
+  /** The bytes one print writes, with color on. */
   // Printed in a still host's frame: drawn at 0, as a frame-less print is, and a `Progress` made for that host in a frame of its own.
   function printed(item: unknown, options: ConsoleOptions = {}): string {
     const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });

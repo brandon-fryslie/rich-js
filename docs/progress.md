@@ -108,9 +108,9 @@ does, and the bar can rest unlit for ten seconds or more between bands. It is dr
 `Progress` clock's time on each frame: the bands cross at the same speed whatever the
 refresh rate, and a slower refresh shows them further along each frame. Below truecolor
 the light moves only in the steps the output's depth can draw, as with [every effect](./effects):
-at 256 colours faintly, and at 16 colours as a flash of the slot nearest `bar.pulse`, red
+at 256 colors faintly, and at 16 colors as a flash of the slot nearest `bar.pulse`, red
 by default. On an output with no
-colour the pulse cannot be drawn, so a pulsing bar is blank.
+color the pulse cannot be drawn, so a pulsing bar is blank.
 
 ### Easing the bar
 
@@ -202,7 +202,7 @@ progress.stop();
 
 | Column | What it shows |
 |---|---|
-| `BarColumn` | The progress bar, filled in half cells; on an output with no colour only the filled part is drawn, as Rich does. A task not yet started, or with no `total`, pulses |
+| `BarColumn` | The progress bar, filled in half cells; on an output with no color only the filled part is drawn, as Rich does. A task not yet started, or with no `total`, pulses |
 | `TextColumn` | A format string (see below) |
 | `TaskProgressColumn` | Percentage complete, styled `progress.percentage`, right-aligned in four cells so the row holds still |
 | `TimeElapsedColumn` | Elapsed time, styled `progress.elapsed`, held where it stopped once the task is finished |

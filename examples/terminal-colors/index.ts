@@ -3,11 +3,11 @@
  * and a frame drawn against what it answered.
  *
  * THIS IS A DEMO: `terminalColors` (`src/host/terminal-colors.ts`) over
- * `App.ask`. The app starts on the terminal the colour depth assumes, asks
+ * `App.ask`. The app starts on the terminal the color depth assumes, asks
  * with OSC 10 and OSC 11, and from then on draws against the answer: the
- * panel shows both colours as swatches and says whether the terminal answered.
+ * panel shows both colors as swatches and says whether the terminal answered.
  * A terminal that does not support the queries answers DA1 alone, and the app
- * keeps the colours it assumed. Any key quits.
+ * keeps the colors it assumed. Any key quits.
  */
 
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
@@ -42,7 +42,7 @@ const app = new App({
 app.onKey(() => app.stop());
 const running = app.run();
 const learned = await terminalColors(app);
-heard = learned === undefined ? "the terminal did not say; these are assumed" : "the terminal's own colours";
+heard = learned === undefined ? "the terminal did not say; these are assumed" : "the terminal's own colors";
 if (learned !== undefined) app.terminal = learned;
 app.refresh();
 await running;

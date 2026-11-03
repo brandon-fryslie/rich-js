@@ -1,31 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { Animation, FrameSequence, RichText, Segment, Spinner, Timeline, beat } from "../../src/index.js";
+import { Animation, FrameSequence, RichText, Segment, Spinner, Timeline, stepSequence } from "../../src/index.js";
 import { SPINNERS } from "../../src/core/spinnerData.js";
 import { nextDown } from "./next-down.js";
 import { inFrame } from "../renderables/in-frame.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a host sees through a
 // timeline: the animation time each host time maps to, the value there, and
-// that the value holds on the host's clock from `lastChange` to `nextChange`
+// that the value holds on the host's clock from `validFrom` to `validUntil`
 // and not past either, whichever way and however fast the timeline runs.
 
 const NEVER = Number.POSITIVE_INFINITY;
 const ALWAYS = Number.NEGATIVE_INFINITY;
 
 /** A looping animation of three named holds and a one-shot that settles, the two shapes a timeline is run over. */
-const signal = Animation.map(beat([1, 0.5, 2.5]), (i) => ["a", "b", "c"][i]!);
-const oneShot = Animation.sequence(Animation.map(beat([0.5, 0.5]), (i) => `step ${i}`), 2, Animation.constant("done"));
+const signal = Animation.map(stepSequence([1, 0.5, 2.5]), (i) => ["a", "b", "c"][i]!);
+const oneShot = Animation.sequence(Animation.map(stepSequence([0.5, 0.5]), (i) => `step ${i}`), 2, Animation.constant("done"));
 
 /**
- * Whether `animation` holds `at(h)` over `[lastChange(h), nextChange(h))` on
+ * Whether `animation` holds `at(h)` over `[validFrom(h), validUntil(h))` on
  * the host's clock, sampled inside — the contract: the hold an animation
  * names may be narrower than the truth and never wider. Where a boundary is
  * exact, the tests say so with the host time it falls at.
  */
 function holdsBetween<T>(animation: Animation<T>, h: number, samples = 24): boolean {
   const value = animation.at(h);
-  const next = animation.nextChange(h);
-  const last = animation.lastChange(h);
+  const next = animation.validUntil(h);
+  const last = animation.validFrom(h);
   if (!(last <= h && h <= next)) return false;
   const lo = Number.isFinite(last) ? last : h - 10;
   const hi = Number.isFinite(next) ? next : h + 10;
@@ -116,8 +116,8 @@ describe("Timeline.run: an animation on host time", () => {
       const timeline = Timeline.play(10, rate);
       const run = Timeline.run(timeline, signal);
       for (const h of [10, 10.3, 10.9, 11.2, 12.7, 13.99]) {
-        const next = run.nextChange(h);
-        expect(Timeline.at(timeline, next), `rate ${rate} h ${h}`).toBeCloseTo(signal.nextChange(Timeline.at(timeline, h)), 9);
+        const next = run.validUntil(h);
+        expect(Timeline.at(timeline, next), `rate ${rate} h ${h}`).toBeCloseTo(signal.validUntil(Timeline.at(timeline, h)), 9);
         expect(holdsBetween(run, h), `rate ${rate} h ${h}`).toBe(true);
       }
     }
@@ -129,13 +129,13 @@ describe("Timeline.run: an animation on host time", () => {
     // Host 10 is animation 0, the first instant of hold a; the next host
     // instant is in hold c of the pass before, so the value is moving.
     expect(run.at(10)).toBe("a");
-    expect(run.nextChange(10)).toBe(10);
+    expect(run.validUntil(10)).toBe(10);
     expect(run.at(10.5)).toBe("c");
-    expect(run.nextChange(10.5)).toBeCloseTo(12.5, 9);
+    expect(run.validUntil(10.5)).toBeCloseTo(12.5, 9);
     expect(run.at(12.6)).toBe("b");
-    expect(run.nextChange(12.6)).toBeCloseTo(13, 9);
+    expect(run.validUntil(12.6)).toBeCloseTo(13, 9);
     expect(run.at(13.2)).toBe("a");
-    expect(run.nextChange(13.2)).toBeCloseTo(14, 9);
+    expect(run.validUntil(13.2)).toBeCloseTo(14, 9);
     for (const h of [10.5, 12.6, 13.2, 14.25, 1e6 + 0.3]) expect(holdsBetween(run, h), `h ${h}`).toBe(true);
   });
 
@@ -145,20 +145,20 @@ describe("Timeline.run: an animation on host time", () => {
     const run = Timeline.run(Timeline.play(0.3, -1), oneShot);
     // Animation time 1e6 (host 0.3 - 1e6): settled since the switch at 2, which the host reaches at -1.7.
     expect(run.at(0.3 - 1e6)).toBe("done");
-    expect(run.nextChange(0.3 - 1e6)).toBeCloseTo(-1.7, 9);
-    expect(run.lastChange(0.3 - 1e6)).toBe(ALWAYS);
+    expect(run.validUntil(0.3 - 1e6)).toBeCloseTo(-1.7, 9);
+    expect(run.validFrom(0.3 - 1e6)).toBe(ALWAYS);
     expect(run.at(-1.4)).toBe("step 1");
-    expect(run.nextChange(-1.4)).toBeCloseTo(-1.2, 9);
-    expect(run.lastChange(-1.4)).toBeCloseTo(-1.7, 9);
+    expect(run.validUntil(-1.4)).toBeCloseTo(-1.2, 9);
+    expect(run.validFrom(-1.4)).toBeCloseTo(-1.7, 9);
     for (const h of [0.3 - 1e6, -1.4, 0.05, 1]) expect(holdsBetween(run, h), `h ${h}`).toBe(true);
   });
 
-  it("lastChange is the start of the host hold, forwards and backwards, and is never after the host time", () => {
+  it("validFrom is the start of the host hold, forwards and backwards, and is never after the host time", () => {
     for (const rate of [1, 2.5, -1, -0.5]) {
       const timeline = Timeline.play(10, rate);
       const run = Timeline.run(timeline, signal);
       for (const h of [10.2, 11.5, 12.75, 15.1, 1e6 + 0.3]) {
-        const last = run.lastChange(h);
+        const last = run.validFrom(h);
         expect(last, `rate ${rate} h ${h}`).toBeLessThanOrEqual(h);
         expect(run.at(last), `rate ${rate} h ${h}`).toBe(run.at(h));
         expect(holdsBetween(run, h), `rate ${rate} h ${h}`).toBe(true);
@@ -171,8 +171,8 @@ describe("Timeline.run: an animation on host time", () => {
     for (const rate of [1, -1, 1e-4, -1e-4]) {
       const run = Timeline.run(Timeline.play(0, rate), rising);
       for (const h of [0, 3.3, 1e6]) {
-        expect(run.nextChange(h)).toBe(h);
-        expect(run.lastChange(h)).toBe(h);
+        expect(run.validUntil(h)).toBe(h);
+        expect(run.validFrom(h)).toBe(h);
       }
     }
   });
@@ -181,17 +181,17 @@ describe("Timeline.run: an animation on host time", () => {
     const run = Timeline.run(Timeline.pause(Timeline.play(10), 11.2), signal);
     for (const h of [0, 11.2, 1e6]) {
       expect(run.at(h)).toBe(signal.at(1.2));
-      expect(run.nextChange(h)).toBe(NEVER);
-      expect(run.lastChange(h)).toBe(ALWAYS);
+      expect(run.validUntil(h)).toBe(NEVER);
+      expect(run.validFrom(h)).toBe(ALWAYS);
     }
   });
 
   it("a value that never changes again, or always was, is never and always on the host's clock whichever way the timeline runs", () => {
     const run = Timeline.run(Timeline.play(0, -2), oneShot);
-    expect(run.nextChange(-1e6)).toBeCloseTo(-1, 9);
-    expect(run.lastChange(-1e6)).toBe(ALWAYS);
-    expect(Timeline.run(Timeline.play(0, 3), oneShot).nextChange(5)).toBe(NEVER);
-    expect(Timeline.run(Timeline.play(0, 3), Animation.constant(1)).lastChange(5)).toBe(ALWAYS);
+    expect(run.validUntil(-1e6)).toBeCloseTo(-1, 9);
+    expect(run.validFrom(-1e6)).toBe(ALWAYS);
+    expect(Timeline.run(Timeline.play(0, 3), oneShot).validUntil(5)).toBe(NEVER);
+    expect(Timeline.run(Timeline.play(0, 3), Animation.constant(1)).validFrom(5)).toBe(ALWAYS);
   });
 
   it("sampled once a second or sixty times, answers the same at every host time both see, near zero and near 10⁶", () => {
@@ -199,7 +199,7 @@ describe("Timeline.run: an animation on host time", () => {
       for (const base of [10, 1e6]) {
         const run = Timeline.run(Timeline.seek(Timeline.play(base, rate), base, 0.3), signal);
         const sampled = (perSecond: number): Map<number, [string, number, number]> =>
-          new Map(Array.from({ length: 6 * perSecond + 1 }, (_, i) => base + i / perSecond).map((h) => [h, [run.at(h), run.nextChange(h), run.lastChange(h)]]));
+          new Map(Array.from({ length: 6 * perSecond + 1 }, (_, i) => base + i / perSecond).map((h) => [h, [run.at(h), run.validUntil(h), run.validFrom(h)]]));
         const slow = sampled(1);
         const fast = sampled(60);
         for (const [h, seen] of slow) expect(fast.get(h), `rate ${rate} base ${base} h ${h}`).toEqual(seen);
@@ -217,8 +217,8 @@ describe("Timeline.run: an animation on host time", () => {
       for (const time of far) {
         const run = Timeline.run(Timeline.seek(Timeline.play(0, rate), 0, time), signal);
         for (const h of [0.5, 7.25]) {
-          const next = run.nextChange(h);
-          const last = run.lastChange(h);
+          const next = run.validUntil(h);
+          const last = run.validFrom(h);
           expect(next, `rate ${rate} time ${time} h ${h}`).toBeGreaterThanOrEqual(h);
           expect(last, `rate ${rate} time ${time} h ${h}`).toBeLessThanOrEqual(h);
           expect(run.at(next), `rate ${rate} time ${time} h ${h}`).not.toBe(run.at(h));
@@ -231,7 +231,7 @@ describe("Timeline.run: an animation on host time", () => {
   it("the host moment is exact to the float: the float before it still draws the old value", () => {
     for (const rate of [1, -1, 0.01, -1 / 3]) {
       const run = Timeline.run(Timeline.seek(Timeline.play(0, rate), 0, 1000), signal);
-      const next = run.nextChange(0.5);
+      const next = run.validUntil(0.5);
       expect(run.at(next)).not.toBe(run.at(0.5));
       expect(run.at(nextDown(next))).toBe(run.at(0.5));
     }
@@ -252,7 +252,7 @@ describe("a spinner's speed is a timeline", () => {
   const frames = SPINNERS["dots"]!.frames;
   const shown = (spinner: Spinner, t: number): { frame: string; next: number } => {
     const segments = [...inFrame(spinner, t).render({ maxWidth: 40 })];
-    return { frame: segments.map((s) => s.text).join("").trim(), next: Segment.nextChange(segments) };
+    return { frame: segments.map((s) => s.text).join("").trim(), next: Segment.validUntil(segments) };
   };
 
   it("draws the frame at the mapped time and stamps its cells with when it turns on the host's clock, forwards and backwards", () => {
@@ -264,9 +264,9 @@ describe("a spinner's speed is a timeline", () => {
     expect(shown(back, interval * 2.5)).toEqual({ frame: frames[7], next: expect.closeTo(interval * 3, 9) });
     for (const t of [0.01, interval * 2.5, 1e6 + 0.1]) {
       for (const spinner of [fast, slow, back]) {
-        expect(spinner.nextChange(t)).toBeGreaterThan(t);
-        expect(spinner.nextChange(t)).toBeLessThanOrEqual(shown(spinner, t).next);
-        expect(spinner.lastChange(t)).toBeLessThanOrEqual(t);
+        expect(spinner.validUntil(t)).toBeGreaterThan(t);
+        expect(spinner.validUntil(t)).toBeLessThanOrEqual(shown(spinner, t).next);
+        expect(spinner.validFrom(t)).toBeLessThanOrEqual(t);
       }
     }
   });
@@ -275,6 +275,6 @@ describe("a spinner's speed is a timeline", () => {
     const slow = new Spinner("dots", "", { speed: 0.25 });
     const sequence = new FrameSequence(frames.map((frame) => ({ text: new RichText(frame), seconds: interval })));
     expect(shown(slow, 0).next).toBeCloseTo(interval * 4, 9);
-    expect(sequence.nextChange(0)).toBeCloseTo(interval, 9);
+    expect(sequence.validUntil(0)).toBeCloseTo(interval, 9);
   });
 });

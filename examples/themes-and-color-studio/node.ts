@@ -1,7 +1,7 @@
 /**
  * themes-and-color-studio in Node: the tour `main.ts` prints, and, when any of
  * EXPORT_HTML, EXPORT_SVG and EXPORT_TEXT names a file, the recording saved
- * to it — HTML and SVG keep the colour, text keeps only the characters.
+ * to it — HTML and SVG keep the color, text keeps only the characters.
  *
  * Saving needs `node/save`, which the card's library leaves out, so it lives
  * here and not in `main.ts`.

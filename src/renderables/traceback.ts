@@ -13,7 +13,7 @@
  * an inspector session pausing on exceptions — would have to pause on every
  * throw, caught ones included, to serve `new Traceback(caughtError)`, and it
  * cannot exist in a browser at all. Nor is there a `width` or `theme`: those
- * sized and coloured a source-code excerpt this renderer does not produce.
+ * sized and colored a source-code excerpt this renderer does not produce.
  */
 
 import { Segment } from "../core/segment.js";

@@ -1,12 +1,12 @@
 /**
  * effects-feel — the names the demo speaks: its effects and each one's
- * starting constants, and the colour depths it can be judged at. Pure data and
+ * starting constants, and the color depths it can be judged at. Pure data and
  * functions of it, with nothing from node, so the browser playground and the
  * command line read the one table.
  */
 
-import { ColorDepth, EASES, EFFECT_CATALOGUE, EFFECT_CURVES, type Ease, type Env, type LoopName, type TransitionName } from "../../src/index.js";
-import type { EaseName } from "../../src/core/easing.js";
+import { ColorDepth, EASES, EFFECT_CATALOGUE, EFFECT_CURVES, type Easing, type Env, type LoopName, type TransitionName } from "../../src/index.js";
+import type { EasingName } from "../../src/core/easing.js";
 
 // [LAW:one-source-of-truth] The demo's effects are the library's catalogue, loops first.
 export type EffectName = LoopName | TransitionName;
@@ -18,26 +18,26 @@ export const EFFECTS: readonly EffectName[] = [...LOOPS, ...TRANSITIONS];
 const SWING_UNITS: Record<EffectName, string> = {
   shimmer: "mix toward the light at the brightest glint, 0–1",
   pulse: "mix toward the light at the top of a beat on a chosen element, 0–1",
-  sparkle: "mix toward the firefly's colour at its brightest flash, 0–1",
+  sparkle: "mix toward the firefly's color at its brightest flash, 0–1",
   wheel: "how far the segments stray from one another, 0–1 (1 is half a turn apart)",
   fade: "how hidden at the start, 0–1",
   dissolve: "how hidden once gone, 0–1",
 };
 
 /** The name `EASES` gives `ease`, so a flag can spell the library's default. */
-function easeName(ease: Ease): EaseName {
-  const name = (Object.keys(EASES) as EaseName[]).find((n) => EASES[n] === ease);
+function easeName(ease: Easing): EasingName {
+  const name = (Object.keys(EASES) as EasingName[]).find((n) => EASES[n] === ease);
   if (name === undefined) throw new Error("a default curve's ease is not one EASES names");
   return name;
 }
 
 /** Each effect's defaults, as the flags spell them: the library's signed-off curves (`EFFECT_CURVES`). */
-export const EFFECT_DEFAULTS: Record<EffectName, { seconds: number; ease: EaseName; swing: number; unit: string }> = Object.fromEntries(
+export const EFFECT_DEFAULTS: Record<EffectName, { seconds: number; ease: EasingName; swing: number; unit: string }> = Object.fromEntries(
   EFFECTS.map((effect) => {
     const { seconds, ease, swing } = EFFECT_CURVES[effect];
     return [effect, { seconds, ease: easeName(ease), swing, unit: SWING_UNITS[effect] }];
   }),
-) as Record<EffectName, { seconds: number; ease: EaseName; swing: number; unit: string }>;
+) as Record<EffectName, { seconds: number; ease: EasingName; swing: number; unit: string }>;
 
 export const GROUNDS = ["dark", "light"] as const;
 export type Ground = (typeof GROUNDS)[number];
@@ -46,7 +46,7 @@ export type Ground = (typeof GROUNDS)[number];
  * How much of a loop's designed time one frame moves it at rate ×1. A frame
  * is the unit of change: every frame moves every loop by this, whatever the
  * frame rate, which only sets how often a frame comes. The curves are tuned
- * so that one designed second steps a colour by at most the one-frame-a-
+ * so that one designed second steps a color by at most the one-frame-a-
  * second bar, and a frame that steps the whole bar reads as a step; a
  * quarter of it reads as motion. The demo's rate keys scale it (app.ts).
  */
@@ -55,15 +55,15 @@ export const STEP = 0.25;
 /** What a run is drawn at when nothing says otherwise. */
 export const RUN_DEFAULTS: { readonly fps: number; readonly depth: Depth; readonly ground: Ground } = { fps: 30, depth: "truecolor", ground: "dark" };
 
-/** The colour depths a run can be judged at, by the name the flag takes. */
+/** The color depths a run can be judged at, by the name the flag takes. */
 export const DEPTHS = ["truecolor", "256", "16", "none"] as const;
 export type Depth = (typeof DEPTHS)[number];
 
 /**
- * How a terminal says it draws each depth, as the environment colour
+ * How a terminal says it draws each depth, as the environment color
  * detection reads: `FORCE_COLOR` names a depth in the chalk convention —
  * `1`, `2`, `3`; the names a `colorSystem` option takes are not read here —
- * and beats the terminal's own answer; `NO_COLOR` turns colour off and beats
+ * and beats the terminal's own answer; `NO_COLOR` turns color off and beats
  * `FORCE_COLOR`. `draws` is the depth that environment resolves to, so the
  * run can check it was given what it asked for. [LAW:one-source-of-truth]
  */
@@ -80,7 +80,7 @@ export function envAtDepth(env: Env, depth: Depth): Env {
   return { ...Object.fromEntries(Object.entries(env).filter(([key]) => !drop.includes(key))), ...set };
 }
 
-/** The colour depth a console on `envAtDepth(env, depth)` draws at. */
+/** The color depth a console on `envAtDepth(env, depth)` draws at. */
 export function depthDrawn(depth: Depth): ColorDepth | null {
   return DEPTH_ENV[depth].draws;
 }

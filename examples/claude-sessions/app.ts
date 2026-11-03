@@ -9,7 +9,7 @@
  * capabilities are the values that differ between `main.ts` and `node.ts`.
  */
 
-import { App, keyName, type KeyPress, type TerminalHost } from "@promptctl/rich-js/host";
+import { App, keyName, type KeyEvent, type TerminalHost } from "@promptctl/rich-js/host";
 import type { FileSystem } from "../_capabilities/file-system.js";
 import {
   initialState,
@@ -108,7 +108,7 @@ function reduce(state: AppState, action: Action): AppState {
   }
 }
 
-function reduceSearchTyping(state: AppState, press: KeyPress): AppState {
+function reduceSearchTyping(state: AppState, press: KeyEvent): AppState {
   switch (keyName(press)) {
     case "enter":
       return searchSubmit(state);

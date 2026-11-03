@@ -15,13 +15,13 @@
  * one time it holds, so there is no origin for it to be wrong about.
  * [LAW:types-are-the-program]
  *
- * `run` is an animation on host time. Its `nextChange` is the host moment
+ * `run` is an animation on host time. Its `validUntil` is the host moment
  * the mapped time reaches the animation's own answer, which is what
  * `Spinner`'s speed scaled its holds for before this existed: an answer a
  * host reads is on the host's timeline, and a beat over scaled time answers
  * on the scaled one. Run backwards, the host next sees a change when the
  * mapped time drops under where the value began — the animation's
- * `lastChange` — so a reversed loop turns exactly at its hold boundaries,
+ * `validFrom` — so a reversed loop turns exactly at its hold boundaries,
  * and a reversed one-shot changes at its switch and never before its start.
  * Paused, nothing changes: never, and never did. The host moment is the
  * first host float the map carries past the edge, searched out from the sum
@@ -51,7 +51,7 @@
  * sample a second or sixty.
  */
 
-import { Animation, type Moves, type Timed } from "./animation.js";
+import { Animation, type Reads, type Behavior } from "./animation.js";
 import { firstReaching } from "./easing.js";
 
 /**
@@ -103,16 +103,16 @@ function anchored(timeline: Timeline, host: number, time: number, rate: number):
 }
 
 /** `animation` asked at the time `playing` maps each host time to, saying on host time when it changes. */
-function played<T>(animation: Timed<T>, { origin, time, rate }: Timeline & { playing: true }): Animation<T> {
+function played<T>(animation: Behavior<T>, { origin, time, rate }: Timeline & { playing: true }): Animation<T> {
   const mapped = (host: number): number => time + rate * (host - origin);
   const forward = rate > 0;
   // Forwards, the host next sees the animation's own next change, and the
   // value began when the animation says it did; backwards, it next sees a
   // change where the value began, and the value began where the animation
-  // says it ends. A hold is `[lastChange, nextChange)`, so the far side of
+  // says it ends. A hold is `[validFrom, validUntil)`, so the far side of
   // an edge is at it going up and strictly under it coming down.
-  const ahead = forward ? (t: number, moves?: Moves) => animation.nextChange(t, moves) : (t: number, moves?: Moves) => animation.lastChange(t, moves);
-  const behind = forward ? (t: number, moves?: Moves) => animation.lastChange(t, moves) : (t: number, moves?: Moves) => animation.nextChange(t, moves);
+  const ahead = forward ? (t: number, moves?: Reads) => animation.validUntil(t, moves) : (t: number, moves?: Reads) => animation.validFrom(t, moves);
+  const behind = forward ? (t: number, moves?: Reads) => animation.validFrom(t, moves) : (t: number, moves?: Reads) => animation.validUntil(t, moves);
   const past = forward ? (t: number, edge: number) => t >= edge : (t: number, edge: number) => t < edge;
   // The first host moment the map carries past `edge`, an animation time.
   // An edge at infinity, or one so far off at this rate that no host float
@@ -124,13 +124,13 @@ function played<T>(animation: Timed<T>, { origin, time, rate }: Timeline & { pla
   };
   return Animation.of({
     at: (host: number) => animation.at(mapped(hostTime(host))),
-    nextChange(host: number, moves?: Moves) {
+    validUntil(host: number, moves?: Reads) {
       const h = hostTime(host);
       const t = mapped(h);
       const edge = ahead(t, moves);
       return edge === t ? h : Math.max(h, hostOf(edge));
     },
-    lastChange(host: number, moves?: Moves) {
+    validFrom(host: number, moves?: Reads) {
       const h = hostTime(host);
       const t = mapped(h);
       const edge = behind(t, moves);
@@ -183,12 +183,12 @@ export const Timeline = {
    * Reduced, it is the animation reduced on the same timeline: what shows
    * still follows the timeline, and only the motion is gone.
    */
-  run<T>(timeline: Timeline, animation: Timed<T>): Animation<T> {
+  run<T>(timeline: Timeline, animation: Behavior<T>): Animation<T> {
     if (timeline.playing) return played(animation, timeline);
     return Animation.of({
       at: (host: number) => animation.at(Timeline.at(timeline, host)),
-      nextChange: (host: number) => (hostTime(host), Number.POSITIVE_INFINITY),
-      lastChange: (host: number) => (hostTime(host), Number.NEGATIVE_INFINITY),
+      validUntil: (host: number) => (hostTime(host), Number.POSITIVE_INFINITY),
+      validFrom: (host: number) => (hostTime(host), Number.NEGATIVE_INFINITY),
       reduced: () => Timeline.run(timeline, animation.reduced()),
     });
   },
@@ -202,7 +202,7 @@ export const Timeline = {
    * Reduced, the offsets are the cascade's choreography, which is motion: every
    * child reduced at once, so from 0 everyone has arrived.
    */
-  stagger<T>(animations: readonly Timed<T>[], delay: number): Animation<readonly T[]> {
+  stagger<T>(animations: readonly Behavior<T>[], delay: number): Animation<readonly T[]> {
     finiteSeconds("Timeline.stagger delay", delay);
     const span = finiteSeconds("Timeline.stagger delay times the last index", Math.max(0, animations.length - 1) * delay);
     // [LAW:dataflow-not-control-flow] Whichever way the cascade runs, every

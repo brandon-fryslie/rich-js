@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { Animation } from "../../src/core/animation.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
-import { EASES, beat } from "../../src/core/easing.js";
+import { EASES, stepSequence } from "../../src/core/easing.js";
 import { Measurement } from "../../src/core/measure.js";
 import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { Effected } from "../../src/renderables/effect.js";
-import { dissolveOut, fadeIn, onBeat } from "../../src/renderables/effects.js";
+import { dissolveOut, fadeIn, sampleAndHold } from "../../src/renderables/effects.js";
 import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Live } from "../../src/renderables/live.js";
@@ -45,14 +45,14 @@ describe("a lifecycle", () => {
 
   it("draws nothing before it entered, moves while it arrives, is the element while it stays, moves while it leaves, then draws nothing", () => {
     const life = made().leave(5);
-    const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
+    const said = (t: number) => [life.validFrom(t), life.validUntil(t)];
     expect(text(draw(inFrame(life, 0.5)))).toBe("");
     expect(said(0.5)).toEqual([Number.NEGATIVE_INFINITY, 1]);
     for (const t of [1, 2, 2.9]) expect(said(t)).toEqual([t, t]);
     for (const t of [3, 4, 4.9]) {
       expect(said(t)).toEqual([3, 5]);
       expect(bytes(draw(inFrame(life, t)))).toBe(bytes(draw(line)));
-      expect(Segment.nextChange(draw(inFrame(life, t)))).toBe(5);
+      expect(Segment.validUntil(draw(inFrame(life, t)))).toBe(5);
     }
     for (const t of [5, 6, 6.9]) expect(said(t)).toEqual([t, t]);
     for (const t of [7, 100]) {
@@ -66,7 +66,7 @@ describe("a lifecycle", () => {
     const staying = made();
     expect(staying.left).toBe(Number.POSITIVE_INFINITY);
     expect([0, 3, 1e6].some((t) => staying.gone(t))).toBe(false);
-    expect(staying.nextChange(1e6)).toBe(Number.POSITIVE_INFINITY);
+    expect(staying.validUntil(1e6)).toBe(Number.POSITIVE_INFINITY);
     const leaving = staying.leave(5);
     expect(leaving.gone(6.99)).toBe(false);
     expect(leaving.gone(7)).toBe(true);
@@ -75,10 +75,10 @@ describe("a lifecycle", () => {
   });
 
   it("is never gone before it was told to leave, whatever its exit steps on", () => {
-    const stepped = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(onBeat(dissolveOut(curve, 0), beat([0.25]))), key: "x" }, 1);
+    const stepped = lifecycle(new RichText("x"), { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(sampleAndHold(dissolveOut(curve, 0), stepSequence([0.25]))), key: "x" }, 1);
     expect([0, 5, 1e6].some((t) => stepped.gone(t))).toBe(false);
     const leaving = stepped.leave(5);
-    expect(leaving.gone(leaving.lastChange(100))).toBe(true);
+    expect(leaving.gone(leaving.validFrom(100))).toBe(true);
   });
 
   it("is gone, draws nothing and says so from one float on, wherever the sum of when it left and how long it takes rounds", () => {
@@ -92,12 +92,12 @@ describe("a lifecycle", () => {
     const exit = { seconds: 0.7, ease: EASES.linear, swing: 1 };
     for (const left of [0.1, 0.2, 0.3, 1.1, 12345.678, 1e6 + 0.3]) {
       const life = lifecycle(line, { enter: throughColors(fadeIn(curve, 0)), exit: throughColors(dissolveOut(exit, 0)), key: "line" }, 0).leave(left);
-      const goneAt = life.lastChange(left + 10);
+      const goneAt = life.validFrom(left + 10);
       const before = below(goneAt);
       expect([life.gone(before), life.gone(goneAt)]).toEqual([false, true]);
       expect(bytes(draw(inFrame(life, goneAt)))).toBe("");
       expect(bytes(draw(inFrame(life, before)))).not.toBe("");
-      expect([life.nextChange(before), life.nextChange(goneAt)]).toEqual([before, Number.POSITIVE_INFINITY]);
+      expect([life.validUntil(before), life.validUntil(goneAt)]).toEqual([before, Number.POSITIVE_INFINITY]);
     }
   });
 
@@ -110,12 +110,12 @@ describe("a lifecycle", () => {
     expect(early.gone(4)).toBe(true);
   });
 
-  it("with no colour output, still says it moves while it leaves and that it is gone after", () => {
+  it("with no color output, still says it moves while it leaves and that it is gone after", () => {
     const life = made().leave(5);
     expect(text(draw(inFrame(life, 4), PLAIN))).toBe(`${line.plain}\n`);
-    for (const t of [5, 6, 6.9]) expect(Segment.nextChange(draw(inFrame(life, t), PLAIN))).toBe(t);
+    for (const t of [5, 6, 6.9]) expect(Segment.validUntil(draw(inFrame(life, t), PLAIN))).toBe(t);
     expect(text(draw(inFrame(life, 7), PLAIN))).toBe("");
-    expect(Segment.nextChange(draw(inFrame(life, 7), PLAIN))).toBe(Number.POSITIVE_INFINITY);
+    expect(Segment.validUntil(draw(inFrame(life, 7), PLAIN))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("before it entered draws no byte, yet its frame says when it enters, so a function view wakes for it", () => {
@@ -123,7 +123,7 @@ describe("a lifecycle", () => {
     for (const options of [OPTIONS, PLAIN]) {
       const drawn = drawnAt(new Group(life), 0.5, options);
       expect(bytes(drawn.lines.flat())).toBe("");
-      expect(drawn.nextChange).toBe(1);
+      expect(drawn.validUntil).toBe(1);
     }
   });
 
@@ -198,19 +198,19 @@ describe("a lifecycle through glyph transitions", () => {
 
   it("says it moves every frame while it types and while it scrambles, and nothing between", () => {
     const life = typed();
-    const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
+    const said = (t: number) => [life.validFrom(t), life.validUntil(t)];
     for (const t of [1, 2, 2.9, 5, 6, 6.9]) expect(said(t)).toEqual([t, t]);
     expect(said(4)).toEqual([3, 5]);
     expect(said(8)).toEqual([7, Number.POSITIVE_INFINITY]);
   });
 
-  it("types itself in with no colour output too, since a glyph is written at every depth", () => {
+  it("types itself in with no color output too, since a glyph is written at every depth", () => {
     const life = typed();
     expect(shown(life, 2, PLAIN)).toBe("a line append");
-    expect(Segment.nextChange(draw(inFrame(life, 2), PLAIN))).toBe(2);
+    expect(Segment.validUntil(draw(inFrame(life, 2), PLAIN))).toBe(2);
   });
 
-  it("can type itself in and dissolve out: the exit's colours veil the glyphs the arrival left", () => {
+  it("can type itself in and dissolve out: the exit's colors veil the glyphs the arrival left", () => {
     const life = typed(throughColors(dissolveOut(curve, 0)));
     expect(shown(life, 2)).toBe("a line append");
     // Told to leave mid-type, it goes on typing under the dissolve: the exit veils whatever the arrival draws.
@@ -260,7 +260,7 @@ describe("a lifecycle through halves written by hand", () => {
 
   it("arrives through the half's frames and is the element from the moment the half says it never changes again", () => {
     const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(5);
-    const said = (t: number) => [life.lastChange(t), life.nextChange(t)];
+    const said = (t: number) => [life.validFrom(t), life.validUntil(t)];
     expect(bytes(draw(life.at(1)))).toBe(padded(4));
     expect(bytes(draw(life.at(1.5)))).toBe(padded(2));
     for (const t of [1, 1.5, 1.9]) expect(said(t)).toEqual([t, t]);
@@ -274,10 +274,10 @@ describe("a lifecycle through halves written by hand", () => {
     const life = lifecycle(line, { enter: slidIn(4), exit: slidOut(4), key: "hand" }, 1).leave(5);
     expect(bytes(draw(life.at(5)))).toBe(padded(0));
     expect(bytes(draw(life.at(5.5)))).toBe(padded(2));
-    for (const t of [5, 5.5, 5.9]) expect(life.nextChange(t)).toBe(t);
+    for (const t of [5, 5.5, 5.9]) expect(life.validUntil(t)).toBe(t);
     expect([life.gone(5.99), life.gone(6)]).toEqual([false, true]);
     expect(text(draw(life.at(6)))).toBe("");
-    expect(life.nextChange(6)).toBe(Number.POSITIVE_INFINITY);
+    expect(life.validUntil(6)).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("told to leave while still arriving, draws the exit over the arrival's frame", () => {
@@ -288,13 +288,13 @@ describe("a lifecycle through halves written by hand", () => {
   });
 
   it("tells the holds the half carries: an arrival stepped on a beat wakes the host on the beats", () => {
-    const stepped: Half = (element, key) => Animation.onBeat(slidIn(4)(element, key), beat([0.25]));
+    const stepped: Half = (element, key) => Animation.sampleAndHold(slidIn(4)(element, key), stepSequence([0.25]));
     const life = lifecycle(line, { enter: stepped, exit: slidOut(4), key: "hand" }, 1);
-    expect(life.nextChange(1.1)).toBe(1.25);
-    expect(life.nextChange(1.3)).toBe(1.5);
+    expect(life.validUntil(1.1)).toBe(1.25);
+    expect(life.validUntil(1.3)).toBe(1.5);
     expect(bytes(draw(life.at(1.3)))).toBe(bytes(draw(life.at(1.25))));
     // Done at the first hold that starts once the slide is: the element from then.
-    expect(life.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
+    expect(life.validUntil(2)).toBe(Number.POSITIVE_INFINITY);
     expect(bytes(draw(life.at(2)))).toBe(bytes(draw(line)));
   });
 
@@ -303,14 +303,14 @@ describe("a lifecycle through halves written by hand", () => {
     const vanish: Half = () => Animation.constant({ render: () => [] });
     const life = lifecycle(line, { enter: atOnce, exit: vanish, key: "hand" }, 1).leave(5);
     expect(bytes(draw(life.at(1)))).toBe(bytes(draw(line)));
-    expect([life.lastChange(1), life.nextChange(1)]).toEqual([1, 5]);
+    expect([life.validFrom(1), life.validUntil(1)]).toEqual([1, 5]);
     expect([life.gone(4.99), life.gone(5)]).toEqual([false, true]);
-    expect([life.lastChange(5), life.nextChange(5)]).toEqual([5, Number.POSITIVE_INFINITY]);
+    expect([life.validFrom(5), life.validUntil(5)]).toEqual([5, Number.POSITIVE_INFINITY]);
     // Stepped on a beat, the same: no beat is asked about a time before the half began.
-    const steppedAtOnce: Half = (element) => Animation.onBeat(Animation.constant(element), beat([0.25]));
+    const steppedAtOnce: Half = (element) => Animation.sampleAndHold(Animation.constant(element), stepSequence([0.25]));
     const stepped = lifecycle(line, { enter: steppedAtOnce, exit: vanish, key: "hand" }, 1);
     expect(bytes(draw(stepped.at(1)))).toBe(bytes(draw(line)));
-    expect([stepped.lastChange(1), stepped.nextChange(1)]).toEqual([1, Number.POSITIVE_INFINITY]);
+    expect([stepped.validFrom(1), stepped.validUntil(1)]).toEqual([1, Number.POSITIVE_INFINITY]);
   });
 
   it("refuses a half that never ends when made, by the element's key and the half's role: a bare Effected as either half", () => {
@@ -325,6 +325,6 @@ describe("a half reduced", () => {
   it("cuts to the transition's end at 0, frames and hold alike, so there is nothing to wake for after", () => {
     const half = throughColors(fadeIn(curve, 0))(line, "k").reduced();
     expect(bytes(draw(half.at(0)))).toBe(bytes(draw(half.at(5))));
-    expect([half.lastChange(0), half.nextChange(0), half.nextChange(-1)]).toEqual([0, Number.POSITIVE_INFINITY, 0]);
+    expect([half.validFrom(0), half.validUntil(0), half.validUntil(-1)]).toEqual([0, Number.POSITIVE_INFINITY, 0]);
   });
 });

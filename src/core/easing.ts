@@ -22,7 +22,7 @@
  *   `elastic`, Robert Penner's curves at the constants every animation
  *   library since has shipped. An ease that leaves [0, 1] — a spring or a
  *   back curve overshooting its rest — is still an ease: a `ColorRamp` holds
- *   its end colours where it does, and an effect's `Curve` saturates at its
+ *   its end colors where it does, and an effect's `Curve` saturates at its
  *   swing, so the overshoot is read by what can show it (a position, a
  *   count) and clipped by what cannot.
  *
@@ -33,17 +33,17 @@
  * [LAW:one-type-per-behavior] An ease is a plain function value. CSS's named
  * curves are four instances of `cubicBezier`, not four implementations, the
  * spring in `EASES` is one `spring()`, and `ColorRamp` and every effect take
- * the same `Ease`.
+ * the same `Easing`.
  *
  * Tier 0 of `src/core/`: imports nothing, so `themes/` and every later
  * `core/` module reach it downhill. [LAW:one-way-deps]
  */
 
 /** Progress in [0, 1] in, progress out: a reshaping of [0, 1] that may leave it, as a spring overshooting its rest does. */
-export type Ease = (x: number) => number;
+export type Easing = (x: number) => number;
 
 /** Time in seconds (plus any per-cell offset) in, progress in [0, 1] out. */
-export type Phase = (t: number) => number;
+export type WrapMode = (t: number) => number;
 
 /**
  * CSS `cubic-bezier(x1, y1, x2, y2)`: the curve from (0, 0) to (1, 1) with
@@ -52,7 +52,7 @@ export type Phase = (t: number) => number;
  * every input has exactly one output. `y1` and `y2` may leave [0, 1]; the
  * curve then overshoots, as a CSS "back" curve does.
  */
-export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Ease {
+export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Easing {
   for (const [name, v] of [["x1", x1], ["y1", y1], ["x2", x2], ["y2", y2]] as const) {
     if (!Number.isFinite(v)) throw new RangeError(`cubicBezier ${name} must be finite, got ${v}`);
   }
@@ -94,7 +94,7 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
     }
     return s;
   };
-  return settled((p) => yAt(solve(p)));
+  return withSettlingTime((p) => yAt(solve(p)));
 }
 
 /**
@@ -110,7 +110,7 @@ export type StepPosition = "jump-start" | "jump-end" | "jump-none" | "jump-both"
  * `position` names — CSS's step algorithm, so `steps(1, "end")` is 0 until
  * the very end.
  */
-export function steps(n: number, position: StepPosition = "jump-end"): Ease {
+export function steps(n: number, position: StepPosition = "jump-end"): Easing {
   const minimum = position === "jump-none" ? 2 : 1;
   if (!Number.isInteger(n) || n < minimum) {
     throw new RangeError(`steps(${n}, "${position}") needs a whole number of steps ≥ ${minimum}`);
@@ -126,13 +126,13 @@ export function steps(n: number, position: StepPosition = "jump-end"): Ease {
     "jump-none": n - 1,
   }[position];
   const lift = jumpsAtStart ? 1 : 0;
-  return settled((p) => Math.min(jumps, Math.floor(p * n) + lift) / jumps);
+  return withSettlingTime((p) => Math.min(jumps, Math.floor(p * n) + lift) / jumps);
 }
 
 /**
  * The curve `shape` over [0, 1) as an ease that has arrived: its argument
  * held to [0, 1], and exactly 1 at 1. Every built-in ease is one, so the two
- * halves of the `Ease` contract — an argument in [0, 1], the end landed on —
+ * halves of the `Easing` contract — an argument in [0, 1], the end landed on —
  * are enforced here and nowhere else. [LAW:single-enforcer] The end matters
  * because a curve is 1 at its end only in the limit or up to a rounding — a
  * spring settles to within `SPRING_REST`, the elastic's ringing never quite
@@ -140,19 +140,19 @@ export function steps(n: number, position: StepPosition = "jump-end"): Ease {
  * and a count or a width eased by it must land on its target, not a
  * thousandth or an ulp short.
  */
-export const settled = (shape: (p: number) => number): Ease => (x) => {
+export const withSettlingTime = (shape: (p: number) => number): Easing => (x) => {
   const p = Math.min(1, Math.max(0, x));
   return p === 1 ? 1 : shape(p);
 };
 
 /** The identity ease: progress unchanged. */
-const linear: Ease = settled((p) => p);
+const linear: Easing = withSettlingTime((p) => p);
 
 /** CSS `step-end`: 0 until the very end. */
-const stepEnd: Ease = steps(1, "jump-end");
+const stepEnd: Easing = steps(1, "jump-end");
 
 /** A half-cosine, flat at both ends: the curve a breathing pulse wants. */
-const sine: Ease = settled((p) => (1 - Math.cos(Math.PI * p)) / 2);
+const sine: Easing = withSettlingTime((p) => (1 - Math.cos(Math.PI * p)) / 2);
 
 /**
  * A spring's physics: the mass on it, the stiffness of its coil and the
@@ -173,20 +173,20 @@ export interface SpringOptions {
  * An ease over a duration: CSS's timing function and duration as one value,
  * the whole of what a one-shot move needs to know about time — a tween's
  * (`./tween.ts`), a `spring()`'s, and the part of an effect's `Curve` that
- * is not its swing. `Phase.once(start, seconds)` through `ease` is the move
+ * is not its swing. `WrapMode.once(start, seconds)` through `ease` is the move
  * on a timeline. [LAW:one-type-per-behavior] One shape, so a spring is handed
  * to a tween as it is, and a curve written for an effect times a tween.
  */
 export interface Timing {
   /** How the move is shaped, as progress in to progress out. */
-  readonly ease: Ease;
+  readonly ease: Easing;
   /** How long the move takes, in seconds. */
   readonly seconds: number;
 }
 
 /**
  * How close to its rest a spring must come to count as settled: one part in a
- * thousand of the way it moves, under a colour channel's step (1/255) and
+ * thousand of the way it moves, under a color channel's step (1/255) and
  * under any cell, so what rounds the spring's value to show it draws the rest
  * from there on.
  */
@@ -218,7 +218,7 @@ export function spring(options: SpringOptions = {}): Timing {
   const zeta = damping / (2 * Math.sqrt(stiffness * mass));
   const decay = zeta * w0;
   const { displacement, seconds } = zeta < 1 ? ringing(w0, zeta, decay) : creeping(w0, zeta, decay);
-  return { seconds, ease: settled((p) => 1 - displacement(p * seconds)) };
+  return { seconds, ease: withSettlingTime((p) => 1 - displacement(p * seconds)) };
 }
 
 /** The closed-form displacement of a spring, and its settling time. */
@@ -321,7 +321,7 @@ const BOUNCE_ARCS: readonly { readonly until: number; readonly centre: number; r
   { until: 2.5 / 2.75, centre: 2.25 / 2.75, floor: 0.9375 },
   { until: Number.POSITIVE_INFINITY, centre: 2.625 / 2.75, floor: 0.984375 },
 ];
-const bounce: Ease = settled((p) => {
+const bounce: Easing = withSettlingTime((p) => {
   // The last arc's `until` is unbounded, so an arc is always found.
   const arc = BOUNCE_ARCS.find(({ until }) => p < until)!;
   return 7.5625 * (p - arc.centre) ** 2 + arc.floor;
@@ -336,8 +336,8 @@ const bounce: Ease = settled((p) => {
  * and lands on 1 to the bit.
  */
 const BACK_OVERSHOOT = 1.70158;
-const backIn: Ease = settled((p) => p ** 3 + BACK_OVERSHOOT * p ** 2 * (p - 1));
-const backOut: Ease = settled((p) => {
+const backIn: Easing = withSettlingTime((p) => p ** 3 + BACK_OVERSHOOT * p ** 2 * (p - 1));
+const backOut: Easing = withSettlingTime((p) => {
   const q = p - 1;
   return 1 + q ** 3 + BACK_OVERSHOOT * q ** 2 * (q + 1);
 });
@@ -349,7 +349,7 @@ const backOut: Ease = settled((p) => {
  * last — `2^(−10x)·sin((10x − 0.75)·2π/3) + 1`.
  */
 const ELASTIC_PERIOD = (2 * Math.PI) / 3;
-const elastic: Ease = settled((p) => 2 ** (-10 * p) * Math.sin((10 * p - 0.75) * ELASTIC_PERIOD) + 1);
+const elastic: Easing = withSettlingTime((p) => 2 ** (-10 * p) * Math.sin((10 * p - 0.75) * ELASTIC_PERIOD) + 1);
 
 /**
  * Every built-in ease by the name a template spells it with — CSS's keyword
@@ -374,23 +374,23 @@ export const EASES = {
   "back-in": backIn,
   "back-out": backOut,
   elastic,
-} as const satisfies Record<string, Ease>;
+} as const satisfies Record<string, Easing>;
 
-export type EaseName = keyof typeof EASES;
+export type EasingName = keyof typeof EASES;
 
 /**
  * The gate a spelled ease crosses. [LAW:parse-dont-validate] — a name in, the
  * function out, so nothing downstream holds a string it must check again.
  * Unknown names throw naming every legal one. [LAW:no-silent-failure]
  */
-export function parseEase(name: string): Ease {
+export function parseEasing(name: string): Easing {
   if (!Object.hasOwn(EASES, name)) {
     throw new RangeError(
       `unknown ease ${JSON.stringify(name)}; expected one of ` +
         Object.keys(EASES).map((n) => JSON.stringify(n)).join(", "),
     );
   }
-  return EASES[name as EaseName];
+  return EASES[name as EasingName];
 }
 
 /** `v` is a positive, finite number, or this throws naming `what`; `unit` is the number's noun, as in `" of seconds"`. [LAW:single-enforcer] */
@@ -408,11 +408,11 @@ export function positiveSeconds(what: string, seconds: number): void {
  * way the frames of an animation are each held and then replaced. `at(t)` is
  * the index of the hold in progress at `t`, counted from the first hold at
  * `t = 0`, and the sequence wraps every `period` seconds, before zero too,
- * as `Phase.loop` wraps. With equal holds `at` is `steps(n)` read as an
+ * as `WrapMode.loop` wraps. With equal holds `at` is `steps(n)` read as an
  * index; the holds here may differ, which `steps` cannot say, so a frame
  * held for a second and the next for a quarter are one beat.
  */
-export interface Beat {
+export interface StepSequence {
   readonly holds: readonly number[];
   /** The sum of the holds: how long one pass takes, in seconds. */
   readonly period: number;
@@ -422,10 +422,10 @@ export interface Beat {
    * When the hold in progress at `t` began, in seconds on `t`'s own
    * timeline: what a sample-and-hold on this beat reads at `t`. Every `t`
    * inside one hold of one pass answers the same number, to the bit, so an
-   * effect handed it draws the same frame throughout. With `nextChange`,
+   * effect handed it draws the same frame throughout. With `validUntil`,
    * the two ends of the hold, as every `Animation` answers them.
    */
-  lastChange(t: number): number;
+  validFrom(t: number): number;
   /**
    * When the hold in progress at `t` ends, in seconds on `t`'s own timeline:
    * the start of the next hold, the first moment `at` places in it, so it is
@@ -433,18 +433,18 @@ export interface Beat {
    * With `at`, this makes a beat an `Animation` of the hold in progress
    * (`./animation.ts`).
    */
-  nextChange(t: number): number;
+  validUntil(t: number): number;
   /** The beat with its motion taken out: its first hold, held for good, as a loop holds its first value. */
-  reduced(): Beat;
+  reduced(): StepSequence;
 }
 
 /** A beat of one hold that never ends: hold 0 at every time, never changing — what every beat is reduced to. */
-const STILL: Beat = {
+const STILL: StepSequence = {
   holds: [Number.POSITIVE_INFINITY],
   period: Number.POSITIVE_INFINITY,
   at: () => 0,
-  lastChange: () => Number.NEGATIVE_INFINITY,
-  nextChange: () => Number.POSITIVE_INFINITY,
+  validFrom: () => Number.NEGATIVE_INFINITY,
+  validUntil: () => Number.POSITIVE_INFINITY,
   reduced: () => STILL,
 };
 
@@ -461,7 +461,7 @@ export function finiteTime(what: string, t: number): number {
 /**
  * The seconds into the current pass of a `period` at `t`: `t` taken modulo
  * the period, into [0, period), before zero too. [LAW:single-enforcer] The
- * one wrap `Phase.loop` and `beat` both read time through, so a `t` that is
+ * one wrap `WrapMode.loop` and `beat` both read time through, so a `t` that is
  * not a finite number of seconds fails here, loudly, and nowhere else. A
  * `t` at or past zero is `t % period` alone, which is exact; only a negative
  * `t` is carried up by a period, so a boundary a host samples exactly lands
@@ -576,20 +576,20 @@ export function firstReaching(near: number, reached: (x: number) => boolean): nu
   }
 }
 
-/** `holds` as a `Beat`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
-export function beat(holds: readonly number[]): Beat {
-  if (holds.length === 0) throw new RangeError("a beat needs at least one hold");
-  holds.forEach((hold, i) => positiveSeconds(`beat hold ${i}`, hold));
-  const period = holds.reduce((sum, hold) => sum + hold, 0);
+/** `holds` as a `StepSequence`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
+export function stepSequence(holds: readonly number[]): StepSequence {
+  if (holds.length === 0) throw new RangeError("a step sequence needs at least one step");
+  holds.forEach((validity, i) => positiveSeconds(`step ${i}`, validity));
+  const period = holds.reduce((sum, validity) => sum + validity, 0);
   // Where each hold begins, in seconds into the period: the unit
   // `wrapSeconds` answers in, so the sum a boundary sits at is the number
   // the wrap of a `t` on that boundary produces, and the hold that begins
   // there is the one in progress, at any rate the host samples.
   const starts: number[] = [];
   let elapsed = 0;
-  for (const hold of holds) {
+  for (const validity of holds) {
     starts.push(elapsed);
-    elapsed += hold;
+    elapsed += validity;
   }
   // A copy, and the one `at` walks: what `at` and `period` were built from
   // stays what `holds` says whatever the caller does to its array.
@@ -625,42 +625,42 @@ export function beat(holds: readonly number[]): Beat {
     holds: own,
     period,
     at(t) {
-      return index(wrapSeconds("Beat.at", t, period));
+      return index(wrapSeconds("StepSequence.at", t, period));
     },
-    lastChange(t) {
-      const { pass, into } = passAt("Beat.lastChange", t, period);
-      return boundary("Beat.lastChange", pass, index(into), t);
+    validFrom(t) {
+      const { pass, into } = passAt("StepSequence.validFrom", t, period);
+      return boundary("StepSequence.validFrom", pass, index(into), t);
     },
     // The next hold's start, in the next pass when this hold is the last.
-    nextChange(t) {
-      const { pass, into } = passAt("Beat.nextChange", t, period);
+    validUntil(t) {
+      const { pass, into } = passAt("StepSequence.validUntil", t, period);
       const i = index(into);
       const last = i === own.length - 1;
-      return boundary("Beat.nextChange", pass + (last ? 1 : 0), last ? 0 : i + 1, t);
+      return boundary("StepSequence.validUntil", pass + (last ? 1 : 0), last ? 0 : i + 1, t);
     },
     reduced: () => STILL,
   };
 }
 
-/** The three phase shapes. Each takes seconds and returns a `Phase`. */
-export const Phase = {
+/** The three phase shapes. Each takes seconds and returns a `WrapMode`. */
+export const WrapMode = {
   /** 0 before `start`, rising to 1 over `duration` seconds, then held at 1. */
-  once(start: number, duration: number): Phase {
-    if (!Number.isFinite(start)) throw new RangeError(`Phase.once start must be finite, got ${start}`);
-    positiveSeconds("Phase.once duration", duration);
+  once(start: number, duration: number): WrapMode {
+    if (!Number.isFinite(start)) throw new RangeError(`WrapMode.once start must be finite, got ${start}`);
+    positiveSeconds("WrapMode.once duration", duration);
     return (t) => Math.min(1, Math.max(0, (t - start) / duration));
   },
 
   /** 0 → 1 every `period` seconds, wrapping back to 0; negative `t` wraps too. */
-  loop(period: number): Phase {
-    positiveSeconds("Phase.loop period", period);
-    return (t) => wrapSeconds("Phase.loop", t, period) / period;
+  loop(period: number): WrapMode {
+    positiveSeconds("WrapMode.loop period", period);
+    return (t) => wrapSeconds("WrapMode.loop", t, period) / period;
   },
 
   /** 0 → 1 → 0 every `period` seconds: there in the first half, back in the second. */
-  pingPong(period: number): Phase {
-    positiveSeconds("Phase.pingPong period", period);
-    const wrap = Phase.loop(period);
+  pingPong(period: number): WrapMode {
+    positiveSeconds("WrapMode.pingPong period", period);
+    const wrap = WrapMode.loop(period);
     return (t) => 1 - Math.abs(2 * wrap(t) - 1);
   },
 };

@@ -49,7 +49,7 @@ describe("parseSettings", () => {
 describe("envAtDepth", () => {
   // Asserted through the detection that reads it, not the strings it writes:
   // the first version of this test pinned `FORCE_COLOR: "256"`, a value the
-  // library does not read, and every run drew at 16 colours while it passed.
+  // library does not read, and every run drew at 16 colors while it passed.
   it.each(DEPTHS)("resolves to the depth a run asks for, %s, over what the terminal says", (depth) => {
     for (const env of [{ TERM: "xterm", NO_COLOR: "1" }, { COLORTERM: "truecolor" }, { FORCE_COLOR: "3" }, {}]) {
       expect(detectColorSystem({ env: envAtDepth(env, depth), isTTY: true })).toBe(depthDrawn(depth));

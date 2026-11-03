@@ -9,7 +9,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 import { App, type AppOptions } from "../../src/host/app.js";
-import { ESCAPE_DELAY_MS, keyName, type KeyPress } from "../../src/host/input.js";
+import { ESCAPE_DELAY_MS, keyName, type KeyEvent } from "../../src/host/input.js";
 import type { AppMouseEvent } from "../../src/host/app.js";
 import { RichText } from "../../src/core/text.js";
 import { scriptedHost, type ScriptedHost } from "./scripted-host.js";
@@ -32,7 +32,7 @@ describe("App hears keys", () => {
   it("completes a UTF-8 character split across two chunks", () => {
     const { host, app, keys } = started();
     const bytes = new TextEncoder().encode("é→");
-    const presses: KeyPress[] = [];
+    const presses: KeyEvent[] = [];
     app.onKey((press) => presses.push(press));
     host.type(bytes.subarray(0, 1));
     host.type(bytes.subarray(1, 3));
@@ -188,7 +188,7 @@ describe("App hears the pointer", () => {
 });
 
 describe("keyName", () => {
-  const press = (init: Partial<KeyPress>): KeyPress => ({ key: "", character: "", shift: false, ctrl: false, meta: false, ...init });
+  const press = (init: Partial<KeyEvent>): KeyEvent => ({ key: "", character: "", shift: false, ctrl: false, meta: false, ...init });
 
   it.each([
     [{ key: "q", character: "q" }, "q"],

@@ -382,7 +382,7 @@ const NAMED_REFERENCES: Readonly<Record<string, string>> = {
 };
 
 /** The characters `name`, a reference's name without its `&` and `;`, stands for, if it names any. */
-export function namedReference(name: string): string | undefined {
+export function namedCharacterReference(name: string): string | undefined {
   // An own key only: `constructor` names nothing here, whatever the prototype holds.
   return Object.hasOwn(NAMED_REFERENCES, name) ? NAMED_REFERENCES[name] : undefined;
 }

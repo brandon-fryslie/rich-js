@@ -31,10 +31,10 @@ import {
   MONOKAI,
   NORD,
   Palette,
-  parseEase,
+  parseEasing,
   parseHexColor,
   parseRgbHex,
-  Phase,
+  WrapMode,
   resolveColorRef,
   RichText,
   ROSE_PINE,
@@ -88,7 +88,7 @@ export function section4ThemeRegistry(out: Console): void {
   out.print(blank());
 
   // For each theme: header in (bg, fg), then a 6-var swatch strip. The
-  // header colors come from `getThemeBaseColors`, the eight base colours;
+  // header colors come from `getThemeBaseColors`, the eight base colors;
   // the swatches come from `getThemePalette`, the full ~150-var palette.
   // The name column is as wide as the longest name, so the swatches line up
   // under each other and no cell goes to padding past it.
@@ -135,18 +135,18 @@ export function section4ThemeRegistry(out: Console): void {
 }
 
 // ===========================================================================
-// SECTION 5 — Colour references (resolveColorRef / parseHexColor), buildPalette
+// SECTION 5 — Color references (resolveColorRef / parseHexColor), buildPalette
 // ===========================================================================
 
 export function section5ColorRefs(out: Console): void {
-  out.print(sectionHeader(5, "Colour references — one string, one checkpoint"));
+  out.print(sectionHeader(5, "Color references — one string, one checkpoint"));
   out.print(
     blurb(
-      "A colour reference is a palette variable name OR a #RRGGBB / #RRGGBBAA " +
+      "A color reference is a palette variable name OR a #RRGGBB / #RRGGBBAA " +
         "literal, and resolveColorRef is the single checkpoint that turns one " +
         "into a ColorRgba. It is idempotent — hand it the hex it just produced " +
-        "and you get the same colour back — so callers never branch on \"is this " +
-        "a name or already a colour\". A miss throws ColorRefError; there is no " +
+        "and you get the same color back — so callers never branch on \"is this " +
+        "a name or already a color\". A miss throws ColorRefError; there is no " +
         "spec mini-language left to learn.",
     ),
   );
@@ -185,7 +185,7 @@ export function section5ColorRefs(out: Console): void {
   out.print(blank());
 
   // parseHexColor is the hex arm on its own — the parser a caller reaches for
-  // when only a literal can mean anything (colour math cannot operate on a
+  // when only a literal can mean anything (color math cannot operate on a
   // name). It carries the alpha channel through, like parseRgbaHex in §1.
   const translucent = parseHexColor("#3b82f680");
   out.print(
@@ -274,7 +274,7 @@ export function section5ColorRefs(out: Console): void {
   // The composition that replaced the old spec-string grammar. Every form
   // the resolver used to parse inside a string ("primary-darken-3",
   // "accent 50%", "auto") is now an ordinary function applied to a resolved
-  // colour — so the vocabulary grows by composing, not by adding grammar
+  // color — so the vocabulary grows by composing, not by adding grammar
   // productions. [LAW:composability]
   const primary = resolveColorRef(palette, "primary");
   const accent = resolveColorRef(palette, "accent");
@@ -315,7 +315,7 @@ export function section5ColorRefs(out: Console): void {
   out.print(namedRamp.append(dim('   ref("primary-darken-3") …')));
   out.print(blank());
 
-  // ColorRamp — the one colour operation whose input is a *number*. A
+  // ColorRamp — the one color operation whose input is a *number*. A
   // measurement lands on ordered stops; `linear` interpolates between them
   // in OKLCH, `step` holds each stop until the next, which is a threshold
   // cascade (`≥ 50 warning, ≥ 80 error`) spelled as data. Every ease is
@@ -327,7 +327,7 @@ export function section5ColorRefs(out: Console): void {
     { at: 50, color: resolveColorRef(palette, "warning") },
     { at: 80, color: resolveColorRef(palette, "error") },
   ];
-  out.print(bold("    ColorRamp — a number → a colour, over the same stops, per ease:"));
+  out.print(bold("    ColorRamp — a number → a color, over the same stops, per ease:"));
   out.print(blurb("stops at 0 (surface), 50 (warning), 80 (error)"));
   // A spring's duration is its physics' to say, so a stiff one is a short
   // one: the ramp below is this spring sampled over its own settling time.
@@ -352,8 +352,8 @@ export function section5ColorRefs(out: Console): void {
   // A phase turns seconds into progress, so the same ramp can be swept by
   // time instead of a measurement. `t` is an argument — nothing reads a
   // clock — so this row is the pulse sampled every quarter second, frozen.
-  const pulse = Phase.pingPong(2);
-  const pulseRamp = new ColorRamp(parseEase("sine"), [
+  const pulse = WrapMode.pingPong(2);
+  const pulseRamp = new ColorRamp(parseEasing("sine"), [
     { at: 0, color: surface },
     { at: 1, color: resolveColorRef(palette, "primary") },
   ]);
@@ -361,12 +361,12 @@ export function section5ColorRefs(out: Console): void {
   for (let quarter = 0; quarter <= 8; quarter++) {
     pulseRow.append("    ", bgFgStyle(pulseRamp.at(pulse(quarter / 4)), fg, bg));
   }
-  out.print(bold("    Phase — seconds → progress; t = 0 … 2 s in quarter seconds:"));
+  out.print(bold("    WrapMode — seconds → progress; t = 0 … 2 s in quarter seconds:"));
   out.print(pulseRow);
   out.print(blank());
 
   // A tween is the one-shot: a number eased to its target over seconds and
-  // held there, and a ramp read over time is the same for a colour. The
+  // held there, and a ramp read over time is the same for a color. The
   // spring's seconds are its own, so the count lands when the physics says.
   const settle = spring({ stiffness: 300, damping: 20 });
   const count = tween(0, 100, settle);
@@ -385,12 +385,12 @@ export function section5ColorRefs(out: Console): void {
 
   // Effected — the same phase driving a per-cell effect over a finished
   // renderable: a highlight band sweeping through the text, the shimmer
-  // shape. The effect sees each cell's colours, its column and `t`, and the
+  // shape. The effect sees each cell's colors, its column and `t`, and the
   // band's centre is `loop(t)` of the way across. Three frames, frozen.
   const highlight = resolveColorRef(palette, "primary");
-  const sweep = Phase.loop(1.5);
+  const sweep = WrapMode.loop(1.5);
   const indent = "      ";
-  const label = "  thinking about colour  ";
+  const label = "  thinking about color  ";
   const shimmer: Effect = () =>
     Animation.continuous((t) => {
       const centre = indent.length + sweep(t) * label.length;

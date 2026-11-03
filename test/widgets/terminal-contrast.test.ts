@@ -2,16 +2,16 @@
  * A widget constructed without a theme is readable on whatever terminal it
  * lands in, light or dark.
  *
- * The widget cannot ask the terminal what colour its background is, so the
+ * The widget cannot ask the terminal what color its background is, so the
  * contract is checked the way a reader meets it: every state is rendered and
- * each cell resolved against a terminal's own colours. No cell, blank ones
+ * each cell resolved against a terminal's own colors. No cell, blank ones
  * included, may leave the terminal's background showing through, and every
  * visible glyph of an enabled widget has to clear the contrast floor on a dark
  * terminal and on a light one.
  *
- * Given a theme it is drawn in that theme's colours, so each state is also
- * checked on every bundled theme, at full colour: the floor is a fact about the
- * palette, not about the slots sixteen colours rounds it to.
+ * Given a theme it is drawn in that theme's colors, so each state is also
+ * checked on every bundled theme, at full color: the floor is a fact about the
+ * palette, not about the slots sixteen colors rounds it to.
  */
 import { describe, it, expect } from "vitest";
 import { exportCanvas, resolveLook } from "../../src/core/export-lines.js";

@@ -4,7 +4,7 @@ import { Animation, ColorRamp, ColorRgba, EASES, spring, steps, tween, type Anim
 // [LAW:behavior-not-structure] What is asserted is what a host sees: the value
 // at each time it samples, that the value is the same at one sample a second
 // and sixty, that it lands on its target exactly, and that the hold the tween
-// names — `[lastChange(t), nextChange(t))` — is never wider than the truth.
+// names — `[validFrom(t), validUntil(t))` — is never wider than the truth.
 
 const NEVER = Number.POSITIVE_INFINITY;
 const ALWAYS = Number.NEGATIVE_INFINITY;
@@ -15,8 +15,8 @@ const sampled = (hz: number, until: number): number[] => Array.from({ length: hz
 /** Whether `animation` holds `at(t)` over the hold it names at `t`, sampled inside. */
 function holdsBetween<T>(animation: AnimationOf<T>, t: number, samples = 24): boolean {
   const value = animation.at(t);
-  const next = animation.nextChange(t);
-  const last = animation.lastChange(t);
+  const next = animation.validUntil(t);
+  const last = animation.validFrom(t);
   if (!(last <= t && t <= next)) return false;
   const lo = Number.isFinite(last) ? last : t - 10;
   const hi = Number.isFinite(next) ? next : t + 10;
@@ -45,8 +45,8 @@ describe("tween", () => {
   it("shorter than a second, sampled once a second, is seen at its end and never mid-way", () => {
     const blink = tween(0, 1, { seconds: 0.3, ease: EASES["ease-out"] });
     expect(sampled(1, 3).map((t) => blink.at(t))).toEqual([0, 1, 1, 1]);
-    expect(blink.nextChange(0)).toBe(0);
-    expect(blink.nextChange(1)).toBe(NEVER);
+    expect(blink.validUntil(0)).toBe(0);
+    expect(blink.validUntil(1)).toBe(NEVER);
   });
 
   it("lands exactly on `to` whatever the ease, and on `from` at the start", () => {
@@ -62,13 +62,13 @@ describe("tween", () => {
   it("an ease that jumps at the start of its interval shows the jump before it begins, as a ramp does", () => {
     const jump = tween(0, 100, { seconds: 1, ease: EASES["step-start"] });
     expect([jump.at(-1), jump.at(0), jump.at(0.5), jump.at(1)]).toEqual([100, 100, 100, 100]);
-    expect([jump.lastChange(-1), jump.nextChange(-1)]).toEqual([ALWAYS, 0]);
+    expect([jump.validFrom(-1), jump.validUntil(-1)]).toEqual([ALWAYS, 0]);
   });
 
   it("to where it already is, is the constant: exactly its value at every sample, never changing", () => {
     const still = tween(0.1, 0.1, second);
     expect(sampled(60, 3).every((t) => still.at(t) === 0.1)).toBe(true);
-    expect([still.lastChange(1), still.nextChange(1)]).toEqual([ALWAYS, NEVER]);
+    expect([still.validFrom(1), still.validUntil(1)]).toEqual([ALWAYS, NEVER]);
     // The blend alone would not have held it: at some p, (1 − p)·0.1 + p·0.1 < 0.1.
     expect(sampled(999, 1).some((p) => (1 - p) * 0.1 + p * 0.1 !== 0.1)).toBe(true);
   });
@@ -83,23 +83,23 @@ describe("tween", () => {
     const settle = spring({ stiffness: 300, damping: 20 });
     const count = tween(0, 50, settle);
     expect(count.at(settle.seconds)).toBe(50);
-    expect(count.nextChange(settle.seconds)).toBe(NEVER);
-    expect(count.nextChange(settle.seconds / 2)).toBe(settle.seconds / 2);
+    expect(count.validUntil(settle.seconds)).toBe(NEVER);
+    expect(count.validUntil(settle.seconds / 2)).toBe(settle.seconds / 2);
   });
 
   it("names its hold: until 0 before it begins, every frame while it moves, never after", () => {
     const fill = tween(0, 1, second);
-    expect([fill.lastChange(-3), fill.nextChange(-3)]).toEqual([ALWAYS, 0]);
-    expect([fill.lastChange(0.7), fill.nextChange(0.7)]).toEqual([0.7, 0.7]);
-    expect([fill.lastChange(2), fill.nextChange(2)]).toEqual([2, NEVER]);
-    expect([fill.lastChange(9), fill.nextChange(9)]).toEqual([2, NEVER]);
+    expect([fill.validFrom(-3), fill.validUntil(-3)]).toEqual([ALWAYS, 0]);
+    expect([fill.validFrom(0.7), fill.validUntil(0.7)]).toEqual([0.7, 0.7]);
+    expect([fill.validFrom(2), fill.validUntil(2)]).toEqual([2, NEVER]);
+    expect([fill.validFrom(9), fill.validUntil(9)]).toEqual([2, NEVER]);
     for (const t of [-3, 0, 0.7, 2, 9]) expect(holdsBetween(fill, t)).toBe(true);
   });
 
   it("refuses an end that is not finite, and seconds that are not a positive number, where every one-shot's are checked", () => {
     expect(() => tween(Number.NaN, 1, second)).toThrow(/tween from must be finite, got NaN/);
     expect(() => tween(0, NEVER, second)).toThrow(/tween to must be finite, got Infinity/);
-    expect(() => tween(0, 1, { seconds: 0, ease: EASES.linear })).toThrow(/Phase.once duration must be a positive number of seconds, got 0/);
+    expect(() => tween(0, 1, { seconds: 0, ease: EASES.linear })).toThrow(/WrapMode.once duration must be a positive number of seconds, got 0/);
   });
 });
 
@@ -113,7 +113,7 @@ describe("retargeting", () => {
     // Half-way through the second move: from 50 toward 20.
     expect(retargeted.at(2)).toBe(35);
     expect(retargeted.at(3)).toBe(20);
-    expect(retargeted.nextChange(3)).toBe(NEVER);
+    expect(retargeted.validUntil(3)).toBe(NEVER);
     expect(retargeted.at(1e6)).toBe(20);
     // Asking the old tween again changed nothing: it still heads for 100.
     expect(first.at(2)).toBe(100);
@@ -125,7 +125,7 @@ describe("ColorRamp.over", () => {
   const blue = new ColorRgba(0, 0, 255);
   const green = new ColorRgba(0, 255, 0);
 
-  it("is a colour tween: the first stop before it begins, the last from its seconds on, byte for byte", () => {
+  it("is a color tween: the first stop before it begins, the last from its seconds on, byte for byte", () => {
     const fade = new ColorRamp(EASES["ease-in-out"], [{ at: 0, color: red }, { at: 1, color: blue }]).over(2);
     expect(fade.at(-1).hex).toBe(red.hex);
     expect(fade.at(0).hex).toBe(red.hex);
@@ -134,8 +134,8 @@ describe("ColorRamp.over", () => {
     const midway = fade.at(1);
     expect(midway.hex).not.toBe(red.hex);
     expect(midway.hex).not.toBe(blue.hex);
-    expect([fade.lastChange(1), fade.nextChange(1)]).toEqual([1, 1]);
-    expect([fade.lastChange(2), fade.nextChange(2)]).toEqual([2, NEVER]);
+    expect([fade.validFrom(1), fade.validUntil(1)]).toEqual([1, 1]);
+    expect([fade.validFrom(2), fade.validUntil(2)]).toEqual([2, NEVER]);
   });
 
   it("sweeps a ramp of more stops through each of them, the stops' positions crossed at a steady rate", () => {
@@ -145,13 +145,13 @@ describe("ColorRamp.over", () => {
     expect(sweep.at(8).hex).toBe(blue.hex);
   });
 
-  it("a ramp that is only a hard edge holds its last colour, never flickering across the edge", () => {
+  it("a ramp that is only a hard edge holds its last color, never flickering across the edge", () => {
     const edge = new ColorRamp(EASES.linear, [{ at: 0.1, color: red }, { at: 0.1, color: blue }]).over(1);
     expect(sampled(999, 1).every((t) => edge.at(t).hex === blue.hex)).toBe(true);
-    expect(edge.nextChange(0.5)).toBe(NEVER);
+    expect(edge.validUntil(0.5)).toBe(NEVER);
   });
 
-  it("draws the same colour for the same t at one sample a second and sixty", () => {
+  it("draws the same color for the same t at one sample a second and sixty", () => {
     const fade = new ColorRamp(EASES.sine, [{ at: 0, color: red }, { at: 1, color: blue }]).over(3);
     const slow = sampled(1, 4).map((t) => fade.at(t).hex);
     const fast = new Map(sampled(60, 4).map((t) => [t, fade.at(t).hex]));

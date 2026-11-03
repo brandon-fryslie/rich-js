@@ -5,7 +5,7 @@
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
 import { closed, closing } from "./bidi.js";
 import { controlClass, dispositionOf, pictureOf } from "./control-codes.js";
-import { directed, drawnTail, edges, hangingWhitespace, measured } from "./orient.js";
+import { reorder, drawnTail, edges, hangingWhitespace, measured } from "./orient.js";
 import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
@@ -73,7 +73,7 @@ function sanitizeStyleLink(style: Style): Style {
  * lays its text out anew, so a stamp naming where a cell sat in the output it
  * came from would name the wrong cell once it wraps, slices or overlaps; the
  * owner that renders the RichText is the one that stamps its cells. A
- * hold stays — `lastChange` and `nextChange`: when a span's cells began and
+ * hold stays — `validFrom` and `validUntil`: when a span's cells began and
  * next change is true of them wherever the text lays them, so a frame
  * appended into a line still says when it turns.
  */
@@ -321,8 +321,8 @@ export class RichText implements Renderable, Measurable {
    * any spans covering the leftmost (side="left") or rightmost (side="right")
    * character.
    *
-   * [LAW:locality-or-seam] Used by `Joiner`s to paint the transition between
-   * adjacent `Strip` items. Joiners only ever need the column adjacent to
+   * [LAW:locality-or-seam] Used by `Separator`s to paint the transition between
+   * adjacent `Strip` items. Separators only ever need the column adjacent to
    * them, so the cell type exposes that column rather than constraining its
    * interior to be uniform. For RichText with uniform styling, both edges
    * return the same style; for RichText with edge variation, each edge
@@ -881,7 +881,7 @@ export class RichText implements Renderable, Measurable {
     for (let index = 0; index < logicalLines.length; index += 1) {
       // [LAW:dataflow-not-control-flow] Every line runs the same steps; the
       // order is the value `directed` and `orient` take.
-      const { line, oriented, orient } = directed(logicalLines[index]!, order);
+      const { line, oriented, orient } = reorder(logicalLines[index]!, order);
       const free = spanFree[index]!;
       const terminateLine = index < logicalLines.length - 1;
 

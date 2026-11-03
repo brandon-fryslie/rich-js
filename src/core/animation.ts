@@ -2,7 +2,7 @@
  * Animation — a value for a time, and when it next changes: the one type
  * anything in rich-js that changes with time is an instance of.
  *
- * `at(t)` is the value at `t` seconds. `nextChange(t)` is the first moment,
+ * `at(t)` is the value at `t` seconds. `validUntil(t)` is the first moment,
  * on `t`'s own timeline, at which the value may stop being `at(t)`: never
  * before `t`. A later time says the value is held until then, `Infinity`
  * that it never changes again, and `t` itself that it is moving at `t` — it
@@ -10,16 +10,16 @@
  * answer costs a host a frame that draws what the last one did; a late one
  * skips a change. So an animation that cannot say answers `t`, as
  * `continuous` does. An answer that depends on what the frame drew, an
- * effect's, is told by that drawing (`Moves`). A value drawn as cells carries this answer on every
+ * effect's, is told by that drawing (`Reads`). A value drawn as cells carries this answer on every
  * cell (`Style.hold`, both ends of the hold below), so a host holding
- * the composed frame reads it there (`Segment.nextChange`); a value that is
- * not drawn — a number, a colour — has `nextChange` as its only way to say
+ * the composed frame reads it there (`Segment.validUntil`); a value that is
+ * not drawn — a number, a color — has `validUntil` as its only way to say
  * when to look again.
  *
- * `lastChange(t)` is the other end of the same hold: the last moment, never
+ * `validFrom(t)` is the other end of the same hold: the last moment, never
  * after `t`, at which the value may have become `at(t)` — `-Infinity` if it
- * always was, `t` while it moves. Together they bound the hold, `[lastChange(t),
- * nextChange(t))`, and the answer may be narrower than the truth and never
+ * always was, `t` while it moves. Together they bound the hold, `[validFrom(t),
+ * validUntil(t))`, and the answer may be narrower than the truth and never
  * wider. It is what a host running the animation backwards reads
  * (`./timeline.ts`): run down the timeline, the value next changes where it
  * began. An animation that cannot say answers `t` here too.
@@ -38,10 +38,10 @@
  * which content shows is a fact about time that motion is not: a value with
  * no time could only show a scheduled exit as already gone.
  *
- * The instances already in the tree: a `Beat` is an animation of which hold
+ * The instances already in the tree: a `StepSequence` is an animation of which hold
  * is in progress (`./easing.ts`), a `FrameSequence` of the frame shown and a
  * `Spinner` of the spinner drawn (`../renderables/`), and an `Effect` is, for
- * what an element draws in a frame, an animation of how its cells' colours
+ * what an element draws in a frame, an animation of how its cells' colors
  * move (`../renderables/effect.ts`). Every kind of motion is one more.
  *
  * An animation of renderables is a renderable — its face, `placedRender`:
@@ -67,18 +67,18 @@
  * of motion is built from — a constant, a value moving every moment, a map
  * over the value, several at once, one animation after another, and one
  * played again every period — and each says how
- * `nextChange` composes, so an animation built from them answers it without
+ * `validUntil` composes, so an animation built from them answers it without
  * its author doing anything.
  *
  * Tier 5 of `src/core/`: `./easing.ts`, `./measure.ts`, `./protocol.ts`,
  * `./segment.ts` and `./style.ts`, nothing else. [LAW:one-way-deps]
  */
 
-import { beat, firstReaching, passAt, positiveSeconds, type Beat } from "./easing.js";
+import { stepSequence, firstReaching, passAt, positiveSeconds, type StepSequence } from "./easing.js";
 import { Measurement } from "./measure.js";
 import { isRenderable, render, type Measurable, type Motion, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
-import { intersection, NEVER_CHANGES, Style, type Hold } from "./style.js";
+import { intersection, NEVER_CHANGES, Style, type ValidityInterval } from "./style.js";
 
 /**
  * What a frame's drawing said of the hold the element named `key`, drawn at
@@ -96,16 +96,16 @@ import { intersection, NEVER_CHANGES, Style, type Hold } from "./style.js";
  * frame's one drawing says it, so the answer cannot disagree with what the
  * frame shows.
  */
-export type Moves = (t: number, key: string) => Hold | undefined;
+export type Reads = (t: number, key: string) => ValidityInterval | undefined;
 
 /** A value of `T` at a time in seconds, and the hold it is in: what every animation answers, whatever its values. */
-export interface Timed<T> {
+export interface Behavior<T> {
   /** The value at `t` seconds. */
   at(t: number): T;
   /** The first moment, never before `t`, at which the value may stop being `at(t)`: `t` while it moves, `Infinity` once it never will. */
-  nextChange(t: number, moves?: Moves): number;
+  validUntil(t: number, moves?: Reads): number;
   /** The last moment, never after `t`, at which the value may have become `at(t)`: `t` while it moves, `-Infinity` if it always was. */
-  lastChange(t: number, moves?: Moves): number;
+  validFrom(t: number, moves?: Reads): number;
   /** This animation with its motion taken out — a loop at its first value, a one-shot cut to its end — drawn in its place under reduced motion. */
   reduced(): Animation<T>;
 }
@@ -118,13 +118,13 @@ export interface Timed<T> {
  * number is no renderable and a `Panel` refuses it; a tween mapped to a
  * `RichText` is one, and a `Panel` holds it.
  */
-export type Animation<T> = Timed<T> & ([T] extends [Renderable] ? Renderable & Measurable : unknown);
+export type Animation<T> = Behavior<T> & ([T] extends [Renderable] ? Renderable & Measurable : unknown);
 
 /** What a frame drawn at a time shows of an animation, and what that says. */
 export interface Shown<T> {
   readonly value: T;
   /** The animation the value is drawn from: the one handed in, or under reduced motion its reduced form. */
-  readonly drawn: Timed<T>;
+  readonly drawn: Behavior<T>;
   /** Whether it is the animation reduced: drawn under reduced motion, changing only where content does. */
   readonly reduced: boolean;
 }
@@ -137,31 +137,31 @@ export interface Shown<T> {
  * the template functions choose here, so a host told once
  * reduces every one.
  */
-export function shownAt<T>(animation: Timed<T>, t: number, motion: Motion): Shown<T> {
+export function shownAt<T>(animation: Behavior<T>, t: number, motion: Motion): Shown<T> {
   const reduced = motion.reducedMotion === true;
-  const drawn: Timed<T> = reduced ? animation.reduced() : animation;
+  const drawn: Behavior<T> = reduced ? animation.reduced() : animation;
   return { value: drawn.at(t), drawn, reduced };
 }
 
 /** The hold `shown`, drawn at `t`, is in: its animation's two answers there, given what its drawing said. */
-export function holdOf(shown: Shown<unknown>, t: number, moves?: Moves): Hold {
-  return { lastChange: shown.drawn.lastChange(t, moves), nextChange: shown.drawn.nextChange(t, moves) };
+export function validityOf(shown: Shown<unknown>, t: number, moves?: Reads): ValidityInterval {
+  return { validFrom: shown.drawn.validFrom(t, moves), validUntil: shown.drawn.validUntil(t, moves) };
 }
 
 /** The style saying a cell is in `hold`. */
-export function stamp(hold: Hold): Style {
-  return new Style({ hold });
+export function stampValidity(validity: ValidityInterval): Style {
+  return new Style({ validity });
 }
 
 /**
  * `segments`, every one carrying `hold` under whatever it already said: the
- * later `lastChange` and the sooner `nextChange` win (`Style.add`), so a
+ * later `validFrom` and the sooner `validUntil` win (`Style.add`), so a
  * frame's hold is the intersection of its cells', narrower than the truth
  * and never wider. [LAW:single-enforcer] The one way a time is put on drawn
  * cells, by whatever draws for a time it knows.
  */
-export function stampFrame(segments: Iterable<Segment>, hold: Hold): Iterable<Segment> {
-  return Segment.applyStyle(segments, stamp(hold));
+export function stampValidityFrame(segments: Iterable<Segment>, validity: ValidityInterval): Iterable<Segment> {
+  return Segment.applyStyle(segments, stampValidity(validity));
 }
 
 /**
@@ -186,10 +186,10 @@ function drawable(value: unknown): Renderable {
  * An animation placed in the frame `options` draws: its value at the frame's
  * time (`frameTimeOf`, `shownAt`), drawn whole by `draw` under the options it
  * is handed, every segment then stamped with its hold there under whatever
- * its own cells say, and the hold told to the frame (`RenderOptions.onHold`),
+ * its own cells say, and the hold told to the frame (`RenderOptions.onValidity`),
  * because a frame of no cells — an element not yet entered — may have cells
  * later, and must say when without taking a row to say it in. Drawn first,
- * because the hold is asked with what the drawing said (`Moves`); each report
+ * because the hold is asked with what the drawing said (`Reads`); each report
  * goes on outward too, since a value drawn inside a placement in this value
  * may be a part of an animation placed further out. [LAW:single-enforcer]
  * The one placement: an animation of renderables (`placedRender`), an effect
@@ -197,20 +197,20 @@ function drawable(value: unknown): Renderable {
  * blink) place through it, so how a time reaches an animation and how its
  * hold reaches the frame is written once.
  */
-export function* placed<T>(animation: Timed<T>, options: RenderOptions, draw: (value: T, options: RenderOptions) => Iterable<Segment>): Iterable<Segment> {
+export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw: (value: T, options: RenderOptions) => Iterable<Segment>): Iterable<Segment> {
   const t = frameTimeOf(options);
   const shown = shownAt(animation, t, options);
-  const said = new Map<string, Hold>();
+  const said = new Map<string, ValidityInterval>();
   const part = (at: number, key: string): string => `${at} ${key}`;
-  const onMoved = (at: number, key: string, hold: Hold): void => {
+  const onReads = (at: number, key: string, validity: ValidityInterval): void => {
     const known = said.get(part(at, key));
-    said.set(part(at, key), known === undefined ? hold : intersection(known, hold));
-    options.onMoved?.(at, key, hold);
+    said.set(part(at, key), known === undefined ? validity : intersection(known, validity));
+    options.onReads?.(at, key, validity);
   };
-  const segments = [...draw(shown.value, { ...options, onMoved })];
-  const hold = holdOf(shown, t, (at, key) => said.get(part(at, key)));
-  options.onHold?.(hold);
-  yield* stampFrame(segments, hold);
+  const segments = [...draw(shown.value, { ...options, onReads })];
+  const validity = validityOf(shown, t, (at, key) => said.get(part(at, key)));
+  options.onValidity?.(validity);
+  yield* stampValidityFrame(segments, validity);
 }
 
 /**
@@ -219,19 +219,19 @@ export function* placed<T>(animation: Timed<T>, options: RenderOptions, draw: (v
  * through `render` draws an animation among them with no word about time:
  * the hold goes back the way the time came in. [LAW:composability]
  */
-export function placedRender(animation: Timed<unknown>, options: RenderOptions): Iterable<Segment> {
+export function placedRender(animation: Behavior<unknown>, options: RenderOptions): Iterable<Segment> {
   return placed(animation, options, (value, drawing) => render(drawable(value), drawing));
 }
 
 /**
  * An animation's face, `measure`: what it shows at the frame's time, measured,
- * and its hold there told (`RenderOptions.onHold`), because a container lays
+ * and its hold there told (`RenderOptions.onValidity`), because a container lays
  * out from the measurement and must lay out again when it changes.
  */
-export function placedMeasure(animation: Timed<unknown>, options: RenderOptions): { minimum: number; maximum: number } {
+export function placedMeasure(animation: Behavior<unknown>, options: RenderOptions): { minimum: number; maximum: number } {
   const t = frameTimeOf(options);
   const shown = shownAt(animation, t, options);
-  options.onHold?.(holdOf(shown, t, UNLAID));
+  options.onValidity?.(validityOf(shown, t, UNLAID));
   return Measurement.get(options, drawable(shown.value));
 }
 
@@ -241,10 +241,10 @@ export function placedMeasure(animation: Timed<unknown>, options: RenderOptions)
  * layout; a combinator's own switches and a child's holds still reach the
  * measurement. [LAW:types-are-the-program]
  */
-const UNLAID: Moves = () => NEVER_CHANGES;
+const UNLAID: Reads = () => NEVER_CHANGES;
 
 /** What `Animation.of` makes of `X`: `X`, with the face its values call for. */
-export type Faced<X extends Timed<unknown>> = X & Animation<X extends Timed<infer T> ? T : never>;
+export type Faced<X extends Behavior<unknown>> = X & Animation<X extends Behavior<infer T> ? T : never>;
 
 /**
  * Every member of `source`, its own and its class's, as own properties of a
@@ -280,10 +280,10 @@ export const Animation = {
    * animation made here has the face, and one whose values are not
    * renderables throws when it is drawn.
    */
-  of<X extends Timed<unknown>>(timed: X): Faced<NoInfer<X>> {
+  of<X extends Behavior<unknown>>(timed: X): Faced<NoInfer<X>> {
     const faced = Object.assign(membersOf(timed), {
-      render: (options: RenderOptions) => placedRender(faced as unknown as Timed<unknown>, options),
-      measure: (options: RenderOptions) => placedMeasure(faced as unknown as Timed<unknown>, options),
+      render: (options: RenderOptions) => placedRender(faced as unknown as Behavior<unknown>, options),
+      measure: (options: RenderOptions) => placedMeasure(faced as unknown as Behavior<unknown>, options),
     });
     return faced as unknown as Faced<NoInfer<X>>;
   },
@@ -296,13 +296,13 @@ export const Animation = {
    * once. An early answer the contract allows is a finite one, so `Infinity`
    * is only ever a true never.
    */
-  done(animation: Timed<unknown>, t: number): boolean {
-    return animation.nextChange(t) === Number.POSITIVE_INFINITY;
+  done(animation: Behavior<unknown>, t: number): boolean {
+    return animation.validUntil(t) === Number.POSITIVE_INFINITY;
   },
 
   /** `value` at every time, never changing. */
   constant<T>(value: T): Animation<T> {
-    const still: Animation<T> = Animation.of({ at: () => value, nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => still });
+    const still: Animation<T> = Animation.of({ at: () => value, validUntil: () => Number.POSITIVE_INFINITY, validFrom: () => Number.NEGATIVE_INFINITY, reduced: () => still });
     return still;
   },
 
@@ -313,8 +313,8 @@ export const Animation = {
   cut<T>(before: T, after: T): Animation<T> {
     const cut: Animation<T> = Animation.of({
       at: (t: number) => (t < 0 ? before : after),
-      nextChange: (t: number) => (t < 0 ? 0 : Number.POSITIVE_INFINITY),
-      lastChange: (t: number) => (t < 0 ? Number.NEGATIVE_INFINITY : 0),
+      validUntil: (t: number) => (t < 0 ? 0 : Number.POSITIVE_INFINITY),
+      validFrom: (t: number) => (t < 0 ? Number.NEGATIVE_INFINITY : 0),
       reduced: () => cut,
     });
     return cut;
@@ -327,7 +327,7 @@ export const Animation = {
    * it says its own end (`transition`, `../renderables/effects.ts`).
    */
   continuous<T>(at: (t: number) => T): Animation<T> {
-    return Animation.of({ at, nextChange: (t: number) => t, lastChange: (t: number) => t, reduced: () => Animation.constant(at(0)) });
+    return Animation.of({ at, validUntil: (t: number) => t, validFrom: (t: number) => t, reduced: () => Animation.constant(at(0)) });
   },
 
   /**
@@ -339,7 +339,7 @@ export const Animation = {
    * [LAW:types-are-the-program]
    */
   time(): Animation<number> {
-    const time: Animation<number> = Animation.of({ at: (t: number) => t, nextChange: (t: number) => t, lastChange: (t: number) => t, reduced: () => time });
+    const time: Animation<number> = Animation.of({ at: (t: number) => t, validUntil: (t: number) => t, validFrom: (t: number) => t, reduced: () => time });
     return time;
   },
 
@@ -347,11 +347,11 @@ export const Animation = {
    * `animation`'s value through `f`, changing when it does. Two values `f`
    * maps alike make an early answer, which the contract allows.
    */
-  map<T, U>(animation: Timed<T>, f: (value: T) => U): Animation<U> {
+  map<T, U>(animation: Behavior<T>, f: (value: T) => U): Animation<U> {
     return Animation.of({
       at: (t: number) => f(animation.at(t)),
-      nextChange: (t: number, moves?: Moves) => animation.nextChange(t, moves),
-      lastChange: (t: number, moves?: Moves) => animation.lastChange(t, moves),
+      validUntil: (t: number, moves?: Reads) => animation.validUntil(t, moves),
+      validFrom: (t: number, moves?: Reads) => animation.validFrom(t, moves),
       reduced: () => Animation.map(animation.reduced(), f),
     });
   },
@@ -362,16 +362,16 @@ export const Animation = {
    * still exactly while each of them does, and reduced each reduced — a
    * stagger with every child arrived. None never changes.
    */
-  all<const T extends readonly unknown[]>(animations: { readonly [K in keyof T]: Timed<T[K]> }): Animation<T> {
+  all<const T extends readonly unknown[]>(animations: { readonly [K in keyof T]: Behavior<T[K]> }): Animation<T> {
     return Animation.of({
       // [LAW:types-are-the-program] Each value at its own place in the tuple,
       // which `map` cannot say of its array.
-      at: (t: number) => animations.map((animation: Timed<unknown>) => animation.at(t)) as unknown as T,
+      at: (t: number) => animations.map((animation: Behavior<unknown>) => animation.at(t)) as unknown as T,
       // A fold, not a spread: a stagger over a table's rows is a list as long
       // as the table, past what an engine takes as arguments.
-      nextChange: (t: number, moves?: Moves) => animations.reduce((soonest: number, animation: Timed<unknown>) => Math.min(soonest, animation.nextChange(t, moves)), Number.POSITIVE_INFINITY),
-      lastChange: (t: number, moves?: Moves) => animations.reduce((latest: number, animation: Timed<unknown>) => Math.max(latest, animation.lastChange(t, moves)), Number.NEGATIVE_INFINITY),
-      reduced: () => Animation.all<T>(animations.map((animation: Timed<unknown>) => animation.reduced()) as unknown as { readonly [K in keyof T]: Timed<T[K]> }),
+      validUntil: (t: number, moves?: Reads) => animations.reduce((soonest: number, animation: Behavior<unknown>) => Math.min(soonest, animation.validUntil(t, moves)), Number.POSITIVE_INFINITY),
+      validFrom: (t: number, moves?: Reads) => animations.reduce((latest: number, animation: Behavior<unknown>) => Math.max(latest, animation.validFrom(t, moves)), Number.NEGATIVE_INFINITY),
+      reduced: () => Animation.all<T>(animations.map((animation: Behavior<unknown>) => animation.reduced()) as unknown as { readonly [K in keyof T]: Behavior<T[K]> }),
     });
   },
 
@@ -387,23 +387,23 @@ export const Animation = {
    * [LAW:one-source-of-truth] The one stepping rule, for an effect's frames
    * and a transition's schedule alike.
    */
-  onBeat<T>(animation: Timed<T>, beat: Beat): Animation<T> {
+  sampleAndHold<T>(animation: Behavior<T>, stepSequence: StepSequence): Animation<T> {
     return Animation.of({
-      at: (t: number) => animation.at(beat.lastChange(t)),
-      nextChange(t: number, moves?: Moves) {
-        const moved = animation.nextChange(beat.lastChange(t), moves);
+      at: (t: number) => animation.at(stepSequence.validFrom(t)),
+      validUntil(t: number, moves?: Reads) {
+        const moved = animation.validUntil(stepSequence.validFrom(t), moves);
         if (moved === Number.POSITIVE_INFINITY) return moved;
-        const end = beat.nextChange(t);
+        const end = stepSequence.validUntil(t);
         // The hold boundaries after `t` are `end`, then each hold's end in turn;
         // the value turns at the first one the animation has moved by.
-        return moved <= end ? end : beat.lastChange(moved) === moved ? moved : beat.nextChange(moved);
+        return moved <= end ? end : stepSequence.validFrom(moved) === moved ? moved : stepSequence.validUntil(moved);
       },
       // The value held now began at this hold's start at the latest: an early
       // answer where the animation had not moved by it, which the contract
       // allows. One that always was never turned on any beat.
-      lastChange(t: number, moves?: Moves) {
-        const began = beat.lastChange(t);
-        const moved = animation.lastChange(began, moves);
+      validFrom(t: number, moves?: Reads) {
+        const began = stepSequence.validFrom(t);
+        const moved = animation.validFrom(began, moves);
         return moved === Number.NEGATIVE_INFINITY ? moved : began;
       },
       // Reduced, nothing moves between beats, so there is nothing to sample on them.
@@ -420,7 +420,7 @@ export const Animation = {
    * shows on time; a one-shot that is the motion into what follows says its
    * own end (`transition`, `../renderables/effects.ts`).
    */
-  sequence<T>(first: Timed<T>, seconds: number, then: Timed<T>): Animation<T> {
+  sequence<T>(first: Behavior<T>, seconds: number, then: Behavior<T>): Animation<T> {
     positiveSeconds("Animation.sequence seconds", seconds);
     // `then`'s moment `local`, on its own clock, carried back onto this
     // timeline: the first moment whose time since the switch reaches
@@ -430,17 +430,17 @@ export const Animation = {
     const carried = (local: number): number => (Number.isFinite(local) ? firstReaching(local + seconds, (x) => x - seconds >= local) : local);
     return Animation.of({
       at: (t: number) => (t - seconds >= 0 ? then.at(t - seconds) : first.at(t)),
-      nextChange(t: number, moves?: Moves) {
+      validUntil(t: number, moves?: Reads) {
         const into = t - seconds;
-        if (into < 0) return Math.min(first.nextChange(t, moves), seconds);
-        return Math.max(t, carried(then.nextChange(into, moves)));
+        if (into < 0) return Math.min(first.validUntil(t, moves), seconds);
+        return Math.max(t, carried(then.validUntil(into, moves)));
       },
       // After the switch the value became what it is at the switch or when
       // `then`'s did since, whichever is later; before it, when `first`'s did.
-      lastChange(t: number, moves?: Moves) {
+      validFrom(t: number, moves?: Reads) {
         const into = t - seconds;
-        if (into < 0) return first.lastChange(t, moves);
-        return Math.min(t, Math.max(seconds, carried(then.lastChange(into, moves))));
+        if (into < 0) return first.validFrom(t, moves);
+        return Math.min(t, Math.max(seconds, carried(then.validFrom(into, moves))));
       },
       reduced: () => Animation.sequence(first.reduced(), seconds, then.reduced()),
     });
@@ -458,13 +458,13 @@ export const Animation = {
    * something new still shows it on time and a one-shot inside cuts to its
    * end there. Nothing is walked through: a call reads only its turn.
    */
-  repeat<T>(period: number, nth: (n: number) => Timed<T>): Animation<T> {
+  repeat<T>(period: number, nth: (n: number) => Behavior<T>): Animation<T> {
     positiveSeconds("Animation.repeat period", period);
     // [LAW:single-enforcer] Which turn a time is in, and how far into it, is
-    // `passAt`, the wrap a `beat` and `Phase.loop` read time through, so a
+    // `passAt`, the wrap a `beat` and `WrapMode.loop` read time through, so a
     // repeat beside a loop of the same period turns on the same float; where
     // a turn begins and the next begins are a one-hold beat's two ends.
-    const turns = beat([period]);
+    const turns = stepSequence([period]);
     // The turn's moment `local`, on its own clock, carried onto this one: the
     // first float the wrap places at or past `local` in turn `n`, or in a
     // later turn, found as `sequence` carries its second part's.
@@ -480,14 +480,14 @@ export const Animation = {
         const { pass, into } = passAt("Animation.repeat", t, period);
         return nth(pass).at(into);
       },
-      nextChange(t: number, moves?: Moves) {
+      validUntil(t: number, moves?: Reads) {
         const { pass, into } = passAt("Animation.repeat", t, period);
-        return Math.max(t, Math.min(turns.nextChange(t), carried(pass, turns.lastChange(t), nth(pass).nextChange(into, moves))));
+        return Math.max(t, Math.min(turns.validUntil(t), carried(pass, turns.validFrom(t), nth(pass).validUntil(into, moves))));
       },
-      lastChange(t: number, moves?: Moves) {
+      validFrom(t: number, moves?: Reads) {
         const { pass, into } = passAt("Animation.repeat", t, period);
-        const began = turns.lastChange(t);
-        return Math.min(t, Math.max(began, carried(pass, began, nth(pass).lastChange(into, moves))));
+        const began = turns.validFrom(t);
+        return Math.min(t, Math.max(began, carried(pass, began, nth(pass).validFrom(into, moves))));
       },
       reduced: () => Animation.repeat(period, (n) => nth(n).reduced()),
     });

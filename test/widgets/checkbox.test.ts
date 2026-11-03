@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
-import { KeyEvent } from "../../src/widgets/types.js";
+import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
@@ -10,9 +10,9 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
-const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
-const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
-const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
+const enterEvent = () => new WidgetKeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
+const spaceEvent = () => new WidgetKeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
+const escapeEvent = () => new WidgetKeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
 
 const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
 const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
@@ -119,7 +119,7 @@ describe("Checkbox", () => {
       expect(uncheckedSegs[0]!.text.length).toBe(checkedSegs[0]!.text.length);
     });
 
-    it("checked uses primary palette colour, unchecked uses foreground", () => {
+    it("checked uses primary palette color, unchecked uses foreground", () => {
       const checked = new Checkbox({ label: "Go", checked: true });
       const unchecked = new Checkbox({ label: "Go" });
       const checkedFg = Segment.splitLines(checked.render({ maxWidth: 80 }))[0]![0]!.style!.color;

@@ -130,8 +130,8 @@ describe("App in a real node process", () => {
     const report = output.slice(output.indexOf(ALT_OFF));
 
     // The location is as long as the checkout's path, so it may fold across
-    // lines, each continuing under its frame's indent, and it is coloured when
-    // the child's environment asks for colour. All of it is there either way.
+    // lines, each continuing under its frame's indent, and it is colored when
+    // the child's environment asks for color. All of it is there either way.
     const plain = decodeAnsi(report).plain;
     expect(plain.replaceAll("\n  ", "")).toContain(pathToFileURL(join(FIXTURES, "app-ending.ts")).href);
     expect(plain).not.toContain("    at ");

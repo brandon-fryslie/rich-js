@@ -19,12 +19,12 @@ import {
   renderToString,
   Console,
   DEFAULT_TERMINAL_THEME,
-  JOINERS,
+  SEPARATOR_STYLES,
   TOKYO_NIGHT,
   Strip,
   Padding,
   Panel,
-  Phase,
+  WrapMode,
   Rule,
   ColorRamp,
   tween,
@@ -77,7 +77,7 @@ const ground = new ColorRgba(30, 30, 46);
 /** The attributes of a cell whose style sets none. */
 const PLAIN = cellAttributes(Style.null());
 const colors: CellLook = { fg: ink, bg: ground, attributes: PLAIN };
-/** Neither colour the terminal's: both are the subject's own. */
+/** Neither color the terminal's: both are the subject's own. */
 const written = { fg: false, bg: false };
 /** A cell a frame lists and hands alike: at `row`, `col`, one column wide, `colors` on it, no owner. */
 const cellAt = (row: number, col: number, seed = 0): EffectCell & ListedCell => ({
@@ -95,7 +95,7 @@ const cells = Array.from({ length: 40 }, (_, col) => cellAt(0, col, (col * 0.618
 const sameColor = (a: ColorRgba, b: ColorRgba): boolean => a.red === b.red && a.green === b.green && a.blue === b.blue;
 const distance = (a: ColorRgba, b: ColorRgba): number => Oklch.fromRgba(a).deltaE(Oklch.fromRgba(b));
 const sun = EFFECT_LIGHTS.sun;
-/** A frame of `cells` whose element sets `own` colours, `fills` of them as grounds: what an effect handed it reads. */
+/** A frame of `cells` whose element sets `own` colors, `fills` of them as grounds: what an effect handed it reads. */
 const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(), pairs: readonly Pair[] = []): Drawn => ({
   all: () => cells,
   cells: () => cells,
@@ -105,7 +105,7 @@ const frame = (own: ReadonlySet<string>, fills: ReadonlySet<string> = new Set(),
   depth: ColorDepth.TRUECOLOR,
   terminal: CATPPUCCIN_MOCHA,
 });
-/** A frame of `cells` whose element sets no colours of its own: one a loop reads only the cells of. */
+/** A frame of `cells` whose element sets no colors of its own: one a loop reads only the cells of. */
 const NOTHING = frame(new Set());
 /** `NOTHING`, listing `listed` instead: an element where those cells are. */
 const listing = (listed: readonly ListedCell[]): Drawn => ({ ...NOTHING, all: () => listed, cells: () => listed });
@@ -188,7 +188,7 @@ describe("the wheel", () => {
     }
   });
 
-  it("turns a cell's ink and fill together, and leaves the terminal's colour alone", () => {
+  it("turns a cell's ink and fill together, and leaves the terminal's color alone", () => {
     const round = on(wheel(curve(907, 0.25), 0), frame(own, grounds));
     const shown = round(300);
     const { fg, bg } = shown({ fg: ink, bg: fills[0]!, attributes: PLAIN }, { ...cell, pair: { ...cell.pair, fg: ink, bg: fills[0]! } });
@@ -212,7 +212,7 @@ describe("the wheel", () => {
     return ((got - ((360 * t) / 907) % 360 + 540) % 360) - 180;
   };
 
-  it("keeps a joiner's cap the colour of the run it caps: each colour of a seam turns with the run of that colour beside it", () => {
+  it("keeps a joiner's cap the color of the run it caps: each color of a seam turns with the run of that color beside it", () => {
     const [a, b] = [fills[0]!, fills[1]!];
     // Eight cells of `a`, a joiner's cap of `a` on `b`, seven of `b`, and a tail of `b` on the terminal's ground.
     const tail = { ...shownAt(16, b, ground, true), terminal: { fg: false, bg: true }, pair: { fg: b, bg: ground, terminal: { fg: false, bg: true }, reverse: false } };
@@ -228,7 +228,7 @@ describe("the wheel", () => {
     }
   });
 
-  it("a two-cell seam reads past its other cell: both cells keep the colours of the runs either side", () => {
+  it("a two-cell seam reads past its other cell: both cells keep the colors of the runs either side", () => {
     const [a, b] = [fills[0]!, fills[1]!];
     const listed = [...run(a, 0, 8), shownAt(8, a, b, true), shownAt(9, a, b, true), ...run(b, 10, 7)];
     for (const t of [150, 300, 700]) {
@@ -242,7 +242,7 @@ describe("the wheel", () => {
     }
   });
 
-  it("a caption in a bar's colour written under the bar turns with it: one colour is one segment however a cell carries it", () => {
+  it("a caption in a bar's color written under the bar turns with it: one color is one segment however a cell carries it", () => {
     const a = fills[0]!;
     const t = 300;
     const bar = Array.from({ length: 9 }, (_, col) => ({ ...cellAt(0, col), pair: { fg: ink, bg: a, terminal: written, reverse: false } }));
@@ -254,7 +254,7 @@ describe("the wheel", () => {
     expect(lookAt(apart, apart[10]!, t).fg.hex).not.toBe(lookAt(apart, bar[4]!, t).bg.hex);
   });
 
-  it("a word in a neighbour's fill colour is a word, not a cap: every letter turns with the ground it sits on", () => {
+  it("a word in a neighbour's fill color is a word, not a cap: every letter turns with the ground it sits on", () => {
     const [a, b] = [fills[0]!, fills[1]!];
     // Eight cells of `a`, then a word of ink `a` on `b` from the very next column.
     const listed = [...run(a, 0, 8), ...Array.from({ length: 8 }, (_, i) => shownAt(8 + i, a, b))];
@@ -345,20 +345,20 @@ describe("the wheel", () => {
 
 describe("the loops move", () => {
   it.each([0, 11.3, 22.6])("pulse warms toward its light and settles back to rest, over and over, at z %s", (z) => {
-    const beat = pulse(curve(8, 0.4), sun, z);
-    const series = Array.from({ length: 1200 }, (_, i) => beat.field(i / 4, NOTHING)(cells[0]!));
+    const stepSequence = pulse(curve(8, 0.4), sun, z);
+    const series = Array.from({ length: 1200 }, (_, i) => stepSequence.field(i / 4, NOTHING)(cells[0]!));
     expect(Math.max(...series)).toBeGreaterThan(0.4 * 0.7 * 0.9);
     expect(Math.max(...series)).toBeLessThanOrEqual(0.4);
     // Back at rest between beats, again and again: a run of rest after each.
     const rests = series.filter((w, i) => w < 1e-3 && (series[i - 1] ?? 0) >= 1e-3).length;
     expect(rests).toBeGreaterThan(20);
-    // The colour it reaches is warmer toward the light, and rests as it was.
-    expect(distance(under(beat, ink, cells[0]!, 0), ink)).toBe(0);
+    // The color it reaches is warmer toward the light, and rests as it was.
+    expect(distance(under(stepSequence, ink, cells[0]!, 0), ink)).toBe(0);
   });
 
   it("the element glows as one: every cell at once", () => {
-    const beat = pulse(curve(8, 0.4), sun, 0);
-    for (const t of [3, 17.5, 90]) expect(new Set(cells.map(beat.field(t, NOTHING))).size).toBe(1);
+    const stepSequence = pulse(curve(8, 0.4), sun, 0);
+    for (const t of [3, 17.5, 90]) expect(new Set(cells.map(stepSequence.field(t, NOTHING))).size).toBe(1);
   });
 
   it("each element keeps a time of its own, and no beat is the last again", () => {
@@ -370,7 +370,7 @@ describe("the loops move", () => {
     expect(Math.max(...tops) - Math.min(...tops)).toBeGreaterThan(0.01);
   });
 
-  it("light never darkens a colour, white included", () => {
+  it("light never darkens a color, white included", () => {
     const white = new ColorRgba(255, 255, 255);
     for (const color of [white, ground, ink]) {
       expect(Oklch.fromRgba(light(sun)(color, 1)).l).toBeGreaterThanOrEqual(Oklch.fromRgba(color).l - 1e-3);
@@ -502,7 +502,7 @@ describe("the loops move", () => {
     expect(lit.size).toBe(10);
   });
 
-  it("shimmer draws a colour wherever the noise peaks", () => {
+  it("shimmer draws a color wherever the noise peaks", () => {
     // Perlin noise reaches 0.9997 under a caustic's ripple at row 15, column
     // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
     // its power was NaN.
@@ -511,8 +511,8 @@ describe("the loops move", () => {
     expect(Number.isFinite(glint.field(114.5, wide)(cellAt(15, 59)))).toBe(true);
   });
 
-  it("onColors and the wheel treat the terminal's colour as one outside the set, whatever its hex", () => {
-    // The ground is in the set, but here it is the terminal's: a subject colour that shares its hex.
+  it("onColors and the wheel treat the terminal's color as one outside the set, whatever its hex", () => {
+    // The ground is in the set, but here it is the terminal's: a subject color that shares its hex.
     const onTerminal = { fg: false, bg: true };
     const loop = pulse(curve(3, 0.2), sun, 0);
     const turn = curve(907, 0.25);
@@ -534,7 +534,7 @@ describe("the loops move", () => {
     }
   });
 
-  it("onColors leaves a colour not in its set alone", () => {
+  it("onColors leaves a color not in its set alone", () => {
     // A beat starts at rest, so the turn is watched whole.
     const effect = on(atShares(pulse(curve(3, 0.2), sun, 0), () => new Map([[ground.hex, 1]])), NOTHING);
     const turn = Array.from({ length: 30 }, (_, i) => effect(i / 10)(colors, cells[0]!));
@@ -580,10 +580,10 @@ describe("the catalogue makes every effect one way, by name", () => {
 
   it.each(Object.entries(ATTRIBUTE_DEFAULTS))("a %s next changes when its beat turns, and only then", (_name, spec) => {
     const frames = blink(spec)(NOTHING);
-    expect([0, spec.off / 2, spec.off, spec.off + spec.on / 2].map((t) => frames.nextChange(t))).toEqual([spec.off, spec.off, spec.off + spec.on, spec.off + spec.on]);
+    expect([0, spec.off / 2, spec.off, spec.off + spec.on / 2].map((t) => frames.validUntil(t))).toEqual([spec.off, spec.off, spec.off + spec.on, spec.off + spec.on]);
     // A pass a million seconds in is answered as the first one is: nothing walks through time.
     const late = 1e6 * (spec.off + spec.on);
-    expect(frames.nextChange(late + spec.off / 2) - late).toBeCloseTo(spec.off, 6);
+    expect(frames.validUntil(late + spec.off / 2) - late).toBeCloseTo(spec.off, 6);
   });
 });
 
@@ -675,7 +675,7 @@ describe("the transitions run start to end", () => {
 
   it("a transition confined to one item of a strip moves that item until its done", () => {
     const items = ["#1e66f5", "#40a02b", "#d20f39"].map((fill) => new RichText(" item ", { style: `white on ${fill}`, end: "", noWrap: true }));
-    const strip = new Strip(items, JOINERS.powerline);
+    const strip = new Strip(items, SEPARATOR_STYLES.powerline);
     const draw = onGround("#1e1e2e");
     const { seconds } = EFFECT_CURVES.dissolve;
     const leaving = confined(EFFECT_CATALOGUE.transitions.dissolve({ z: 0 }).effect, items[1]!);
@@ -804,11 +804,11 @@ describe("a curve is checked when its effect is made", () => {
 });
 
 /**
- * Words in colours off any palette, seeded so every run draws the same
+ * Words in colors off any palette, seeded so every run draws the same
  * ones: half `reverse`, so the ink is written in the ground's slot, and a
  * fifth on the terminal's own ground. The theme's palettes are spaced for
- * reading and land where a touched colour is written alike either way;
- * arbitrary colours are where the shares and the wire part.
+ * reading and land where a touched color is written alike either way;
+ * arbitrary colors are where the shares and the wire part.
  */
 function words(count: number): Style[] {
   let seed = 7;
@@ -875,7 +875,7 @@ describe("the loops never jump", () => {
   });
 });
 
-describe("on a sixteen-colour terminal a loop holds still", () => {
+describe("on a sixteen-color terminal a loop holds still", () => {
   // Each element drawn on its own, as a share is settled against only what
   // one element draws: every slot as a ground under the slot half the
   // palette away as ink, and the strip that found it, a fill off the palette
@@ -947,7 +947,7 @@ describe("a cell under light still reads", () => {
     expect(share.get(fill.hex)).toBeLessThan(1);
   });
 
-  it("a colour no pair writes has nothing to stay legible against, and takes the whole touch", () => {
+  it("a color no pair writes has nothing to stay legible against, and takes the whole touch", () => {
     const fg = palette(CATPPUCCIN_MOCHA, "foreground");
     const ground = CATPPUCCIN_MOCHA.backgroundColor;
     const accent = palette(CATPPUCCIN_MOCHA, "accent");
@@ -970,7 +970,7 @@ describe("a loop lit on what Effected draws", () => {
         noWrap: true,
       }),
   );
-  const strip = new Strip(items, JOINERS.powerline);
+  const strip = new Strip(items, SEPARATOR_STYLES.powerline);
 
   /** Each cell of `renderable` as the screen shows it: its glyph, its ink and ground, and whether it is lettering. */
   function cellsOf(renderable: Renderable): { glyph: string; fg: ColorRgba; bg: ColorRgba; lettered: boolean }[] {
@@ -1006,7 +1006,7 @@ describe("a loop lit on what Effected draws", () => {
     const words = new RichText(" hi ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-primary")!), ColorSpec.fromRgba(theme.palette.get("primary")!)), end: "", noWrap: true });
     const fill = theme.palette.get("secondary")!;
     const blank = new RichText("   ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-secondary")!), ColorSpec.fromRgba(fill)), end: "", noWrap: true });
-    const bare = new Strip([words, blank], JOINERS.powerline);
+    const bare = new Strip([words, blank], SEPARATOR_STYLES.powerline);
     const lit = onColors({ touch: light(sun), field: () => () => 1 }, new Set([fill.hex]));
     const cells = [...new Effected(bare, lit, { key: "bare" }).at(0).render(options)].flatMap((segment) =>
       segment.style?.bgcolor === undefined ? [] : [segment.style.bgcolor.getTruecolor(theme, false)],
@@ -1038,7 +1038,7 @@ describe("a loop lit on what Effected draws", () => {
       return touches;
     };
     const first = touchesAt(0);
-    // The first frame settles every colour; after it, a frame touches each slot of each cell at most once.
+    // The first frame settles every color; after it, a frame touches each slot of each cell at most once.
     expect(touchesAt(1)).toBeLessThanOrEqual(2 * rest.length);
     expect(first).toBeGreaterThan(10 * touchesAt(2));
   });
@@ -1049,7 +1049,7 @@ describe("a loop lit reads as the wire writes it", () => {
   /**
    * Each depth with the only slack a word cell gets there: what 8-bit
    * rounding of an OKLCH round trip can cost a contrast ratio in truecolor,
-   * and nothing at 256, where every colour written is one the depth holds
+   * and nothing at 256, where every color written is one the depth holds
    * exactly. At 16 a loop holds still, which its own suite checks.
    */
   const depths = [
@@ -1057,7 +1057,7 @@ describe("a loop lit reads as the wire writes it", () => {
     ["256", ColorDepth.EIGHT_BIT, "256", 0],
   ] as const;
   const themes = [["Mocha", CATPPUCCIN_MOCHA], ["Latte", CATPPUCCIN_LATTE]] as const;
-  /** The sun's light, and a touch that thins a colour, which the wire lays on what is beneath it. */
+  /** The sun's light, and a touch that thins a color, which the wire lays on what is beneath it. */
   const touches = [["sunlight", light(sun)], ["thinning", (c: ColorRgba, w: number) => new ColorRgba(c.red, c.green, c.blue, 1 - w / 2)]] as const;
 
   /** The worst contrast of a word cell of `segments` as the wire writes them at `depth`, read on `theme`. */
@@ -1075,7 +1075,7 @@ describe("a loop lit reads as the wire writes it", () => {
   }
 
   it.each(touches.flatMap(([t, touch]) => themes.flatMap(([name, theme]) => depths.map(([d, depth, system, slack]) => [t, name, d, touch, theme, depth, system, slack] as const))))(
-    "%s on %s at %s colours: no word cell falls below its resting contrast or AA",
+    "%s on %s at %s colors: no word cell falls below its resting contrast or AA",
     (_t, _name, _d, touch, theme, depth, system, slack) => {
       const options = new Console({ width: 40, colorSystem: system, terminal: theme }).options;
       const strengths = Array.from({ length: 12 }, (_, i) => (i + 1) / 12);
@@ -1095,7 +1095,7 @@ describe("a loop lit reads as the wire writes it", () => {
 
 describe("every loop keeps its words legible at every depth, the whole of its period", () => {
   const AA = 4.5;
-  // At 16 colours a loop holds still, and holding still takes nothing away.
+  // At 16 colors a loop holds still, and holding still takes nothing away.
   const depths = [["truecolor", 0.01], ["256", 0], ["ansi", 0]] as const;
   const themes = [["default", DEFAULT_TERMINAL_THEME], ["tokyo-night", TOKYO_NIGHT]] as const;
   const mocha = (key: string): ColorSpec => ColorSpec.fromRgba(CATPPUCCIN_MOCHA.palette.get(key)!);
@@ -1104,7 +1104,7 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
     ["dark ink on a mid blue", new RichText(" menu ", { style: Style.parse("#1a1b26 on #648ee1"), end: "", noWrap: true })],
     // One fill under a lighter ink and a darker one, each resting under AA: the fill may move neither way.
     ["a fill between its inks", new RichText(" ab ", { style: Style.parse("#d0b080 on #7a5ea8"), end: "", noWrap: true }).append(" cd ", Style.parse("#1e2a1a on #7a5ea8"))],
-    ["a powerline strip", new Strip(["primary", "secondary", "accent", "success"].map((key) => new RichText(` ${key} `, { style: Style.fromColor(mocha(`on-${key}`), mocha(key)), end: "", noWrap: true })), JOINERS.powerline)],
+    ["a powerline strip", new Strip(["primary", "secondary", "accent", "success"].map((key) => new RichText(` ${key} `, { style: Style.fromColor(mocha(`on-${key}`), mocha(key)), end: "", noWrap: true })), SEPARATOR_STYLES.powerline)],
     ...words(12).map((style, i): [string, Renderable] => [`words ${i}`, new RichText(" ab ", { style, end: "", noWrap: true })]),
   ];
 
@@ -1140,10 +1140,10 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
     expect(failures).toEqual([]);
   });
 
-  // The wheel turns slowly, so a frame-to-frame step is only ever a colour
+  // The wheel turns slowly, so a frame-to-frame step is only ever a color
   // snapping: between its turn and its rest, where its rounding fits at one
-  // hue and not the next. At 256 colours every step is to another indexed
-  // colour, so it is measured where the rounding is finest.
+  // hue and not the next. At 256 colors every step is to another indexed
+  // color, so it is measured where the rounding is finest.
   it("the wheel at truecolor moves no cell more than the bar between frames at 1 fps", () => {
     const theme = DEFAULT_TERMINAL_THEME;
     const failures = elements.flatMap(([label, element]) => {
@@ -1171,7 +1171,7 @@ describe("gradient: a ramp laid across an element", () => {
     { at: 1, color: coral },
   ]);
   const still = Animation.constant(hues);
-  const scrolling = hues.moving({ scroll: Animation.continuous(Phase.loop(4)) });
+  const scrolling = hues.moving({ scroll: Animation.continuous(WrapMode.loop(4)) });
   const onTerminalGround = { fg: false, bg: true };
   const line = new ColorRgba(166, 227, 161);
   // A line on the terminal's ground across every cell, as a rule draws it.
@@ -1183,12 +1183,12 @@ describe("gradient: a ramp laid across an element", () => {
   const lineCell = (col: number): EffectCell => ({ ...cells[col]!, pair: { ...lineLook, terminal: onTerminalGround, reverse: false } });
   const along = (ramp: ColorRamp, col: number): ColorRgba => ramp.at((col + 0.5) / cells.length);
 
-  it("paints each lit cell the ramp's colour at its column, first stop at the left and last at the right", () => {
+  it("paints each lit cell the ramp's color at its column, first stop at the left and last at the right", () => {
     const shown = gradient(still)(ruleFrame(ColorDepth.TRUECOLOR)).at(0);
     for (const col of [0, 10, 20, 39]) expect(shown(lineLook, lineCell(col)).fg.hex, `col ${col}`).toBe(along(hues, col).hex);
   });
 
-  it("refuses, when it is made, a colour it cannot light: one misspelt, or one translucent", () => {
+  it("refuses, when it is made, a color it cannot light: one misspelt, or one translucent", () => {
     expect(() => gradient(still, ["#a6e3g1"])).toThrow(/a6e3g1/);
     expect(() => gradient(still, ["#a6e3a180"])).toThrow(/translucent/);
   });
@@ -1200,7 +1200,7 @@ describe("gradient: a ramp laid across an element", () => {
     expect(shown(lineLook, { ...lineCell(5), pair: { ...lineLook, terminal: { fg: true, bg: true }, reverse: false } })).toBe(lineLook);
   });
 
-  it("writes a stop that would not read on the cell's ground as the nearest colour that does", () => {
+  it("writes a stop that would not read on the cell's ground as the nearest color that does", () => {
     const dusk = new ColorRgba(40, 40, 60);
     const dark = gradient(Animation.constant(new ColorRamp(EASES.linear, [{ at: 0, color: dusk }])));
     const painted = dark(ruleFrame(ColorDepth.TRUECOLOR)).at(0)(lineLook, lineCell(3)).fg;
@@ -1212,20 +1212,20 @@ describe("gradient: a ramp laid across an element", () => {
     const effect = gradient(scrolling)(ruleFrame(ColorDepth.TRUECOLOR));
     expect(effect.at(1)(lineLook, lineCell(20)).fg.hex).toBe(along(scrolling.at(1), 20).hex);
     expect(effect.at(1)(lineLook, lineCell(20)).fg.hex).not.toBe(effect.at(0)(lineLook, lineCell(20)).fg.hex);
-    expect(effect.nextChange(1)).toBe(1);
+    expect(effect.validUntil(1)).toBe(1);
   });
 
   it("never changes again once a tween settles its ramp", () => {
     const settling = gradient(hues.moving({ hue: tween(0, 0.25, { seconds: 2, ease: EASES.linear }) }))(ruleFrame(ColorDepth.TRUECOLOR));
-    expect(settling.nextChange(1)).toBe(1);
-    expect(settling.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
+    expect(settling.validUntil(1)).toBe(1);
+    expect(settling.validUntil(2)).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it.each([["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS], ["no colour", ColorDepth.DEFAULT]] as const)(
+  it.each([["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS], ["no color", ColorDepth.DEFAULT]] as const)(
     "on %s holds every cell as drawn and never changes",
     (_, depth) => {
       const effect = gradient(scrolling)(ruleFrame(depth));
-      expect(effect.nextChange(0)).toBe(Number.POSITIVE_INFINITY);
+      expect(effect.validUntil(0)).toBe(Number.POSITIVE_INFINITY);
       for (const t of [0, 1.5, 1e6]) expect(effect.at(t)(lineLook, lineCell(7))).toEqual(lineLook);
     },
   );
@@ -1245,17 +1245,17 @@ describe("gradient: a ramp laid across an element", () => {
       expect(word(plain)).toBe("#cdd6f4");
       expect(word(segments)).toBe(word(plain));
       expect(draw(element, 1, ColorDepth.TRUECOLOR)).not.toBe(renderToString(element, { width: 20, colorSystem: ColorDepth.TRUECOLOR }));
-      expect(SegmentOps.nextChange(segments)).toBe(1);
+      expect(SegmentOps.validUntil(segments)).toBe(1);
     });
 
-    it("finds the line by the colour its style names at 256 colours too, where the screen shows a palette colour", () => {
+    it("finds the line by the color its style names at 256 colors too, where the screen shows a palette color", () => {
       for (const element of [rule, panel]) {
         const rest = renderToString(element, { width: 20, colorSystem: ColorDepth.EIGHT_BIT });
         expect(draw(element, 1, ColorDepth.EIGHT_BIT)).not.toBe(rest);
       }
     });
 
-    it.each([["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS], ["no colour", null]] as const)(
+    it.each([["ansi", ColorDepth.STANDARD], ["windows", ColorDepth.WINDOWS], ["no color", null]] as const)(
       "on %s draws the rule and the panel byte for byte as without it, at every t",
       (_, colorSystem) => {
         for (const element of [rule, panel]) {

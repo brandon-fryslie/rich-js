@@ -1,7 +1,7 @@
 // rich-animation-xi28.6rs: a host can ask when what it draws next changes.
 // Each animated primitive stamps its cells with the moment, the stamp rides
 // up through every container, and the host reads the soonest off the frame
-// it drew (`Segment.nextChange`): frames and stepped effects at their next
+// it drew (`Segment.validUntil`): frames and stepped effects at their next
 // step's start, a continuous loop every frame, a transition until it is
 // done, still content never.
 
@@ -22,9 +22,9 @@ import {
   Spinner,
   Style,
   Table,
-  beat,
+  stepSequence,
   confined,
-  onBeat,
+  sampleAndHold,
   steppedInk,
   type Drawn,
   type Effect,
@@ -40,7 +40,7 @@ import { inFrame } from "./in-frame.js";
 
 const OPTIONS = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR, terminal: CATPPUCCIN_MOCHA } as const;
 const frames = (holds: readonly number[]): FrameSequence => new FrameSequence(holds.map((seconds, i) => ({ text: new RichText("abcd"[i]!), seconds })));
-const nextChangeOf = (renderable: Renderable, options: Parameters<Renderable["render"]>[0] = OPTIONS): number => Segment.nextChange(renderable.render(options));
+const nextChangeOf = (renderable: Renderable, options: Parameters<Renderable["render"]>[0] = OPTIONS): number => Segment.validUntil(renderable.render(options));
 const lit = (child: Renderable, effect: Effect, t: number): Renderable => inFrame(new Effected(child, effect, { key: "k" }), t);
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
 /** A loop that moves every frame: a continuous function of t, promising no hold. */
@@ -80,7 +80,7 @@ describe("what a host reads off a frame: when it next changes", () => {
   });
 
   it("a spinner's label keeps an earlier word of its own on when it changes", () => {
-    const label = new RichText("soon", { end: "" }).stylize(new Style({ hold: { lastChange: 0, nextChange: 0.001 } }));
+    const label = new RichText("soon", { end: "" }).stylize(new Style({ validity: { validFrom: 0, validUntil: 0.001 } }));
     expect(nextChangeOf(inFrame(new Spinner("dots", label), 0))).toBe(0.001);
   });
 
@@ -116,7 +116,7 @@ describe("what a host reads off a frame: when it next changes", () => {
   });
 
   it("an effect that moves every frame, sampled on a beat, changes when the hold ends", () => {
-    const held = onBeat(drifting, beat([1]));
+    const held = sampleAndHold(drifting, stepSequence([1]));
     expect(nextChangeOf(lit(label, held, 0.25))).toBe(1);
     expect(nextChangeOf(lit(label, held, 3))).toBe(4);
   });
@@ -124,17 +124,17 @@ describe("what a host reads off a frame: when it next changes", () => {
   it("sampled on a beat, an effect changes at the first hold start it has moved by, and never once it is done", () => {
     // Steps of 2.5 s sampled every second: the step at 2.5 shows from the hold at 3.
     const signal = steppedInk([{ color: new ColorRgba(255, 85, 85), seconds: 2.5 }, { color: new ColorRgba(80, 250, 123), seconds: 2.5 }]);
-    const held = onBeat(signal, beat([1]));
+    const held = sampleAndHold(signal, stepSequence([1]));
     expect(nextChangeOf(lit(label, held, 0.25))).toBe(3);
     expect(nextChangeOf(lit(label, held, 2.5))).toBe(3);
     expect(nextChangeOf(lit(label, held, 3.5))).toBe(5);
     // A transition that is done draws one frame from then on, however often the beat samples it.
     const fade = EFFECT_CATALOGUE.transitions.fade({ z: 0 }, { seconds: 2, ease: EASES.linear, swing: 0 });
-    expect(nextChangeOf(lit(label, onBeat(fade.effect, beat([1])), 0.5))).toBe(1);
-    expect(nextChangeOf(lit(label, onBeat(fade.effect, beat([1])), 2.5))).toBe(Number.POSITIVE_INFINITY);
+    expect(nextChangeOf(lit(label, sampleAndHold(fade.effect, stepSequence([1])), 0.5))).toBe(1);
+    expect(nextChangeOf(lit(label, sampleAndHold(fade.effect, stepSequence([1])), 2.5))).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("a catalogue loop holds every cell still at a sixteen-colour depth, and says its frame never changes there", () => {
+  it("a catalogue loop holds every cell still at a sixteen-color depth, and says its frame never changes there", () => {
     const sixteen = { ...OPTIONS, colorSystem: ColorDepth.STANDARD };
     for (const loop of Object.values(EFFECT_CATALOGUE.loops)) {
       expect(nextChangeOf(lit(label, loop({ z: 0 }), 7.25), sixteen)).toBe(Number.POSITIVE_INFINITY);
@@ -149,14 +149,14 @@ describe("what a host reads off a frame: when it next changes", () => {
       seen.push(drawn);
       return {
         at: (t) => (asked.push(`at ${t}`), (colors) => colors),
-        nextChange: (t) => (asked.push(`nextChange ${t}`), t),
-        lastChange: (t) => (asked.push(`lastChange ${t}`), t),
+        validUntil: (t) => (asked.push(`validUntil ${t}`), t),
+        validFrom: (t) => (asked.push(`validFrom ${t}`), t),
         reduced: () => (asked.push("reduced"), Animation.constant((colors: Parameters<ReturnType<ReturnType<Effect>["at"]>>[0]) => colors)),
       };
     };
     [...lit(label, watching, 1).render(OPTIONS)];
     expect(seen).toHaveLength(1);
-    expect([...asked].sort()).toEqual(["at 1", "lastChange 1", "nextChange 1"]);
+    expect([...asked].sort()).toEqual(["at 1", "validFrom 1", "validUntil 1"]);
   });
 
   it("the answer is made from the frame, so a composer may answer from what the inner effect says of it", () => {
@@ -164,8 +164,8 @@ describe("what a host reads off a frame: when it next changes", () => {
       const moving = drifting(drawn);
       return {
         at: (t) => moving.at(t),
-        nextChange: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t),
-        lastChange: (t) => moving.lastChange(t),
+        validUntil: (t) => (drawn.depth === depth ? Number.POSITIVE_INFINITY : t),
+        validFrom: (t) => moving.validFrom(t),
         reduced: () => moving.reduced(),
       };
     };
@@ -191,10 +191,10 @@ describe("what a host reads off a frame: when it next changes", () => {
     const signal = steppedInk([{ color: new ColorRgba(255, 85, 85), seconds: 0.4 }, { color: new ColorRgba(80, 250, 123), seconds: 0.4 }]);
     const chevrons = frames([1, 1, 1]);
     expect(nextChangeOf(lit(chevrons, signal, 0))).toBeCloseTo(0.4, 9);
-    expect(nextChangeOf(lit(chevrons, onBeat(drifting, beat([3])), 0))).toBe(1);
+    expect(nextChangeOf(lit(chevrons, sampleAndHold(drifting, stepSequence([3])), 0))).toBe(1);
   });
 
-  it("with no colour output an effect changes nothing, so the frame changes when its child does", () => {
+  it("with no color output an effect changes nothing, so the frame changes when its child does", () => {
     const none = { maxWidth: 40, colorSystem: null };
     expect(nextChangeOf(lit(label, drifting, 5), none)).toBe(Number.POSITIVE_INFINITY);
     expect(nextChangeOf(lit(frames([1, 1]), drifting, 0.5), none)).toBe(1);

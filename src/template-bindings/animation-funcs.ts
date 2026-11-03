@@ -29,36 +29,36 @@
  * arguments on every evaluation, so the sequence is prepared on every one:
  * a template has nowhere to keep it, and keeping it here would be the memo
  * keyed on the arguments that `FrameSequence` is instead of. `stepped <seconds>
- * <color> <seconds> <color> …` is the colour in progress at the moment, a
- * colour value like every colour function's (`./color-funcs.ts`), so it
- * nests where a colour goes — `fg (stepped …)`, `readableOn (stepped …) $bg
+ * <color> <seconds> <color> …` is the color in progress at the moment, a
+ * color value like every color function's (`./color-funcs.ts`), so it
+ * nests where a color goes — `fg (stepped …)`, `ensureContrast (stepped …) $bg
  * 4.5` — and the ground it must read on is the template's to name, as it
- * is for any colour. Either argument list is one float/value cycle end to
+ * is for any color. Either argument list is one float/value cycle end to
  * end, so the engine's `alternating` gate types every slot and lifts each
  * string frame to a fragment; the pairing — a trailing hold with no frame or
- * colour — is parsed in `pairs`, once. [LAW:types-are-the-program]
+ * color — is parsed in `pairs`, once. [LAW:types-are-the-program]
  *
  * The rest start at a moment the template names, on the timeline's clock —
  * a field of the host's state, the moment a value changed — and each is the
  * animation `Timeline.play(start)` runs, so a start is a timeline like any
  * other and nothing here offsets a time by hand. `tween <seconds> <ease>
  * <start> <from> <to>` is a number eased from one value to another and held
- * (`core/tween.ts`), its ease spelled by name (`parseEase`); `loop <seconds>
+ * (`core/tween.ts`), its ease spelled by name (`parseEasing`); `loop <seconds>
  * <start>` is the way through a period, 0 to 1 and round again — two
  * cells started a step apart are a stagger. Each is a number, so it goes
- * wherever a number goes: a colour tween is `ramp (tween …) "linear" 0 $from
+ * wherever a number goes: a color tween is `ramp (tween …) "linear" 0 $from
  * 1 $to` and a ramp scrolling is `ramp (loop …) …`, because `ColorRamp` is
- * the one place two colours are blended and a colour tween is a two-stop
+ * the one place two colors are blended and a color tween is a two-stop
  * ramp read over time (`ColorRamp.over`). [LAW:one-source-of-truth] A
  * second blender here would be a second answer to what lies between two
- * colours. `glyphs <name> <start> <fragment>` is the fragment through a
+ * colors. `glyphs <name> <start> <fragment>` is the fragment through a
  * glyph effect from the catalogue (`GLYPH_EFFECT_CATALOGUE`), at its
  * defaults, before any render (`reglyphText`). Every argument list is an
  * exact arity of typed slots, so a slot of the wrong kind fails at the gate.
  *
  * Every function says when what it drew changes, so a host paints a
  * template while it moves and not after — and says it only for what the
- * output depends on. A number or a colour has no cells to carry a hold, and
+ * output depends on. A number or a color has no cells to carry a hold, and
  * a fragment's cells lose theirs the moment it is flattened (`printf "%s"`),
  * so no function stamps cells or tells the frame itself. Each marks its
  * return with the hold its value is in (`marked`, the engine's evaluation
@@ -67,7 +67,7 @@
  * the output depends on it. `emitted` is where a template's cells take a
  * hold: every fragment the template emits, stamped with the holds of the
  * marked values its action read. `decided` is the route for a hold no cell
- * can carry, told to the frame (`TemplateFrame.onHold`): a mark an
+ * can carry, told to the frame (`TemplateFrame.onValidity`): a mark an
  * `if`/`with`/`range` consumed, whichever arm it took, because the frame may
  * show cells for it later and must say when without a cell to say it on, as
  * a placed animation of no cells does (`placed`) — and, by the same rule, a
@@ -84,10 +84,10 @@
  */
 
 import { marked, type EngineConfig, type Marked, type TemplateFunc } from "@promptctl/go-template-js";
-import { Animation, frameTimeOf, holdOf, shownAt, stamp } from "../core/animation.js";
-import { Phase, beat, finiteTime, parseEase } from "../core/easing.js";
+import { Animation, frameTimeOf, validityOf, shownAt, stampValidity } from "../core/animation.js";
+import { WrapMode, stepSequence, finiteTime, parseEasing } from "../core/easing.js";
 import type { RenderOptions } from "../core/protocol.js";
-import { layerStyle, type Hold, type TextStyle } from "../core/style.js";
+import { layerStyle, type ValidityInterval, type TextStyle } from "../core/style.js";
 import type { RichText } from "../core/text.js";
 import { Timeline } from "../core/timeline.js";
 import { tween } from "../core/tween.js";
@@ -107,7 +107,7 @@ export interface AnimationOptions {
 
 /**
  * The frame a template is evaluated for, in the fields a render's options
- * carry under the same names: `time` in seconds, `onHold`, told the hold of
+ * carry under the same names: `time` in seconds, `onValidity`, told the hold of
  * an animated value the output may depend on with no cell to carry it — one
  * a decision read, whichever arm it took, a writing function's input, a
  * throwing action's (the engine's `decided`) — and the reader's preferences,
@@ -117,30 +117,30 @@ export interface AnimationOptions {
  * [LAW:one-source-of-truth]
  *
  * `time` is on the clock `AnimationOptions.timeline` maps from, and
- * `onHold` hears on that clock. A host outside rich-js hands its own clock's
+ * `onValidity` hears on that clock. A host outside rich-js hands its own clock's
  * time. Inside a rich-js frame the time is the frame's, which its host's
  * timeline has already mapped, so a template drawn there registers no
  * `timeline` and is handed `templateFrame(options)`.
  */
-export interface TemplateFrame extends Pick<RenderOptions, "onHold" | "reducedMotion" | "asciiOnly"> {
+export interface TemplateFrame extends Pick<RenderOptions, "onValidity" | "reducedMotion" | "asciiOnly"> {
   readonly time: number;
 }
 
 /** The frame a renderable is drawn in, as the frame a template it evaluates there is drawn for. */
 export function templateFrame(options: RenderOptions): TemplateFrame {
-  return { time: frameTimeOf(options), onHold: options.onHold, reducedMotion: options.reducedMotion, asciiOnly: options.asciiOnly };
+  return { time: frameTimeOf(options), onValidity: options.onValidity, reducedMotion: options.reducedMotion, asciiOnly: options.asciiOnly };
 }
 
 /**
  * The mark a function puts on its return: the hold its value is in, and the
  * frame it was drawn for, which is the one `decided` tells. Only the two
  * hooks here read one; a consumer's own marks pass through them untouched,
- * and a foreign token shaped like a `Hold` is not one.
+ * and a foreign token shaped like a `ValidityInterval` is not one.
  * [LAW:types-are-the-program]
  */
-class HoldMark {
+class ValidityMark {
   constructor(
-    readonly hold: Hold,
+    readonly validity: ValidityInterval,
     readonly frame: TemplateFrame,
   ) {}
 }
@@ -226,7 +226,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   const drawn = <T>(what: string, animation: Animation<T>, at: TemplateFrame): Marked => {
     const t = finiteTime(what, at.time);
     const shown = shownAt(Timeline.run(timeline(), animation), t, at);
-    return marked(shown.value, new HoldMark(holdOf(shown, t), at));
+    return marked(shown.value, new ValidityMark(validityOf(shown, t), at));
   };
   const startedAt = <T>(start: number, animation: Animation<T>): Animation<T> => Timeline.run(Timeline.play(start), animation);
 
@@ -242,7 +242,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   const steppedFunc: TemplateFunc = {
     fn: ((...tail: unknown[]) => {
       const steps = pairs("color", tail, (v) => asColor(v as string, "stepped"));
-      return drawn("stepped", Animation.map(beat(steps.map((s) => s.seconds)), (step) => steps[step]!.value.hex), frame());
+      return drawn("stepped", Animation.map(stepSequence(steps.map((s) => s.seconds)), (step) => steps[step]!.value.hex), frame());
     }) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     arity: { kind: "alternating", minimum: 2 },
@@ -250,13 +250,13 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   };
   const tweenFunc: TemplateFunc = {
     fn: ((seconds: number, ease: string, start: number, from: number, to: number) =>
-      drawn("tween", startedAt(start, tween(from, to, { seconds, ease: parseEase(ease) })), frame())) as TemplateFunc["fn"],
+      drawn("tween", startedAt(start, tween(from, to, { seconds, ease: parseEasing(ease) })), frame())) as TemplateFunc["fn"],
     argTypes: ["float", "string", "float", "float", "float"],
     arity: { kind: "exact" },
     returnType: "float",
   };
   const loopFunc: TemplateFunc = {
-    fn: ((seconds: number, start: number) => drawn("loop", startedAt(start, Animation.continuous(Phase.loop(seconds))), frame())) as TemplateFunc["fn"],
+    fn: ((seconds: number, start: number) => drawn("loop", startedAt(start, Animation.continuous(WrapMode.loop(seconds))), frame())) as TemplateFunc["fn"],
     argTypes: ["float", "float"],
     arity: { kind: "exact" },
     returnType: "float",
@@ -282,10 +282,10 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
     throw new RangeError(`withAnimation registers ${taken.join(", ")}, already in config.funcs`);
   }
 
-  const holdMarks = (marks: ReadonlySet<unknown>): HoldMark[] => [...marks].filter((mark): mark is HoldMark => mark instanceof HoldMark);
+  const holdMarks = (marks: ReadonlySet<unknown>): ValidityMark[] => [...marks].filter((mark): mark is ValidityMark => mark instanceof ValidityMark);
   // The holds among `marks` layered onto the fragment's base style, which an
   // empty text still draws as its one piece of no width: `Style.add` keeps
-  // the later `lastChange` and the sooner `nextChange`, so cells that read
+  // the later `validFrom` and the sooner `validUntil`, so cells that read
   // two animated values are in the intersection of their holds, as two
   // styles laid together are anywhere. A fragment no hold reaches is handed
   // back as it came — the engine calls this for every emission — and one a
@@ -295,11 +295,11 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
     const holds = holdMarks(marks);
     if (holds.length === 0) return fragment;
     const result = fragment.copy();
-    result.style = holds.reduce<TextStyle>((style, mark) => layerStyle(style, stamp(mark.hold)), fragment.style);
+    result.style = holds.reduce<TextStyle>((style, mark) => layerStyle(style, stampValidity(mark.validity)), fragment.style);
     return result;
   };
   const told = (marks: ReadonlySet<unknown>): void => {
-    for (const mark of holdMarks(marks)) mark.frame.onHold?.(mark.hold);
+    for (const mark of holdMarks(marks)) mark.frame.onValidity?.(mark.validity);
   };
   // The hooks `config` brought run first and hear everything they did; a
   // consumer that stamps or listens on its own loses nothing to this binding.

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
 import { Animation } from "../../src/core/animation.js";
-import { EASES, Phase, cubicBezier } from "../../src/core/easing.js";
+import { EASES, WrapMode, cubicBezier } from "../../src/core/easing.js";
 import { tween } from "../../src/core/tween.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
 
@@ -147,7 +147,7 @@ describe("ColorRamp — every ease in the vocabulary", () => {
 describe("ColorRamp — scrolled along its span and rotated in hue", () => {
   const red = new ColorRgba(220, 38, 38);
   const blue = new ColorRgba(37, 99, 235);
-  // A loop: its last stop is its first colour, so a scroll wraps seamlessly.
+  // A loop: its last stop is its first color, so a scroll wraps seamlessly.
   const loop = new ColorRamp(EASES.linear, [
     { at: 0, color: red },
     { at: 50, color: blue },
@@ -163,7 +163,7 @@ describe("ColorRamp — scrolled along its span and rotated in hue", () => {
     }
   });
 
-  it("scrolled, reads the colour that many spans behind, wrapped round the span", () => {
+  it("scrolled, reads the color that many spans behind, wrapped round the span", () => {
     const quarter = new ColorRamp(EASES.linear, loop.stops, 0.25);
     expect(quarter.at(25)).toBe(loop.at(0));
     expect(quarter.at(75)).toBe(loop.at(50));
@@ -171,7 +171,7 @@ describe("ColorRamp — scrolled along its span and rotated in hue", () => {
     expect(quarter.at(10).hex).toBe(loop.at(85).hex);
   });
 
-  it("holds its end colours outside the span, however far it has scrolled", () => {
+  it("holds its end colors outside the span, however far it has scrolled", () => {
     const quarter = new ColorRamp(EASES.linear, loop.stops, 0.25);
     expect(quarter.at(-10)).toBe(red);
     expect(quarter.at(110)).toBe(red);
@@ -189,7 +189,7 @@ describe("ColorRamp — scrolled along its span and rotated in hue", () => {
     expect(() => new ColorRamp(EASES.linear, loop.stops, 0, Number.POSITIVE_INFINITY)).toThrow(/hue must be finite/);
   });
 
-  it("rotated, turns each colour round the OKLCH hue circle at its own lightness and chroma", () => {
+  it("rotated, turns each color round the OKLCH hue circle at its own lightness and chroma", () => {
     const half = new ColorRamp(EASES.linear, loop.stops, 0, 0.5);
     const from = Oklch.fromRgba(red);
     const turned = Oklch.fromRgba(half.at(0));
@@ -211,10 +211,10 @@ describe("ColorRamp.moving — a ramp under an animation", () => {
 
   it("draws the same ramp at a shared t whether sampled once a second or sixty times, near 10⁶ too", () => {
     const moving = loop.moving({
-      scroll: Animation.continuous(Phase.loop(4)),
-      hue: Animation.continuous(Phase.pingPong(7)),
+      scroll: Animation.continuous(WrapMode.loop(4)),
+      hue: Animation.continuous(WrapMode.pingPong(7)),
     });
-    const expected = (t: number) => cells(new ColorRamp(loop.ease, loop.stops, Phase.loop(4)(t), Phase.pingPong(7)(t)));
+    const expected = (t: number) => cells(new ColorRamp(loop.ease, loop.stops, WrapMode.loop(4)(t), WrapMode.pingPong(7)(t)));
     for (const base of [0, 1e6]) {
       // Each rate sampled in its own order, so nothing one read leaves behind can reach the next.
       const once = Array.from({ length: 5 }, (_, i) => base + i);
@@ -228,22 +228,22 @@ describe("ColorRamp.moving — a ramp under an animation", () => {
   });
 
   it("a loop moves every frame", () => {
-    const moving = loop.moving({ scroll: Animation.continuous(Phase.loop(4)) });
-    expect(moving.nextChange(2.5)).toBe(2.5);
-    expect(moving.lastChange(2.5)).toBe(2.5);
+    const moving = loop.moving({ scroll: Animation.continuous(WrapMode.loop(4)) });
+    expect(moving.validUntil(2.5)).toBe(2.5);
+    expect(moving.validFrom(2.5)).toBe(2.5);
   });
 
   it("a ramp a tween settles never changes again once it arrives, and rests where the tween does", () => {
     const settling = loop.moving({ hue: tween(0, 0.25, { seconds: 2, ease: EASES["ease-out"] }) });
-    expect(settling.nextChange(1)).toBe(1);
-    expect(settling.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
+    expect(settling.validUntil(1)).toBe(1);
+    expect(settling.validUntil(2)).toBe(Number.POSITIVE_INFINITY);
     expect(settling.at(5).hue).toBe(0.25);
     expect(cells(settling.at(0))).toEqual(cells(loop));
   });
 
   it("with no motion is the ramp, never changing", () => {
     const still = loop.moving({});
-    expect(still.nextChange(3)).toBe(Number.POSITIVE_INFINITY);
+    expect(still.validUntil(3)).toBe(Number.POSITIVE_INFINITY);
     expect(cells(still.at(3))).toEqual(cells(loop));
   });
 

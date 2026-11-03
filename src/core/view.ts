@@ -22,9 +22,9 @@
  * anything it draws. What the drawn frame says about when it changes is on
  * the timeline's clock, and `drawView` carries it back onto the host's by
  * running the frame through the same timeline: the frame is a sample held
- * for the intersection of its cells' holds (`Segment.lastChange`,
- * `Segment.nextChange`) and the holds it was told that no cell carries
- * (`RenderOptions.onHold`), and `Timeline.run` is the one place a hold is
+ * for the intersection of its cells' holds (`Segment.validFrom`,
+ * `Segment.validUntil`) and the holds it was told that no cell carries
+ * (`RenderOptions.onValidity`), and `Timeline.run` is the one place a hold is
  * mapped onto host time, forwards, backwards or paused.
  *
  * What a host does with that is its own policy, and it reads it off the
@@ -40,7 +40,7 @@
 import type { Animation } from "./animation.js";
 import { activePass, render, type HostFrame, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
-import { intersection, NEVER_CHANGES, type Hold } from "./style.js";
+import { intersection, NEVER_CHANGES, type ValidityInterval } from "./style.js";
 import { Timeline } from "./timeline.js";
 
 /**
@@ -109,7 +109,7 @@ export interface FrameSays {
   /** The host time the frame was drawn at. */
   readonly t: number;
   /** The first host moment, never before `t`, at which the frame may stop showing this: `t` while it moves, `Infinity` once it never will. */
-  readonly nextChange: number;
+  readonly validUntil: number;
 }
 
 /** A frame drawn from a view: its lines, and what it says. */
@@ -118,11 +118,11 @@ export interface DrawnView extends FrameSays {
 }
 
 /** What a frame not yet drawn at host time `t` says: nothing. */
-export const undrawn = (t: number): FrameSays => ({ t, nextChange: Number.POSITIVE_INFINITY });
+export const undrawn = (t: number): FrameSays => ({ t, validUntil: Number.POSITIVE_INFINITY });
 
 /** The hold of the frame `lines` draw, told `told` besides: the intersection of its cells' holds and it. */
-const frameHold = (lines: Segment[][], told: Hold): Hold =>
-  lines.reduce((hold, row) => intersection(hold, { lastChange: Segment.lastChange(row), nextChange: Segment.nextChange(row) }), told);
+const frameValidity = (lines: Segment[][], told: ValidityInterval): ValidityInterval =>
+  lines.reduce((validity, row) => intersection(validity, { validFrom: Segment.validFrom(row), validUntil: Segment.validUntil(row) }), told);
 
 /**
  * `view` drawn by `drawnBy` at `time` under `options`, its lines shaped by
@@ -142,16 +142,16 @@ export function drawView(
 ): DrawnView {
   const { now: host, timeline } = time;
   let told = NEVER_CHANGES;
-  const onHold = (hold: Hold): void => {
-    told = intersection(told, hold);
+  const onValidity = (validity: ValidityInterval): void => {
+    told = intersection(told, validity);
   };
   // Made before the render opens: the one time the frame has.
   const frame = frameNow(drawnBy, time);
-  const lines = draw(view, { ...options, frame, onHold });
-  const hold = frameHold(lines, told);
+  const lines = draw(view, { ...options, frame, onValidity });
+  const validity = frameValidity(lines, told);
   // The frame as the sample of the view it is, on the timeline's clock; the
   // timeline says when the host's clock leaves its hold.
-  const sample: Animation<Segment[][]> = { at: () => lines, nextChange: () => hold.nextChange, lastChange: () => hold.lastChange, reduced: () => sample };
-  const nextChange = Timeline.run(timeline, sample).nextChange(host);
-  return { t: host, lines, nextChange };
+  const sample: Animation<Segment[][]> = { at: () => lines, validUntil: () => validity.validUntil, validFrom: () => validity.validFrom, reduced: () => sample };
+  const validUntil = Timeline.run(timeline, sample).validUntil(host);
+  return { t: host, lines, validUntil };
 }

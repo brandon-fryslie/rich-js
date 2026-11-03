@@ -14,7 +14,7 @@
  * sRGB is the wire format terminals consume (what ANSI escape codes
  * carry); OKLCH is the perceptual manipulation space (where equal
  * numerical deltas mean equal perceptual deltas, which is the property
- * "transposition" requires). Two types, mutual conversion, no hybrid.
+ * "adjustment" requires). Two types, mutual conversion, no hybrid.
  *
  * [LAW:one-way-deps] This module imports `ColorRgba` from core/color and
  * nothing else from inside the project. Nothing in core/ depends back on
@@ -24,20 +24,20 @@
 import { ColorRgba } from "./color.js";
 
 // ---------------------------------------------------------------------------
-// ThemeKey — the "key signature" applied during transposition.
+// ColorAdjustment — the "key signature" applied during adjustment.
 // ---------------------------------------------------------------------------
 
 /**
  * A perceptually-uniform color transform.
  *
  * [LAW:dataflow-not-control-flow] Identity is *data* (`IDENTITY`), not a
- * special case. Every transposition runs the same code path — the values
+ * special case. Every adjustment runs the same code path — the values
  * decide whether the operation is a no-op or a 180° rotation.
  *
  * Lightness is parameterized as `L' = clamp01(L * scale + shift)` to make
  * "invert" expressible as `{scale: -1, shift: 1}` without a boolean knob.
  */
-export interface ThemeKey {
+export interface ColorAdjustment {
   /** Hue offset in degrees; positive rotates toward warmer→cooler→back. */
   readonly hueShift: number;
   /** Multiplier on chroma. 0 = grayscale, 1 = identity, >1 = more saturated. */
@@ -60,7 +60,7 @@ export interface OklchWeights {
 // missing one, or an extra field riding along — never decide what is checked.
 const OKLCH_AXES = ["l", "c", "h", "alpha"] as const satisfies readonly (keyof OklchWeights)[];
 
-export const IDENTITY: ThemeKey = Object.freeze({
+export const IDENTITY: ColorAdjustment = Object.freeze({
   hueShift: 0,
   chromaScale: 1,
   lightnessScale: 1,
@@ -69,12 +69,12 @@ export const IDENTITY: ThemeKey = Object.freeze({
 
 /**
  * Flip lightness around the midpoint (`L' = 1 - L`) with hue and chroma
- * untouched. Combined with the anchor logic in `transposePalette`, this
+ * untouched. Combined with the anchor logic in `adjustPalette`, this
  * converts a dark theme to its light "octave": semantic anchors
  * (error/success/warning) still lightness-invert — only their *hue* is
  * preserved — so errors stay red and dark-on-light becomes light-on-dark.
  */
-export const INVERT_LIGHTNESS: ThemeKey = Object.freeze({
+export const INVERT_LIGHTNESS: ColorAdjustment = Object.freeze({
   hueShift: 0,
   chromaScale: 1,
   lightnessScale: -1,
@@ -83,11 +83,11 @@ export const INVERT_LIGHTNESS: ThemeKey = Object.freeze({
 
 /**
  * Whether a key is the no-op transform. Exported so that callers
- * (`transposePalette`) can fast-path byte-exact identity without going
+ * (`adjustPalette`) can fast-path byte-exact identity without going
  * through the lossy sRGB↔OKLCH round-trip. [LAW:one-source-of-truth] —
  * the predicate lives once, here.
  */
-export function isIdentityKey(k: ThemeKey): boolean {
+export function isIdentityKey(k: ColorAdjustment): boolean {
   return (
     k.hueShift % 360 === 0 && // a whole turn (0, 360, -360, …) is a no-op
     k.chromaScale === 1 &&
@@ -235,13 +235,13 @@ export class Oklch {
   }
 
   /**
-   * Apply a `ThemeKey`. Returns a new `Oklch`; pure.
+   * Apply a `ColorAdjustment`. Returns a new `Oklch`; pure.
    *
    * [LAW:dataflow-not-control-flow] Identity short-circuits to `this` —
    * same shape as `ColorRgba.compositeOver(bg)` returning `this` when
    * `alpha === 1`. Callers invoke unconditionally; the data decides.
    */
-  applyKey(k: ThemeKey): Oklch {
+  applyKey(k: ColorAdjustment): Oklch {
     if (isIdentityKey(k)) return this;
     const newL = clamp01(this.l * k.lightnessScale + k.lightnessShift);
     const newC = Math.max(0, this.c * k.chromaScale);
@@ -261,7 +261,7 @@ export class Oklch {
    * that gains chroma, instead of rotating through the wheel from 0°.
    *
    * `t` must lie in [0, 1]: this is interpolation, not extrapolation, and a
-   * `t` outside it (NaN included) is a RangeError, never a colour off the
+   * `t` outside it (NaN included) is a RangeError, never a color off the
    * far end of the segment. [LAW:no-silent-failure]
    *
    * [LAW:one-source-of-truth] Achromatic means the same `ACHROMATIC_EPS`
@@ -285,12 +285,12 @@ export class Oklch {
    * whichever is called.
    *
    * It exists because perceptual axes are independent: a tint can take most of
-   * a hue's colourfulness while keeping close to the lightness it started at,
+   * a hue's colorfulness while keeping close to the lightness it started at,
    * which a single `t` cannot say — raising `t` for chroma drags lightness with
    * it. Every weight is required: an axis left out would need a default, and
    * "unchanged" (0) and "same as the others" are both plausible readings.
    *
-   * A weak `h` beside a strong `c` shows the starting colour's hue at high
+   * A weak `h` beside a strong `c` shows the starting color's hue at high
    * chroma. The powerless rule covers only a truly achromatic start, so a
    * near-grey whose hue is noise (a theme surface at c ≈ 0.004) keeps that
    * noise in proportion. To land on the target's hue, pass `h: 1`.
@@ -343,7 +343,7 @@ export class Oklch {
   }
 
   /**
-   * ΔE_OK — the Euclidean distance between this colour and `other` in OKLab
+   * ΔE_OK — the Euclidean distance between this color and `other` in OKLab
    * (CSS Color 4's `deltaEOK`), where ~0.02 is the smallest difference the eye
    * resolves. Alpha is not a coordinate of the space and does not count.
    * Symmetric and pure.
@@ -355,9 +355,9 @@ export class Oklch {
   }
 
   /**
-   * This colour's OKLab a and b, kept with it: a colour matched against a
+   * This color's OKLab a and b, kept with it: a color matched against a
    * palette is measured against every entry, and each entry against every
-   * colour it is matched with, so the trigonometry is paid once a colour
+   * color it is matched with, so the trigonometry is paid once a color
    * rather than once a comparison.
    */
   readonly #lab: readonly [number, number];

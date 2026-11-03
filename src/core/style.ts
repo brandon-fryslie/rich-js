@@ -14,7 +14,7 @@ import { pattern } from "./pattern.js";
 import type { BidiStamp } from "./text-order.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color`. The substrate
-// a translucent colour is flattened over is `SURFACE_BLACK`, defined beside
+// a translucent color is flattened over is `SURFACE_BLACK`, defined beside
 // `compositeOver`.
 
 // --- Attribute definitions ---
@@ -31,11 +31,11 @@ export const ATTRIBUTE_NAMES = [
   "italic",
   "underline",
   "blink",
-  "blink2",
+  "rapidBlink",
   "reverse",
   "conceal",
   "strike",
-  "underline2",
+  "doubleUnderline",
   "frame",
   "encircle",
   "overline",
@@ -56,11 +56,11 @@ export const ATTRIBUTE_SGR: Record<AttributeName, number> = {
   italic: 3,
   underline: 4,
   blink: 5,
-  blink2: 6,
+  rapidBlink: 6,
   reverse: 7,
   conceal: 8,
   strike: 9,
-  underline2: 21,
+  doubleUnderline: 21,
   frame: 51,
   encircle: 52,
   overline: 53,
@@ -80,7 +80,7 @@ export const ATTRIBUTE_SHORT_ALIASES: Readonly<Record<string, AttributeName>> = 
   s: "strike",
   r: "reverse",
   o: "overline",
-  uu: "underline2",
+  uu: "doubleUnderline",
 };
 
 // --- Types ---
@@ -93,11 +93,11 @@ export interface StyleOptions {
   italic?: boolean;
   underline?: boolean;
   blink?: boolean;
-  blink2?: boolean;
+  rapidBlink?: boolean;
   reverse?: boolean;
   conceal?: boolean;
   strike?: boolean;
-  underline2?: boolean;
+  doubleUnderline?: boolean;
   frame?: boolean;
   encircle?: boolean;
   overline?: boolean;
@@ -112,21 +112,21 @@ export interface StyleOptions {
    * and a timeline run backwards past its change would never wake for it.
    * [LAW:types-are-the-program] Absent, the cells never change.
    */
-  hold?: Hold;
+  validity?: ValidityInterval;
 }
 
 /** A hold: since when a sample has been what it is, and until when it stays so, on one clock. */
-export interface Hold {
-  readonly lastChange: number;
-  readonly nextChange: number;
+export interface ValidityInterval {
+  readonly validFrom: number;
+  readonly validUntil: number;
 }
 
 /** The hold of a cell that never changes: always was, and always will be. */
-export const NEVER_CHANGES: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
+export const NEVER_CHANGES: ValidityInterval = { validFrom: Number.NEGATIVE_INFINITY, validUntil: Number.POSITIVE_INFINITY };
 
-/** The moments both `a` and `b` hold through: the later `lastChange` and the sooner `nextChange`. */
-export function intersection(a: Hold, b: Hold): Hold {
-  return { lastChange: Math.max(a.lastChange, b.lastChange), nextChange: Math.min(a.nextChange, b.nextChange) };
+/** The moments both `a` and `b` hold through: the later `validFrom` and the sooner `validUntil`. */
+export function intersection(a: ValidityInterval, b: ValidityInterval): ValidityInterval {
+  return { validFrom: Math.max(a.validFrom, b.validFrom), validUntil: Math.min(a.validUntil, b.validUntil) };
 }
 
 export class StyleSyntaxError extends Error {
@@ -149,11 +149,11 @@ export class Style {
   readonly italic: boolean | undefined;
   readonly underline: boolean | undefined;
   readonly blink: boolean | undefined;
-  readonly blink2: boolean | undefined;
+  readonly rapidBlink: boolean | undefined;
   readonly reverse: boolean | undefined;
   readonly conceal: boolean | undefined;
   readonly strike: boolean | undefined;
-  readonly underline2: boolean | undefined;
+  readonly doubleUnderline: boolean | undefined;
   readonly frame: boolean | undefined;
   readonly encircle: boolean | undefined;
   readonly overline: boolean | undefined;
@@ -184,31 +184,31 @@ export class Style {
   readonly bidi: BidiStamp | undefined;
   /**
    * The hold this style's cells are in, on the timeline of whoever drew the
-   * frame: since when what they show has been what it is (`lastChange`), and
-   * when it next changes (`nextChange`) — both `t` for a cell drawn by
+   * frame: since when what they show has been what it is (`validFrom`), and
+   * when it next changes (`validUntil`) — both `t` for a cell drawn by
    * something that moves every frame, and `-Infinity`/`Infinity` for one
    * that never changes. It draws nothing. Whatever draws for a handed time
    * stamps its cells with it (`placedRender`, `Effected`), the stamp rides up
    * through every container as the anchor does (`./anchor.ts`), and whoever
-   * holds the composed frame reads it off (`Segment.nextChange`, and
-   * `Segment.lastChange` for a host running its timeline backwards), so a
+   * holds the composed frame reads it off (`Segment.validUntil`, and
+   * `Segment.validFrom` for a host running its timeline backwards), so a
    * host knows when to draw again without asking each container. Two styles
    * laid together are in the intersection of their holds.
    */
-  readonly hold: Hold;
+  readonly validity: ValidityInterval;
 
   constructor(options: StyleOptions = {}) {
-    const hold = options.hold ?? NEVER_CHANGES;
-    const { lastChange, nextChange } = hold;
+    const validity = options.validity ?? NEVER_CHANGES;
+    const { validFrom, validUntil } = validity;
     // [LAW:parse-dont-validate] A time or never, settled where the style is
     // made: NaN and the far infinity fail here, so no reader of a frame meets one.
-    if (!(nextChange > Number.NEGATIVE_INFINITY)) {
-      throw new RangeError(`Style nextChange must be a time in seconds or Infinity, got ${nextChange}`);
+    if (!(validUntil > Number.NEGATIVE_INFINITY)) {
+      throw new RangeError(`Style validUntil must be a time in seconds or Infinity, got ${validUntil}`);
     }
-    if (!(lastChange < Number.POSITIVE_INFINITY)) {
-      throw new RangeError(`Style lastChange must be a time in seconds or -Infinity, got ${lastChange}`);
+    if (!(validFrom < Number.POSITIVE_INFINITY)) {
+      throw new RangeError(`Style validFrom must be a time in seconds or -Infinity, got ${validFrom}`);
     }
-    this.hold = hold;
+    this.validity = validity;
     this.color = resolveColor(options.color);
     this.bgcolor = resolveBackground(options.bgcolor);
     this.bold = options.bold;
@@ -216,11 +216,11 @@ export class Style {
     this.italic = options.italic;
     this.underline = options.underline;
     this.blink = options.blink;
-    this.blink2 = options.blink2;
+    this.rapidBlink = options.rapidBlink;
     this.reverse = options.reverse;
     this.conceal = options.conceal;
     this.strike = options.strike;
-    this.underline2 = options.underline2;
+    this.doubleUnderline = options.doubleUnderline;
     this.frame = options.frame;
     this.encircle = options.encircle;
     this.overline = options.overline;
@@ -241,11 +241,11 @@ export class Style {
       this.italic === undefined &&
       this.underline === undefined &&
       this.blink === undefined &&
-      this.blink2 === undefined &&
+      this.rapidBlink === undefined &&
       this.reverse === undefined &&
       this.conceal === undefined &&
       this.strike === undefined &&
-      this.underline2 === undefined &&
+      this.doubleUnderline === undefined &&
       this.frame === undefined &&
       this.encircle === undefined &&
       this.overline === undefined &&
@@ -254,8 +254,8 @@ export class Style {
       this.anchor === undefined &&
       this.boxFrame === undefined &&
       this.bidi === undefined &&
-      this.hold.nextChange === Number.POSITIVE_INFINITY &&
-      this.hold.lastChange === Number.NEGATIVE_INFINITY
+      this.validity.validUntil === Number.POSITIVE_INFINITY &&
+      this.validity.validFrom === Number.NEGATIVE_INFINITY
     );
   }
 
@@ -325,18 +325,18 @@ export class Style {
    */
   withAttributes(attributes: Partial<Attributes>): Style {
     // Only the attribute names are read: a wider object — a `Style`, say —
-    // satisfies the type and must not carry its colours or anchor in with it.
+    // satisfies the type and must not carry its colors or anchor in with it.
     return this.with(Object.fromEntries(ATTRIBUTE_NAMES.filter((name) => name in attributes).map((name) => [name, attributes[name]])));
   }
 
 
   /**
    * This style with its motion taken out, what reduced motion draws: `blink`
-   * and `blink2`, the motion a terminal makes on its own, unset, and every
+   * and `rapidBlink`, the motion a terminal makes on its own, unset, and every
    * other field as it was. A style that does not blink is its own.
    */
   reduced(): Style {
-    return this.blink || this.blink2 ? this.withAttributes({ blink: undefined, blink2: undefined }) : this;
+    return this.blink || this.rapidBlink ? this.withAttributes({ blink: undefined, rapidBlink: undefined }) : this;
   }
 
   /**
@@ -362,11 +362,11 @@ export class Style {
       italic: other.italic ?? this.italic,
       underline: other.underline ?? this.underline,
       blink: other.blink ?? this.blink,
-      blink2: other.blink2 ?? this.blink2,
+      rapidBlink: other.rapidBlink ?? this.rapidBlink,
       reverse: other.reverse ?? this.reverse,
       conceal: other.conceal ?? this.conceal,
       strike: other.strike ?? this.strike,
-      underline2: other.underline2 ?? this.underline2,
+      doubleUnderline: other.doubleUnderline ?? this.doubleUnderline,
       frame: other.frame ?? this.frame,
       encircle: other.encircle ?? this.encircle,
       overline: other.overline ?? this.overline,
@@ -379,7 +379,7 @@ export class Style {
       boxFrame: other.boxFrame ?? this.boxFrame,
       bidi: other.bidi ?? this.bidi,
       // Cells under both change when either does.
-      hold: intersection(this.hold, other.hold),
+      validity: intersection(this.validity, other.validity),
     });
   }
 
@@ -393,11 +393,11 @@ export class Style {
       this.italic === other.italic &&
       this.underline === other.underline &&
       this.blink === other.blink &&
-      this.blink2 === other.blink2 &&
+      this.rapidBlink === other.rapidBlink &&
       this.reverse === other.reverse &&
       this.conceal === other.conceal &&
       this.strike === other.strike &&
-      this.underline2 === other.underline2 &&
+      this.doubleUnderline === other.doubleUnderline &&
       this.frame === other.frame &&
       this.encircle === other.encircle &&
       this.overline === other.overline &&
@@ -405,13 +405,13 @@ export class Style {
       anchorsEqual(this.anchor, other.anchor) &&
       this.boxFrame === other.boxFrame &&
       this.bidi === other.bidi &&
-      this.hold.nextChange === other.hold.nextChange &&
-      this.hold.lastChange === other.hold.lastChange
+      this.validity.validUntil === other.validity.validUntil &&
+      this.validity.validFrom === other.validity.validFrom
     );
   }
 
   /**
-   * The colours this style puts on screen at `colorSystem`: each flattened
+   * The colors this style puts on screen at `colorSystem`: each flattened
    * onto what lies beneath it — the background onto the terminal's black, the
    * foreground onto that background — then downgraded to the depth. The one
    * account of what a style draws: `toSgrCodes` encodes exactly these, and a
@@ -463,7 +463,7 @@ export class Style {
 
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
-   * colours, attributes and the link, which is all a style string can spell.
+   * colors, attributes and the link, which is all a style string can spell.
    * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `hold` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
@@ -648,7 +648,7 @@ export class Theme {
 const ATTRIBUTE_SET: ReadonlySet<string> = new Set<string>(ATTRIBUTE_NAMES);
 
 // The words each position of a definition can hold: a bare token is a keyword,
-// an attribute or a colour name; `on` takes a colour name; `not` an attribute.
+// an attribute or a color name; `on` takes a color name; `not` an attribute.
 // The short aliases are left out, since `b` is no help to someone who typed
 // `bolt` and a one-letter name sits one edit from every other short word.
 // [LAW:one-source-of-truth] Derived from the lists the parser accepts from; the
@@ -687,8 +687,8 @@ function editDistance(a: string, b: string): number {
  * Plausible means within one edit per three letters, at least one, which lets
  * `rd` reach `red` and keeps `hello` from reaching `yellow`. Every name tied
  * for nearest is offered: `gold` is one edit from `bold` and from three
- * `goldN` colours, and choosing among them would be a guess the reader cannot
- * tell from a finding. Case is not an edit, because the colour parser ignores
+ * `goldN` colors, and choosing among them would be a guess the reader cannot
+ * tell from a finding. Case is not an edit, because the color parser ignores
  * it: `Cyna` is as near `cyan` as `cyna` is.
  *
  * This runs on every render that meets the bad style, since only successful
@@ -711,12 +711,12 @@ function nearMiss(word: string, words: readonly string[]): string {
 }
 
 /**
- * A style token read as a colour. The colour parser's own error is the reason
+ * A style token read as a color. The color parser's own error is the reason
  * the token failed, so it rides along twice: in the message, for a reader with
  * only the text, and as `cause`, for code that wants the original error.
  *
- * [LAW:single-enforcer] Both colour positions in a definition rewrap here, and
- * the near miss is named here rather than by the colour parser: only a
+ * [LAW:single-enforcer] Both color positions in a definition rewrap here, and
+ * the near miss is named here rather than by the color parser: only a
  * definition knows whether the token could also have been an attribute.
  */
 function parseStyleColor(token: string, failure: string, words: readonly string[]): ColorSpec {
@@ -802,7 +802,7 @@ function resolveColor(c: string | ColorSpec | undefined): ColorSpec | undefined 
 // so it is no background: a style added on top of another keeps that one's,
 // which is what Textual's `#00000000` means. A transparent foreground is not
 // the same, it draws its glyph in whatever lies beneath it — the background,
-// or `SURFACE_BLACK` when there is none — so it stays a colour.
+// or `SURFACE_BLACK` when there is none — so it stays a color.
 function resolveBackground(c: string | ColorSpec | undefined): ColorSpec | undefined {
   const spec = resolveColor(c);
   return spec?.value?.alpha === 0 ? undefined : spec;
@@ -821,11 +821,11 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
     italic: false,
     underline: false,
     blink: false,
-    blink2: false,
+    rapidBlink: false,
     reverse: false,
     conceal: false,
     strike: false,
-    underline2: false,
+    doubleUnderline: false,
     frame: false,
     encircle: false,
     overline: false,
@@ -835,11 +835,11 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
   italic: new Style({ italic: true }),
   underline: new Style({ underline: true }),
   blink: new Style({ blink: true }),
-  blink2: new Style({ blink2: true }),
+  rapidBlink: new Style({ rapidBlink: true }),
   reverse: new Style({ reverse: true }),
   conceal: new Style({ conceal: true }),
   strike: new Style({ strike: true }),
-  underline2: new Style({ underline2: true }),
+  doubleUnderline: new Style({ doubleUnderline: true }),
   frame: new Style({ frame: true }),
   encircle: new Style({ encircle: true }),
   overline: new Style({ overline: true }),
@@ -911,9 +911,9 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
   "syntax.number": Style.parse("cyan"),
   "syntax.comment": Style.parse("dim italic"),
   "syntax.line_number": Style.parse("dim"),
-  // Ink and ground both from the fixed 256-colour greys: the terminal theme's
+  // Ink and ground both from the fixed 256-color greys: the terminal theme's
   // own foreground is dark on a light theme and would vanish on grey27. At 16
-  // colours `Syntax` draws it without the pair (`groundedStyle`).
+  // colors `Syntax` draws it without the pair (`groundedStyle`).
   "syntax.line_number.highlight": Style.parse("bold grey93 on grey27"),
 
   // Markdown
@@ -924,7 +924,7 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
   "markdown.h5": Style.parse("italic"),
   "markdown.h6": Style.parse("dim"),
   // A fixed cyan, not the theme's: `cyan` is dark enough on some themes to
-  // sink into grey11. Bold, as Rich's is: at 16 colours a renderable draws it
+  // sink into grey11. Bold, as Rich's is: at 16 colors a renderable draws it
   // without its pair (`groundedStyle`), and bold is what still marks code.
   "markdown.code": Style.parse("bold dark_turquoise on grey11"),
   "markdown.em": Style.parse("italic"),

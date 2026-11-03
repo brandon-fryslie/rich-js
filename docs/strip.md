@@ -2,11 +2,11 @@
 exampleContext: |
   const tags = [
     "typescript", "terminal", "ansi", "powerline", "layout", "tui", "cli",
-    "colour", "markup", "tables", "panels", "trees", "progress", "live", "widgets",
+    "color", "markup", "tables", "panels", "trees", "progress", "live", "widgets",
   ];
 ---
 
-# Strip + Joiner
+# Strip + Separator
 
 A `Strip` lays out a horizontal sequence of styled items where the **transition between adjacent items is itself a stylable renderable** whose appearance is a function of its left and right neighbours' styles.
 
@@ -28,7 +28,7 @@ Endpoints (`null` left or right) are explicit positions in the protocol — ever
 ## Basic use
 
 ```typescript
-import { Console, Strip, RichText, JOINERS, joinerNamed, Style } from "@promptctl/rich-js";
+import { Console, Strip, RichText, SEPARATOR_STYLES, separatorNamed, Style } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -41,13 +41,13 @@ const strip = new Strip(
     cell(" claude.ai ", "#ffffff on #0891b2"),
     cell(" 3.4k tok ", "#ffffff on #16a34a"),
   ],
-  JOINERS.powerline,
+  SEPARATOR_STYLES.powerline,
 );
 
 console.print(strip);
 ```
 
-The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's colour and closes with a tail cap in the last cell's, each with no bg of its own. The lead is a notch cut into the first cell — as if an arrow before it pointed in — rather than a shape pointing out, and the tail is the arrow pointing on out, so a run reads as one chevron from end to end. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's color and closes with a tail cap in the last cell's, each with no bg of its own. The lead is a notch cut into the first cell — as if an arrow before it pointed in — rather than a shape pointing out, and the tail is the arrow pointing on out, so a run reads as one chevron from end to end. Swap the joiner — the strip restyles with no other code change.
 
 `noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — without it, a cell's default `end` would draw a trailing `"\n"` into the middle of the strip's single line, breaking the layout it is meant to hold together.
 
@@ -57,21 +57,21 @@ It measures as the one row it draws, and since that row never wraps, its width i
 
 ## A seam and its caps
 
-Every built-in joiner is a `CellJoiner`, and what tells them apart is data, in two halves picked independently of each other:
+Every built-in joiner is a `CellSeparator`, and what tells them apart is data, in two halves picked independently of each other:
 
-- a `JoinSeam`, the middle: what is drawn between two neighbours;
-- a `JoinCaps`, the ends: what is drawn where a run of colour begins and ends.
+- a `SeparatorSeam`, the middle: what is drawn between two neighbours;
+- a `EndCaps`, the ends: what is drawn where a run of color begins and ends.
 
-Any seam ends in any caps. `SEAMS` and `CAPS` are the bundled halves by name, and `new CellJoiner(seam, caps)` puts two of them together:
+Any seam ends in any caps. `SEPARATORS` and `CAPS` are the bundled halves by name, and `new CellSeparator(seam, caps)` puts two of them together:
 
 ```typescript
-import { CAPS, CellJoiner, SEAMS } from "@promptctl/rich-js";
+import { END_CAPS, CellSeparator, SEPARATORS } from "@promptctl/rich-js";
 
 // prism's three stepping arrows between the cells, ended in bubble's caps.
 console.print(
   new Strip(
     [cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6"), cell(" strip.ts ", "black on #fbbf24")],
-    new CellJoiner(SEAMS.prism, CAPS.bubble),
+    new CellSeparator(SEPARATORS.prism, END_CAPS.bubble),
   ),
 );
 ```
@@ -81,20 +81,20 @@ A seam names `seam`, the cells drawn between two neighbours. The caps name two m
 - `lead` — where a run is entered from nothing.
 - `tail` — where a run leaves into nothing.
 
-A cell of a seam may also be `{ cap: "tail" }` or `{ cap: "lead" }`: the caps themselves standing in the seam, closing the run the seam leaves or opening the one it enters. That is how `SEAMS.capsule` parts two runs, a tail, a space and a lead, and ends each in whatever caps it is joined with: rounded with `CAPS.capsule`, arrows with `CAPS.powerline`.
+A cell of a seam may also be `{ cap: "tail" }` or `{ cap: "lead" }`: the caps themselves standing in the seam, closing the run the seam leaves or opening the one it enters. That is how `SEPARATORS.capsule` parts two runs, a tail, a space and a lead, and ends each in whatever caps it is joined with: rounded with `END_CAPS.capsule`, arrows with `END_CAPS.powerline`.
 
 Each half holds two forms, `glyph` and `ascii`, and an [ASCII-only](./console) output draws the `ascii` form of both.
 
-A cell's `glyph` is a string, or `{ oneOf: [...] }`: a set of same-width glyphs, any of which may stand in the cell. Which one stands is picked from the join's place in the strip, so it holds still from frame to frame while the items before it stay put, and differs between seams, even seams between the same two colours.
+A cell's `glyph` is a string, or `{ oneOf: [...] }`: a set of same-width glyphs, any of which may stand in the cell. Which one stands is picked from the join's place in the strip, so it holds still from frame to frame while the items before it stay put, and differs between seams, even seams between the same two colors.
 
-A `JoinCell` is a glyph and the two colours it is drawn in, `fg` and `bg`. Each colour is one of:
+A `JoinCell` is a glyph and the two colors it is drawn in, `fg` and `bg`. Each color is one of:
 
-- `{ edge: "left" | "right", part: "bg" | "fg" }` — a neighbour's background or text colour, at the column facing the join;
-- `{ role: name }` — the foreground colour of a style name, resolved against the render's [theme](./style#style-themes);
+- `{ edge: "left" | "right", part: "bg" | "fg" }` — a neighbour's background or text color, at the column facing the join;
+- `{ role: name }` — the foreground color of a style name, resolved against the render's [theme](./style#style-themes);
 - `{ mix: [a, b, t] }` — `a` and `b` blended at `t`;
 - `"ground"` — the terminal's own background.
 
-Nobody knows the colour of `"ground"`, so it is never mixed, and a cell may put it on one side only. As a `bg` it leaves the terminal's background showing. As an `fg` the cell is drawn in reverse video (SGR 7), filled with its `bg` colour while the glyph's ink shows the terminal's background. So an inverted shape is the same glyph drawn the other way round, never a glyph of its own.
+Nobody knows the color of `"ground"`, so it is never mixed, and a cell may put it on one side only. As a `bg` it leaves the terminal's background showing. As an `fg` the cell is drawn in reverse video (SGR 7), filled with its `bg` color while the glyph's ink shows the terminal's background. So an inverted shape is the same glyph drawn the other way round, never a glyph of its own.
 
 A joiner is checked once, when it is built, and the constructor throws on any of these:
 
@@ -105,11 +105,11 @@ A joiner is checked once, when it is built, and the constructor throws on any of
 - a non-ASCII glyph in an `ascii` form.
 
 ```typescript
-import { CAPS, CellJoiner, type JoinSeam } from "@promptctl/rich-js";
+import { END_CAPS, CellSeparator, type SeparatorSeam } from "@promptctl/rich-js";
 
 // A seam the table does not bundle: two arrows meeting point to point, the
 // right background reaching back into the left. Ended in powerline's caps.
-const meet: JoinSeam = {
+const meet: SeparatorSeam = {
   glyph: {
     seam: [
       { glyph: "\ue0b2", fg: { edge: "right", part: "bg" }, bg: { edge: "left", part: "bg" } },
@@ -124,7 +124,7 @@ const meet: JoinSeam = {
 console.print(
   new Strip(
     [cell(" build ", "#083344 on #22d3ee"), cell(" test ", "#4a044e on #e879f9")],
-    new CellJoiner(meet, CAPS.powerline),
+    new CellSeparator(meet, END_CAPS.powerline),
   ),
 );
 ```
@@ -138,36 +138,36 @@ Each join looks at its two neighbours. A neighbour is missing at the strip's end
 - Only the left: the `tail`, if it has the background the `tail` paints with.
 - Neither: nothing.
 
-So a coloured run is capped the same way wherever it sits. A colourless item before a coloured one leads the coloured run in, exactly as the strip's start does. A coloured item before a colourless one tails out, and two colourless neighbours join with nothing. A seam that paints with neither neighbour's background, like `SEAMS.plain`, joins colourless items too, whatever caps end it.
+So a colored run is capped the same way wherever it sits. A colorless item before a colored one leads the colored run in, exactly as the strip's start does. A colored item before a colorless one tails out, and two colorless neighbours join with nothing. A seam that paints with neither neighbour's background, like `SEPARATORS.plain`, joins colorless items too, whatever caps end it.
 
 ### Every seam shows
 
-Every cell a joiner draws holds its glyph's colour off its own background, as far as a render can see the two (below). Where the two stand less than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) apart, the glyph's colour takes the least step along its own OKLCH lightness, hue and chroma held, toward white or toward black, that clears the floor; a colour that already clears it is drawn as it is. Both are measured as drawn: flattened onto what lies beneath, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`). So at 256 colours each step is measured on the table entry it draws as, and the colour a lifted glyph is given is that entry. Each cell is measured on its own, so every one of `prism`'s three arrows shows.
+Every cell a separator draws holds its glyph's color off its own background, as far as a render can see the two (below). Where the two stand less than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) apart, the glyph's color takes the least step along its own OKLCH lightness, hue and chroma held, toward white or toward black, that clears the floor; a color that already clears it is drawn as it is. Both are measured as drawn: flattened onto what lies beneath, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`). So at 256 colors each step is measured on the table entry it draws as, and the color a lifted glyph is given is that entry. Each cell is measured on its own, so every one of `prism`'s three arrows shows.
 
-A colour the terminal's theme draws, a named slot such as `red` or, at truecolor, a blend reaching one, has no RGB a render can measure: the terminal decides it. Two such colours stand apart unless they are the same slot or the same blend, so at ANSI, and for a slot-coloured glyph at any depth, the floor is a different slot and the step is to the nearest other slot. A slot beside a fixed colour is drawn as it is, however alike the two look in a given theme. So is a cell on the terminal's own background, or in reverse video over it, as a cap's notch is: the terminal's background is a colour no render knows.
+A color the terminal's theme draws, a named slot such as `red` or, at truecolor, a blend reaching one, has no RGB a render can measure: the terminal decides it. Two such colors stand apart unless they are the same slot or the same blend, so at ANSI, and for a slot-colored glyph at any depth, the floor is a different slot and the step is to the nearest other slot. A slot beside a fixed color is drawn as it is, however alike the two look in a given theme. So is a cell on the terminal's own background, or in reverse video over it, as a cap's notch is: the terminal's background is a color no render knows.
 
-A space has no glyph to colour: whatever its glyph's colour, it shows its background alone. So a seam made only of spaces, as [`gradientSeam`](#gradientseam-steps)'s ramp is, shows only where its backgrounds differ from the ones beside it.
+A space has no glyph to color: whatever its glyph's color, it shows its background alone. So a seam made only of spaces, as [`gradientSeam`](#gradientseam-steps)'s ramp is, shows only where its backgrounds differ from the ones beside it.
 
 A neighbour's background is read as drawn too, flattened onto the render substrate, so a cell painted in it continues that neighbour rather than compositing a second time over whatever the cell sits on.
 
 ## Built-in joiners
 
-`JOINERS` is the table of bundled joiners, by name, each a seam from `SEAMS` ended in caps from `CAPS`. Every seam in `SEAMS` has the name of the joiner it comes from, so `SEAMS.prism` is the middle of `JOINERS.prism`.
+`SEPARATOR_STYLES` is the table of bundled joiners, by name, each a seam from `SEPARATORS` ended in caps from `CAPS`. Every seam in `SEPARATORS` has the name of the joiner it comes from, so `SEPARATORS.prism` is the middle of `SEPARATOR_STYLES.prism`.
 
-A joiner named in a consumer's config is read with `joinerNamed`. It takes a name from `JOINERS`, or a seam and caps named apart, and throws on a name its table lacks:
+A joiner named in a consumer's config is read with `separatorNamed`. It takes a name from `SEPARATOR_STYLES`, or a seam and caps named apart, and throws on a name its table lacks:
 
 ```typescript
-// JOINERS.prism, then SEAMS.prism ended in CAPS.capsule.
+// SEPARATOR_STYLES.prism, then SEPARATORS.prism ended in END_CAPS.capsule.
 for (const spec of ["prism", { seam: "prism", caps: "capsule" }] as const) {
   console.print(
-    new Strip([cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6")], joinerNamed(spec)),
+    new Strip([cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6")], separatorNamed(spec)),
   );
 }
 ```
 
-### `JOINERS.powerline`
+### `SEPARATOR_STYLES.powerline`
 
-Powerline arrows: U+E0B0 in the left background over the right. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. Its ink is the terminal's background colour, drawn opaque, so a terminal with a translucent background shows the notch as a solid patch of that colour. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
+Powerline arrows: U+E0B0 in the left background over the right. The lead is U+E0B0 with `"ground"` as its `fg`, a notch whose base is the cell's left edge. Its ink is the terminal's background color, drawn opaque, so a terminal with a translucent background shows the notch as a solid patch of that color. The tail is the arrow over the terminal's background. ASCII draws `>` and opens each run flat.
 
 ```typescript
 console.print(
@@ -178,7 +178,7 @@ console.print(
       cell(" master ", "#052e16 on #4ade80"),
       cell(" ✎ 2 ", "#422006 on #facc15"),
     ],
-    JOINERS.powerline,
+    SEPARATOR_STYLES.powerline,
   ),
 );
 ```
@@ -193,12 +193,12 @@ console.print(
       cell(" then ", "italic"),
       cell(" ✘ deploy ", "#ffffff on #dc2626"),
     ],
-    JOINERS.powerline,
+    SEPARATOR_STYLES.powerline,
   ),
 );
 ```
 
-### `JOINERS.capsule`
+### `SEPARATOR_STYLES.capsule`
 
 Rounded pills. Each run is opened by U+E0B6 and closed by U+E0B4, both in its background over the terminal's, with a space between pills. ASCII draws `(` and `)`.
 
@@ -210,39 +210,39 @@ console.print(
       cell("go", "black on #00add8"),
       cell("zig", "black on #f7a41d"),
     ],
-    JOINERS.capsule,
+    SEPARATOR_STYLES.capsule,
   ),
 );
 ```
 
-### `JOINERS.plain`
+### `SEPARATOR_STYLES.plain`
 
-` | ` between every pair of items, in the theme's `strip.separator` colour (`bright_black` by default), and nothing at the ends.
+` | ` between every pair of items, in the theme's `strip.separator` color (`bright_black` by default), and nothing at the ends.
 
 ```typescript
 console.print(
   new Strip(
     [cell("docs", "#38bdf8"), cell("guide", "#38bdf8"), cell("strip.md", "bold #f59e0b")],
-    JOINERS.plain,
+    SEPARATOR_STYLES.plain,
   ),
 );
 ```
 
 ### The rest of the table
 
-- `prism` — three arrows stepping through the two thirds between the backgrounds; ended in `CAPS.powerline`.
+- `prism` — three arrows stepping through the two thirds between the backgrounds; ended in `END_CAPS.powerline`.
 - `slant` (U+E0BC), `backslant` (U+E0B8), `flame` (U+E0C0), `pixel` (U+E0C4), `ice` (U+E0C8), `bubble` (U+E0B4) — `powerline` with their glyph, seam and caps alike.
-- `wrapper` — the caps touching, ended in `CAPS.wrapper`: each run opened by U+E0B2 and closed by U+E0B0.
-- `metro` — the caps with a two-cell rail between them, in the theme's `strip.rail` colour; ended in `CAPS.capsule`.
-- `stitch` — a dotted rule in the left item's text colour over the midpoint of the two backgrounds; ended in `CAPS.flat`.
-- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam. Ended in `CAPS.flat`.
+- `wrapper` — the caps touching, ended in `END_CAPS.wrapper`: each run opened by U+E0B2 and closed by U+E0B0.
+- `metro` — the caps with a two-cell rail between them, in the theme's `strip.rail` color; ended in `END_CAPS.capsule`.
+- `stitch` — a dotted rule in the left item's text color over the midpoint of the two backgrounds; ended in `END_CAPS.flat`.
+- `torn` — a ragged quadrant pair in the left background over that midpoint; which pair is picked per seam. Ended in `END_CAPS.flat`.
 
 ```typescript
 for (const name of ["prism", "bubble", "metro", "torn"] as const) {
   console.print(
     new Strip(
       [cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6"), cell(" strip.ts ", "black on #fbbf24")],
-      joinerNamed(name),
+      separatorNamed(name),
     ),
   );
 }
@@ -250,7 +250,7 @@ for (const name of ["prism", "bubble", "metro", "torn"] as const) {
 
 ### Caps
 
-`CAPS` holds the ends, and any of them ends any seam:
+`END_CAPS` holds the ends, and any of them ends any seam:
 
 - `powerline`, `slant`, `backslant`, `flame`, `pixel`, `ice`, `bubble` — the joiner's glyph reversed out of the terminal's background at the lead, a notch, and drawn over that background at the tail, so a run reads as one shape pointing the same way end to end. ASCII opens each run flat.
 - `capsule` — rounded ends pointing out: U+E0B6 opens a run and U+E0B4 closes it, each in the run's background over the terminal's. ASCII draws `(` and `)`.
@@ -264,7 +264,7 @@ for (const [seam, caps] of [["prism", "bubble"], ["prism", "capsule"], ["capsule
   console.print(
     new Strip(
       [cell(" src ", "black on #a78bfa"), cell(" core ", "black on #f472b6"), cell(" strip.ts ", "black on #fbbf24")],
-      new CellJoiner(SEAMS[seam], CAPS[caps]),
+      new CellSeparator(SEPARATORS[seam], END_CAPS[caps]),
     ),
   );
 }
@@ -272,7 +272,7 @@ for (const [seam, caps] of [["prism", "bubble"], ["prism", "capsule"], ["capsule
 
 ### `gradientSeam(steps)`
 
-A seam that interpolates colours between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
+A seam that interpolates colors between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
 
 ```typescript
 console.print(
@@ -282,28 +282,28 @@ console.print(
       cell(" warm ", "bold #ffffff on #a21caf"),
       cell(" hot ", "bold #ffffff on #dc2626"),
     ],
-    new CellJoiner(gradientSeam(4), CAPS.flat),
+    new CellSeparator(gradientSeam(4), END_CAPS.flat),
   ),
 );
 ```
 
-- The seam is `steps` cells, a positive whole number (4 by default), each filled with one colour: cell `i` is the colour `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, no colour on its ink side, so its one colour is its fill, and the ASCII form is the same ramp.
-- With no ink colour, the step that holds a seam's ink off its background ([Every seam shows](#every-seam-shows)) has nothing to move, and the ramp is the blend itself. It never turns back, however close the two backgrounds are and however many steps there are.
-- Between two backgrounds alike the ramp is that background, and the join does not show. A gradient is a fill, the blend of the backgrounds beside it and nothing else, and the blend of one colour is that colour. A join that must show between two alike is a named joiner's, whose glyph has ink to lift.
-- A gradient needs two colours to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `CAPS.flat`.
-- A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` colour of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
-- Best on truecolor. At 256 colours each cell is drawn as its colour's nearest table entry, so neighbouring cells share an entry and the ramp draws in bands. At sixteen colours each is the nearest of the terminal's slots.
+- The seam is `steps` cells, a positive whole number (4 by default), each filled with one color: cell `i` is the color `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, no color on its ink side, so its one color is its fill, and the ASCII form is the same ramp.
+- With no ink color, the step that holds a seam's ink off its background ([Every seam shows](#every-seam-shows)) has nothing to move, and the ramp is the blend itself. It never turns back, however close the two backgrounds are and however many steps there are.
+- Between two backgrounds alike the ramp is that background, and the join does not show. A gradient is a fill, the blend of the backgrounds beside it and nothing else, and the blend of one color is that color. A join that must show between two alike is a named joiner's, whose glyph has ink to lift.
+- A gradient needs two colors to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `END_CAPS.flat`.
+- A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` color of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
+- Best on truecolor. At 256 colors each cell is drawn as its color's nearest table entry, so neighbouring cells share an entry and the ramp draws in bands. At sixteen colors each is the nearest of the terminal's slots.
 
 ## Custom joiners
 
 A seam and its caps cover any join drawn as fixed runs of cells. Underneath them, a joiner is a pure function `(leftItem | null, rightItem | null, { index }) -> Renderable`, and implementing that interface defines a joiner no seam and caps can express. `index` counts joins from the strip's start: the join before item `i` is `i`, and the end after the last of `n` items is `n`. Where a `FlexStrip` wraps, the end cap and the next line's lead both carry the index of the seam they replace, so every seam keeps its index however the strip wraps.
 
 ```typescript
-import type { Joiner, Renderable, RenderOptions, StyledRenderable } from "@promptctl/rich-js";
+import type { Separator, Renderable, RenderOptions, StyledRenderable } from "@promptctl/rich-js";
 
 // One cell split down the middle: its left half in the left item's
 // background, its right half in the right item's.
-class SplitJoiner<T extends StyledRenderable> implements Joiner<T> {
+class SplitSeparator<T extends StyledRenderable> implements Separator<T> {
   join(left: T | null, right: T | null): Renderable {
     return {
       *render(options: RenderOptions) {
@@ -319,18 +319,18 @@ class SplitJoiner<T extends StyledRenderable> implements Joiner<T> {
 console.print(
   new Strip(
     [cell(" one ", "#422006 on #facc15"), cell(" two ", "#052e16 on #4ade80"), cell(" three ", "#083344 on #22d3ee")],
-    new SplitJoiner(),
+    new SplitSeparator(),
   ),
 );
 ```
 
-Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right", options: RenderOptions): Style`, which reports the style of the item's leftmost or rightmost cell column. It takes the render's options because an edge's style may be a [theme](./style#style-themes) name, and only the render knows which theme it is drawing for. So a joiner reads edges inside the `render` of the renderable it returns, as `SplitJoiner` does, and never in `join`. `RichText` implements `StyledRenderable` directly; consumers with richer items can implement the interface themselves.
+Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right", options: RenderOptions): Style`, which reports the style of the item's leftmost or rightmost cell column. It takes the render's options because an edge's style may be a [theme](./style#style-themes) name, and only the render knows which theme it is drawing for. So a joiner reads edges inside the `render` of the renderable it returns, as `SplitSeparator` does, and never in `join`. `RichText` implements `StyledRenderable` directly; consumers with richer items can implement the interface themselves.
 
-Every cell an item draws in a strip is stamped with that item as its owner, so an effect can pick out one item with [`confined`](./effects#one-element-of-many). A cell a `CellJoiner` paints from its neighbours is no item's: it records what it was drawn from, so under an effect it is drawn again from the item cells beside it as the effect left them, its lift included, and a seam follows its neighbours wherever an effect takes them. A cell painted from a style name alone, such as `plain`'s separator, and any other joiner's cells belong to the join alone, and an effect paints them as it paints any cell.
+Every cell an item draws in a strip is stamped with that item as its owner, so an effect can pick out one item with [`confined`](./effects#one-element-of-many). A cell a `CellSeparator` paints from its neighbours is no item's: it records what it was drawn from, so under an effect it is drawn again from the item cells beside it as the effect left them, its lift included, and a seam follows its neighbours wherever an effect takes them. A cell painted from a style name alone, such as `plain`'s separator, and any other joiner's cells belong to the join alone, and an effect paints them as it paints any cell.
 
 ## Edge styles are the protocol
 
-Joiners read only the two edge columns. `JOINERS.powerline` between items `L` and `R`, rendered with `options`, paints its arrow with:
+Separators read only the two edge columns. `SEPARATOR_STYLES.powerline` between items `L` and `R`, rendered with `options`, paints its arrow with:
 
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
@@ -352,7 +352,7 @@ status.stylize("bright_green", 6, 7);   // "S"
 status.stylize("bright_green", 8, 10);  // "+3"
 status.stylize("bright_red",   11, 13); // "-2"
 
-console.print(new Strip([status, cell(" rich-js ", "#ffffff on #9333ea")], JOINERS.powerline));
+console.print(new Strip([status, cell(" rich-js ", "#ffffff on #9333ea")], SEPARATOR_STYLES.powerline));
 ```
 
 The cell's left and right edges both report `white on blue` (the base style), so the powerline arrows on either side stay consistent. The `S`/`+3`/`-2` runs in the interior have their own fg without touching the joiner.
@@ -369,10 +369,10 @@ If the leftmost and rightmost columns of a cell carry different backgrounds (e.g
 
 ## `FlexStrip` — wrap-to-width packing
 
-`FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Joiner` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
+`FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Separator` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
 
 ```typescript
-import { FlexStrip, RichText, JOINERS, Style } from "@promptctl/rich-js";
+import { FlexStrip, RichText, SEPARATOR_STYLES, Style } from "@promptctl/rich-js";
 
 const strip = new FlexStrip(
   tags.map(
@@ -383,13 +383,13 @@ const strip = new FlexStrip(
         noWrap: true,
       }),
   ),
-  { joiner: JOINERS.powerline, gap: 0, align: "left" },
+  { separator: SEPARATOR_STYLES.powerline, gap: 0, align: "left" },
 );
 console.print(strip);
 ```
 
 Options:
-- `joiner` — same `Joiner<T>` protocol; endpoint joins fire at every line boundary. Optional: with no joiner, nothing is drawn between items but the gap.
+- `separator` — same `Separator<T>` protocol; endpoint joins fire at every line boundary. Optional: with no joiner, nothing is drawn between items but the gap.
 - `gap` — cells inserted on *each* side of the slot between two items, so neighbours sit `2 × gap` cells apart plus whatever the joiner draws (default 0). The gap applies whether or not there is a joiner — `{ gap: 1 }` alone puts two spaces between items.
 - `align` — `"left"` (default), `"center"`, `"right"`, or `"justify"` (distributes spare width across inter-item slots on non-final lines).
 

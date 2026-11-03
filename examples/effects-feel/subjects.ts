@@ -14,7 +14,7 @@ import {
   ColorRgba,
   ColorSpec,
   Measurement,
-  JOINERS,
+  SEPARATOR_STYLES,
   RichText,
   Strip,
   Style,
@@ -50,7 +50,7 @@ export interface Subject {
   readonly renderable: Renderable & Measurable;
   /** Where it sits in the noise, so two subjects under one effect never move in lockstep. */
   readonly z: number;
-  /** The elements of it a pulse breathes, told apart by who drew each cell, never by its colour. */
+  /** The elements of it a pulse breathes, told apart by who drew each cell, never by its color. */
   readonly pulsed: readonly object[];
 }
 
@@ -68,16 +68,16 @@ export function drawnSubject(subject: Subject, drawnWith: RenderOptions): DrawnS
   return { ...subject, options: { ...drawnWith, maxWidth: span } };
 }
 
-/** A colour of the theme's palette by its name; a name the palette lacks is a bug here. */
+/** A color of the theme's palette by its name; a name the palette lacks is a bug here. */
 export function paletteRgba(theme: TerminalTheme, key: string): ColorRgba {
   const rgba = theme.palette.get(key);
-  if (rgba === undefined) throw new Error(`theme ${theme.palette.name} has no palette colour ${key}`);
+  if (rgba === undefined) throw new Error(`theme ${theme.palette.name} has no palette color ${key}`);
   return rgba;
 }
 
 /**
  * The style of the strip's `i`th cell. The second lap round the palette takes
- * each colour's muted shade, so a dozen neighbours are a dozen colours.
+ * each color's muted shade, so a dozen neighbours are a dozen colors.
  */
 function stripStyle(theme: TerminalTheme, i: number): Style {
   const color = (key: string): ColorSpec => ColorSpec.fromRgba(paletteRgba(theme, key));
@@ -94,7 +94,7 @@ const PULSED: readonly string[] = ["ctx 61%", "ok"];
 export function stripSubject(theme: TerminalTheme): Subject {
   const cells = STRIP_LABELS.map((label, i) => new RichText(` ${label} `, { style: stripStyle(theme, i), end: "", noWrap: true }));
   const pulsed = cells.filter((_, i) => PULSED.includes(STRIP_LABELS[i]!));
-  return { name: "strip", renderable: new Strip(cells, JOINERS.powerline), z: 0, pulsed };
+  return { name: "strip", renderable: new Strip(cells, SEPARATOR_STYLES.powerline), z: 0, pulsed };
 }
 
 /**

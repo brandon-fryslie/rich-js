@@ -6,10 +6,10 @@
  * functions. The split between the two exported registrations is exactly the
  * split between what needs a theme and what does not:
  *
- * - `richTextFuncs()` — the colour sinks (`fg`/`bg`), the palette-free colour
+ * - `richTextFuncs()` — the color sinks (`fg`/`bg`), the palette-free color
  *   math (`darken`, `mix`, `contrastOn`, the OKLCH axes …), text attributes,
  *   and `link`. Needs no configuration; safe to register unconditionally. A
- *   consumer with no theme system still gets the complete colour vocabulary by
+ *   consumer with no theme system still gets the complete color vocabulary by
  *   feeding it hex literals.
  * - `paletteFuncs(getPalette)` — `color` and `ramp`, the two functions that
  *   resolve a palette name. This is the *only* registration that knows a
@@ -22,12 +22,12 @@
  *   host's to hand in (`./animation-funcs.ts`).
  *
  * `createRichTextEngine()` wires up `richTextFuncs()` only — it cannot supply a
- * palette. Consumers that name theme colours call `paletteFuncs(getPalette)`
+ * palette. Consumers that name theme colors call `paletteFuncs(getPalette)`
  * and merge it into their own engine config.
  *
- * Colours compose by nesting, like every other function:
+ * Colors compose by nesting, like every other function:
  * `{{ fg (darken (color "primary") 2) (bold "x") }}`. There is no second
- * markup grammar and no colour-spec mini-language — the template *is* the
+ * markup grammar and no color-spec mini-language — the template *is* the
  * composition mechanism.
  *
  * Fragment type: `RichText`. Chosen because it is the library's primary
@@ -49,15 +49,15 @@ import { richTextStyleFuncs } from "./style-funcs.js";
 import { colorFuncs, type DrawnAt } from "./color-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
-export { colorFuncs, readableOnFunc, type DrawnAt } from "./color-funcs.js";
+export { colorFuncs, ensureContrastFunc, type DrawnAt } from "./color-funcs.js";
 export { withAnimation, templateFrame, type AnimationOptions, type TemplateFrame } from "./animation-funcs.js";
 
 /**
- * Funcs registered by the rich-js binding — the colour sinks, the palette-free
- * colour math, text attributes, and the `link` cell-splitter. Nothing here
+ * Funcs registered by the rich-js binding — the color sinks, the palette-free
+ * color math, text attributes, and the `link` cell-splitter. Nothing here
  * needs a theme; the two that do (`color`, `ramp`) ship separately via
  * `paletteFuncs(getPalette)`, merged consumer-side. `drawnAt` is forwarded to
- * `colorFuncs` — the depth `readableOn` measures at, truecolor when omitted.
+ * `colorFuncs` — the depth `ensureContrast` measures at, truecolor when omitted.
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output

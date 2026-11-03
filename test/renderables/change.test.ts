@@ -66,8 +66,8 @@ describe("a change from one renderable to another", () => {
       for (const t of sampled(60, 2.5)) {
         const frame = draw(inFrame(moving, t));
         expect(change.done(t)).toBe(t >= curve.seconds);
-        expect(Segment.nextChange(frame)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
-        expect(moving.nextChange(t)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
+        expect(Segment.validUntil(frame)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
+        expect(moving.validUntil(t)).toBe(t < curve.seconds ? t : Number.POSITIVE_INFINITY);
         if (t >= curve.seconds) expect(bytes(frame)).toBe(bytes(draw(done)));
       }
     });
@@ -83,13 +83,13 @@ describe("a change from one renderable to another", () => {
       expect(at0).toBe("buildi\n");
     });
 
-    it(`${name}: with no colour output, is spliced, and changes every frame until done`, () => {
+    it(`${name}: with no color output, is spliced, and changes every frame until done`, () => {
       const plain: RenderOptions = { maxWidth: 40, colorSystem: null };
       const moving = between(building, done);
       expect(text(draw(inFrame(moving, 0), plain))).toBe("buildi\n");
-      for (const t of sampled(4, 1.9)) expect(Segment.nextChange(draw(inFrame(moving, t), plain))).toBe(t);
+      for (const t of sampled(4, 1.9)) expect(Segment.validUntil(draw(inFrame(moving, t), plain))).toBe(t);
       expect(text(draw(inFrame(moving, curve.seconds), plain))).toBe("done ✓\n");
-      expect(Segment.nextChange(draw(inFrame(moving, curve.seconds), plain))).toBe(Number.POSITIVE_INFINITY);
+      expect(Segment.validUntil(draw(inFrame(moving, curve.seconds), plain))).toBe(Number.POSITIVE_INFINITY);
     });
   }
 
@@ -104,7 +104,7 @@ describe("a change from one renderable to another", () => {
     const frame = crossfade(curve).effect({ from: building, to: done }).at(0.5);
     const seen = (maxWidth: number): Renderable[] => {
       const present: Renderable[] = [];
-      draw(frame, { ...OPTIONS, maxWidth, onPresent: (r) => present.push(r) });
+      draw(frame, { ...OPTIONS, maxWidth, onVisibility: (r) => present.push(r) });
       return present.filter((r) => r === building || r === done);
     };
     expect(seen(40)).toEqual([building, done]);
@@ -125,7 +125,7 @@ describe("a change from one renderable to another", () => {
     for (const t of [1, 2]) {
       expect(quick.done(t)).toBe(true);
       expect(bytes(draw(inFrame(moving, t)))).toBe(bytes(draw(done)));
-      expect(moving.nextChange(t)).toBe(Number.POSITIVE_INFINITY);
+      expect(moving.validUntil(t)).toBe(Number.POSITIVE_INFINITY);
     }
   });
 

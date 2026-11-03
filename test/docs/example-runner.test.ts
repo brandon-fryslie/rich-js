@@ -116,7 +116,7 @@ describe("the example widget", () => {
   // The fence stays a fence for VitePress to highlight; the widget is the
   // element around it and the output panel under it, each between blank lines
   // so markdown still parses the fence and the prose after it.
-  it("puts a static fence in an editable card, its output labelled with where it came from", async () => {
+  it("puts a static fence in an editable card, its output labeled with where it came from", async () => {
     const result = await run(`Before.\n${fence("console.print(1);")}\nAfter.`);
     expect(result).toMatch(
       /^\n<script setup>\nconst __richCard_0 = \{[^\n]*\};\n<\/script>\n\nBefore\.\n\n<RichExample :card="__richCard_0">\n\n```ts\nconsole\.print\(1\);\n```\n\n<\/RichExample>\n\nAfter\.$/,

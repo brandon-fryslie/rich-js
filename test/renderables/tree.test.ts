@@ -135,7 +135,7 @@ describe("Tree", () => {
       // A bold guide draws heavy (┗━━), so the guide segment is found by that glyph.
       const guideSegs = segs.filter((s) => s.text.includes("┗"));
       expect(guideSegs.length).toBeGreaterThan(0);
-      const green = Style.parse("not bold not underline2 green");
+      const green = Style.parse("not bold not doubleUnderline green");
       for (const s of guideSegs) expect(s.style?.equals(green)).toBe(true);
     });
   });
@@ -179,7 +179,7 @@ describe("Tree", () => {
       "│   └── d",
       "└── e",
     ]);
-    const red = Style.parse("not bold not underline2 red");
+    const red = Style.parse("not bold not doubleUnderline red");
     for (const line of lines.slice(1)) {
       const guides = line.slice(0, -1);
       expect(guides.length).toBeGreaterThan(0);
@@ -193,23 +193,23 @@ describe("Tree", () => {
     const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
     const [rail, branch] = lines[2]!;
     expect(rail!.text).toBe("    ");
-    expect(rail!.style?.equals(Style.parse("not bold not underline2 red"))).toBe(true);
+    expect(rail!.style?.equals(Style.parse("not bold not doubleUnderline red"))).toBe(true);
     expect(branch!.text).toBe("└── ");
-    expect(branch!.style?.equals(Style.parse("not bold not underline2 red italic"))).toBe(true);
+    expect(branch!.style?.equals(Style.parse("not bold not doubleUnderline red italic"))).toBe(true);
   });
 
   // Python Rich 9d8f9a3 prints `    ┗━━ b` and `    ╚══ b` for these trees, every
-  // guide `not bold not underline2 red`: the attribute picks the glyphs and is
+  // guide `not bold not doubleUnderline red`: the attribute picks the glyphs and is
   // taken off the guide. Once these drew light glyphs in bold.
   it.each([
     ["bold", "┗━━ "],
-    ["underline2", "╚══ "],
+    ["doubleUnderline", "╚══ "],
   ])("draws a %s guide with its glyph set, and without the attribute", (weight, branch) => {
     const tree = new Tree("root", { guide_style: "red" });
     tree.add("a", { guide_style: weight }).add("b");
     const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
     expect(lines.map((line) => line.map((s) => s.text).join(""))).toEqual(["root", "└── a", `    ${branch}b`]);
-    const guide = Style.parse("not bold not underline2 red");
+    const guide = Style.parse("not bold not doubleUnderline red");
     for (const line of lines.slice(1)) {
       for (const segment of line.slice(0, -1)) expect(segment.style?.equals(guide)).toBe(true);
     }
@@ -221,7 +221,7 @@ describe("Tree", () => {
   // width `measure` counts per guide without drawing one.
   it.each([
     ["bold", ["root", "┣━━ a", "┃   a2", "┃   ┗━━ x", "┗━━ b"]],
-    ["underline2", ["root", "╠══ a", "║   a2", "║   ╚══ x", "╚══ b"]],
+    ["doubleUnderline", ["root", "╠══ a", "║   a2", "║   ╚══ x", "╚══ b"]],
   ])("draws every role of a %s guide in one weight", (weight, rows) => {
     const tree = new Tree("root", { guide_style: weight });
     tree.add("a\na2").add("x");
@@ -268,7 +268,7 @@ describe("Tree", () => {
     const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
     const guides = [lines[2]!.slice(0, 2), lines[3]!.slice(0, 2)];
     expect(guides.map((line) => line.map((guide) => guide.text))).toEqual([["│   ", "└── "], ["│   ", "    "]]);
-    for (const guide of guides.flat()) expect(guide.style?.equals(Style.parse("not bold not underline2 red on blue"))).toBe(true);
+    for (const guide of guides.flat()) expect(guide.style?.equals(Style.parse("not bold not doubleUnderline red on blue"))).toBe(true);
   });
 
   it("carries a hidden root's style to the children standing in its place", () => {
@@ -382,7 +382,7 @@ describe("a child that draws no rows", () => {
     const tree = new Tree("build");
     tree.add(elements.shown);
     tree.add(elements.before);
-    expect(drawnAt(tree, t, { maxWidth: 40 }).nextChange).toBe(5);
+    expect(drawnAt(tree, t, { maxWidth: 40 }).validUntil).toBe(5);
   });
 
   it("keeps its place while something beneath it draws", () => {

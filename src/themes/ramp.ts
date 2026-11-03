@@ -6,13 +6,13 @@
  * color, and none takes a *measurement*. Without a ramp the answer gets
  * computed outside the theme system — a script emits a hex, a template
  * branches `if ge .pct 80 … else if ge .pct 50 …` — and that color decision
- * can no longer transpose with the palette it was meant to belong to. A ramp
+ * can no longer adjust with the palette it was meant to belong to. A ramp
  * is the one function whose input is a number, so the decision stays inside.
  *
  * A threshold cascade is a ramp too: the same stops with the `step` ease hold
  * each color until the next position, which is exactly `≥ threshold → hotter`
  * written as data. [LAW:one-type-per-behavior] One primitive; the easing is a
- * value — any `Ease` from `core/easing`, the vocabulary every effect shares —
+ * value — any `Easing` from `core/easing`, the vocabulary every effect shares —
  * so a gradient and a cascade differ by one word, not by which function was
  * called. [LAW:dataflow-not-control-flow] `at` applies it unconditionally.
  *
@@ -21,7 +21,7 @@
  * midpoints of an sRGB blend.
  *
  * A ramp also carries how far it has been moved: `scroll`, in spans, how
- * far its colours have travelled along it, and `hue`, in turns, how far
+ * far its colors have travelled along it, and `hue`, in turns, how far
  * they are rotated round the OKLCH hue circle. A moved ramp is still a
  * `ColorRamp`, so anything that reads a ramp reads a moving one frame by
  * frame (`moving`) with nothing new to learn. [LAW:one-type-per-behavior]
@@ -34,7 +34,7 @@
 
 import { Animation } from "../core/animation.js";
 import type { ColorRgba } from "../core/color.js";
-import { EASES, type Ease } from "../core/easing.js";
+import { EASES, type Easing } from "../core/easing.js";
 import { IDENTITY, Oklch } from "../core/oklch.js";
 import { tween } from "../core/tween.js";
 
@@ -47,8 +47,8 @@ export interface ColorStop {
 /**
  * How a ramp moves over time, each part an `Animation<number>` that is
  * `Animation.constant(0)` when not given. `scroll` is in spans: at 1 the
- * colours have travelled the whole way from the first stop to the last and
- * wrapped back, so `Animation.continuous(Phase.loop(seconds))` scrolls once
+ * colors have travelled the whole way from the first stop to the last and
+ * wrapped back, so `Animation.continuous(WrapMode.loop(seconds))` scrolls once
  * every `seconds`. `hue` is in turns, CSS's `turn`: at 1 every hue has gone
  * once round the circle. A one-shot that settles is a `tween` to where it
  * rests.
@@ -74,13 +74,13 @@ export interface RampMotion {
  * same way).
  */
 export class ColorRamp {
-  /** How far the colours have moved along the span, in spans, in [0, 1). */
+  /** How far the colors have moved along the span, in spans, in [0, 1). */
   readonly scroll: number;
   /** How far every hue is rotated in OKLCH, in turns, in [0, 1). */
   readonly hue: number;
 
   constructor(
-    readonly ease: Ease,
+    readonly ease: Easing,
     readonly stops: readonly ColorStop[],
     scroll = 0,
     hue = 0,
@@ -120,11 +120,11 @@ export class ColorRamp {
    * CSS defines them. An ease that overshoots [0, 1] holds the end colors
    * where it does: a ramp never paints outside its stops.
    *
-   * A scrolled ramp reads, inside its span, the colour `scroll` spans behind
+   * A scrolled ramp reads, inside its span, the color `scroll` spans behind
    * `value`, wrapped back round the span as a repeating gradient does —
-   * seamless when the first and last stops are one colour; outside the span
-   * its end colours hold, however far it has scrolled. A rotated ramp turns
-   * the colour read by `hue` at its own lightness and chroma. Unmoved, every
+   * seamless when the first and last stops are one color; outside the span
+   * its end colors hold, however far it has scrolled. A rotated ramp turns
+   * the color read by `hue` at its own lightness and chroma. Unmoved, every
    * read keeps the exactness above.
    */
   at(value: number): ColorRgba {
@@ -141,7 +141,7 @@ export class ColorRamp {
     return this.hue === 0 ? read : Oklch.fromRgba(read).applyKey({ ...IDENTITY, hueShift: 360 * this.hue }).toRgba();
   }
 
-  /** The colour at `value` with the ramp unmoved: the stops and the ease alone. */
+  /** The color at `value` with the ramp unmoved: the stops and the ease alone. */
   private unmoved(value: number): ColorRgba {
     const stops = this.stops;
     // The last stop at or below `value`; -1 when `value` is below them all.
@@ -162,13 +162,13 @@ export class ColorRamp {
   /**
    * This ramp read over time: its span of positions, from the first stop's
    * to the last's, crossed at a steady rate in `seconds` and held at the last
-   * stop from then on, each colour along the way the ramp's own. A colour
+   * stop from then on, each color along the way the ramp's own. A color
    * tween is a two-stop ramp over its seconds — the ramp's ease shaping the
    * move, so `new ColorRamp(ease, [{ at: 0, color: a }, { at: 1, color: b
    * }]).over(seconds)` is `a` eased to `b` — and a ramp of more stops over
    * time is a sweep through all of them. [LAW:one-source-of-truth] The
    * blending is `at`'s; what time adds is `tween`'s (`core/tween.ts`), so a
-   * host sampling once a second or sixty times reads the stop colours byte
+   * host sampling once a second or sixty times reads the stop colors byte
    * for byte where `at` paints them.
    */
   over(seconds: number): Animation<ColorRgba> {
@@ -185,7 +185,7 @@ export class ColorRamp {
    * [LAW:one-source-of-truth] When it next changes is `Animation.all`'s
    * answer over the two parts; nothing here says it a second time. Whether
    * the depth it is drawn at can show the move is decided where it is drawn
-   * (`gradient`, through `stillWhereNothingMoves`).
+   * (`gradient`, through `staticWhereUnchanged`).
    */
   moving(motion: RampMotion): Animation<ColorRamp> {
     const still = Animation.constant(0);

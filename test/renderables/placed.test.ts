@@ -21,7 +21,7 @@ import { scriptedHost } from "../host/scripted-host.js";
 import { fakeClock } from "../core/fake-clock.js";
 import { frameRate } from "../../src/core/clock.js";
 import { Animation } from "../../src/core/animation.js";
-import { EASES, Phase } from "../../src/core/easing.js";
+import { EASES, WrapMode } from "../../src/core/easing.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
 import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
@@ -86,7 +86,7 @@ const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 /** A count from 0 to 10 over 2 s, drawn as its value. */
 const counting = (): Animation<RichText> => Animation.map(tween(0, 10, linear(2)), (v) => new RichText(`n=${v.toFixed(1)}`, { end: "" }));
 
-/** A rule under a ramp scrolling forever: moving every frame wherever its colours can move. */
+/** A rule under a ramp scrolling forever: moving every frame wherever its colors can move. */
 const ramped = (): Effected => {
   const hues = new ColorRamp(EASES.linear, [
     { at: 0, color: new ColorRgba(255, 120, 100) },
@@ -94,7 +94,7 @@ const ramped = (): Effected => {
     { at: 1, color: new ColorRgba(255, 120, 100) },
   ]);
   const line = "#a6e3a1";
-  return new Effected(new Rule("x", { style: line }), gradient(hues.moving({ scroll: Animation.continuous(Phase.loop(4)) }), [line]), { key: "ramp" });
+  return new Effected(new Rule("x", { style: line }), gradient(hues.moving({ scroll: Animation.continuous(WrapMode.loop(4)) }), [line]), { key: "ramp" });
 };
 
 interface Run {
@@ -160,7 +160,7 @@ describe("an animation placed in a container written by the user", () => {
     expect(timers()).toBe(0);
   });
 
-  it("an effect moves at every frame where its colours can, and sleeps at sixteen colours where they cannot", () => {
+  it("an effect moves at every frame where its colors can, and sleeps at sixteen colors where they cannot", () => {
     const moving = run(new Box(ramped()), { perSecond: 10, seconds: 1, env: TRUECOLOR });
     expect(moving.paints.length).toBeGreaterThanOrEqual(10);
     expect(moving.timers()).toBe(1);
@@ -292,7 +292,7 @@ describe("the type says which animations are placed", () => {
   });
 
   it("an animation of numbers drawn from untyped code throws, naming what to do", () => {
-    const untyped: unknown = Animation.of({ at: () => 5, nextChange: () => Number.POSITIVE_INFINITY, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant(5) });
+    const untyped: unknown = Animation.of({ at: () => 5, validUntil: () => Number.POSITIVE_INFINITY, validFrom: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant(5) });
     const console = new Console({ width: 20, file: { write: () => {} } });
     expect(() => console.print(untyped)).toThrow(new TypeError("an Animation is drawn only when its values are renderables; place what it maps to (Animation.map)"));
   });
@@ -305,12 +305,12 @@ describe("the type says which animations are placed", () => {
   });
 });
 
-describe("an animation drawn in a frame on an output of no colour", () => {
+describe("an animation drawn in a frame on an output of no color", () => {
   const NO_COLOR: RenderOptions = { maxWidth: 40, colorSystem: null };
   const drawn = (renderable: Renderable) => [...render(renderable, NO_COLOR)];
 
-  it("an effect whose colours cannot move says it never changes", () => {
-    for (const t of [0, 3, 30]) expect(Segment.nextChange(drawn(inFrame(ramped(), t)))).toBe(Number.POSITIVE_INFINITY);
+  it("an effect whose colors cannot move says it never changes", () => {
+    for (const t of [0, 3, 30]) expect(Segment.validUntil(drawn(inFrame(ramped(), t)))).toBe(Number.POSITIVE_INFINITY);
   });
 });
 
@@ -320,10 +320,10 @@ describe("Animation.of keeps what it is handed", () => {
       at(t: number): RichText {
         return new RichText(`step ${Math.floor(t)}`, { end: "" });
       }
-      nextChange(t: number): number {
+      validUntil(t: number): number {
         return Math.floor(t) + 1;
       }
-      lastChange(t: number): number {
+      validFrom(t: number): number {
         return Math.floor(t);
       }
       reduced(): Animation<RichText> {
@@ -333,15 +333,15 @@ describe("Animation.of keeps what it is handed", () => {
     const steps = Animation.of(new Steps());
     const segments = [...render(steps, { maxWidth: 20, frame: { time: 2.5, host: {} } })];
     expect(segments.map((s) => s.text).join("")).toBe("step 2");
-    expect(Segment.nextChange(segments)).toBe(3);
-    expect(Segment.lastChange(segments)).toBe(2);
+    expect(Segment.validUntil(segments)).toBe(3);
+    expect(Segment.validFrom(segments)).toBe(2);
   });
 });
 
 describe("a cell's hold is both its ends or neither", () => {
   it("refuses a style saying only when it next changes", () => {
     // @ts-expect-error a hold with one end would claim the cell always was
-    void (() => new Style({ nextChange: 3 }));
-    expect(new Style({ hold: { lastChange: 1, nextChange: 3 } }).hold.lastChange).toBe(1);
+    void (() => new Style({ validUntil: 3 }));
+    expect(new Style({ validity: { validFrom: 1, validUntil: 3 } }).validity.validFrom).toBe(1);
   });
 });

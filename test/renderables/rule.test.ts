@@ -99,7 +99,7 @@ describe("Rule", () => {
     ["right", undefined, "[bold]B[/bold] t", `${G}────────${Z} ${B}`],
     ["right", "red", "T", `${R}──────────${Z} T`],
     ["right", "red", "[bold]B[/bold] t", `${R}────────${Z} ${B}`],
-  ] as const)("%s with style %s draws %j in colour as Rich does", (align, style, title, expected) => {
+  ] as const)("%s with style %s draws %j in color as Rich does", (align, style, title, expected) => {
     const rule = new Rule(title, style === undefined ? { align } : { align, style });
     expect(renderToString(rule, { width: 12, colorSystem: "truecolor" })).toBe(`${expected}\n`);
   });

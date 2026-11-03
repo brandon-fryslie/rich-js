@@ -29,7 +29,7 @@ describe("Status", () => {
     expect(run("[bold]Working[/]", { markup: false })).toContain("[bold]Working[/]");
   });
 
-  it("colours its spinner with status.spinner and leaves the message to its markup", () => {
+  it("colors its spinner with status.spinner and leaves the message to its markup", () => {
     const out = run("plain");
     expect(out).toMatch(/\x1b\[32m\S+\x1b\[0m plain/);
   });
