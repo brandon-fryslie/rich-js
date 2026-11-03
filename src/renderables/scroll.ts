@@ -3,12 +3,12 @@
  * content's offset in the slot moving with time: a long line panning as a
  * marquee, a log tail scrolling, a panel sliding into its place.
  *
- * [LAW:one-type-per-behavior] A marquee, a scroll and a slide are one window
- * and differ only in the motion handed in: the offset along each axis is an
- * `Animation<number>`, so a marquee is a looping `WrapMode` scaled to the span
- * it crosses and a slide-in is a `tween` to 0, and when the window next
- * changes is `Animation.all`'s answer over the two. Nothing here knows which
- * one it is drawing.
+ * [LAW:one-type-per-behavior] A marquee, a scroll and a slide are one window,
+ * `ScrollFrame`, and differ only in where it sits on what the content drew. A
+ * scroll and a slide are handed their offsets as `Animation<number>`s — a
+ * slide-in is a `tween` to 0 — and next change when `Animation.all` says. A
+ * marquee is a step count, wrapped round the span the content and the slot
+ * drew, so it learns that span only when the frame is drawn.
  *
  * The slot is what the window is. It measures as its width whatever the
  * content, and draws exactly its rows of its width at every offset — cropped
@@ -100,8 +100,8 @@ export function marquee(content: Renderable, options: MarqueeOptions): Animation
     reduced: () => Animation.constant(0),
   });
   return Animation.map(stepped, (n) => new ScrollFrame(content, width, (drawn) => {
-    const span = drawn.width + width;
-    return { col: ((((n + width) % span) + span) % span) - width, row: 0, height: drawn.rows };
+    const span = drawn.width + drawn.slot;
+    return { col: ((((n + drawn.slot) % span) + span) % span) - drawn.slot, row: 0, height: drawn.rows };
   }));
 }
 
@@ -112,10 +112,11 @@ interface Window {
   readonly height: number;
 }
 
-/** The size of what the content drew: its natural width, and its rows. */
+/** The size of what the content drew — its natural width and its rows — and the slot's width, cropped to the room it was given. */
 interface Drawn {
   readonly width: number;
   readonly rows: number;
+  readonly slot: number;
 }
 
 /** `offset` rounded to the nearest cell. [LAW:no-silent-failure] One that is not finite has no cell to move to, and says so rather than drawing a blank slot. */
@@ -158,7 +159,7 @@ class ScrollFrame implements Renderable, Measurable {
     const natural = naturalWidth(this.content, options);
     const drawn = [...render(this.content, { ...options, maxWidth: natural, height: undefined })];
     const lines = Segment.splitLines(drawn);
-    const { col, row, height } = this.window({ width: natural, rows: lines.length });
+    const { col, row, height } = this.window({ width: natural, rows: lines.length, slot: width });
     const blank = Math.min(width, Math.max(0, -col));
     const start = Math.max(0, col);
     // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change

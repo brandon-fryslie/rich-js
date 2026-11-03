@@ -20,7 +20,7 @@ Nothing here reads a clock. `t` is handed in by whoever draws, so the same `t` g
 
 An animation of renderables is itself a renderable, so the way to show one is to put it where a renderable goes ([below](#placing-one)): in a `Panel`, a `Table` cell, a `Group`, beside static content, and it draws at the time of the frame it is drawn in.
 
-To watch every kind of motion on this page on one timeline — paused, reversed, scrubbed, at a quarter and four times the speed, with motion reduced, at sixteen colors and none, at one frame a second and sixty — run `npm run animation-playground` in a checkout of this repository, or open the [playground's demo page](/demos/animation-playground).
+To watch every kind of motion on this page on one timeline — paused, reversed, scrubbed, at a quarter and four times the speed, with motion reduced, at truecolor, 256 colors, sixteen colors and none, at one frame a second and sixty — run `npm run animation-playground` in a checkout of this repository, or open the [playground's demo page](/demos/animation-playground).
 
 ## When it next changes
 
@@ -324,7 +324,7 @@ The window is its slot. It measures as its width and draws exactly its rows of i
 ```typescript
 import { EASES, RichText, marquee, scroll, tween } from "@promptctl/rich-js";
 
-const news = marquee(new RichText("every motion is one Animation ·", { style: "bold yellow" }), { width: 16, step: 0.1 });
+const news = marquee(new RichText("every motion is one Animation ·", { style: "bold yellow" }), { width: 16, step: 0.125 });
 const slide = scroll(new RichText("arrived", { style: "green" }), { width: 16, height: 1, col: tween(-16, 0, { seconds: 1, ease: EASES["ease-out"] }) });
 
 for (const t of [0, 0.5, 1, 2, 3]) {

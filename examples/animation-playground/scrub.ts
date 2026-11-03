@@ -60,7 +60,7 @@ export class ScrubBar extends WidgetBase {
   }
 
   override handleMouse(event: WidgetMouseEvent): void {
-    if (event.type === "mouse_down") this.#pressed = event.cell?.owner instanceof ScrubWindow ? event.cell.owner : null;
+    if (event.type === "mouse_down") this.#pressed = event.button === 0 && event.cell?.owner instanceof ScrubWindow ? event.cell.owner : null;
     const pressed = this.#pressed;
     if (pressed === null) return;
     if (event.type === "mouse_up") this.#pressed = null;

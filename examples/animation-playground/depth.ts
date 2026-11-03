@@ -23,7 +23,7 @@ export const DEPTHS = {
 export type Depth = keyof typeof DEPTHS;
 const ORDER = Object.keys(DEPTHS) as Depth[];
 
-const detected = (host: TerminalHost, env: Env) => detectColorSystem({ env, isTTY: host.isTTY });
+const detected = (host: TerminalHost, env: Env) => detectColorSystem({ env, isTTY: host.writesToTerminal });
 
 /** The depth `host`'s own environment gives, named as one of `DEPTHS`. */
 export function hostDepth(host: TerminalHost): Depth {

@@ -222,6 +222,15 @@ describe("marquee", () => {
     expect(shown(LOG, 0.5, 4)).toEqual(["ne  ", "wo  ", "hree", "our "]);
   });
 
+  it("cropped to a narrower room, crosses the slot it draws, entering at its right edge", () => {
+    const cropped = (t: number) => rows(draw(marquee(WORD, { width: 6, step: 0.5 }).at(t), { ...OPTIONS, maxWidth: 3 }));
+    // A span of 4 + 3 = 7 steps: gone at step 4, entering at the cropped edge at step 5.
+    expect(cropped(1.5)).toEqual(["d  "]);
+    expect(cropped(2)).toEqual(["   "]);
+    expect(cropped(2.5)).toEqual(["  a"]);
+    expect(cropped(3.5)).toEqual(["abc"]);
+  });
+
   it("draws the same bytes for the same moment at one sample a second and sixty", () => {
     const moving = marquee(LINE, { width: 6, step: 0.25 });
     const once = sampled(1, 0, 10).map((t) => bytes(draw(moving.at(t))));

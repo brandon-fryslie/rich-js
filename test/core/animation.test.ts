@@ -205,6 +205,15 @@ describe("cyclic", () => {
     expect(() => cyclic([])).toThrow(RangeError);
   });
 
+  it("stays the list it was made from, and refuses a turn that is not whole", () => {
+    const items = ["a", "b"];
+    const nth = cyclic(items);
+    items.length = 0;
+    expect(nth(1)).toBe("b");
+    expect(() => nth(0.5)).toThrow(RangeError);
+    expect(() => nth(Number.NaN)).toThrow(RangeError);
+  });
+
   it("composed with repeat, plays the turns in order, and the turn before 0 is the last", () => {
     const rotation = Animation.repeat(2, cyclic([Animation.constant("x"), Animation.constant("y"), Animation.constant("z")]));
     expect([-0.5, 0.5, 2.5, 4.5, 6.5].map((t) => rotation.at(t))).toEqual(["z", "x", "y", "z", "x"]);

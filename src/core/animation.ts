@@ -287,7 +287,12 @@ function membersOf(source: object): Record<PropertyKey, unknown> {
  */
 export function cyclic<T>(items: readonly T[]): (n: number) => T {
   if (items.length === 0) throw new RangeError("cyclic: the list is empty, so no turn has an item");
-  return (n) => items[((n % items.length) + items.length) % items.length]!;
+  // Copied, so it stays the list it was made from whatever the caller does to its array.
+  const held = [...items];
+  return (n) => {
+    if (!Number.isInteger(n)) throw new RangeError(`cyclic: a turn is a whole number, got ${n}`);
+    return held[((n % held.length) + held.length) % held.length]!;
+  };
 }
 
 export const Animation = {
