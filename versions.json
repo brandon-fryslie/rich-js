@@ -4,15 +4,22 @@
     {
       "version": "pr-542",
       "ref": "refs/pull/542/merge",
-      "sha": "1f4ee4f41af3432c907dbd9813d5d019df5a55f2",
-      "timestamp": "2026-11-03T11:33:30.865Z",
+      "sha": "123ce74b54f13acbbe02259b217aa56e3bf6cfb9",
+      "timestamp": "2026-11-03T11:40:25.701Z",
       "commits": [
         {
-          "sha": "1f4ee4f41af3432c907dbd9813d5d019df5a55f2",
+          "sha": "123ce74b54f13acbbe02259b217aa56e3bf6cfb9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:31:36-07:00",
-          "message": "Merge c532c30cb2189fbb5bd3003470bd9334dab6d86d into 75a997116d79f6aea9a5ea0f8c52afd76d6a42d8\n"
+          "timestamp": "2026-11-03T11:38:16Z",
+          "message": "Merge a6076d88eb6d58b3ee08892eaea59d4db985bad1 into 75a997116d79f6aea9a5ea0f8c52afd76d6a42d8\n"
+        },
+        {
+          "sha": "a6076d88eb6d58b3ee08892eaea59d4db985bad1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:37:56-07:00",
+          "message": "Keep ScrollFrame's whole-content hold; scope the claim to effects in a Viewport\n\nReview of #542: dropping ScrollFrame's report lost a template's width change\ncropped left of the slot. Restored; the look/layout split moves to the stamp\nitself on its own ticket. placed skips the second walk when nothing was read.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "c532c30cb2189fbb5bd3003470bd9334dab6d86d",
