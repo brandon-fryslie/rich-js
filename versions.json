@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "57a1610baefa7b0c2df845782b91114c1f2e7998",
+      "timestamp": "2026-11-03T13:20:42.014Z",
+      "commits": [
+        {
+          "sha": "57a1610baefa7b0c2df845782b91114c1f2e7998",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T06:18:24-07:00",
+          "message": "CI runs the newest peer version a consumer's install resolves (rich-unfiled-791c.7kj7) (#545)\n\n* CI installs the tarball beside each peer's newest in-range version and renders through it (rich-unfiled-791c.7kj7)\n\nThe node-floor action becomes .github/actions/consumer with an end input:\nfloor keeps the lowest Node and locked peers; ceiling names each optional\npeer by its peerDependencies range so npm resolves the newest, as a\nconsumer's install does. One planner, one probe reading the plan; the probe\nnow renders through each peer-backed subpath (a Checkbox toggled through a\nmobx action, a template through go-template-js), so the floor end exercises\nmobx too. ci.yml and publish.yml run it as one matrix job over both ends.\n\nVerified locally: ceiling resolved mobx 7.1.4 and passed; floor passed on a\nreal Node 20.0.0; a broken expectation fails the probe.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Consumer action: peer specs one per line, plan path as an output, ceiling Node checked, probe renders held to PEER_PROVIDERS (rich-unfiled-791c.7kj7)\n\n* Consumer ceiling: check-latest Node, template probe asserts styling, mobx comment states its reach (rich-unfiled-791c.7kj7)\n\n* check-latest at every setup-node, ceiling Node guard removed as tautological, resolved peers logged before assertions (rich-unfiled-791c.7kj7)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-546",
       "ref": "refs/pull/546/merge",
       "sha": "d05db8594e511d5e9e7304c3d93c2067e8f0fddc",
@@ -20,64 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-03T06:13:56-07:00",
           "message": "Pulse and shimmer stay under the 0.04 bar as drawn: the loops test measures the snapped field, and the two loops slow to 53 s and 127 s (rich-animation-42lg.twz)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-545",
-      "ref": "refs/pull/545/merge",
-      "sha": "dbc0241d0a8b28937a524d50ee9af29b7252ff7d",
-      "timestamp": "2026-11-03T13:08:08.220Z",
-      "commits": [
-        {
-          "sha": "dbc0241d0a8b28937a524d50ee9af29b7252ff7d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T13:06:33Z",
-          "message": "Merge 4a7d5ca0bcdbcaa2285623699d230c1cd8bf86ea into c891ff7282f7b63c259c98e17faa626b8798c9f9\n"
-        },
-        {
-          "sha": "4a7d5ca0bcdbcaa2285623699d230c1cd8bf86ea",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T06:06:10-07:00",
-          "message": "check-latest at every setup-node, ceiling Node guard removed as tautological, resolved peers logged before assertions (rich-unfiled-791c.7kj7)\n"
-        },
-        {
-          "sha": "0e0888295c543beb7a4b981bda6e744e71a3f0c5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:53:10-07:00",
-          "message": "Consumer ceiling: check-latest Node, template probe asserts styling, mobx comment states its reach (rich-unfiled-791c.7kj7)\n"
-        },
-        {
-          "sha": "332a88e9134b46ddbdf97e86129b6619bff62cb0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:49:55-07:00",
-          "message": "Consumer action: peer specs one per line, plan path as an output, ceiling Node checked, probe renders held to PEER_PROVIDERS (rich-unfiled-791c.7kj7)\n"
-        },
-        {
-          "sha": "088ff3580474c1ef284e4b8fdfd8534750520784",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:43:14-07:00",
-          "message": "CI installs the tarball beside each peer's newest in-range version and renders through it (rich-unfiled-791c.7kj7)\n\nThe node-floor action becomes .github/actions/consumer with an end input:\nfloor keeps the lowest Node and locked peers; ceiling names each optional\npeer by its peerDependencies range so npm resolves the newest, as a\nconsumer's install does. One planner, one probe reading the plan; the probe\nnow renders through each peer-backed subpath (a Checkbox toggled through a\nmobx action, a template through go-template-js), so the floor end exercises\nmobx too. ci.yml and publish.yml run it as one matrix job over both ends.\n\nVerified locally: ceiling resolved mobx 7.1.4 and passed; floor passed on a\nreal Node 20.0.0; a broken expectation fails the probe.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "c891ff7282f7b63c259c98e17faa626b8798c9f9",
-      "timestamp": "2026-11-03T12:48:55.147Z",
-      "commits": [
-        {
-          "sha": "c891ff7282f7b63c259c98e17faa626b8798c9f9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:47:04-07:00",
-          "message": "The animation playground is a readable example of writing animations (rich-animation-42lg.xoj) (#544)\n\n* cyclic and marquee: a rotation through a list, and content of any width crossing a slot a cell a step (rich-animation-42lg.xoj)\n\n* The animation playground is a readable example: kinds a few to a file, a draggable scrub bar, four colour depths (rich-animation-42lg.xoj)\n\n* Review: the marquee crosses the slot it draws, cyclic copies and refuses a fractional turn, the scrub seeks on the left button, the depth reads writesToTerminal (rich-animation-42lg.xoj)\n\n* Review: a scrub drag ends on a move with no button, the track keeps a cell, a marquee's refusal names marquee, hostDepth throws on a depth no step reproduces (rich-animation-42lg.xoj)"
         }
       ]
     }
