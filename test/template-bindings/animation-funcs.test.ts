@@ -87,15 +87,15 @@ describe("frames in a template", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ frames }}`).evaluate({})).toThrow(/frames/);
   });
 
-  it("a trailing hold with no frame is refused, naming the pairs", () => {
+  it("a last step with no frame is refused, naming the pairs", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ frames 1 "a" 2 }}`).evaluate({})).toThrow(/^error calling frames: last step \(2 s\) has no frame — the arguments are <seconds> <frame> pairs$/);
   });
 
-  it("a hold that is not a positive number of seconds is refused", () => {
+  it("a step that is not a positive number of seconds is refused", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ frames 0 "a" }}`).evaluate({})).toThrow(/^error calling frames: step 0 must be a positive number of seconds, got 0$/);
   });
 
-  it("a hold where a frame belongs fails the type gate before the body runs", () => {
+  it("a step's seconds where a frame belongs fails the type gate before the body runs", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ frames "a" 1 }}`).evaluate({})).toThrowError();
   });
 });
@@ -135,7 +135,7 @@ describe("stepped in a template", () => {
     expect(Array.from({ length: 180 }, (_, i) => at(i / 60)).join(" ")).toBe(HEXES.map((hex) => Array.from({ length: 60 }, () => hex).join(" ")).join(" "));
   });
 
-  it("a trailing hold with no color is refused, naming the pairs", () => {
+  it("a last step with no color is refused, naming the pairs", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "#ff5555" 2 }}`).evaluate({})).toThrow(/^error calling stepped: last step \(2 s\) has no color — the arguments are <seconds> <color> pairs$/);
   });
 
@@ -143,7 +143,7 @@ describe("stepped in a template", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "primary" }}`).evaluate({})).toThrow(/stepped expected a color .* wrap it: stepped \(color "primary"\)/);
   });
 
-  it("a hold that is not a positive number of seconds is refused", () => {
+  it("a step that is not a positive number of seconds is refused", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ stepped 0 "#ff5555" }}`).evaluate({})).toThrow(/^error calling stepped: step 0 must be a positive number of seconds, got 0$/);
   });
 });

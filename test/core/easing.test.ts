@@ -326,6 +326,11 @@ describe("stepSequence — steps in seconds, the step in progress out, no clock 
     expect(() => stepSequence([0.25]).validUntil(-Number.MAX_VALUE)).toThrow(/StepSequence.validUntil: a period of 0.25 s is finer than time resolves/);
   });
 
+  it("refuses a step finer than time resolves where the period still is, naming the step", () => {
+    const s = stepSequence([1e6, 1e-9]);
+    expect(() => { for (let t = 1e9; t < 1e15; t *= 10) { s.validUntil(t); s.validFrom(t); } }).toThrow(/StepSequence\.valid(Until|From): step 1 \(1e-9 s\) is finer than time resolves near t = /);
+  });
+
   it("counts steps from t = 0 and wraps every period, before zero too", () => {
     const b = stepSequence([1, 1, 1]);
     expect(b.period).toBe(3);
@@ -407,9 +412,9 @@ describe("stepSequence — steps in seconds, the step in progress out, no clock 
   });
 
   it("steps is a copy: a caller's later change to the array it passed changes nothing", () => {
-    const steps = [1, 1];
-    const b = stepSequence(steps);
-    steps.push(1);
+    const lengths = [1, 1];
+    const b = stepSequence(lengths);
+    lengths.push(1);
     expect(b.steps).toEqual([1, 1]);
     expect(b.period).toBe(2);
     expect(b.at(2.5)).toBe(0);
@@ -454,8 +459,8 @@ describe("stepSequence — steps in seconds, the step in progress out, no clock 
     // A pass's start plus a step's can round an ulp under the boundary, which
     // `at` would read as the step before: for tenths, nearly half of all
     // samples did. Swept densely across many passes, before zero too.
-    for (const steps of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9]]) {
-      const b = stepSequence(steps);
+    for (const lengths of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9]]) {
+      const b = stepSequence(lengths);
       const disagree: number[] = [];
       const after: number[] = [];
       for (let k = 0; k < 20_000; k++) {
@@ -464,8 +469,8 @@ describe("stepSequence — steps in seconds, the step in progress out, no clock 
         if (b.at(began) !== b.at(t)) disagree.push(t);
         if (began > t) after.push(t);
       }
-      expect(disagree, `steps ${steps.join(",")}`).toEqual([]);
-      expect(after, `steps ${steps.join(",")}`).toEqual([]);
+      expect(disagree, `steps ${lengths.join(",")}`).toEqual([]);
+      expect(after, `steps ${lengths.join(",")}`).toEqual([]);
     }
   });
 
@@ -499,16 +504,16 @@ describe("stepSequence — steps in seconds, the step in progress out, no clock 
   });
 
   it("validUntil and at agree at every sample: it is after t, the step in progress at it is the next, and it is its own start", () => {
-    for (const steps of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9], [1]]) {
-      const b = stepSequence(steps);
+    for (const lengths of [[0.1, 0.1, 0.1], [0.3, 0.2, 0.1], [1.1, 0.9], [1]]) {
+      const b = stepSequence(lengths);
       const wrong: number[] = [];
       for (let k = 0; k < 20_000; k++) {
         const t = (k / 20_000) * 50 - 5;
         const ended = b.validUntil(t);
-        const next = (b.at(t) + 1) % steps.length;
+        const next = (b.at(t) + 1) % lengths.length;
         if (!(ended > t) || b.at(ended) !== next || b.validFrom(ended) !== ended) wrong.push(t);
       }
-      expect(wrong, `steps ${steps.join(",")}`).toEqual([]);
+      expect(wrong, `steps ${lengths.join(",")}`).toEqual([]);
     }
   });
 
