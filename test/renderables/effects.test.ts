@@ -857,8 +857,9 @@ describe("the loops never jump", () => {
       const strip = Array.from({ length: 2 * columns }, (_, i) => (cellAt(i % 2, Math.floor(i / 2))));
       const move = loop(z);
       const element = listing(strip);
-      // A frame at a time, as a screen draws them: the field once, each fill
-      // touched once a share the frame holds, and in OKLCH once, not at both its steps.
+      // `touch` is pure in (color, share), so a frame touches each fill once per
+      // share it holds. The share is the field's raw value, not the level the
+      // renderer snaps it to; measured snapped, pulse and shimmer pass the bar.
       const frame = (t: number): Oklch[][] => {
         const field = move.field(t, element);
         const shares = strip.map((cell) => field(cell));
@@ -874,7 +875,7 @@ describe("the loops never jump", () => {
       let last = frame(offset);
       for (let t = 1 + offset; t < WATCHED; t++) {
         const next = frame(t);
-        next.forEach((cells, f) => cells.forEach((now, i) => (worst = Math.max(worst, last[f]![i]!.deltaE(now)))));
+        next.forEach((row, f) => row.forEach((now, i) => (worst = Math.max(worst, last[f]![i]!.deltaE(now)))));
         last = next;
       }
     }

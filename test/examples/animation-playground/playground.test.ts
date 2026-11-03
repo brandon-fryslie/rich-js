@@ -152,6 +152,7 @@ describe("animation playground", () => {
     // At one frame a second: the readout is all this reads, and sixty frames a
     // second of the whole gallery over nineteen seconds is what made it slow.
     await p.click("frame rate");
+    expect((await p.screen()).join("\n")).toContain("1 fps");
     await p.advance(10);
     await p.click("reverse");
     const from = await p.time();
