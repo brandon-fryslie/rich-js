@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-547",
+      "ref": "refs/pull/547/merge",
+      "sha": "b1a70172cd8b78bbcc449b1adfdff39d6d4b1b25",
+      "timestamp": "2026-11-03T14:19:01.185Z",
+      "commits": [
+        {
+          "sha": "b1a70172cd8b78bbcc449b1adfdff39d6d4b1b25",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T14:16:33Z",
+          "message": "Merge 24cd7beec3e0ba57df5fdf96c73622ef0f1481fa into 57a1610baefa7b0c2df845782b91114c1f2e7998\n"
+        },
+        {
+          "sha": "24cd7beec3e0ba57df5fdf96c73622ef0f1481fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T07:16:23-07:00",
+          "message": "Review fixes: visual order resolves the raw line, edges follow a stated direction, the cut trims spans as Rich does, wrap refuses visual at runtime, render draws drafts (rich-unfiled-791c.8khi)\n"
+        },
+        {
+          "sha": "5b1115d2f26c10452a3c14f55e1f231858e924de",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T07:04:47-07:00",
+          "message": "A text's wrapped rows are public as RichText, spans intact, and render draws them (rich-unfiled-791c.8khi)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-546",
       "ref": "refs/pull/546/merge",
       "sha": "34b086ccbf491714b2e22e790a2a327b66505e6d",
@@ -41,28 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-03T06:13:56-07:00",
           "message": "Pulse and shimmer stay under the 0.04 bar as drawn: the loops test measures the snapped field, and the two loops slow to 53 s and 127 s (rich-animation-42lg.twz)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-547",
-      "ref": "refs/pull/547/merge",
-      "sha": "3fb7aa198f8f200075fbb1d13a62acd297d61d61",
-      "timestamp": "2026-11-03T14:07:40.579Z",
-      "commits": [
-        {
-          "sha": "3fb7aa198f8f200075fbb1d13a62acd297d61d61",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:05:17-07:00",
-          "message": "Merge 5b1115d2f26c10452a3c14f55e1f231858e924de into 57a1610baefa7b0c2df845782b91114c1f2e7998\n"
-        },
-        {
-          "sha": "5b1115d2f26c10452a3c14f55e1f231858e924de",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:04:47-07:00",
-          "message": "A text's wrapped rows are public as RichText, spans intact, and render draws them (rich-unfiled-791c.8khi)\n"
         }
       ]
     },
