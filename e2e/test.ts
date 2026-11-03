@@ -7,42 +7,60 @@
  * like a regression in the page. Served from disk, the suite answers about the
  * page and not the network (rich-unfiled-791c.5v4l).
  *
- * [LAW:one-source-of-truth] The version is XTERM's, in the URLs it names; a
- * file's path is its URL with the package prefix taken off. The pinned
- * `@xterm/xterm` devDependency is held to it by the browser itself, which checks
- * every served file against XTERM's integrity hash and refuses one that differs.
+ * The route sits on a browser context, because that is where pages come from:
+ * the `context` fixture is routed, and a spec that makes its own context passes
+ * it through `cdn` first.
  *
- * [LAW:no-silent-failure] Any other jsDelivr request is aborted, so a new CDN
- * dependency fails at its request instead of riding the network.
+ * [LAW:one-source-of-truth] The version is XTERM's, in the URLs it names; a
+ * file's path is its URL with the package prefix taken off. The installed
+ * `@xterm/xterm` must be that version, checked when this module loads.
+ *
+ * [LAW:no-silent-failure] Any other jsDelivr request, or one naming a file the
+ * package lacks, is refused, and the test fails naming it.
  */
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { test as base } from "@playwright/test";
+import { test as base, expect, type BrowserContext } from "@playwright/test";
 import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 
 const PACKAGE_URL = XTERM.script.src.slice(0, XTERM.script.src.indexOf("/lib/") + 1);
-const PACKAGE_DIR = dirname(createRequire(import.meta.url).resolve("@xterm/xterm/package.json"));
+const PACKAGE_JSON = createRequire(import.meta.url).resolve("@xterm/xterm/package.json");
+const PACKAGE_DIR = dirname(PACKAGE_JSON);
 const CONTENT_TYPES = { ".js": "text/javascript", ".css": "text/css" } as const;
 
-export const test = base.extend<{ cdn: void }>({
-  cdn: [
-    async ({ page }, use) => {
-      await page.route("https://cdn.jsdelivr.net/**", async (route) => {
+const installed = (JSON.parse(await readFile(PACKAGE_JSON, "utf8")) as { version: string }).version;
+if (!PACKAGE_URL.endsWith(`@${installed}/`)) {
+  throw new Error(`@xterm/xterm ${installed} is installed, but the site loads ${PACKAGE_URL}`);
+}
+
+async function served(url: string): Promise<Buffer | undefined> {
+  if (!url.startsWith(PACKAGE_URL)) return undefined;
+  return readFile(join(PACKAGE_DIR, url.slice(PACKAGE_URL.length))).catch(() => undefined);
+}
+
+export const test = base.extend<{ cdn: (context: BrowserContext) => Promise<BrowserContext> }>({
+  cdn: async ({}, use) => {
+    const refused: string[] = [];
+    await use(async (context) => {
+      await context.route("https://cdn.jsdelivr.net/**", async (route) => {
         const url = route.request().url();
         const type = Object.entries(CONTENT_TYPES).find(([extension]) => url.endsWith(extension))?.[1];
-        if (!url.startsWith(PACKAGE_URL) || type === undefined) return route.abort("blockedbyclient");
+        const body = type === undefined ? undefined : await served(url);
+        if (body === undefined) {
+          refused.push(url);
+          return route.abort("blockedbyclient");
+        }
         // jsDelivr sends this; without it a crossorigin load is refused.
-        await route.fulfill({
-          body: await readFile(join(PACKAGE_DIR, url.slice(PACKAGE_URL.length))),
-          contentType: type,
-          headers: { "access-control-allow-origin": "*" },
-        });
+        await route.fulfill({ body, contentType: type, headers: { "access-control-allow-origin": "*" } });
       });
-      await use();
-    },
-    { auto: true },
-  ],
+      return context;
+    });
+    expect(refused, "jsDelivr requests the suite does not serve from disk").toEqual([]);
+  },
+  context: async ({ context, cdn }, use) => {
+    await use(await cdn(context));
+  },
 });
 
-export { expect } from "@playwright/test";
+export { expect };

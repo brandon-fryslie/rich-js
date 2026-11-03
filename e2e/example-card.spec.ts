@@ -33,15 +33,15 @@ async function edit(page: Page): Promise<void> {
   await expect(firstCard(page).locator(".cm-content")).toBeFocused({ timeout: 10_000 });
 }
 
-test("at rest, the card is the page's highlighted code over the build's output, and hydrating it moves nothing", async ({ browser }) => {
+test("at rest, the card is the page's highlighted code over the build's output, and hydrating it moves nothing", async ({ browser, cdn }) => {
   // The page as the server wrote it, with no script to hydrate it.
-  const still = await browser.newPage({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+  const still = await (await cdn(await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } }))).newPage();
   await still.goto("tables.html");
   const served = await firstCard(still).boundingBox();
   const servedText = await shown(still);
-  await still.close();
+  await still.context().close();
 
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const page = await (await cdn(await browser.newContext({ viewport: { width: 1280, height: 900 } }))).newPage();
   const errors = await open(page, "tables.html");
   await page.waitForLoadState("networkidle");
   const card = firstCard(page);
@@ -53,7 +53,7 @@ test("at rest, the card is the page's highlighted code over the build's output, 
   expect(await shown(page)).toBe(servedText);
   expect(servedText).toContain("Star Wars Box Office");
   expect(errors).toEqual([]);
-  await page.close();
+  await page.context().close();
 });
 
 test("editing the first table's rows re-renders it, and reset puts the page's back", async ({ page }) => {
