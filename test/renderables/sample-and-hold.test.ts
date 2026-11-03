@@ -60,7 +60,7 @@ describe("sampleAndHold — an effect sampled and held on a step sequence", () =
     for (const t of [0, 1, 2, 5, 1e6 + 3]) expect(fillAt(walk, t)).toBe(fillAt(quick, t));
   });
 
-  it("a hold shorter than a second is skipped at one redraw a second, and seen at sixty", () => {
+  it("a step shorter than a second is skipped at one redraw a second, and seen at sixty", () => {
     const quarters = sampleAndHold(quick, stepSequence([0.25]));
     expect(new Set([0, 1, 2, 3].map((t) => fillAt(quarters, t))).size).toBe(4);
     for (const t of [0, 1, 2, 3]) expect(fillAt(quarters, t)).toBe(fillAt(quick, t));

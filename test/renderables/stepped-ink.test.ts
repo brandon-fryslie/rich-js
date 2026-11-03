@@ -144,7 +144,7 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
     }
   });
 
-  it("refuses no steps, and a hold that is not a positive number of seconds", () => {
+  it("refuses no steps, and a step that is not a positive number of seconds", () => {
     expect(() => steppedInk([])).toThrow(/at least one step/);
     expect(() => steppedInk([{ color: BRIGHT[0]!, seconds: 0 }])).toThrow(/positive number of seconds/);
   });

@@ -524,7 +524,7 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
  * It is also the one reporter of what the view holds (`onVisibility`). Under one
  * column a renderable is hidden: in the view, with nothing of it on the frame.
  * It is drawn all the same and what it drew dropped (`holding`), so what a hidden
- * container is reported holding is what it draws, under the options it hands
+ * container reports hidden is what it draws, under the options it hands
  * each child — one description of a container's traversal, not a second
  * kept beside it.
  */

@@ -85,7 +85,7 @@ describe("Spinner", () => {
       }
     });
 
-    it("sampled once a second, draws the frame the beat has at that second", () => {
+    it("sampled once a second, draws the frame the step sequence has at that second", () => {
       // 80 ms frames, an 800 ms period: half-seconds land 0.5, 0.7 and 0.1 s into a pass.
       expect(dotAt(0.5)).toBe(DOTS[6]);
       expect(dotAt(1.5)).toBe(DOTS[8]);
