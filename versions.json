@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-548",
-      "ref": "refs/pull/548/merge",
-      "sha": "9460a67359ad9a76f2f04fd3f3aee602f13e7e5f",
-      "timestamp": "2026-11-03T15:04:54.668Z",
-      "commits": [
-        {
-          "sha": "9460a67359ad9a76f2f04fd3f3aee602f13e7e5f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T15:02:23Z",
-          "message": "Merge beae676325d6148a9519673ee83dca09364ffa3c into 86819f00c52ec1fa4bac59cb3daafe21664cedf2\n"
-        },
-        {
-          "sha": "beae676325d6148a9519673ee83dca09364ffa3c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T08:02:05-07:00",
-          "message": "Review: CLAUDE.md, docs and test titles use step sequence, validity interval, hidden (rich-unfiled-791c.oqod)\n"
-        },
-        {
-          "sha": "83f986d8e3e8ab600266f2dff16ea6f7b8f1c2f4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:53:15-07:00",
-          "message": "Review: step/phase names where validity and stepSequence leaked, END_CAPS, visibility pointer (rich-unfiled-791c.oqod)\n"
-        },
-        {
-          "sha": "ba52be7d58680536ec295652fc080bc59bbe9e02",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:45:42-07:00",
-          "message": "Comments and test titles use the renamed vocabulary: step sequence, validity, hidden, separator (rich-unfiled-791c.oqod)\n\nIdentifiers, runtime strings and the docs heading that still carry the old words are rich-unfiled-791c.gt81.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "86819f00c52ec1fa4bac59cb3daafe21664cedf2",
-      "timestamp": "2026-11-03T14:42:35.099Z",
+      "sha": "dd0a3f3ed82f775397d99f8d1e007cf8580a2646",
+      "timestamp": "2026-11-03T15:19:21.321Z",
       "commits": [
         {
-          "sha": "86819f00c52ec1fa4bac59cb3daafe21664cedf2",
+          "sha": "dd0a3f3ed82f775397d99f8d1e007cf8580a2646",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:39:33-07:00",
-          "message": "A text's wrapped rows are public as RichText, spans intact (rich-unfiled-791c.8khi) (#547)\n\n* A text's wrapped rows are public as RichText, spans intact, and render draws them (rich-unfiled-791c.8khi)\n\n* Review fixes: visual order resolves the raw line, edges follow a stated direction, the cut trims spans as Rich does, wrap refuses visual at runtime, render draws drafts (rich-unfiled-791c.8khi)\n\n* Medium review: name drawnSegments in spanFree's comment, document that append does not carry a row's direction (rich-unfiled-791c.8khi)"
+          "timestamp": "2026-11-03T08:17:14-07:00",
+          "message": "Comments and test titles use the renamed vocabulary (rich-unfiled-791c.oqod) (#548)\n\n* Comments and test titles use the renamed vocabulary: step sequence, validity, hidden, separator (rich-unfiled-791c.oqod)\n\nIdentifiers, runtime strings and the docs heading that still carry the old words are rich-unfiled-791c.gt81.\n\n* Review: step/phase names where validity and stepSequence leaked, END_CAPS, visibility pointer (rich-unfiled-791c.oqod)\n\n* Review: CLAUDE.md, docs and test titles use step sequence, validity interval, hidden (rich-unfiled-791c.oqod)"
         }
       ]
     }
