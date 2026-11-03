@@ -451,7 +451,7 @@ describe("Live refresh rate", () => {
   // rich-animation-xi28.6rs: a Live draws each frame of what it shows, not a
   // sample of them — it reads when the frame next changes off the frame it
   // drew and wakes then, or at its rate, whichever is sooner.
-  it("draws each frame of a sequence whose holds are shorter than its interval, in order, none skipped", () => {
+  it("draws each frame of a sequence whose steps are shorter than its interval, in order, none skipped", () => {
     const clock = fakeClock();
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
     const seq = new FrameSequence(["a", "b", "c"].map((glyph) => ({ text: new RichText(glyph), seconds: 0.1 })));

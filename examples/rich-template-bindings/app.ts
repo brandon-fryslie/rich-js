@@ -630,8 +630,8 @@ const GAUGE_TMPL =
 {{- $max := color "error" -}}
 {{ "effort " | dim }}{{ frames 1 ("›" | fg $up | bold) 1 ("››" | fg $hot | bold) 1 ("›››" | fg $max | bold) }}{{ " max" | dim }}`;
 
-const BEAT_TMPL =
-`{{ "waiting" | dim }}{{ frames 0.4 "." 0.4 ".." 0.4 "..." }}  {{ frames 0.5 ("█" | fg (color "primary")) 0.5 " " }}  {{ "a hold of its own: " | dim }}{{ frames 2 ("long" | fg (color "accent")) 0.25 ("blink" | fg (color "warning")) }}`;
+const STEP_TMPL =
+`{{ "waiting" | dim }}{{ frames 0.4 "." 0.4 ".." 0.4 "..." }}  {{ frames 0.5 ("█" | fg (color "primary")) 0.5 " " }}  {{ "each step its own length: " | dim }}{{ frames 2 ("long" | fg (color "accent")) 0.25 ("blink" | fg (color "warning")) }}`;
 
 // `stepped <seconds> <color> …` is the color in progress at the moment, a
 // color value like any other, so it goes wherever a color goes: here into
@@ -642,9 +642,9 @@ const SIGNAL_TMPL =
 {{- $ink := ensureContrast (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}
 {{ "effort " | dim }}{{ frames 1 "›" 1 "››" 1 "›››" | fg $ink | bg $bg | bold }}{{ " max" | dim }}`;
 
-const secFrames = makeSection("Frames — content on a beat, drawn for the frame's time", [
+const secFrames = makeSection("Frames — content stepped in seconds, drawn for the frame's time", [
   makeDemoRow("one-second frames at one width", GAUGE_TMPL, animatedEngine),
-  makeDemoRow("holds are seconds, and may differ", BEAT_TMPL, animatedEngine),
+  makeDemoRow("steps are seconds, and may differ", STEP_TMPL, animatedEngine),
   makeDemoRow("stepped color, kept readable", SIGNAL_TMPL, animatedEngine),
 ]);
 

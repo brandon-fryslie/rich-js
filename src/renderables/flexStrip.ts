@@ -98,17 +98,17 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
 
     const maxWidth = Math.max(1, options.maxWidth);
     const gap = this.gap;
-    const joiner = this.separator;
+    const separator = this.separator;
 
     // Pre-render every item and every separator form we might need. Doing this
     // up-front turns packing into a pure data computation over widths.
     const itemBlocks = items.map((it) => renderToBlock(drawItem(it), options));
     const startCap = (i: number): RenderedBlock =>
-      joiner ? renderToBlock(drawJoin(joiner, null, items[i]!, { index: i }), options) : EMPTY_BLOCK;
+      separator ? renderToBlock(drawJoin(separator, null, items[i]!, { index: i }), options) : EMPTY_BLOCK;
     const endCap = (i: number): RenderedBlock =>
-      joiner ? renderToBlock(drawJoin(joiner, items[i]!, null, { index: i + 1 }), options) : EMPTY_BLOCK;
+      separator ? renderToBlock(drawJoin(separator, items[i]!, null, { index: i + 1 }), options) : EMPTY_BLOCK;
     const midJoin = (i: number, j: number): RenderedBlock =>
-      joiner ? renderToBlock(drawJoin(joiner, items[i]!, items[j]!, { index: j }), options) : EMPTY_BLOCK;
+      separator ? renderToBlock(drawJoin(separator, items[i]!, items[j]!, { index: j }), options) : EMPTY_BLOCK;
 
     // Build lines as arrays of "blocks" (item or join). Each line begins with
     // the start-cap for its first item and ends with the end-cap for its last.

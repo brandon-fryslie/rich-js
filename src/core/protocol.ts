@@ -167,7 +167,7 @@ export interface RenderOptions {
    * rows in view. An effect's frames ride only on the effect's cells. It reaches whatever `frame` reaches, so a container that hands
    * its child the frame's time hands back the child's validity with no word about
    * either. [LAW:composability] Absent, nobody is listening. A measurement
-   * (`measuring`) and a hidden render (`holding`) tell too: what they find
+   * (`measuring`) and a hidden render (`hiding`) tell too: what they find
    * decides the frame's layout, so when it changes, the frame may.
    */
   onValidity?: (validity: ValidityInterval) => void;
@@ -523,7 +523,7 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
  *
  * It is also the one reporter of what the view holds (`onVisibility`). Under one
  * column a renderable is hidden: in the view, with nothing of it on the frame.
- * It is drawn all the same and what it drew dropped (`holding`), so what a hidden
+ * It is drawn all the same and what it drew dropped (`hiding`), so what a hidden
  * container reports hidden is what it draws, under the options it hands
  * each child — one description of a container's traversal, not a second
  * kept beside it.
@@ -531,7 +531,7 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
 export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
   const opens = active === undefined;
   const visibility: Visibility = drawsNothing(options) ? "hidden" : "visible";
-  const { phase, drawing } = visibility === "visible" ? { phase: phaseHere(), drawing: options } : holding(options);
+  const { phase, drawing } = visibility === "visible" ? { phase: phaseHere(), drawing: options } : hiding(options);
   const drawn = runIn(phase, () => {
     options.onVisibility?.(renderable, visibility);
     return renderable.render(drawing);
@@ -565,7 +565,7 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * as none, so none reaches a `render`, where it would be a count no string
  * can repeat.
  */
-function holding(options: RenderOptions): { phase: WrapMode; drawing: RenderOptions } {
+function hiding(options: RenderOptions): { phase: WrapMode; drawing: RenderOptions } {
   const { onVisibility, onReads } = options;
   return {
     phase: { pass: phaseHere().pass, effects: [] },

@@ -15,15 +15,15 @@ This pattern shows up everywhere in terminal UIs and was previously hand-rolled 
 ## The shape
 
 ```js
-joiner(null, items[0]),
+separator(null, items[0]),
 items[0],
-joiner(items[0], items[1]),
+separator(items[0], items[1]),
 items[1],
 ...,
-joiner(items[N-1], null)
+separator(items[N-1], null)
 ```
 
-Endpoints (`null` left or right) are explicit positions in the protocol — every joiner names what an endpoint looks like rather than the strip guessing.
+Endpoints (`null` left or right) are explicit positions in the protocol — every separator names what an endpoint looks like rather than the strip guessing.
 
 ## Basic use
 
@@ -47,7 +47,7 @@ const strip = new Strip(
 console.print(strip);
 ```
 
-The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's color and closes with a tail cap in the last cell's, each with no bg of its own. The lead is a notch cut into the first cell — as if an arrow before it pointed in — rather than a shape pointing out, and the tail is the arrow pointing on out, so a run reads as one chevron from end to end. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's color and closes with a tail cap in the last cell's, each with no bg of its own. The lead is a notch cut into the first cell — as if an arrow before it pointed in — rather than a shape pointing out, and the tail is the arrow pointing on out, so a run reads as one chevron from end to end. Swap the separator — the strip restyles with no other code change.
 
 `noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — without it, a cell's default `end` would draw a trailing `"\n"` into the middle of the strip's single line, breaking the layout it is meant to hold together.
 
@@ -57,7 +57,7 @@ It measures as the one row it draws, and since that row never wraps, its width i
 
 ## A seam and its caps
 
-Every built-in joiner is a `CellSeparator`, and what tells them apart is data, in two halves picked independently of each other:
+Every built-in separator is a `CellSeparator`, and what tells them apart is data, in two halves picked independently of each other:
 
 - a `SeparatorSeam`, the middle: what is drawn between two neighbours;
 - a `EndCaps`, the ends: what is drawn where a run of color begins and ends.
@@ -96,7 +96,7 @@ A `JoinCell` is a glyph and the two colors it is drawn in, `fg` and `bg`. Each c
 
 Nobody knows the color of `"ground"`, so it is never mixed, and a cell may put it on one side only. As a `bg` it leaves the terminal's background showing. As an `fg` the cell is drawn in reverse video (SGR 7), filled with its `bg` color while the glyph's ink shows the terminal's background. So an inverted shape is the same glyph drawn the other way round, never a glyph of its own.
 
-A joiner is checked once, when it is built, and the constructor throws on any of these:
+A separator is checked once, when it is built, and the constructor throws on any of these:
 
 - a cell with `"ground"` on both sides, or inside a `mix`;
 - a `lead` naming the `left` neighbour, or a `tail` naming the `right` one;
@@ -150,11 +150,11 @@ A space has no glyph to color: whatever its glyph's color, it shows its backgrou
 
 A neighbour's background is read as drawn too, flattened onto the render substrate, so a cell painted in it continues that neighbour rather than compositing a second time over whatever the cell sits on.
 
-## Built-in joiners
+## Built-in separators
 
-`SEPARATOR_STYLES` is the table of bundled joiners, by name, each a seam from `SEPARATORS` ended in caps from `END_CAPS`. Every seam in `SEPARATORS` has the name of the joiner it comes from, so `SEPARATORS.prism` is the middle of `SEPARATOR_STYLES.prism`.
+`SEPARATOR_STYLES` is the table of bundled separators, by name, each a seam from `SEPARATORS` ended in caps from `END_CAPS`. Every seam in `SEPARATORS` has the name of the separator it comes from, so `SEPARATORS.prism` is the middle of `SEPARATOR_STYLES.prism`.
 
-A joiner named in a consumer's config is read with `separatorNamed`. It takes a name from `SEPARATOR_STYLES`, or a seam and caps named apart, and throws on a name its table lacks:
+A separator named in a consumer's config is read with `separatorNamed`. It takes a name from `SEPARATOR_STYLES`, or a seam and caps named apart, and throws on a name its table lacks:
 
 ```typescript
 // SEPARATOR_STYLES.prism, then SEPARATORS.prism ended in END_CAPS.capsule.
@@ -252,7 +252,7 @@ for (const name of ["prism", "bubble", "metro", "torn"] as const) {
 
 `END_CAPS` holds the ends, and any of them ends any seam:
 
-- `powerline`, `slant`, `backslant`, `flame`, `pixel`, `ice`, `bubble` — the joiner's glyph reversed out of the terminal's background at the lead, a notch, and drawn over that background at the tail, so a run reads as one shape pointing the same way end to end. ASCII opens each run flat.
+- `powerline`, `slant`, `backslant`, `flame`, `pixel`, `ice`, `bubble` — the separator's glyph reversed out of the terminal's background at the lead, a notch, and drawn over that background at the tail, so a run reads as one shape pointing the same way end to end. ASCII opens each run flat.
 - `capsule` — rounded ends pointing out: U+E0B6 opens a run and U+E0B4 closes it, each in the run's background over the terminal's. ASCII draws `(` and `)`.
 - `wrapper` — arrows pointing out: U+E0B2 opens and U+E0B0 closes. ASCII draws `<` and `>`.
 - `flat` — nothing; a run's background ends square.
@@ -289,14 +289,14 @@ console.print(
 
 - The seam is `steps` cells, a positive whole number (4 by default), each filled with one color: cell `i` is the color `(i + ½) / steps` of the way from the left item's background to the right's, so no cell is either background. Each cell is a space with `"ground"` as its `fg`, no color on its ink side, so its one color is its fill, and the ASCII form is the same ramp.
 - With no ink color, the step that holds a seam's ink off its background ([Every seam shows](#every-seam-shows)) has nothing to move, and the ramp is the blend itself. It never turns back, however close the two backgrounds are and however many steps there are.
-- Between two backgrounds alike the ramp is that background, and the join does not show. A gradient is a fill, the blend of the backgrounds beside it and nothing else, and the blend of one color is that color. A join that must show between two alike is a named joiner's, whose glyph has ink to lift.
+- Between two backgrounds alike the ramp is that background, and the join does not show. A gradient is a fill, the blend of the backgrounds beside it and nothing else, and the blend of one color is that color. A join that must show between two alike is a named separator's, whose glyph has ink to lift.
 - A gradient needs two colors to ramp between, so beside an item whose `bgcolor` is absent or `default` the join is an endpoint, and draws the caps the ramp is ended in: nothing, with `END_CAPS.flat`.
 - A named background (`blue`, `color(4)`) is the terminal theme's own shade, so each sample is a `blend(…)` color of the two anchors rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
 - Best on truecolor. At 256 colors each cell is drawn as its color's nearest table entry, so neighbouring cells share an entry and the ramp draws in bands. At sixteen colors each is the nearest of the terminal's slots.
 
-## Custom joiners
+## Custom separators
 
-A seam and its caps cover any join drawn as fixed runs of cells. Underneath them, a joiner is a pure function `(leftItem | null, rightItem | null, { index }) -> Renderable`, and implementing that interface defines a joiner no seam and caps can express. `index` counts joins from the strip's start: the join before item `i` is `i`, and the end after the last of `n` items is `n`. Where a `FlexStrip` wraps, the end cap and the next line's lead both carry the index of the seam they replace, so every seam keeps its index however the strip wraps.
+A seam and its caps cover any join drawn as fixed runs of cells. Underneath them, a separator is a pure function `(leftItem | null, rightItem | null, { index }) -> Renderable`, and implementing that interface defines a separator no seam and caps can express. `index` counts joins from the strip's start: the join before item `i` is `i`, and the end after the last of `n` items is `n`. Where a `FlexStrip` wraps, the end cap and the next line's lead both carry the index of the seam they replace, so every seam keeps its index however the strip wraps.
 
 ```typescript
 import type { Separator, Renderable, RenderOptions, StyledRenderable } from "@promptctl/rich-js";
@@ -324,9 +324,9 @@ console.print(
 );
 ```
 
-Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right", options: RenderOptions): Style`, which reports the style of the item's leftmost or rightmost cell column. It takes the render's options because an edge's style may be a [theme](./style#style-themes) name, and only the render knows which theme it is drawing for. So a joiner reads edges inside the `render` of the renderable it returns, as `SplitSeparator` does, and never in `join`. `RichText` implements `StyledRenderable` directly; consumers with richer items can implement the interface themselves.
+Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right", options: RenderOptions): Style`, which reports the style of the item's leftmost or rightmost cell column. It takes the render's options because an edge's style may be a [theme](./style#style-themes) name, and only the render knows which theme it is drawing for. So a separator reads edges inside the `render` of the renderable it returns, as `SplitSeparator` does, and never in `join`. `RichText` implements `StyledRenderable` directly; consumers with richer items can implement the interface themselves.
 
-Every cell an item draws in a strip is stamped with that item as its owner, so an effect can pick out one item with [`confined`](./effects#one-element-of-many). A cell a `CellSeparator` paints from its neighbours is no item's: it records what it was drawn from, so under an effect it is drawn again from the item cells beside it as the effect left them, its lift included, and a seam follows its neighbours wherever an effect takes them. A cell painted from a style name alone, such as `plain`'s separator, and any other joiner's cells belong to the join alone, and an effect paints them as it paints any cell.
+Every cell an item draws in a strip is stamped with that item as its owner, so an effect can pick out one item with [`confined`](./effects#one-element-of-many). A cell a `CellSeparator` paints from its neighbours is no item's: it records what it was drawn from, so under an effect it is drawn again from the item cells beside it as the effect left them, its lift included, and a seam follows its neighbours wherever an effect takes them. A cell painted from a style name alone, such as `plain`'s seam, and any other separator's cells belong to the join alone, and an effect paints them as it paints any cell.
 
 ## Edge styles are the protocol
 
@@ -337,7 +337,7 @@ Separators read only the two edge columns. `SEPARATOR_STYLES.powerline` between 
 
 and, where those two are drawn within `SEAM_MIN_DELTA_E` of each other, lifts the `fg` off the `bg` ([Every seam shows](#every-seam-shows)).
 
-The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
+The interior of each item is invisible to the separator. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the separator actually meets matters.
 
 ### Inline variation inside a cell
 
@@ -355,17 +355,17 @@ status.stylize("bright_red",   11, 13); // "-2"
 console.print(new Strip([status, cell(" rich-js ", "#ffffff on #9333ea")], SEPARATOR_STYLES.powerline));
 ```
 
-The cell's left and right edges both report `white on blue` (the base style), so the powerline arrows on either side stay consistent. The `S`/`+3`/`-2` runs in the interior have their own fg without touching the joiner.
+The cell's left and right edges both report `white on blue` (the base style), so the powerline arrows on either side stay consistent. The `S`/`+3`/`-2` runs in the interior have their own fg without touching the separator.
 
 ### When the two edges differ
 
-If the leftmost and rightmost columns of a cell carry different backgrounds (e.g. a gradient cell, or a cell whose first or last character has a span that overrides `bgcolor`), the joiner on each side picks up that edge's actual bg. This is by design — the join meets the column it visually abuts. Nothing requires a cell's background to be uniform: each item reports what its edges actually look like, and the joiner adapts.
+If the leftmost and rightmost columns of a cell carry different backgrounds (e.g. a gradient cell, or a cell whose first or last character has a span that overrides `bgcolor`), the separator on each side picks up that edge's actual bg. This is by design — the join meets the column it visually abuts. Nothing requires a cell's background to be uniform: each item reports what its edges actually look like, and the separator adapts.
 
 ## Why this is a primitive
 
 - **The join is a pure function.** Trivial to unit-test in isolation, trivial to compose. Powerline-vs-capsule is one value swapped for another.
 - **Endpoints are explicit.** `join(null, X, …)` and `join(X, null, …)` are first-class positions — no special-casing the first/last segment after the fact.
-- **Edge-painter on a path graph.** The strip is a path, items are vertices, joiners paint edges — a clean shape that generalises to any "look at my neighbour's style" pattern.
+- **Edge-painter on a path graph.** The strip is a path, items are vertices, separators paint edges — a clean shape that generalises to any "look at my neighbour's style" pattern.
 
 ## `FlexStrip` — wrap-to-width packing
 
@@ -389,8 +389,8 @@ console.print(strip);
 ```
 
 Options:
-- `separator` — same `Separator<T>` protocol; endpoint joins fire at every line boundary. Optional: with no joiner, nothing is drawn between items but the gap.
-- `gap` — cells inserted on *each* side of the slot between two items, so neighbours sit `2 × gap` cells apart plus whatever the joiner draws (default 0). The gap applies whether or not there is a joiner — `{ gap: 1 }` alone puts two spaces between items.
+- `separator` — same `Separator<T>` protocol; endpoint joins fire at every line boundary. Optional: with no separator, nothing is drawn between items but the gap.
+- `gap` — cells inserted on *each* side of the slot between two items, so neighbours sit `2 × gap` cells apart plus whatever the separator draws (default 0). The gap applies whether or not there is a separator — `{ gap: 1 }` alone puts two spaces between items.
 - `align` — `"left"` (default), `"center"`, `"right"`, or `"justify"` (distributes spare width across inter-item slots on non-final lines).
 
 If an item is wider than `maxWidth`, it gets its own line, drawn at whatever width the item renders to — graceful overflow rather than a hard crash. A `noWrap` cell cuts itself at `maxWidth` by its `overflow` method. A cell with `overflow: "ignore"` renders at full width, and `console.print(strip)` then [crops](./console#cropping) that line at the console width, as it does every line it prints; pass `{ crop: false }` to keep the item whole.
@@ -398,4 +398,4 @@ If an item is wider than `maxWidth`, it gets its own line, drawn at whatever wid
 ## Out of scope
 
 - Vertical strips (column layouts) — same pattern transposed; defer until a use case shows up.
-- Animation / live-update joiners — the strip is a layout primitive, not a temporal one.
+- Animation / live-update separators — the strip is a layout primitive, not a temporal one.

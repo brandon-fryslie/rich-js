@@ -413,10 +413,10 @@ export function positiveSeconds(what: string, seconds: number): void {
  * held for a second and the next for a quarter are one step sequence.
  */
 export interface StepSequence {
-  readonly holds: readonly number[];
+  readonly steps: readonly number[];
   /** The sum of the steps: how long one pass takes, in seconds. */
   readonly period: number;
-  /** Which step is in progress at `t` seconds: an index into `holds`. */
+  /** Which step is in progress at `t` seconds: an index into `steps`. */
   at(t: number): number;
   /**
    * When the step in progress at `t` began, in seconds on `t`'s own
@@ -440,7 +440,7 @@ export interface StepSequence {
 
 /** A step sequence of one step that never ends: step 0 at every time, never changing — what every step sequence is reduced to. */
 const STILL: StepSequence = {
-  holds: [Number.POSITIVE_INFINITY],
+  steps: [Number.POSITIVE_INFINITY],
   period: Number.POSITIVE_INFINITY,
   at: () => 0,
   validFrom: () => Number.NEGATIVE_INFINITY,
@@ -576,24 +576,24 @@ export function firstReaching(near: number, reached: (x: number) => boolean): nu
   }
 }
 
-/** `holds` as a `StepSequence`; a step sequence with no step, or a step that is not a positive number of seconds, throws. */
-export function stepSequence(holds: readonly number[]): StepSequence {
-  if (holds.length === 0) throw new RangeError("a step sequence needs at least one step");
-  holds.forEach((seconds, i) => positiveSeconds(`step ${i}`, seconds));
-  const period = holds.reduce((sum, seconds) => sum + seconds, 0);
+/** `lengths` as a `StepSequence`; a step sequence with no step, or a step that is not a positive number of seconds, throws. */
+export function stepSequence(lengths: readonly number[]): StepSequence {
+  if (lengths.length === 0) throw new RangeError("a step sequence needs at least one step");
+  lengths.forEach((seconds, i) => positiveSeconds(`step ${i}`, seconds));
+  const period = lengths.reduce((sum, seconds) => sum + seconds, 0);
   // Where each step begins, in seconds into the period: the unit
   // `wrapSeconds` answers in, so the sum a boundary sits at is the number
   // the wrap of a `t` on that boundary produces, and the step that begins
   // there is the one in progress, at any rate the host samples.
   const starts: number[] = [];
   let elapsed = 0;
-  for (const seconds of holds) {
+  for (const seconds of lengths) {
     starts.push(elapsed);
     elapsed += seconds;
   }
   // A copy, and the one `at` walks: what `at` and `period` were built from
-  // stays what `holds` says whatever the caller does to its array.
-  const own = [...holds];
+  // stays what `lengths` says whatever the caller does to its array.
+  const own = [...lengths];
   // The last step whose start the time has reached. The first starts at
   // 0, so the walk always stops, and its length is the count of steps,
   // never a function of `t`.
@@ -619,10 +619,10 @@ export function stepSequence(holds: readonly number[]): StepSequence {
         const { pass, into } = passAt(what, began, period);
         return index(into) === i && pass === p;
       },
-      () => `${what}: hold ${i} (${own[i]} s) is finer than time resolves near t = ${t}`,
+      () => `${what}: step ${i} (${own[i]} s) is finer than time resolves near t = ${t}`,
     );
   return {
-    holds: own,
+    steps: own,
     period,
     at(t) {
       return index(wrapSeconds("StepSequence.at", t, period));

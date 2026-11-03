@@ -37,10 +37,10 @@ describe("a join whose every cell already stands off its ground", () => {
     const drawn: Record<string, string> = {};
     for (const [palette, styles] of Object.entries(APART)) {
       const items = styles.map((style, i) => cell(` ${i} `, style));
-      for (const [name, joiner] of Object.entries(SEPARATOR_STYLES)) {
+      for (const [name, separator] of Object.entries(SEPARATOR_STYLES)) {
         for (const [depth, colorSystem] of Object.entries(DEPTHS)) {
           for (const asciiOnly of [false, true]) {
-            drawn[`${palette} ${name} ${depth}${asciiOnly ? " ascii" : ""}`] = renderToString(new Strip(items, joiner), { colorSystem, asciiOnly, width: 80 });
+            drawn[`${palette} ${name} ${depth}${asciiOnly ? " ascii" : ""}`] = renderToString(new Strip(items, separator), { colorSystem, asciiOnly, width: 80 });
           }
         }
       }

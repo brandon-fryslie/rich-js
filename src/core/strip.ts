@@ -583,7 +583,7 @@ export interface EdgeMove {
  * (`../renderables/effect.ts`). A seam then follows its neighbours wherever an
  * effect takes them, a mix of the two included, and an effect that paints
  * both one color leaves the seam's ink lifted off it. A cell painted from
- * roles and the terminal's ground alone, as `plain`'s separator is, follows
+ * roles and the terminal's ground alone, as `plain`'s seam is, follows
  * nobody, and an effect paints it as it paints any cell.
  */
 export class JoinedCell {
@@ -819,7 +819,7 @@ export const END_CAPS = Object.freeze({
 
 /**
  * The bundled separators, by name: each a seam from `SEPARATORS` ended in caps from
- * `END_CAPS`. What each draws is `docs/strip.md`'s "Built-in joiners"; a name from
+ * `END_CAPS`. What each draws is `docs/strip.md`'s "Built-in separators"; a name from
  * config is read with `separatorNamed`.
  */
 export const SEPARATOR_STYLES = Object.freeze({
