@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Animation, ColorDepth, EASES, FrameSequence, WrapMode, RichText, Segment, Spinner, Timeline, stepSequence, fadeIn, render, tween, type StepSequence, type Renderable } from "../../src/index.js";
+import { Animation, ColorDepth, cyclic, EASES, FrameSequence, WrapMode, RichText, Segment, Spinner, Timeline, stepSequence, fadeIn, render, tween, type StepSequence, type Renderable } from "../../src/index.js";
 import { inFrame } from "../renderables/in-frame.js";
 import { nextDown } from "./next-down.js";
 
@@ -192,6 +192,22 @@ describe("Animation.sequence", () => {
     for (const seconds of [0, -1, NEVER, Number.NaN]) {
       expect(() => Animation.sequence(first, seconds, then)).toThrow(/Animation.sequence seconds must be a positive number of seconds/);
     }
+  });
+});
+
+describe("cyclic", () => {
+  it("counts round the list both ways", () => {
+    const nth = cyclic(["a", "b", "c"]);
+    expect([-4, -3, -1, 0, 1, 2, 3, 7].map(nth)).toEqual(["c", "a", "c", "a", "b", "c", "a", "b"]);
+  });
+
+  it("refuses an empty list when the rotation is made", () => {
+    expect(() => cyclic([])).toThrow(RangeError);
+  });
+
+  it("composed with repeat, plays the turns in order, and the turn before 0 is the last", () => {
+    const rotation = Animation.repeat(2, cyclic([Animation.constant("x"), Animation.constant("y"), Animation.constant("z")]));
+    expect([-0.5, 0.5, 2.5, 4.5, 6.5].map((t) => rotation.at(t))).toEqual(["z", "x", "y", "z", "x"]);
   });
 });
 

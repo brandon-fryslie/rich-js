@@ -35,6 +35,7 @@
  */
 
 import { Animation } from "../core/animation.js";
+import { passAt, positiveSeconds, stepSequence } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { render, withBoundedWidth } from "../core/protocol.js";
@@ -60,7 +61,61 @@ export function scroll(content: Renderable, options: ScrollOptions): Animation<R
   for (const [name, n] of [["width", width], ["height", height]] as const) {
     if (!(Number.isInteger(n) && n > 0)) throw new RangeError(`scroll: ${name} must be a positive whole number of cells, got ${n}`);
   }
-  return Animation.map(Animation.all([col, row]), ([c, r]) => new ScrollFrame(content, width, height, cells("col", c), cells("row", r)));
+  return Animation.map(Animation.all([col, row]), ([c, r]) => {
+    const window: Window = { col: cells("col", c), row: cells("row", r), height };
+    return new ScrollFrame(content, width, () => window);
+  });
+}
+
+/** How a marquee crosses its slot. */
+export interface MarqueeOptions {
+  /** The slot's width in cells. */
+  readonly width: number;
+  /** The seconds the content holds at each cell before it moves one on. */
+  readonly step: number;
+}
+
+/**
+ * `content` crossing a slot `width` cells wide, one cell every `step`
+ * seconds, right to left: it leaves on the left, then enters again from the
+ * right, for ever, before 0 too. Any renderable with a natural width crosses
+ * — the span is that width plus the slot's, read when the frame is drawn —
+ * and the slot is as tall as the content, so every row of it crosses.
+ *
+ * It changes only on a step's boundary, whatever the content's width, so a
+ * host sleeps between steps. Step 0 shows the content from its first column;
+ * reduced, it holds there, the start in view.
+ */
+export function marquee(content: Renderable, options: MarqueeOptions): Animation<Renderable> {
+  const { width, step } = options;
+  if (!(Number.isInteger(width) && width > 0)) throw new RangeError(`marquee: width must be a positive whole number of cells, got ${width}`);
+  positiveSeconds("marquee step", step);
+  // [LAW:single-enforcer] Which step a time is in is `passAt`'s pass, and its two ends a one-hold
+  // step sequence's, the wrap `Animation.repeat` reads its turns through.
+  const holds = stepSequence([step]);
+  const stepped: Animation<number> = Animation.of({
+    at: (t: number) => passAt("marquee", t, step).pass,
+    validUntil: (t: number) => holds.validUntil(t),
+    validFrom: (t: number) => holds.validFrom(t),
+    reduced: () => Animation.constant(0),
+  });
+  return Animation.map(stepped, (n) => new ScrollFrame(content, width, (drawn) => {
+    const span = drawn.width + width;
+    return { col: ((((n + width) % span) + span) % span) - width, row: 0, height: drawn.rows };
+  }));
+}
+
+/** Where a frame's slot sits on the content: columns left of it, rows above it, and how many rows it shows. */
+interface Window {
+  readonly col: number;
+  readonly row: number;
+  readonly height: number;
+}
+
+/** The size of what the content drew: its natural width, and its rows. */
+interface Drawn {
+  readonly width: number;
+  readonly rows: number;
 }
 
 /** `offset` rounded to the nearest cell. [LAW:no-silent-failure] One that is not finite has no cell to move to, and says so rather than drawing a blank slot. */
@@ -83,31 +138,36 @@ function naturalWidth(content: Renderable, options: RenderOptions): number {
   return natural;
 }
 
-/** One frame of a scroll: `content`'s cells from column `col` and row `row`, `width` by `height` of them, blank where it has none. */
+/**
+ * One frame of a scroll: `width` cells of each row of `content` the window
+ * shows, blank where it has none. [LAW:one-type-per-behavior] The window is
+ * always a function of what the content drew: a scroll's ignores it, a
+ * marquee's crosses the width it learns.
+ */
 class ScrollFrame implements Renderable, Measurable {
   constructor(
     readonly content: Renderable,
     readonly width: number,
-    readonly height: number,
-    readonly col: number,
-    readonly row: number,
+    readonly window: (drawn: Drawn) => Window,
   ) {}
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
     // The slot is cropped to the room it is given, as a `Panel` of a declared width is.
     const width = Math.min(this.width, options.maxWidth);
-    const drawn = [...render(this.content, { ...options, maxWidth: naturalWidth(this.content, options), height: undefined })];
+    const natural = naturalWidth(this.content, options);
+    const drawn = [...render(this.content, { ...options, maxWidth: natural, height: undefined })];
     const lines = Segment.splitLines(drawn);
-    const blank = Math.min(width, Math.max(0, -this.col));
-    const start = Math.max(0, this.col);
+    const { col, row, height } = this.window({ width: natural, rows: lines.length });
+    const blank = Math.min(width, Math.max(0, -col));
+    const start = Math.max(0, col);
     // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
     // when anything in the content does — a row above the slot entering pushes every row down, and run
     // backwards, leaving it pulls them up. The cut throws away the cells that hold rode on, so it is
     // told to the frame (`RenderOptions.onValidity`).
     options.onValidity?.({ validFrom: Segment.validFrom(drawn), validUntil: Segment.validUntil(drawn) });
-    for (let r = 0; r < this.height; r++) {
-      const line = lines[this.row + r] ?? [];
+    for (let r = 0; r < height; r++) {
+      const line = lines[row + r] ?? [];
       const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];
       yield* Segment.adjustLineLength([new Segment(" ".repeat(blank)), ...shown], width);
       yield Segment.line();

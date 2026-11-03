@@ -338,6 +338,12 @@
   border-bottom: 1px solid var(--vp-c-divider);
 }
 
+/* Every card's editor is as tall as its program up to most of the screen;
+ * past that it scrolls. */
+.vp-doc .rich-example-editor > .cm-editor {
+  max-height: 70vh;
+}
+
 /* Beside a list taller than its code, the editor still fills its column. */
 .vp-doc .rich-example-files-listed > .rich-example-editor > .cm-editor {
   height: 100%;
@@ -584,11 +590,9 @@
   padding: 24px;
 }
 
-/* The editor is as tall as its program, between a floor and most of the
- * screen; past that it scrolls. */
+/* The playground's editor has a floor; its ceiling is every card's. */
 .rich-playground .cm-editor {
   min-height: 16em;
-  max-height: 70vh;
 }
 
 .vp-doc .rich-playground-failure {
@@ -597,9 +601,12 @@
 }
 
 @media (max-width: 959px) {
+  .vp-doc .rich-example-editor > .cm-editor {
+    max-height: 50vh;
+  }
+
   .rich-playground .cm-editor {
     min-height: 8em;
-    max-height: 50vh;
   }
 }
 

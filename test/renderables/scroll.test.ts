@@ -14,7 +14,7 @@ import { Constrain } from "../../src/renderables/constrain.js";
 import { drawnAt, inFrame } from "./in-frame.js";
 import { Group } from "../../src/renderables/group.js";
 import { Rule } from "../../src/renderables/rule.js";
-import { scroll } from "../../src/renderables/scroll.js";
+import { marquee, scroll } from "../../src/renderables/scroll.js";
 
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 
@@ -186,5 +186,51 @@ describe("scroll", () => {
       const paused = Timeline.pause(Timeline.play(0), 1);
       for (const t of [1, 5]) expect(drawn(paused, slide, t).validUntil).toBe(Number.POSITIVE_INFINITY);
     });
+  });
+});
+
+describe("marquee", () => {
+  const WORD = new RichText("abcd");
+  const shown = (content: Renderable, t: number, width = 6): string[] => rows(draw(marquee(content, { width, step: 0.5 }).at(t)));
+
+  it("moves one cell a step, leaves on the left, and enters again from the right, before 0 too", () => {
+    expect(shown(WORD, 0)).toEqual(["abcd  "]);
+    expect(shown(WORD, 0.5)).toEqual(["bcd   "]);
+    expect(shown(WORD, 1.9)).toEqual(["d     "]);
+    // A span of 4 + 6 = 10 steps: gone at step 4, entering at the right edge at step 5.
+    expect(shown(WORD, 2)).toEqual(["      "]);
+    expect(shown(WORD, 2.5)).toEqual(["     a"]);
+    expect(shown(WORD, 5)).toEqual(["abcd  "]);
+    expect(shown(WORD, -0.5)).toEqual([" abcd "]);
+  });
+
+  it("changes only on a step's boundary, at the start and a million seconds in", () => {
+    const moving = marquee(WORD, { width: 6, step: 0.5 });
+    expect(moving.validUntil(0.1)).toBe(0.5);
+    expect(moving.validFrom(0.1)).toBe(0);
+    expect(moving.validUntil(1_000_000.2)).toBeCloseTo(1_000_000.5, 6);
+  });
+
+  it("reduced, holds the content's start in view", () => {
+    const still = marquee(WORD, { width: 6, step: 0.5 }).reduced();
+    expect(rows(draw(still.at(3.7)))).toEqual(["abcd  "]);
+    expect(still.validUntil(3.7)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("crosses content wider than its slot, and keeps every row of multi-row content", () => {
+    expect(shown(LINE, 1)).toEqual(["cdefgh"]);
+    expect(shown(LOG, 0.5, 4)).toEqual(["ne  ", "wo  ", "hree", "our "]);
+  });
+
+  it("draws the same bytes for the same moment at one sample a second and sixty", () => {
+    const moving = marquee(LINE, { width: 6, step: 0.25 });
+    const once = sampled(1, 0, 10).map((t) => bytes(draw(moving.at(t))));
+    const often = sampled(60, 0, 10).filter((_, i) => i % 60 === 0).map((t) => bytes(draw(moving.at(t))));
+    expect(often).toEqual(once);
+  });
+
+  it("refuses a slot that is not a positive whole number of cells, and a step that is not a positive time", () => {
+    expect(() => marquee(WORD, { width: 0, step: 1 })).toThrow(RangeError);
+    expect(() => marquee(WORD, { width: 4, step: 0 })).toThrow(RangeError);
   });
 });
