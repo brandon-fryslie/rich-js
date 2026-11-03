@@ -855,20 +855,27 @@ describe("the loops never jump", () => {
     let worst = 0;
     for (const { columns, z, offset } of ELEMENTS) {
       const strip = Array.from({ length: 2 * columns }, (_, i) => (cellAt(i % 2, Math.floor(i / 2))));
-      for (const color of fills) {
-        const move = loop(z);
-        const element = listing(strip);
-        // A frame at a time, as a screen draws them.
-        const frame = (t: number): ColorRgba[] => {
-          const field = move.field(t, element);
-          return strip.map((cell) => move.touch(color, field(cell)));
-        };
-        let last = frame(offset);
-        for (let t = 1 + offset; t < WATCHED; t++) {
-          const next = frame(t);
-          next.forEach((now, i) => (worst = Math.max(worst, distance(last[i]!, now))));
-          last = next;
-        }
+      const move = loop(z);
+      const element = listing(strip);
+      // A frame at a time, as a screen draws them: the field once, each fill
+      // touched once a share the frame holds, and in OKLCH once, not at both its steps.
+      const frame = (t: number): Oklch[][] => {
+        const field = move.field(t, element);
+        const shares = strip.map((cell) => field(cell));
+        return fills.map((color) => {
+          const touched = new Map<number, Oklch>();
+          return shares.map((share) => {
+            let at = touched.get(share);
+            if (at === undefined) touched.set(share, (at = Oklch.fromRgba(move.touch(color, share))));
+            return at;
+          });
+        });
+      };
+      let last = frame(offset);
+      for (let t = 1 + offset; t < WATCHED; t++) {
+        const next = frame(t);
+        next.forEach((cells, f) => cells.forEach((now, i) => (worst = Math.max(worst, last[f]![i]!.deltaE(now)))));
+        last = next;
       }
     }
     expect(worst).toBeLessThan(STEP);
