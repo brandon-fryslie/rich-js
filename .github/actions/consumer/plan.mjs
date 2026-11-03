@@ -22,9 +22,9 @@
  * (`test/seam/peer-floor.ts`). So every optional peer is named by its
  * `peerDependencies` range and npm resolves it, as it does for a consumer. The
  * Node is the newest `engines.node` admits, which the caller's
- * `node-version-file` setup-node already resolved and this file runs on; the
- * plan records it so the probe can check it ran there, and the action does not
- * switch it. Blind spots: this is the newest peer on the day CI runs, not one
+ * `node-version-file` setup-node already resolved; the plan names none, so the
+ * action does not switch it, and the caller's `check-latest` is the only thing
+ * making it the newest released rather than the newest cached. Blind spots: this is the newest peer on the day CI runs, not one
  * published after it; and the pairing a fresh install on the floor Node gets —
  * that Node beside the newest peer, whose `engines` may exclude it — is run by
  * neither end.
@@ -64,7 +64,7 @@ function floorPlan() {
     const admitted = engines === undefined || semver.satisfies(node, engines);
     return { name, spec: `${name}@${locked.version}`, installed: admitted, engines };
   });
-  return { node, switchNode: true, peers };
+  return { node, peers };
 }
 
 function ceilingPlan() {
@@ -75,11 +75,11 @@ function ceilingPlan() {
     }
     return { name, spec: `${name}@${range}`, installed: true };
   });
-  return { node: process.versions.node, switchNode: false, peers };
+  return { node: null, peers };
 }
 
 const plans = { floor: floorPlan, ceiling: ceilingPlan };
-if (!(end in plans)) {
+if (!Object.hasOwn(plans, end)) {
   throw new Error(`END is ${JSON.stringify(end)}; it must be one of ${Object.keys(plans).join(", ")}`);
 }
 const plan = { end, engines: manifest.engines.node, ...plans[end]() };
@@ -92,5 +92,5 @@ const install = plan.peers.filter((p) => p.installed).map((p) => p.spec);
 // the lines into an array rather than word-splitting them.
 appendFileSync(
   process.env.GITHUB_OUTPUT,
-  `plan=${planPath}\nnode=${plan.switchNode ? plan.node : ""}\npeers<<PEERS_EOF\n${install.join("\n")}\nPEERS_EOF\n`,
+  `plan=${planPath}\nnode=${plan.node ?? ""}\npeers<<PEERS_EOF\n${install.join("\n")}\nPEERS_EOF\n`,
 );

@@ -67,6 +67,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
+          check-latest: true
           cache: npm
 
       - run: npm ci
@@ -113,7 +114,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # `check-latest`: ci.yml's consumer job owns why.
       - uses: actions/setup-node@v7
         with:
           node-version-file: package.json

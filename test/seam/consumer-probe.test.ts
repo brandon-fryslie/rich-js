@@ -12,8 +12,6 @@ import path from "node:path";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { PEER_PROVIDERS } from "./optional-peers.js";
 
-const PACKAGE = "@promptctl/rich-js";
-
 function probeRenderKeys(): Set<string> {
   const source = readFileSync(path.join(REPO_ROOT, ".github/actions/consumer/probe.mjs"), "utf8");
   const body = /const renders = \{([\s\S]*?)\n\};/.exec(source)?.[1];
@@ -25,7 +23,8 @@ describe("consumer probe", () => {
   it("renders every subpath that provides an optional peer", () => {
     const rendered = probeRenderKeys();
     const peerSubpaths = Object.values(PEER_PROVIDERS).flatMap((p) =>
-      p.entries.map((entry) => `.${entry.slice(PACKAGE.length)}`),
+      // The package name, scope included, is the entry up to its subpath.
+      p.entries.map((entry) => entry.replace(/^(@[^/]+\/)?[^/]+/, ".")),
     );
     expect(peerSubpaths.filter((subpath) => !rendered.has(subpath))).toEqual([]);
   });

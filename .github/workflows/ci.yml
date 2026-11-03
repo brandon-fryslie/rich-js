@@ -35,12 +35,15 @@ jobs:
       # it, not the oldest: the run at ^20.19.0 || >=22.12.0 logged "Resolved
       # package.json as ^20.19.0 || >=22.12.0" and then took 24.20.0. So this
       # job proves the package works at the top of its supported range and says
-      # nothing about the floor.
+      # nothing about the floor. `check-latest` is what makes it the newest:
+      # without it setup-node takes the newest version in the runner's cache
+      # that satisfies the range, which lags the newest released.
       #
       # The bottom is the `consumer` job's floor end below.
       - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
+          check-latest: true
           cache: npm
 
       - run: npm ci
@@ -65,9 +68,6 @@ jobs:
 
       # The tarball is built the way every other job builds: on the Node the
       # version file resolves to. Only the floor's consumer runs lower.
-      # `check-latest` because the ceiling claims the newest Node the range
-      # admits, and without it setup-node takes any cached version that
-      # satisfies the range, not the newest.
       - uses: actions/setup-node@v7
         with:
           node-version-file: package.json

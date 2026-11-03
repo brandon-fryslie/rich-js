@@ -33,8 +33,8 @@ import path from "node:path";
 const PACKAGE = "@promptctl/rich-js";
 
 const plan = JSON.parse(readFileSync("install-plan.json", "utf8"));
-// A probe that ran on whatever Node was on PATH would prove nothing about its end.
-if (process.version !== `v${plan.node}`) {
+// A probe that ran on whatever Node was on PATH would prove nothing about the floor.
+if (plan.node !== null && process.version !== `v${plan.node}`) {
   throw new Error(`running on ${process.version}, but the plan's Node is v${plan.node}`);
 }
 
@@ -44,6 +44,9 @@ const leftOut = plan.peers.filter((p) => !p.installed).map((p) => p.name);
 const installed = Object.fromEntries(
   plan.peers.filter((p) => p.installed).map((p) => [p.name, readManifest(p.name).version]),
 );
+// Before any assertion can throw: at the ceiling the plan holds only ranges, so
+// a failure below is attributable only if the versions npm resolved are on record.
+process.stdout.write(`${JSON.stringify({ event: "consumer-install", end: plan.end, node: process.version, peers: installed })}\n`);
 
 /** The left-out peer whose absence made this import fail, if that is why it failed. */
 function leftOutPeer(error) {
