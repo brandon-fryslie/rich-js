@@ -889,7 +889,15 @@ export class RichText implements Renderable, Measurable {
    * account of where a line breaks.
    */
   wrap(options: WrapOptions): RichText[] {
-    return this._layout(options).rows.map((row) => row.piece);
+    // [LAW:single-enforcer] The type refuses `visual`; this refuses it to a
+    // caller the type cannot reach — a cast `RenderOptions`, or JavaScript.
+    if (options.textOrder === ("visual" as TextOrder)) throw new RangeError("RichText.wrap: a visual row is laid out by its whole line, so no RichText draws it alone");
+    const format = this._format.get();
+    return this._layout(options).rows.map(({ draft, direction }) => {
+      const piece = new RichText(draft.text, { ...format, end: "", noWrap: true, tabSize: this._tabSize, direction });
+      piece._spans.set(draft.spans);
+      return piece;
+    });
   }
 
   // --- Renderable ---
@@ -995,12 +1003,6 @@ export class RichText implements Renderable, Measurable {
     const order = options.textOrder ?? "plain";
     const base = this.resolvedStyle(options);
     const stated = this._level();
-    const row = (draft: Draft, direction: Direction | undefined): RichText => {
-      const piece = new RichText(draft.text, { ...format, end: "", noWrap: true, tabSize: this._tabSize, direction });
-      // [LAW:single-enforcer] A span that adds nothing is no span, as `_addSpan` admits them.
-      piece._spans.set(draft.spans.filter((span) => !isEmptyStyle(span.style)));
-      return piece;
-    };
 
     const rows: Row[] = [];
     for (const raw of divided(whole, lineRanges(text))) {
@@ -1011,7 +1013,9 @@ export class RichText implements Renderable, Measurable {
       // Under `visual` a row is ordered by levels resolved over the whole
       // line, which no row can find alone; under every other order a row is
       // ordered by what it holds.
-      const ordered = order === "visual" && directed ? reorder(drawnSegments(line, base, options).segments, order, stated) : undefined;
+      // The levels are resolved over the raw line, its explicit controls and
+      // marks still in it, and `reorder` takes them out as `without` did.
+      const ordered = order === "visual" && directed ? reorder(drawnSegments(raw, base, options).segments, order, stated) : undefined;
       // Under `logical` the paragraph level is what a row cannot find alone,
       // and the row states it.
       const level = order === "logical" && directed ? paragraphLevelOf(line.text, stated) : stated;
@@ -1032,7 +1036,9 @@ export class RichText implements Renderable, Measurable {
         const opened = order === "logical" && directed ? spliced(placed, 0, 0, openersAt(start), INHERIT) : placed;
         const source = line.text.slice(start, end);
         rows.push({
-          piece: row(opened, direction),
+          // [LAW:single-enforcer] A span that adds nothing is no span, as `_addSpan` admits them.
+          draft: { text: opened.text, spans: opened.spans.filter((span) => !isEmptyStyle(span.style)) },
+          direction,
           orient: ordered === undefined ? ownOrientation(order, level) : (shown) => ({ line: shown, oriented: true, orient: (segments) => ordered.orient(segments, start, source) }),
         });
       });
@@ -1108,30 +1114,23 @@ function* placed(
 }
 
 /**
- * For each logical line of a render, whether the cell at an offset is covered
- * by no span. `covered` is `_buildSegments`'s answer per piece; a piece split
- * by a line break answers for both halves.
+ * For one row, whether the cell at an offset is covered by no span. `covered`
+ * is `_buildSegments`'s answer per piece.
  */
-function spanFreeLines(segments: readonly Segment[], covered: readonly boolean[]): ((cell: number) => boolean)[] {
-  // Per line, the cell each run ends at and whether that run is span-free.
-  const lines: { end: number; free: boolean }[][] = [[]];
-  segments.forEach((segment, piece) => {
-    segment.text.split("\n").forEach((part, at) => {
-      if (at > 0) lines.push([]);
-      const runs = lines.at(-1)!;
-      runs.push({ end: (runs.at(-1)?.end ?? 0) + cellLen(part), free: !covered[piece] });
-    });
-  });
-  return lines.map((runs) => (cell) => {
+function spanFree(segments: readonly Segment[], covered: readonly boolean[]): (cell: number) => boolean {
+  // The cell each run ends at.
+  const ends: number[] = [];
+  segments.forEach((segment) => ends.push((ends.at(-1) ?? 0) + segment.cellLength));
+  return (cell) => {
     let lo = 0;
-    let hi = runs.length;
+    let hi = ends.length;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
-      if (runs[mid]!.end <= cell) lo = mid + 1;
+      if (ends[mid]! <= cell) lo = mid + 1;
       else hi = mid;
     }
-    return runs[lo]!.free;
-  });
+    return !covered[lo];
+  };
 }
 
 /**
@@ -1195,9 +1194,10 @@ interface OrientedRow {
   orient(shown: Segment[]): Segment[];
 }
 
-/** One row a text draws: what `wrap` hands out, and how its order meets it. */
+/** One row a text draws: what `wrap` makes a `RichText` of, and how its order meets it. */
 interface Row {
-  readonly piece: RichText;
+  readonly draft: Draft;
+  readonly direction: Direction | undefined;
   readonly orient: (segments: Segment[]) => OrientedRow;
 }
 
@@ -1220,11 +1220,11 @@ type Cover = typeof INHERIT | Style;
  * paragraph's last line.
  */
 function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
-  const { segments, covered } = drawnSegments({ text: row.piece.plain, spans: row.piece.spans }, layout.base, options);
+  const { segments, covered } = drawnSegments(row.draft, layout.base, options);
   const { line, oriented, orient } = row.orient(segments);
   // An oriented row's cells are not where `free` counted them, and a pad
   // joined to one would land inside its isolate.
-  const free = oriented ? NEVER_FREE : spanFreeLines(segments, covered)[0]!;
+  const free = oriented ? NEVER_FREE : spanFree(segments, covered);
   return [...placed({ segments: [...line], free, orient }, layout.maxWidth, layout.base, layout.justify === "full" ? undefined : layout.justify)];
 }
 
@@ -1346,7 +1346,7 @@ function spliced(draft: Draft, start: number, end: number, insert: string, cover
 function cropped(draft: Draft, width: number): Draft {
   const kept = cellFitFrom(draft.text, asCodePoint(0), asCellCol(Math.max(width, 0)));
   const blank = Math.max(width, 0) - cellLen(draft.text.slice(0, kept));
-  return kept === draft.text.length ? draft : spliced(draft, kept, draft.text.length, " ".repeat(blank), INHERIT);
+  return kept === draft.text.length ? draft : trimmed(draft, kept, " ".repeat(blank));
 }
 
 /**
@@ -1373,14 +1373,26 @@ function fitted(draft: Draft, maxWidth: number, overflow: OverflowMethod, ellips
   // rendering of "all of this was cut". At maxWidth 0 there is no cell to put
   // the marker in, so every method draws the same empty row — agreement that
   // keeps a `Columns` or `Layout` squeezed to no width at all from rendering
-  // three different kinds of nothing. The marker is written over what it
-  // stands for, so the spans that reached the cut carry on through it, as
-  // Rich's truncation keeps them.
+  // three different kinds of nothing.
   const marker = overflow === "ellipsis" && maxWidth > 0 ? ellipsis : "";
   const room = maxWidth - cellLen(marker);
   const kept = cellFitFrom(draft.text, asCodePoint(0), asCellCol(room));
   const blank = room - cellLen(draft.text.slice(0, kept));
-  return spliced(draft, kept, draft.text.length, " ".repeat(blank) + marker, INHERIT);
+  return trimmed(draft, kept, " ".repeat(blank) + marker);
+}
+
+/**
+ * `draft` kept to its first `kept` code units with `tail` after them, as Rich's
+ * `Text.truncate` sets `plain` and then `_trim_spans`: a span that began
+ * before the new end reaches to it, through `tail`, and one that began at or
+ * past it is gone.
+ */
+function trimmed(draft: Draft, kept: number, tail: string): Draft {
+  const text = draft.text.slice(0, kept) + tail;
+  const spans = draft.spans
+    .filter((span) => span.start < text.length)
+    .map((span) => new Span(span.start, Math.min(span.end, text.length), span.style));
+  return { text, spans };
 }
 
 /**

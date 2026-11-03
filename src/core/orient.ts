@@ -255,7 +255,8 @@ function drawnOffsets(text: string): Set<number> {
 
 /** The offsets in `text`, one row, of the characters `order` shows at its left and right edges. */
 export function edges(text: string, order: TextOrder, direction?: ParagraphLevel): { readonly left: number; readonly right: number } {
-  const units = order === "plain" || !isBidi(text) ? Array.from({ length: text.length }, (_, unit) => unit) : ordered(text, direction);
+  // [LAW:one-source-of-truth] Directed exactly when `reorder` directs it.
+  const units = order === "plain" || (direction === undefined && !isBidi(text)) ? Array.from({ length: text.length }, (_, unit) => unit) : ordered(text, direction);
   const offsets = drawnOffsets(text);
   const drawn = units.filter((unit) => offsets.has(unit));
   return { left: drawn[0] ?? 0, right: drawn.at(-1) ?? 0 };

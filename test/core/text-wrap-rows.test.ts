@@ -151,8 +151,30 @@ describe("RichText.wrap: a row says all it draws in its text, spans and format",
     expect(edges()).toEqual([false, true]);
   });
 
+  it("under visual, orders a line by the embeddings and marks it is drawn without", () => {
+    const drawn = (plain: string) => Segment.plainOf([...new RichText(plain, { end: "" }).render({ maxWidth: 40, textOrder: "visual" })]);
+    expect(drawn(`x ${RLE}abc !${PDF} y`)).toBe("x ! abc y");
+    expect(drawn(`abc!${RLM} אב`)).toBe("abc!בא ");
+  });
+
+  it("finds a stated direction's edges in a row with no bidi character", () => {
+    const text = new RichText("hello!", { end: "", direction: "rtl" });
+    text.stylize("bold", 5, 6);
+    const bold = (side: "left" | "right") => text.edgeStyle(side, { maxWidth: 20, textOrder: "logical" }).bold === true;
+    expect([bold("left"), bold("right")]).toEqual([true, false]);
+  });
+
+  it("styles the ellipsis as Rich's truncate does: by the spans begun before it", () => {
+    const text = new RichText("abcdefghij", { end: "", overflow: "ellipsis" });
+    text.stylize("red", 8, 10);
+    text.stylize("bold", 2, 6);
+    const [row] = text.wrap({ maxWidth: 5 });
+    expect(row!.plain).toBe("abcd…");
+    expect(row!.spans.map((span) => [span.start, span.end, String(span.style)])).toEqual([[2, 5, "bold"]]);
+  });
+
   it("refuses visual order in its type", () => {
     // @ts-expect-error A visual row is laid out by its whole line, so no RichText draws it alone.
-    expect(() => new RichText("x").wrap({ maxWidth: 4, textOrder: "visual" })).not.toThrow();
+    expect(() => new RichText("x").wrap({ maxWidth: 4, textOrder: "visual" })).toThrow(RangeError);
   });
 });
