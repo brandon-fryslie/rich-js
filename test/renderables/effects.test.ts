@@ -859,7 +859,7 @@ describe("the loops never jump", () => {
       const element = listing(strip);
       // `touch` is pure in (color, share), so a frame touches each fill once per
       // share it holds. The share is the field's raw value, not the level the
-      // renderer snaps it to; measured snapped, pulse and shimmer pass the bar.
+      // renderer snaps it to; measured snapped, pulse and shimmer exceed the bar.
       const frame = (t: number): Oklch[][] => {
         const field = move.field(t, element);
         const shares = strip.map((cell) => field(cell));
