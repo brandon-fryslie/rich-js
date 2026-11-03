@@ -4,15 +4,22 @@
     {
       "version": "pr-540",
       "ref": "refs/pull/540/merge",
-      "sha": "a36a690cc32b6fa11bcfd5a61a68de7c32ff94d0",
-      "timestamp": "2026-11-03T00:24:54.314Z",
+      "sha": "ffbada65986b9877477bb821011b49d538f66f72",
+      "timestamp": "2026-11-03T00:45:34.241Z",
       "commits": [
         {
-          "sha": "a36a690cc32b6fa11bcfd5a61a68de7c32ff94d0",
+          "sha": "ffbada65986b9877477bb821011b49d538f66f72",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-02T17:23:23-07:00",
-          "message": "Merge 7bb19d153780be11543ed5fb652401a1ed90bf71 into 85606541d26e0522aa0321981dcde341f4115fb5\n"
+          "timestamp": "2026-11-03T00:43:13Z",
+          "message": "Merge 533f1721a4101cec9df1dbfb252c68b98ed6c0d4 into 85606541d26e0522aa0321981dcde341f4115fb5\n"
+        },
+        {
+          "sha": "533f1721a4101cec9df1dbfb252c68b98ed6c0d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-02T17:42:58-07:00",
+          "message": "Review fixes: a clobbered sentence, widget comments, helper names, articles, docs theme spelling (rich-unfiled-791c.29ge)\n\nThe review of 7bb19d153 found a sentence where the verb Hold had been renamed to ValidityInterval (now Keep), widget-class comments that still said KeyEvent (now WidgetKeyEvent), test helpers named nextChangeOf and lastChangeOf (now validUntilOf and validFromOf), two uses of 'a OutputTarget' (now an), and colour spellings in the docs theme comments. Findings that were rejected: the removed old names are the intended break; the app.ts ask findings are not in this diff; the go-template-js peer range is already ^0.12.0 on origin/master.\n"
         },
         {
           "sha": "7bb19d153780be11543ed5fb652401a1ed90bf71",
