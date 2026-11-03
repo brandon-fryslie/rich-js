@@ -3,7 +3,7 @@
  * through the card's xterm.js: it browses part of this repository, a key moves the
  * selection and the preview follows, and `c` opens the coverage page.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { card, cardRows } from "./card-screen.js";
 

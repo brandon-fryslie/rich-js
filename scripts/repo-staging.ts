@@ -32,7 +32,7 @@ const PICKED = [
   ...["clock", "fnv1a", "memo"].map((name) => `test/core/${name}.test.ts`),
   ...["introduction", "padding", "tree", "group", "panel", "columns"].map((name) => `docs/${name}.md`),
   "docs/.vitepress/sidebar.ts",
-  ...["index.ts", "xterm.ts", "device-pixel-ratio.ts", "CardSliders.ts", "live-runtime.d.ts", "sucrase-parser.d.ts"].map((name) => `docs/.vitepress/theme/${name}`),
+  ...["index.ts", "device-pixel-ratio.ts", "CardSliders.ts", "live-runtime.d.ts", "sucrase-parser.d.ts"].map((name) => `docs/.vitepress/theme/${name}`),
   "docs/.vitepress/theme/fonts/rich-powerline.woff2",
 ];
 

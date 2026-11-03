@@ -6,9 +6,8 @@
  * reduced motion; it wears the site's color mode; and at phone width it fits
  * the page whole. What the terminal shows is read from xterm's rows.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 import { EXAMPLE_THEMES } from "../docs/.vitepress/example-terminal.js";
 import { pageErrors } from "./page-errors.js";
 
@@ -20,6 +19,10 @@ async function open(page: Page): Promise<string[]> {
 
 const showcase = (page: Page) => page.locator(".rich-showcase");
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
+// The site bundles xterm.js as its own chunk, named for the package; holding it
+// holds every terminal at its placeholder.
+const XTERM_CHUNK = "**/assets/chunks/xterm.*.js";
+
 const rows = async (page: Page) => (await showcase(page).locator(".xterm-rows").innerText()).replaceAll("\u00a0", " ");
 const button = (page: Page) => showcase(page).locator(".rich-live-button");
 /** The first job's percentage, which only moves while the program runs. */
@@ -28,7 +31,7 @@ const rendering = async (page: Page) => /Rendering frames\s.*?(\d+)%/.exec(await
 test("the hero's text and buttons are on the page before its terminal has loaded", async ({ page }) => {
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(XTERM.script.src, async (route) => {
+  await page.route(XTERM_CHUNK, async (route) => {
     await held;
     await route.fallback();
   });
@@ -110,7 +113,7 @@ for (const deviceScaleFactor of [1, 1.25, 1.5]) {
         await page.setViewportSize({ width, height: 900 });
         let release!: () => void;
         const held = new Promise<void>((resolve) => (release = resolve));
-        await page.route(XTERM.script.src, async (route) => {
+        await page.route(XTERM_CHUNK, async (route) => {
           await held;
           await route.fallback();
         });

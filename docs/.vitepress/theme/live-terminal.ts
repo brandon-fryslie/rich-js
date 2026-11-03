@@ -16,10 +16,11 @@
  * through `BrowserTerminalHost`, the library's own host for an xterm terminal,
  * so a program's newlines reach the screen the way a tty delivers them.
  */
+// The site's stylesheet carries xterm's, so a terminal is styled the moment its chunk arrives.
+import "@xterm/xterm/css/xterm.css";
 import type { Contrast } from "../example-card.js";
 import { BrowserTerminalHost, type XtermDisposable, type XtermTerminal } from "../../../src/host/index.js";
 import type { TerminalTheme } from "../../../src/index.js";
-import { XTERM } from "./xterm.js";
 import type { Version } from "../hot-runtime.js";
 import { sandbox, type Sandbox, type TerminalSpec, type ToWorker } from "./sandbox.js";
 
@@ -155,10 +156,12 @@ type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
 
 let xterm: Promise<XtermConstructor> | undefined;
 
-/** xterm.js, from the site's one pin, added to the page the first time a terminal is made. */
+/**
+ * xterm.js, the `@xterm/xterm` devDependency bundled into the site as its own
+ * chunk, loaded the first time a terminal is made.
+ */
 function loadXterm(): Promise<XtermConstructor> {
-  xterm ??= new Promise<XtermConstructor>((resolve, reject) => {
-    const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
+  xterm ??= (async () => {
     // xterm makes a row the height it measures a character at, in whole CSS
     // pixels rounded up to whole device pixels, and measures it in the page
     // (`openMeasuringInPage`) at line-height: normal. Measured at the
@@ -167,18 +170,17 @@ function loadXterm(): Promise<XtermConstructor> {
     const measure = Object.assign(document.createElement("style"), {
       textContent: ".xterm .xterm-char-measure-element { line-height: var(--rich-fragment-line, normal); }",
     });
-    const script = Object.assign(document.createElement("script"), { crossOrigin: "anonymous", ...XTERM.script });
-    script.onload = () => resolve((globalThis as unknown as { Terminal: XtermConstructor }).Terminal);
-    script.onerror = () => {
+    document.head.append(measure);
+    try {
+      const { Terminal } = await import("@xterm/xterm");
+      return Terminal as unknown as XtermConstructor;
+    } catch (error) {
       // Forgotten, so the next terminal made tries again rather than reusing a failure.
       xterm = undefined;
-      link.remove();
       measure.remove();
-      script.remove();
-      reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
-    };
-    document.head.append(link, measure, script);
-  });
+      throw error;
+    }
+  })();
   return xterm;
 }
 

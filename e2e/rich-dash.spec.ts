@@ -2,7 +2,7 @@
  * The rich-dash demo in its card on the demo page: every panel draws from its
  * staging, the dashboard keeps repainting, and `q` ends it.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { card, cardRows } from "./card-screen.js";
 

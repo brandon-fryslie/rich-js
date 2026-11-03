@@ -16,7 +16,7 @@
  * even if the demo crashes before its first write. The row textContent is the
  * only DOM signal that survives that distinction.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";

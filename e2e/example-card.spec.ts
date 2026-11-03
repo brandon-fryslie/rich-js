@@ -8,7 +8,7 @@
  * while the card says it was stopped. A silent or throws block is the same
  * card; a shape or node block is too, read-only.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 import { pageErrors } from "./page-errors.js";
@@ -33,15 +33,15 @@ async function edit(page: Page): Promise<void> {
   await expect(firstCard(page).locator(".cm-content")).toBeFocused({ timeout: 10_000 });
 }
 
-test("at rest, the card is the page's highlighted code over the build's output, and hydrating it moves nothing", async ({ browser, cdn }) => {
+test("at rest, the card is the page's highlighted code over the build's output, and hydrating it moves nothing", async ({ browser }) => {
   // The page as the server wrote it, with no script to hydrate it.
-  const still = await (await cdn(await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } }))).newPage();
+  const still = await (await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } })).newPage();
   await still.goto("tables.html");
   const served = await firstCard(still).boundingBox();
   const servedText = await shown(still);
   await still.context().close();
 
-  const page = await (await cdn(await browser.newContext({ viewport: { width: 1280, height: 900 } }))).newPage();
+  const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
   const errors = await open(page, "tables.html");
   await page.waitForLoadState("networkidle");
   const card = firstCard(page);

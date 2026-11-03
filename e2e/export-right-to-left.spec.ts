@@ -5,13 +5,16 @@
  * leaves a visual row's cells where they stand, only a browser can show.
  * Measured by glyph position, so no font and no ligature enters the check.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 import { encodeHtmlFragment } from "../src/core/export-html.js";
 import { Segment } from "../src/core/segment.js";
 import { RichText } from "../src/core/text.js";
 import type { TextOrder } from "../src/core/text-order.js";
+import { createRequire } from "node:module";
+
+/** A file of the `@xterm/xterm` the site bundles, from disk. */
+const XTERM_FILE = (file: string): string => createRequire(import.meta.url).resolve(`@xterm/xterm/${file}`);
 
 const FIRST = "א";
 const LAST = "ה";
@@ -64,8 +67,8 @@ test("raw unstamped text is the browser's to order", async ({ page }) => {
 // xterm.js nor VS Code as `visual`, where this would reverse twice.
 test("xterm.js's DOM renderer reorders a right-to-left row itself", async ({ page }) => {
   await page.setContent(`<!doctype html><meta charset="utf-8"><div id="host"></div>`);
-  await page.addStyleTag({ url: XTERM.stylesheet.href });
-  await page.addScriptTag({ url: XTERM.script.src });
+  await page.addStyleTag({ path: XTERM_FILE("css/xterm.css") });
+  await page.addScriptTag({ path: XTERM_FILE("lib/xterm.js") });
   await page.evaluate(async (text) => {
     const terminal = new (globalThis as unknown as { Terminal: new (options: object) => { open(el: Element): void; write(data: string, done: () => void): void } }).Terminal({ cols: 40, rows: 4 });
     terminal.open(document.querySelector("#host")!);
