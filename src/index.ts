@@ -205,7 +205,7 @@ export { Measurement, measureRenderables } from "./core/measure.js";
 
 // Text
 export { Span, RichText } from "./core/text.js";
-export type { RichTextOptions } from "./core/text.js";
+export type { Direction, RichTextOptions, WrapOptions } from "./core/text.js";
 
 // Strip + Separator
 export {

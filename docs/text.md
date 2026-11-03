@@ -96,6 +96,31 @@ console.print(new Panel(heading, { borderStyle: "blue" }));
 
 `print` is the one place they do not apply. The text arguments of a print are joined into one text, and the print's own `justify`, `overflow` and `softWrap` set it, as Rich's `print` does. A `RichText` keeps its style there, and leaves its layout options behind.
 
+## Wrapped rows
+
+`wrap` returns the rows a text wraps into at a width, each a `RichText` that keeps the spans of the characters it holds. This is Rich's `Text.wrap`. Use it when you lay a text out across rows yourself, for example a cell wider than its column:
+
+```typescript
+const note = new RichText("Each row keeps the styles of the characters it holds.", { end: "" });
+note.stylize("bold magenta", 5, 8);
+note.stylize("underline", 21, 27);
+
+for (const [index, row] of note.wrap({ maxWidth: 20 }).entries()) {
+  console.print(new RichText(`${index + 1} │ `, { style: "dim", end: "" }).append(row));
+}
+```
+
+Draw the rows one per line with the same options and you get the text's own render, without its `end`. Each row already holds what wrapping did to it:
+
+- a soft hyphen taken at a break is a `-`;
+- whitespace hanging past the edge is cropped to it;
+- a word cut by `overflow: "ellipsis"` ends in its `…`;
+- under `justify: "full"`, every row but a paragraph's last has its gaps widened.
+
+So a row rebuilt from its `plain`, `spans` and options draws the same row.
+
+Rows are refused under the `visual` [text order](./right-to-left.md). There, a row is laid out from levels resolved over its whole line, and no text cut from that line draws it alone.
+
 ## Wide characters
 
 A CJK character takes two terminal cells, and every width in the library is counted in cells rather than characters. So a column of Japanese, Chinese or Korean text lines up with the columns beside it:

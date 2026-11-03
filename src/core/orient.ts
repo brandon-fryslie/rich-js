@@ -55,7 +55,12 @@ export function drawnTail(text: string): string {
  * word on the row before it.
  */
 export function hangingWhitespace(line: Segment[]): number {
-  return cellLen(TRAILING_WHITESPACE_RE.exec(drawnTail(Segment.plainOf(line)))?.[0] ?? "");
+  return hangingCells(Segment.plainOf(line));
+}
+
+/** `hangingWhitespace` of a line's text. */
+export function hangingCells(text: string): number {
+  return cellLen(TRAILING_WHITESPACE_RE.exec(drawnTail(text))?.[0] ?? "");
 }
 
 /**
@@ -174,14 +179,33 @@ const REMOVALS: Readonly<Record<TextOrder, (text: string) => string>> = {
   visual: (text) => withoutMarks(withoutExplicit(text)),
 };
 
-/** What `order` does with `line`, one logical line of drawn segments. */
-export function reorder(line: readonly Segment[], order: TextOrder): ReorderedLine {
-  if (!isBidi(Segment.plainOf(line))) return UNTOUCHED(line);
+/** Whether `order` takes `character` out of a line ahead of wrapping, as `REMOVALS` does. */
+export function removes(order: TextOrder, character: string): boolean {
+  return REMOVALS[order](character) === "";
+}
+
+/**
+ * The paragraph level of `text`: `direction` when one is stated, UAX #9's P3,
+ * and P2's first strong character otherwise. [LAW:one-source-of-truth] The one
+ * reader of either, so where a row is placed and how it is ordered never read
+ * two levels.
+ */
+export function paragraphLevelOf(text: string, direction: ParagraphLevel | undefined): ParagraphLevel {
+  return direction ?? paragraphLevel(text);
+}
+
+/**
+ * What `order` does with `line`, one logical line of drawn segments, whose
+ * paragraph is `direction` when one is stated. A stated direction directs the
+ * line even when nothing in it is bidi: it is a row of a paragraph that was.
+ */
+export function reorder(line: readonly Segment[], order: TextOrder, direction?: ParagraphLevel): ReorderedLine {
+  if (direction === undefined && !isBidi(Segment.plainOf(line))) return UNTOUCHED(line);
   if (order === "plain") return UNTOUCHED(rewritten(line, REMOVALS.plain));
 
   const text = Segment.plainOf(line);
   if (order === "logical") {
-    const level = paragraphLevel(text);
+    const level = paragraphLevelOf(text, direction);
     const openersAt = openersAlong(text);
     return {
       line,
@@ -191,7 +215,7 @@ export function reorder(line: readonly Segment[], order: TextOrder): ReorderedLi
     };
   }
 
-  const { level, levels } = paragraph(text);
+  const { level, levels } = paragraph(text, direction);
   const consumed = rewritten(line, REMOVALS.visual);
   const kept = Segment.plainOf(consumed);
   const keptLevels: number[] = [];
@@ -230,15 +254,16 @@ function drawnOffsets(text: string): Set<number> {
 }
 
 /** The offsets in `text`, one row, of the characters `order` shows at its left and right edges. */
-export function edges(text: string, order: TextOrder): { readonly left: number; readonly right: number } {
-  const units = order === "plain" || !isBidi(text) ? Array.from({ length: text.length }, (_, unit) => unit) : ordered(text);
+export function edges(text: string, order: TextOrder, direction?: ParagraphLevel): { readonly left: number; readonly right: number } {
+  // [LAW:one-source-of-truth] Directed exactly when `reorder` directs it.
+  const units = order === "plain" || (direction === undefined && !isBidi(text)) ? Array.from({ length: text.length }, (_, unit) => unit) : ordered(text, direction);
   const offsets = drawnOffsets(text);
   const drawn = units.filter((unit) => offsets.has(unit));
   return { left: drawn[0] ?? 0, right: drawn.at(-1) ?? 0 };
 }
 
-function ordered(text: string): number[] {
-  const { level, levels } = paragraph(text);
+function ordered(text: string, direction: ParagraphLevel | undefined): number[] {
+  const { level, levels } = paragraph(text, direction);
   return visualOrder(lineLevels(text, levels, level));
 }
 
