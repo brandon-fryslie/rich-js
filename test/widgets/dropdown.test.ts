@@ -9,7 +9,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 // What every widget draws a disabled cell in.
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
-// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
+// Factories — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string): WidgetKeyEvent => new WidgetKeyEvent({
   key,
   character: "",

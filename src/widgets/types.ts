@@ -19,7 +19,7 @@ import type { KeyEvent, TerminalMouseEvent } from "../host/input.js";
 // keeping the moment of its last interaction — a caret's blink restarting —
 // compares it with the frame it draws and never reads a clock.
 
-// [LAW:types-are-the-program] KeyEvent is a `KeyEvent` the app heard, plus
+// [LAW:types-are-the-program] WidgetKeyEvent is a `KeyEvent` the app heard, plus
 // when it was heard and the say over who else hears it. It carries a single mutable signal
 // (`stopped`) that participants in the dispatch chain set by calling
 // `stop()`. Treating it as an interface would force every handler to

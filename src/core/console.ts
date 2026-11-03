@@ -776,7 +776,7 @@ export class Console {
   // --- Live region ---
 
   /**
-   * ValidityInterval `region` under everything this console writes until the returned
+   * Keep `region` under everything this console writes until the returned
    * call lets it go. One region at a time: a second would be erased and
    * painted over by the first, so claiming one while another is held throws.
    */

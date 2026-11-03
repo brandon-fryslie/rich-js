@@ -9,7 +9,7 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 // What every widget draws a disabled cell in.
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
-// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
+// Factories — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
 const enterEvent = () => new WidgetKeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
 const spaceEvent = () => new WidgetKeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
 const escapeEvent = () => new WidgetKeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);

@@ -18,7 +18,7 @@ import { expectLinearTime } from "../suite/linear-time.js";
 // What every widget draws a disabled cell in.
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
-// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
+// Factories — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string, character = ""): WidgetKeyEvent => new WidgetKeyEvent({
   key,
   character,

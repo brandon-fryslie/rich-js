@@ -59,31 +59,31 @@ const combinators = (part: () => Behavior<Renderable>): readonly [string, Animat
   ["Animation.repeat", Animation.repeat(4, () => part()), 0, 4],
 ];
 
-const nextChangeOf = (renderable: Renderable, t: number, options: RenderOptions = OPTIONS): number => Segment.validUntil(render(inFrame(renderable, t), options));
-const lastChangeOf = (renderable: Renderable, t: number, options: RenderOptions = OPTIONS): number => Segment.validFrom(render(inFrame(renderable, t), options));
+const validUntilOf = (renderable: Renderable, t: number, options: RenderOptions = OPTIONS): number => Segment.validUntil(render(inFrame(renderable, t), options));
+const validFromOf = (renderable: Renderable, t: number, options: RenderOptions = OPTIONS): number => Segment.validFrom(render(inFrame(renderable, t), options));
 
 describe("an effect held still at the output lets the host sleep, wherever it is placed", () => {
   const reduced = { ...OPTIONS, reducedMotion: true };
   const colorless = { ...OPTIONS, colorSystem: null };
 
   it("the ticket's case: under reduced motion in a timeline, it never changes", () => {
-    expect(nextChangeOf(Timeline.run(Timeline.play(0), color()), 1, reduced)).toBe(NEVER);
+    expect(validUntilOf(Timeline.run(Timeline.play(0), color()), 1, reduced)).toBe(NEVER);
   });
 
   for (const [name, placed, last, next] of combinators(() => color())) {
-    it(`a color effect in ${name}, reduced`, () => expect(nextChangeOf(placed, 1, reduced)).toBe(next));
-    it(`a color effect in ${name}, with no color`, () => expect(nextChangeOf(placed, 1, colorless)).toBe(next));
-    it(`a color effect in ${name}, with no color, run backwards`, () => expect(lastChangeOf(placed, 1, colorless)).toBe(last));
+    it(`a color effect in ${name}, reduced`, () => expect(validUntilOf(placed, 1, reduced)).toBe(next));
+    it(`a color effect in ${name}, with no color`, () => expect(validUntilOf(placed, 1, colorless)).toBe(next));
+    it(`a color effect in ${name}, with no color, run backwards`, () => expect(validFromOf(placed, 1, colorless)).toBe(last));
   }
 
   for (const [name, placed, , next] of combinators(() => glyph())) {
-    it(`a glyph effect in ${name}, reduced`, () => expect(nextChangeOf(placed, 1, reduced)).toBe(next));
+    it(`a glyph effect in ${name}, reduced`, () => expect(validUntilOf(placed, 1, reduced)).toBe(next));
   }
 
   it("a repeat whose turn builds its effect each time it is asked, reduced and with no color", () => {
     const placed = Animation.repeat(4, () => color());
-    expect(nextChangeOf(placed, 1, reduced)).toBe(4);
-    expect(nextChangeOf(placed, 1, colorless)).toBe(4);
+    expect(validUntilOf(placed, 1, reduced)).toBe(4);
+    expect(validUntilOf(placed, 1, colorless)).toBe(4);
   });
 
   it("a whole frame on a timeline says so to the host", () => {
@@ -123,15 +123,15 @@ describe("an effect over an element that draws no cell", () => {
 
 describe("a moving effect still moves under a combinator", () => {
   for (const [name, placed] of combinators(() => color()).filter(([name]) => name !== "Animation.sampleAndHold")) {
-    it(`in ${name}, it answers the frame's time`, () => expect(nextChangeOf(placed, 1.25)).toBe(1.25));
+    it(`in ${name}, it answers the frame's time`, () => expect(validUntilOf(placed, 1.25)).toBe(1.25));
   }
 
   it("on a beat, it holds to the beat's end", () => {
-    expect(nextChangeOf(Animation.sampleAndHold(color(), stepSequence([1])), 1.25)).toBe(2);
+    expect(validUntilOf(Animation.sampleAndHold(color(), stepSequence([1])), 1.25)).toBe(2);
   });
 
   it("a glyph effect with no color is written all the same", () => {
-    expect(nextChangeOf(Timeline.run(Timeline.play(0), glyph()), 1.25, { ...OPTIONS, colorSystem: null })).toBeLessThan(NEVER);
+    expect(validUntilOf(Timeline.run(Timeline.play(0), glyph()), 1.25, { ...OPTIONS, colorSystem: null })).toBeLessThan(NEVER);
   });
 
   it("the drawing that reported is the one the frame shows, at the width a container narrowed it to", () => {
@@ -140,22 +140,22 @@ describe("a moving effect still moves under a combinator", () => {
       render: (options) => [new Segment("words", options.maxWidth < 28 ? Style.parse("#1e1e2e on #89b4fa") : undefined)],
     };
     const panelled = Animation.map(new Effected(coloredWhenNarrow, onItsColors, { key: "k" }), (value) => new Panel(value));
-    expect(nextChangeOf(panelled, 1.25, wide)).toBe(1.25);
-    expect(nextChangeOf(new Effected(coloredWhenNarrow, onItsColors, { key: "k" }), 1.25, wide)).toBe(NEVER);
+    expect(validUntilOf(panelled, 1.25, wide)).toBe(1.25);
+    expect(validUntilOf(new Effected(coloredWhenNarrow, onItsColors, { key: "k" }), 1.25, wide)).toBe(NEVER);
   });
 
   it("a moving element and a still one at one moment answer the moving one's time", () => {
     const moving = new Effected(label, onItsColors, { key: "a" });
     const still = new Effected(new RichText("plain", { end: "" }), onItsColors, { key: "b" });
     const both = Animation.map(Animation.all([still, moving]), (values) => new Group(...values));
-    expect(nextChangeOf(both, 1.25)).toBe(1.25);
+    expect(validUntilOf(both, 1.25)).toBe(1.25);
   });
 
   it("a part drawn inside a placement in the value still reports to the animation it is a part of", () => {
     const moving = new Effected(label, onItsColors, { key: "a" });
     const still = new Effected(new RichText("plain", { end: "" }), onItsColors, { key: "b" });
     const nested = Animation.map(Animation.all([still, moving]), ([a, b]) => new Group(a, Animation.constant(b)));
-    expect(nextChangeOf(nested, 1.25)).toBe(1.25);
+    expect(validUntilOf(nested, 1.25)).toBe(1.25);
   });
 
   it("a part a container hides its drawing of stays early, whatever a sibling under another key told", () => {
@@ -163,7 +163,7 @@ describe("a moving effect still moves under a combinator", () => {
     const moving = new Effected(label, drifting, { key: "a" });
     const still = new Effected(new RichText("plain", { end: "" }), onItsColors, { key: "b" });
     const hidden = Animation.map(Animation.all([still, moving]), ([a, b]) => new Group(a, hiding(b)));
-    expect(nextChangeOf(hidden, 1.25)).toBe(1.25);
+    expect(validUntilOf(hidden, 1.25)).toBe(1.25);
   });
 
   it("an effect never drawn answers the time it is asked at", () => {

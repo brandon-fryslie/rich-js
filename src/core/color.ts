@@ -457,7 +457,7 @@ export interface DestinationOptions extends DetectColorOptions {
 }
 
 /**
- * Resolve a color spec into a `OutputTarget`.
+ * Resolve a color spec into an `OutputTarget`.
  *
  * [LAW:single-enforcer] The one place a spec becomes both facts. A hyperlink is
  * not a color: an explicit depth — `"none"` and `null` included — states a

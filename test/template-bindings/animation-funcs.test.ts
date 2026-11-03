@@ -151,7 +151,7 @@ describe("stepped in a template", () => {
 // ─── The toolbox: tween, loop, glyphs, the timeline ─────────────────────────
 
 /** The soonest moment any segment of `text`, drawn, says it changes. */
-const nextChangeOf = (text: RichText): number => Segment.validUntil(text.render({ maxWidth: 80 }));
+const validUntilOf = (text: RichText): number => Segment.validUntil(text.render({ maxWidth: 80 }));
 
 /**
  * An engine drawing for `clock.t` on `clock.timeline` (the host's own clock
@@ -290,9 +290,9 @@ describe("glyphs in a template", () => {
     const clock = { t: 0 };
     const compiled = toolboxAt(clock).compile(`{{ "go" | glyphs "typewriter" 1 }}`);
     clock.t = 1.5;
-    expect(nextChangeOf(RichText.fromFragments(compiled({})))).toBe(1.5);
+    expect(validUntilOf(RichText.fromFragments(compiled({})))).toBe(1.5);
     clock.t = 10;
-    expect(nextChangeOf(RichText.fromFragments(compiled({})))).toBe(Number.POSITIVE_INFINITY);
+    expect(validUntilOf(RichText.fromFragments(compiled({})))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("draws the same bytes at one frame a second and at sixty, at every moment they share", () => {
@@ -330,7 +330,7 @@ describe("every function draws on the timeline the host hands in", () => {
     expect(new Set(sample(engine, clock, FRAMES, [1.5, 7, 1e6]))).toEqual(new Set(["b"]));
     expect(new Set(sample(engine, clock, TWEEN, [1.5, 7]))).toEqual(new Set(["3.750"]));
     clock.t = 7;
-    expect(nextChangeOf(RichText.fromFragments(engine.compile(FRAMES)({})))).toBe(Number.POSITIVE_INFINITY);
+    expect(validUntilOf(RichText.fromFragments(engine.compile(FRAMES)({})))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("backwards, frames run in reverse and say when they turn on the host's clock", () => {
@@ -339,7 +339,7 @@ describe("every function draws on the timeline the host hands in", () => {
     expect(sample(engine, clock, FRAMES, [2.5, 3, 3.6, 4.6])).toEqual(["c", "c", "b", "a"]);
     clock.t = 3.5;
     // At host 3.5 the animation is at 1.5, in "b"'s hold from 1; coming down, it leaves it the first host moment after 4.
-    const next = nextChangeOf(RichText.fromFragments(engine.compile(FRAMES)({})));
+    const next = validUntilOf(RichText.fromFragments(engine.compile(FRAMES)({})));
     expect(next).toBeGreaterThan(4);
     expect(next).toBeLessThan(4 + 1e-9);
   });
