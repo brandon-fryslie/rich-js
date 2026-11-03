@@ -4,15 +4,22 @@
     {
       "version": "pr-551",
       "ref": "refs/pull/551/merge",
-      "sha": "ae551bd08ab18d9d17c465d8ac6945c3d4ca01e2",
-      "timestamp": "2026-11-03T17:25:26.810Z",
+      "sha": "7b481809f6a65d8627877357553ac64a432aa2e7",
+      "timestamp": "2026-11-03T17:43:14.766Z",
       "commits": [
         {
-          "sha": "ae551bd08ab18d9d17c465d8ac6945c3d4ca01e2",
+          "sha": "7b481809f6a65d8627877357553ac64a432aa2e7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T17:22:57Z",
-          "message": "Merge 00d483b4a897447e7bfe3a68bacc1cadaa2e5867 into a785d40816f3b3f98f60b9a64157eb0f5e1cb07c\n"
+          "timestamp": "2026-11-03T17:37:18Z",
+          "message": "Merge f9e6239d8b4173efd63bb06cb29661fc142ebaf4 into a785d40816f3b3f98f60b9a64157eb0f5e1cb07c\n"
+        },
+        {
+          "sha": "f9e6239d8b4173efd63bb06cb29661fc142ebaf4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T10:36:38-07:00",
+          "message": "Review: effects docs, demo, tests and the stepSequence parameter finish the rename (rich-unfiled-791c.gt81)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "00d483b4a897447e7bfe3a68bacc1cadaa2e5867",
