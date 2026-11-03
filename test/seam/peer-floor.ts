@@ -36,8 +36,10 @@
  * repository is not in.
  *
  * WHAT THIS CANNOT SEE. A consumer resolves the newest version a range admits,
- * and the floor is the one version this repository ever exercises, so a green run
- * says nothing about anything above it, a later `||` arm included. Nothing here
+ * and the floor is the one version this tree exercises, so a green run says
+ * nothing about anything above it, a later `||` arm included. The newest is run
+ * by `.github/actions/consumer/` at its ceiling end, on the packed tarball, as
+ * far as its probe reaches, and only on the day CI runs. Nothing here
  * asks the registry either: a lockfile resolving an exact pin to a local tarball
  * passes on a floor no consumer can install. And this rule holds up only one end
  * of the claim: "src/ compiles at the floor" is true because lint ran on this

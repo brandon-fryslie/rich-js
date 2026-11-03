@@ -35,36 +35,49 @@ jobs:
       # it, not the oldest: the run at ^20.19.0 || >=22.12.0 logged "Resolved
       # package.json as ^20.19.0 || >=22.12.0" and then took 24.20.0. So this
       # job proves the package works at the top of its supported range and says
-      # nothing about the floor.
+      # nothing about the floor. `check-latest` is what makes it the newest:
+      # without it setup-node takes the newest version in the runner's cache
+      # that satisfies the range, which lags the newest released.
       #
-      # The bottom is the `node-floor` job below.
+      # The bottom is the `consumer` job's floor end below.
       - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
+          check-latest: true
           cache: npm
 
       - run: npm ci
 
       - uses: ./.github/actions/gate
 
-  # The tarball, installed and rendered on the lowest Node `engines.node`
-  # admits. Its own job because the action switches the job's Node; the action
-  # owns the argument.
-  node-floor:
+  # The tarball, installed and rendered as a consumer at each end of the
+  # supported range receives it: the lowest Node `engines.node` admits with the
+  # locked peers, and the newest Node with the newest peer each range admits.
+  # One job per end, because the floor switches the job's Node; the action owns
+  # the argument. `fail-fast` is off so a broken end never hides the other.
+  consumer:
+    name: consumer (${{ matrix.end }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        end: [floor, ceiling]
     steps:
       - uses: actions/checkout@v7
 
       # The tarball is built the way every other job builds: on the Node the
-      # version file resolves to. Only the consumer runs on the floor.
+      # version file resolves to. Only the floor's consumer runs lower.
       - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
+          check-latest: true
           cache: npm
 
       - run: npm ci
 
       - run: npm run build
 
-      - uses: ./.github/actions/node-floor
+      - uses: ./.github/actions/consumer
+        with:
+          end: ${{ matrix.end }}
