@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-544",
+      "ref": "refs/pull/544/merge",
+      "sha": "8878d42baf75b1e35dc518409555ac3ab745b102",
+      "timestamp": "2026-11-03T12:15:08.497Z",
+      "commits": [
+        {
+          "sha": "8878d42baf75b1e35dc518409555ac3ab745b102",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T05:12:16-07:00",
+          "message": "Merge 5706ea85187ebd9e4e635207a11a282996207457 into c25a44a31e5c3f5a644af8160c30fbeca711497d\n"
+        },
+        {
+          "sha": "5706ea85187ebd9e4e635207a11a282996207457",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T05:10:45-07:00",
+          "message": "The animation playground is a readable example: kinds a few to a file, a draggable scrub bar, four colour depths (rich-animation-42lg.xoj)\n"
+        },
+        {
+          "sha": "7ab46840179d84b631ab8c7d41a80188581f0569",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:38:00-07:00",
+          "message": "cyclic and marquee: a rotation through a list, and content of any width crossing a slot a cell a step (rich-animation-42lg.xoj)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-543",
       "ref": "refs/pull/543/merge",
       "sha": "9bedf86f1ccd85cbbfec27df4c31871b54d65fbe",
