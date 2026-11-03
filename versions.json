@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-542",
+      "ref": "refs/pull/542/merge",
+      "sha": "1f4ee4f41af3432c907dbd9813d5d019df5a55f2",
+      "timestamp": "2026-11-03T11:33:30.865Z",
+      "commits": [
+        {
+          "sha": "1f4ee4f41af3432c907dbd9813d5d019df5a55f2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:31:36-07:00",
+          "message": "Merge c532c30cb2189fbb5bd3003470bd9334dab6d86d into 75a997116d79f6aea9a5ea0f8c52afd76d6a42d8\n"
+        },
+        {
+          "sha": "c532c30cb2189fbb5bd3003470bd9334dab6d86d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:31:22-07:00",
+          "message": "A crop drops the holds of the looks it drops (rich-animation-27tq.b7e)\n\nA placed animation tells the frame only the hold of which cells it draws\n(its switches); an effect's frames ride only on its cells, so a Viewport\nor scroll slot cropping them away no longer wakes the host. ScrollFrame's\nown report of its whole content is deleted: placed already tells geometry\nfrom inside it. The caret stays a told switch: its look is a caller-supplied\nStyle that may be reverse, which an effect's CellLook cannot carry.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-541",
       "ref": "refs/pull/541/merge",
       "sha": "80ddaef9b6d6ba669dddc2c664d03ac58d757eca",
