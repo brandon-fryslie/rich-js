@@ -26,7 +26,7 @@ import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
-import type { KeyEvent, WidgetMouseEvent } from "./types.js";
+import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
 export interface SliderOptions {
   value?: number;
@@ -75,7 +75,7 @@ export class Slider extends ThemedWidget {
   // --- Event handlers ---
 
   @action
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     if (this.disabled) return;
     switch (event.key) {
       case "left":

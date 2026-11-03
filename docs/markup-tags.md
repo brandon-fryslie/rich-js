@@ -35,7 +35,7 @@ a `RichText`. The context has three fields:
 Attributes follow the tag name as `key=value` pairs separated by spaces. A value
 may be bare, or quoted with `"` or `'` when it contains a space. It cannot
 contain `[` or `]`, quoted or not: the first `]` ends the tag. This tag reads
-one attribute to pick its colours:
+one attribute to pick its colors:
 
 ```typescript
 const badgeStyles: Record<string, string> = {

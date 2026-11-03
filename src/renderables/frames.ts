@@ -3,7 +3,7 @@
  * for its own seconds and looping, drawn as the one in progress at a time
  * the host hands in.
  *
- * An effect moves a cell's colours and may never change a glyph
+ * An effect moves a cell's colors and may never change a glyph
  * (`./effect.ts`: "It changes how cells look, never which cells exist or who
  * drew them"). A frame is the other kind of motion — what the element shows
  * changes — so it is its own primitive and not a wider `Effect`, and the two
@@ -30,7 +30,7 @@
  * placed sequence stamps them with its hold (`Style.hold`,
  * `placedRender` in `core/animation.ts`), which rides up
  * through every container to whoever holds the composed frame
- * (`Segment.nextChange`), so a host drawing at `t` knows when to draw again,
+ * (`Segment.validUntil`), so a host drawing at `t` knows when to draw again,
  * and one drawing slower than the frames turn can see that it is skipping
  * them. Nothing an animation's `at` returns carries a stamp of its own: the
  * stamp is put on where the frame's time is known.
@@ -46,7 +46,7 @@
  */
 
 import { Animation, placedRender } from "../core/animation.js";
-import { beat, type Beat } from "../core/easing.js";
+import { stepSequence, type StepSequence } from "../core/easing.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
@@ -61,14 +61,14 @@ export interface Frame {
 /** A sequence of frames prepared to be drawn: built once, asked for the frame at a time. */
 export class FrameSequence implements Animation<RichText> {
   /** Which frame is in progress when: the holds are the frames' seconds, in order. */
-  readonly beat: Beat;
+  readonly stepSequence: StepSequence;
   /** The width every frame draws at: the widest frame's, in cells. */
   readonly width: number;
   // Each frame as it draws: a line fragment padded to `width`, made once.
   private readonly _shown: readonly RichText[];
 
   constructor(frames: readonly Frame[]) {
-    this.beat = beat(frames.map((frame) => frame.seconds));
+    this.stepSequence = stepSequence(frames.map((frame) => frame.seconds));
     const texts = frames.map((frame) => setIntoLine(frame.text.copy()));
     const widths = texts.map((text) => text.cellLength);
     this.width = Math.max(...widths);
@@ -88,22 +88,22 @@ export class FrameSequence implements Animation<RichText> {
    * refuses a `t` that is not finite.
    */
   at(t: number): RichText {
-    return this._shown[this.beat.at(t)]!.copy();
+    return this._shown[this.stepSequence.at(t)]!.copy();
   }
 
   /** When the frame in progress at `t` gives way to the next: the beat's answer, its holds being the frames'. */
-  nextChange(t: number): number {
-    return this.beat.nextChange(t);
+  validUntil(t: number): number {
+    return this.stepSequence.validUntil(t);
   }
 
   /** When the frame in progress at `t` began: the beat's answer. */
-  lastChange(t: number): number {
-    return this.beat.lastChange(t);
+  validFrom(t: number): number {
+    return this.stepSequence.validFrom(t);
   }
 
   /** The frames with their motion taken out: the beat's first frame, held, a copy as `at`'s is. */
   reduced(): Animation<RichText> {
-    return Animation.map(this.beat.reduced(), (i) => this._shown[i]!.copy());
+    return Animation.map(this.stepSequence.reduced(), (i) => this._shown[i]!.copy());
   }
 
   render(options: RenderOptions): Iterable<Segment> {

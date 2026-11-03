@@ -5,7 +5,7 @@
  * and never reaches the table.
  */
 
-import { keyName, type KeyPress } from "@promptctl/rich-js/host";
+import { keyName, type KeyEvent } from "@promptctl/rich-js/host";
 
 export type Action =
   | { type: "move"; delta: number }
@@ -40,6 +40,6 @@ const KEYMAP: Record<string, Action> = {
   "q": { type: "quit" },
 };
 
-export function lookup(press: KeyPress): Action {
+export function lookup(press: KeyEvent): Action {
   return KEYMAP[keyName(press)] ?? { type: "none" };
 }

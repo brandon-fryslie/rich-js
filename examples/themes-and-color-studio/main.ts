@@ -1,7 +1,7 @@
 /**
- * themes-and-color-studio: a printed tour of the colour and theme surface —
- * colour values, the colour system a terminal is detected to have, every
- * bundled theme, palettes and colour references, OKLCH transposition, and
+ * themes-and-color-studio: a printed tour of the color and theme surface —
+ * color values, the color system a terminal is detected to have, every
+ * bundled theme, palettes and color references, OKLCH adjustment, and
  * WCAG contrast. The sections are split across four files; edit any and the
  * card prints the tour again.
  *

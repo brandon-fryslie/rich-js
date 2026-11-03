@@ -3,7 +3,7 @@ import { Segment } from "../../src/core/segment.js";
 import { render, type RenderOptions } from "../../src/core/protocol.js";
 import type {
   InteractiveWidget,
-  KeyEvent,
+  WidgetKeyEvent,
 } from "../../src/widgets/types.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 
@@ -11,7 +11,7 @@ class StubWidget extends WidgetBase {
   readonly id = "stub";
   readonly focusable = true;
 
-  handleKey(_event: KeyEvent): void {}
+  handleKey(_event: WidgetKeyEvent): void {}
 
   protected draw(_options: RenderOptions): Iterable<Segment> {
     return [new Segment("st"), new Segment("ub\nnext")];
@@ -116,7 +116,7 @@ describe("WidgetBase", () => {
     expect(submits).toHaveLength(1);
   });
 
-  it("is reported to onPresent before the widgets nested in its output", () => {
+  it("is reported to onVisibility before the widgets nested in its output", () => {
     // Document order — the order focus moves in — is the order these calls arrive.
     const inner = new TextWidget("in");
     const outer = new (class extends StubWidget {
@@ -125,7 +125,7 @@ describe("WidgetBase", () => {
       }
     })();
     const heard: object[] = [];
-    [...render(outer, { maxWidth: 80, onPresent: (owner) => heard.push(owner) })];
+    [...render(outer, { maxWidth: 80, onVisibility: (owner) => heard.push(owner) })];
     expect(heard).toEqual([outer, inner]);
   });
 

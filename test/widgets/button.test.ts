@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import { Button } from "../../src/widgets/button.js";
-import { KeyEvent } from "../../src/widgets/types.js";
+import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
@@ -9,11 +9,11 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 // What every widget draws a disabled cell in.
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
-// Factories — KeyEvent carries a mutable `stopped` flag, so each call site
+// Factories — WidgetKeyEvent carries a mutable `stopped` flag, so each call site
 // must get a fresh instance.
-const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
-const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
-const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
+const enterEvent = () => new WidgetKeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
+const spaceEvent = () => new WidgetKeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
+const escapeEvent = () => new WidgetKeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
 
 const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
 const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
@@ -97,7 +97,7 @@ describe("Button", () => {
       expect(style.bgcolor!.name).not.toBe("#4a4a4a");
     });
 
-    it("hover uses the on-${accent} contrast colour as fg, not text-${accent}", () => {
+    it("hover uses the on-${accent} contrast color as fg, not text-${accent}", () => {
       const btn = new Button({ label: "Go", variant: "primary" });
       btn.setHovered(true);
       const style = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]![0]!.style!;
@@ -120,7 +120,7 @@ describe("Button", () => {
       expect(style.color!.name).not.toBe(style.bgcolor!.name);
     });
 
-    it("active and hover use the same colour pair; bold differentiates them", () => {
+    it("active and hover use the same color pair; bold differentiates them", () => {
       const hover = new Button({ label: "Go", variant: "primary" });
       hover.setHovered(true);
       const hoverStyle = Segment.splitLines(hover.render({ maxWidth: 80 }))[0]![0]!.style!;
@@ -135,7 +135,7 @@ describe("Button", () => {
       expect(hoverStyle.bold).toBeFalsy();
     });
 
-    it("active + focused shows brackets and bold without inverting colours", () => {
+    it("active + focused shows brackets and bold without inverting colors", () => {
       const btn = new Button({ label: "Go" });
       btn.focus(0);
       btn.setActive(true);

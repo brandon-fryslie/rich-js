@@ -7,7 +7,7 @@
  * browser opens it again, and a link in the format before it still opens; a
  * program that moves the cursor, runs on, reads input or never ends moves to a live terminal,
  * and the page stays usable; reset puts the opened program back; at phone
- * width the card fits the screen; output wears the site's colour mode.
+ * width the card fits the screen; output wears the site's color mode.
  */
 import { test, expect, type Page } from "@playwright/test";
 import { deflateSync } from "node:zlib";
@@ -24,7 +24,7 @@ async function open(page: Page, path = "playground.html"): Promise<string[]> {
 
 const editor = (page: Page) => page.locator(".rich-playground .cm-content");
 const output = (page: Page) => page.locator(".rich-playground .rich-example-output");
-/** What the output shows as drawn HTML, the fragment of the colour mode in view. */
+/** What the output shows as drawn HTML, the fragment of the color mode in view. */
 const drawn = async (page: Page) => (await page.locator(".rich-playground .rich-example-output").innerText()).replaceAll("\u00a0", " ");
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
 const rows = async (page: Page) => (await page.locator(".rich-playground .xterm-rows").innerText()).replaceAll("\u00a0", " ");

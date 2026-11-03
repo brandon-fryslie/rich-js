@@ -9,7 +9,7 @@ import { Pretty } from "../../src/core/pretty.js";
 import { MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
 import { Console } from "../../src/core/console.js";
 import { renderToString, segmentToString, segmentsToString } from "../../src/core/render.js";
-import { resolveDestination } from "../../src/core/color.js";
+import { resolveOutputTarget } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
@@ -89,7 +89,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
 
   test("a raw segment is contained, in every order", () => {
     for (const textOrder of ["plain", "logical", "visual"] as const) {
-      const destination = { ...resolveDestination(null, { isTTY: false }), textOrder };
+      const destination = { ...resolveOutputTarget(null, { isTTY: false }), textOrder };
       expect(segmentsToString([new Segment(`${RLO}abc`)], destination)).toBe("abc");
       expect(segmentToString(new Segment(`${RLO}abc`), destination)).toBe("abc");
     }
@@ -98,7 +98,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
   test("a row cut by a crop still closes", () => {
     const segments = [...new RichText(`${RLO}abcdefgh`, { end: "" }).render({ maxWidth: 40, textOrder: "logical" })];
     const cropped = Segment.adjustLineLength(segments, 4);
-    const destination = { ...resolveDestination(null, { isTTY: false }), textOrder: "logical" as const };
+    const destination = { ...resolveOutputTarget(null, { isTTY: false }), textOrder: "logical" as const };
     const row = segmentsToString([...cropped, new Segment("after")], destination);
     expect(balancedControls(row)).toBe(true);
     expect(implicit(row).endsWith("after")).toBe(true);
@@ -377,7 +377,7 @@ describe("the grid on a real emulator", () => {
 });
 
 describe("crops and splices, below every drawing", () => {
-  const destination = { ...resolveDestination(null, { isTTY: false }), textOrder: "logical" as const };
+  const destination = { ...resolveOutputTarget(null, { isTTY: false }), textOrder: "logical" as const };
   const logicalRow = (content: string): Segment[] => [...new RichText(content, { end: "" }).render({ maxWidth: 40, textOrder: "logical" })];
 
   test("two cells merged side by side are two isolates", () => {

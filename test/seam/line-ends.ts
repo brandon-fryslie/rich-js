@@ -33,7 +33,7 @@ import { RichText } from "../../src/core/text.js";
 import { Emoji } from "../../src/core/emoji.js";
 import { JSONRenderable } from "../../src/core/json.js";
 import { Pretty } from "../../src/core/pretty.js";
-import { JOINERS, Strip } from "../../src/core/strip.js";
+import { SEPARATOR_STYLES, Strip } from "../../src/core/strip.js";
 import { Align } from "../../src/renderables/align.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Constrain } from "../../src/renderables/constrain.js";
@@ -100,7 +100,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
       new Effected(content, () => Animation.constant<EffectFrame>((c) => c), {
         key: "content",
       }),
-    why: "recolours its content's cells and adds none, so its last line is its content's",
+    why: "recolors its content's cells and adds none, so its last line is its content's",
   },
   GlyphEffected: {
     ends: "content",
@@ -144,7 +144,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Spinner: { ends: "own-line", build: () => new Spinner("dots", "label") },
   Slider: { ends: "own-line", build: () => new Slider() },
   StaticItem: { ends: "own-line", build: () => new StaticItem({ id: "s", render: text("x") }) },
-  Strip: { ends: "own-line", build: () => new Strip([text("a")], JOINERS.plain) },
+  Strip: { ends: "own-line", build: () => new Strip([text("a")], SEPARATOR_STYLES.plain) },
   Syntax: { ends: "own-line", build: () => new Syntax("x = 1", "python") },
   Table: {
     ends: "own-line",

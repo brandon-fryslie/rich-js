@@ -25,29 +25,29 @@ export {
   blendRgb,
   resolveColorSystem,
   detectColorSystem,
-  resolveDestination,
+  resolveOutputTarget,
   STANDARD_TABLE,
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
-export type { ColorSystemName, DetectColorOptions, Destination, DestinationOptions } from "./core/color.js";
+export type { ColorSystemName, DetectColorOptions, OutputTarget, DestinationOptions } from "./core/color.js";
 export type { TextOrder } from "./core/text-order.js";
 
-// Perceptually-uniform color space (manipulation, transposition).
+// Perceptually-uniform color space (manipulation, adjustment).
 export {
   Oklch,
   IDENTITY,
   INVERT_LIGHTNESS,
   isIdentityKey,
 } from "./core/oklch.js";
-export type { ThemeKey, OklchWeights } from "./core/oklch.js";
+export type { ColorAdjustment, OklchWeights } from "./core/oklch.js";
 
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";
 export type { AccentRole, BaseRole, PaletteRole, PaletteRoles, ShadedRole } from "./themes/palette.js";
-// The one checkpoint turning an author-written colour string — a palette
-// variable name or a `#RRGGBB` literal — into a colour. [LAW:parse-dont-validate]
+// The one checkpoint turning an author-written color string — a palette
+// variable name or a `#RRGGBB` literal — into a color. [LAW:parse-dont-validate]
 export { resolveColorRef, ColorRefError } from "./themes/colorRef.js";
 export { buildPalette } from "./themes/buildPalette.js";
 export type { BaseColors, StatedRoles } from "./themes/buildPalette.js";
@@ -79,11 +79,11 @@ export {
 export { getThemePalette, listThemePalettes } from "./themes/registry.js";
 export type { ThemeName } from "./themes/registry.js";
 export {
-  transposePalette,
-  themeKeyForRoot,
-  isAnchored,
-  ANCHORED_ROOTS,
-} from "./themes/transpose.js";
+  adjustPalette,
+  adjustmentForRoot,
+  isHueLocked,
+  HUE_LOCKED_ROOTS,
+} from "./themes/adjust.js";
 // WCAG contrast toolkit — accessibility-aware color for styled output.
 // `ensureContrast` keeps a color's hue and only slides its OKLCH lightness to
 // meet the ratio, so themed text stays themed; `contrastFor` picks black/white
@@ -100,8 +100,8 @@ export {
   contrastRatio,
   contrastFor,
   ensureContrast,
-  ensureDrawn,
-  drawnColour,
+  ensureMinimumDelta,
+  compositedColor,
 } from "./themes/colorMath.js";
 // A number → a color through ordered stops, interpolated in OKLCH — the one
 // color operation whose input is a measurement rather than a color, so a
@@ -111,14 +111,14 @@ export { ColorRamp } from "./themes/ramp.js";
 export type { ColorStop, RampMotion } from "./themes/ramp.js";
 // Progress in [0, 1]: phases turn seconds into it, eases reshape it. One
 // vocabulary for ramps and time-based effects alike, CSS's names throughout.
-export { EASES, Phase, beat, cubicBezier, parseEase, spring, steps } from "./core/easing.js";
-export type { Beat, Ease, SpringOptions, StepPosition, Timing } from "./core/easing.js";
+export { EASES, WrapMode, stepSequence, cubicBezier, parseEasing, spring, steps } from "./core/easing.js";
+export type { StepSequence, Easing, SpringOptions, StepPosition, Timing } from "./core/easing.js";
 // A value for a time, and when it next changes: the one type every kind of
 // motion is an instance of — beats, frame sequences, spinners, effects.
 export { Animation } from "./core/animation.js";
 // What every animation answers whatever its values — the type a generic
 // animation implements, and what `Animation.of` and `map` take.
-export type { Moves, Timed } from "./core/animation.js";
+export type { Reads, Behavior } from "./core/animation.js";
 // A number eased from one value to another over seconds, then held: the
 // value animation a fill, a counter or a width moves by instead of jumping.
 export { tween } from "./core/tween.js";
@@ -141,7 +141,7 @@ export {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "./core/style.js";
-export type { Attributes, Hold, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
+export type { Attributes, ValidityInterval, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
 
 export {
   Segment,
@@ -193,7 +193,7 @@ export type {
   Height,
   Renderable,
   Measurable,
-  Presence,
+  Visibility,
   StyleErrorHandler,
   FrameHost,
   HostFrame,
@@ -207,30 +207,30 @@ export { Measurement, measureRenderables } from "./core/measure.js";
 export { Span, RichText } from "./core/text.js";
 export type { RichTextOptions } from "./core/text.js";
 
-// Strip + Joiner
+// Strip + Separator
 export {
   Strip,
-  CellJoiner,
+  CellSeparator,
   SEAM_MIN_DELTA_E,
-  SEAMS,
-  CAPS,
-  JOINERS,
-  joinerNamed,
+  SEPARATORS,
+  END_CAPS,
+  SEPARATOR_STYLES,
+  separatorNamed,
   gradientSeam,
 } from "./core/strip.js";
 export type {
   StyledRenderable,
-  Joiner,
+  Separator,
   JoinContext,
-  JoinSeam,
-  JoinCaps,
+  SeparatorSeam,
+  EndCaps,
   SeamForm,
   CapsForm,
   SeamCell,
   JoinCell,
   CellColor,
   Paint,
-  JoinerSpec,
+  SeparatorSpec,
 } from "./core/strip.js";
 
 // renderToString — stateless one-shot emission
@@ -313,7 +313,7 @@ export {
   dissolveOut,
   fadeIn,
   gradient,
-  onBeat,
+  sampleAndHold,
   layered,
   onColors,
   pulse,
@@ -322,7 +322,7 @@ export {
   steppedInk,
   wheel,
 } from "./renderables/effects.js";
-export type { AttributeLoopName, Blink, ColorStep, Curve, EffectTarget, Field, Loop, LoopName, Touch, Transition, TransitionName } from "./renderables/effects.js";
+export type { AttributeLoopName, Blink, ColorStep, Curve, EffectTarget, Field, Loop, LoopName, ColorModifier, Transition, TransitionName } from "./renderables/effects.js";
 export { crossfade, wipe } from "./renderables/change.js";
 export type { Between, Change } from "./renderables/change.js";
 export { lifecycle, throughColors, throughGlyphs } from "./renderables/lifecycle.js";

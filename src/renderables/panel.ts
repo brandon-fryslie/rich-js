@@ -2,7 +2,7 @@
  * Panel — a bordered box that wraps content, with optional title and subtitle.
  */
 
-import { labelled } from "../core/orient.js";
+import { labeled } from "../core/orient.js";
 import { cellLen, setCellSize, asCellCol, cellCount } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
@@ -126,7 +126,7 @@ function borderTitle(label: InlineLabel, options: RenderOptions): RichText {
 
 /**
  * The style of text set into a border — title, subtitle and accessory alike:
- * its own laid over the border's, the one rule for "what colour is the title
+ * its own laid over the border's, the one rule for "what color is the title
  * text in". Laid over rather than in place of it, as Rich's `stylize_before`
  * does, because the border's style carries the panel's own: a title that
  * replaced it cut a hole in the panel's background on the top row. The text
@@ -369,7 +369,7 @@ export class Panel implements Renderable, Measurable {
     const corner = box.bottom.right.repeat(geometry.right);
     const [close, afterAccessory] = accessoryText === "" ? [corner, ""] : ["", corner];
     yield* borderRow(options, box.bottom, geometry, geometry.spanWidth - cellLen(accessoryText), this._subtitleLabel, subtitleStyle, border, close);
-    yield* labelled("", accessoryText, "", borderTextStyle(border, accessoryOwn), options.textOrder);
+    yield* labeled("", accessoryText, "", borderTextStyle(border, accessoryOwn), options.textOrder);
     yield new Segment(afterAccessory, border);
     yield Segment.line();
   }

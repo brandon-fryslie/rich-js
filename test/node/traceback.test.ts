@@ -11,7 +11,7 @@
  * The tell that output went through `Traceback` and not the raw `error.stack`
  * is the frame shape: `Traceback` renders `"  fn file:line"`, where a raw
  * stack renders `"    at fn (file:line:col)"`. Every test asserts on
- * ANSI-stripped text so colour depth cannot make them flap.
+ * ANSI-stripped text so color depth cannot make them flap.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";

@@ -96,8 +96,8 @@ async function playground(size = { cols: 120, rows: 40 }, env: Env = { TERM: "xt
 /** The rows under the controls: the gallery of kinds. */
 const gallery = (rows: readonly string[]): string => rows.slice(5).join("\n");
 
-/** Every SGR parameter that sets a colour, in what was written. */
-function colourParameters(written: string): string[] {
+/** Every SGR parameter that sets a color, in what was written. */
+function colorParameters(written: string): string[] {
   const found: string[] = [];
   for (const [, params] of written.matchAll(/\x1b\[([\d;:]*)m/g)) {
     for (const p of params!.split(/[;:]/)) {
@@ -200,18 +200,18 @@ describe("animation playground", () => {
     await q.stop();
   });
 
-  it("asks its terminal for sixteen colours and then none, through the host's environment", async () => {
+  it("asks its terminal for sixteen colors and then none, through the host's environment", async () => {
     const p = await playground();
-    await p.click("colour depth");
-    expect((await p.screen()).join("\n")).toContain("16 colours");
+    await p.click("color depth");
+    expect((await p.screen()).join("\n")).toContain("16 colors");
     let from = p.host.output().length;
     await p.advance(3);
     expect(p.host.output().slice(from)).not.toMatch(/\x1b\[[\d;]*[34]8;[25];/);
-    await p.click("colour depth");
-    expect((await p.screen()).join("\n")).toContain("no colour");
+    await p.click("color depth");
+    expect((await p.screen()).join("\n")).toContain("no color");
     from = p.host.output().length;
     await p.advance(3);
-    expect(colourParameters(p.host.output().slice(from))).toEqual([]);
+    expect(colorParameters(p.host.output().slice(from))).toEqual([]);
   });
 
   it("marches the border's ants clockwise: right along the top, left along the bottom", () => {
@@ -237,12 +237,12 @@ describe("animation playground", () => {
     expect(line).toMatch(/narrow marquee\s+hi/);
   });
 
-  it("starts at the colours its terminal's environment says", async () => {
+  it("starts at the colors its terminal's environment says", async () => {
     const p = await playground(undefined, { TERM: "xterm-256color", NO_COLOR: "1" });
-    expect((await p.screen()).join("\n")).toContain("terminal's own colours");
+    expect((await p.screen()).join("\n")).toContain("terminal's own colors");
     const from = p.host.output().length;
     await p.advance(3);
-    expect(colourParameters(p.host.output().slice(from))).toEqual([]);
+    expect(colorParameters(p.host.output().slice(from))).toEqual([]);
   });
 
   it("at eighty columns the controls wrap and push the gallery down, and the readout stays on screen", async () => {

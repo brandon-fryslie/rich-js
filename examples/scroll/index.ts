@@ -17,8 +17,8 @@ import {
   Group,
   Live,
   Panel,
-  Phase,
-  beat,
+  WrapMode,
+  stepSequence,
   RichText,
   cellLen,
   scroll,
@@ -33,7 +33,7 @@ const marquee = scroll(new RichText(NEWS, { style: "bold #f9e2af" }), {
   height: 1,
   // From just past the right edge to just past the left, every twelve seconds.
   // From the line's start, so with motion reduced the loop holds it in view.
-  col: Animation.continuous((t) => ((Phase.loop(12)(t) * (cellLen(NEWS) + WIDTH) + WIDTH) % (cellLen(NEWS) + WIDTH)) - WIDTH),
+  col: Animation.continuous((t) => ((WrapMode.loop(12)(t) * (cellLen(NEWS) + WIDTH) + WIDTH) % (cellLen(NEWS) + WIDTH)) - WIDTH),
 });
 
 const LOG = Array.from({ length: 12 }, (_, i) => new RichText(`${String(i + 1).padStart(2)}  build step ${i + 1} finished`, { style: "#89b4fa" }));
@@ -41,7 +41,7 @@ const tail = scroll(new Group(...LOG), {
   width: WIDTH,
   height: 4,
   // One row a second down the log, then back to its top: a beat, so it wakes the host once a second, not every frame.
-  row: beat(Array.from({ length: LOG.length - 3 }, () => 1)),
+  row: stepSequence(Array.from({ length: LOG.length - 3 }, () => 1)),
 });
 
 const panel = new Panel(new RichText("slid in from the left, and holding", { style: "#a6e3a1" }), { width: WIDTH });

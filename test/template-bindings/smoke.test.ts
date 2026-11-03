@@ -11,8 +11,8 @@ const strict = (error: StyleSyntaxError): never => {
 // [LAW:behavior-not-structure] Tests assert the binding contract, not internals.
 // This is the bootstrap smoke test: it proves the wiring end-to-end (engine
 // constructs, parser runs, evaluator runs, fragments come back as RichText) and
-// that the configuration-free half of the vocabulary — the colour sinks, the
-// palette-free colour math, attributes, link — works with no theme in sight.
+// that the configuration-free half of the vocabulary — the color sinks, the
+// palette-free color math, attributes, link — works with no theme in sight.
 // Per-function behaviour lives in style-funcs.test.ts.
 
 describe("template-bindings — bootstrap smoke", () => {
@@ -174,10 +174,10 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(() => renderTemplate(createRichTextEngine(), `{{ .title }}`, { title }, { onStyleError: strict })).toThrow(StyleSyntaxError);
   });
 
-  it("the theme-free engine covers the whole colour vocabulary via hex literals", () => {
+  it("the theme-free engine covers the whole color vocabulary via hex literals", () => {
     // [LAW:one-way-deps] `richTextFuncs()` needs no configuration: a consumer
-    // with no theme system still composes colours, because the colour math is
-    // palette-free and the sinks take any colour.
+    // with no theme system still composes colors, because the color math is
+    // palette-free and the sinks take any color.
     const engine = createRichTextEngine();
     const segs = renderTemplate(
       engine,
@@ -188,24 +188,24 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs.every((s) => !s.text.startsWith("[error:"))).toBe(true);
   });
 
-  it("naming a theme colour needs paletteFuncs, which the bare engine does not register", () => {
+  it("naming a theme color needs paletteFuncs, which the bare engine does not register", () => {
     // `color` and `ramp` are the palette-dependent functions and ship
-    // separately, so a template that names a theme colour fails loudly here
-    // rather than silently rendering an unthemed colour. [LAW:no-silent-failure]
+    // separately, so a template that names a theme color fails loudly here
+    // rather than silently rendering an unthemed color. [LAW:no-silent-failure]
     const engine = createRichTextEngine();
     const segs = renderTemplate(engine, `{{ fg (color "primary") "x" }}`);
     expect(segs).toHaveLength(1);
     expect(segs[0]!.text.startsWith("[error:")).toBe(true);
   });
 
-  it("richTextFuncs() is the union of the style set and the colour-math set", () => {
+  it("richTextFuncs() is the union of the style set and the color-math set", () => {
     // The one structural guarantee worth pinning: `richTextFuncs()` merges
-    // both halves, so a consumer registering it gets painting AND colour
+    // both halves, so a consumer registering it gets painting AND color
     // arithmetic from a single call. Behaviour per function lives in
     // style-funcs.test.ts.
     const funcs = richTextFuncs();
     const styleOnly = ["fg", "bg", "bold", "b", "not_bold", "style", "link"];
-    const colorOnly = ["darken", "lighten", "mix", "contrastOn", "readableOn", "shiftHue"];
+    const colorOnly = ["darken", "lighten", "mix", "contrastOn", "ensureContrast", "shiftHue"];
     for (const name of [...styleOnly, ...colorOnly]) {
       expect(funcs[name]).toBeDefined();
     }

@@ -101,9 +101,9 @@ console.print(new Panel("[spring_green3]Content[/spring_green3]", { padding: 1, 
 console.print(new Panel("[spring_green3]Content[/spring_green3]", { padding: [1, 2], expand: false })); // top/bottom=1, left/right=2
 ```
 
-## Border colour
+## Border color
 
-`borderStyle` colours the frame. The title and subtitle are drawn in it too, with `titleStyle` or `subtitleStyle` laid over it where given:
+`borderStyle` colors the frame. The title and subtitle are drawn in it too, with `titleStyle` or `subtitleStyle` laid over it where given:
 
 ```typescript
 console.print(new Panel("Disk usage is above [bold]90%[/bold]", {

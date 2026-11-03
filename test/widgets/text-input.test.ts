@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { autorun } from "mobx";
 import { TextInput, charGreedyWrap, type WrapStrategy, type WrapRow } from "../../src/widgets/text-input.js";
 import { asCodePoint, asCellCol, cellLen } from "../../src/core/cells.js";
-import { KeyEvent } from "../../src/widgets/types.js";
+import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
@@ -18,8 +18,8 @@ import { expectLinearTime } from "../suite/linear-time.js";
 // What every widget draws a disabled cell in.
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
-// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
-const makeKey = (key: string, character = ""): KeyEvent => new KeyEvent({
+// Factories — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
+const makeKey = (key: string, character = ""): WidgetKeyEvent => new WidgetKeyEvent({
   key,
   character,
   shift: false,
@@ -27,7 +27,7 @@ const makeKey = (key: string, character = ""): KeyEvent => new KeyEvent({
   meta: false,
 }, 0);
 
-const ctrl = (key: string): KeyEvent => new KeyEvent({
+const ctrl = (key: string): WidgetKeyEvent => new WidgetKeyEvent({
   key,
   character: "",
   shift: false,
@@ -35,7 +35,7 @@ const ctrl = (key: string): KeyEvent => new KeyEvent({
   meta: false,
 }, 0);
 
-const alt = (key: string): KeyEvent => new KeyEvent({
+const alt = (key: string): WidgetKeyEvent => new WidgetKeyEvent({
   key,
   character: "",
   shift: false,
@@ -65,7 +65,7 @@ const cursorRowOf = (t: TextInput): number => {
 const upEvent = () => makeKey("up");
 const downEvent = () => makeKey("down");
 
-const printable = (ch: string): KeyEvent => new KeyEvent({
+const printable = (ch: string): WidgetKeyEvent => new WidgetKeyEvent({
   key: ch,
   character: ch,
   shift: false,
@@ -187,7 +187,7 @@ describe("TextInput", () => {
 
     it("ignores ctrl-modified keys", () => {
       const t = new TextInput();
-      t.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: true, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "a", character: "a", shift: false, ctrl: true, meta: false }, 0));
       expect(t.value).toBe("");
     });
   });
@@ -417,7 +417,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "ab" });
       t.focus(0);
       const segments = Segment.splitLines(t.render(RENDER))[0]!;
-      // cursor segment uses bgcolor=primary palette colour
+      // cursor segment uses bgcolor=primary palette color
       const cursorSeg = segments.find(
         (s) => s.style?.bgcolor !== undefined && s.style?.bgcolor.name !== "#333333",
       );
@@ -623,20 +623,20 @@ describe("TextInput", () => {
     it("Ctrl+Left / Ctrl+Right do word motion", () => {
       const t = new TextInput({ value: "foo bar baz" });
       t.cursorPosition = asCodePoint(11);
-      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(8);
-      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(4);
-      t.handleKey(new KeyEvent({ key: "right", character: "", shift: false, ctrl: true, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "right", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(7);  // end of "bar"
     });
 
     it("Ctrl+Home / Ctrl+End jump to document bounds", () => {
       const t = new TextInput({ value: "line1\nline2\nline3", multiline: true });
       t.cursorPosition = asCodePoint(8);
-      t.handleKey(new KeyEvent({ key: "home", character: "", shift: false, ctrl: true, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "home", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(0);
-      t.handleKey(new KeyEvent({ key: "end", character: "", shift: false, ctrl: true, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "end", character: "", shift: false, ctrl: true, meta: false }, 0));
       expect(t.cursorPosition).toBe(17);
     });
   });
@@ -662,7 +662,7 @@ describe("TextInput", () => {
     it("Alt+Backspace kills the previous word", () => {
       const t = new TextInput({ value: "foo bar baz" });
       t.cursorPosition = asCodePoint(11);
-      t.handleKey(new KeyEvent({ key: "backspace", character: "", shift: false, ctrl: false, meta: true }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "backspace", character: "", shift: false, ctrl: false, meta: true }, 0));
       expect(t.value).toBe("foo bar ");
     });
   });
@@ -683,7 +683,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "hi", multiline: true });
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey(new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: true, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "enter", character: "\r", shift: false, ctrl: true, meta: false }, 0));
       expect(submits).toHaveLength(1);
       expect(t.value).toBe("hi");
     });
@@ -783,7 +783,7 @@ describe("TextInput", () => {
       // Render first so visual rows get cached.
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(13);            // on visual row 1 (continuation), col 3
-      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 0 at col 3 → cursorPosition = 3
       expect(t.cursorPosition).toBe(3);
     });
@@ -796,7 +796,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(4);             // visual row 0, col 4
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 1 starts at value-offset 10; col 4 → 14
       expect(t.cursorPosition).toBe(14);
     });
@@ -821,7 +821,7 @@ describe("TextInput", () => {
       [...t.render({ maxWidth: 80 })];
       expect(called).toBeGreaterThan(0);
       t.cursorPosition = asCodePoint(0);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 1 starts at offset 4 (per the custom strategy)
       expect(t.cursorPosition).toBe(4);
     });
@@ -1127,7 +1127,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(3);
-      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
       expect(t.cursorPosition).toBe(3);
     });
 
@@ -1139,7 +1139,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(13);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       expect(t.cursorPosition).toBe(13);
     });
 
@@ -1187,7 +1187,7 @@ describe("TextInput", () => {
       t.cursorPosition = asCodePoint(rows[1]!.valueStart + 5);
       expect(cursorRowOf(t)).toBe(1);
 
-      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
 
       // Pre-fix: cursorPosition would be `rows[0].valueStart + 1 = 1`, which
       // equals `rows[1].valueStart` — the boundary — and `_cursorVisualRow`
@@ -1211,7 +1211,7 @@ describe("TextInput", () => {
 
       const positions: number[] = [t.cursorPosition];
       for (let i = 0; i < 3; i++) {
-        t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
+        t.handleKey(new WidgetKeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }, 0));
         positions.push(t.cursorPosition);
       }
       // Three Ups from row 2: row 2 → row 1 → row 0 → (stuck at top, no further movement).
@@ -1238,7 +1238,7 @@ describe("TextInput", () => {
 
       // Park cursor on the row right above `head` at col 5.
       t.cursorPosition = asCodePoint(rows[head - 1]!.valueStart + 5);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
 
       // Cursor should be on row `head` (valueStart), NOT at row `head+1`'s boundary.
       expect(t.cursorPosition).toBe(rows[head]!.valueStart);
@@ -1254,10 +1254,10 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = asCodePoint(6);                 // col 6 on visual row 0 of line 1
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 1 = "xy" (start=11, length 2) → clamped to col 2 → pos 13
       expect(t.cursorPosition).toBe(13);
-      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
+      t.handleKey(new WidgetKeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }, 0));
       // Visual row 2 = "uvwxyz" (start=14, length 6) → preferred col 6 → pos 20
       expect(t.cursorPosition).toBe(20);
     });

@@ -14,7 +14,7 @@
 
 import { linkHref, normalizeLinkText } from "./markdown-url.js";
 import { PY_WHITESPACE, pyStrip } from "./python-space.js";
-import { namedReference } from "./html-entities.js";
+import { namedCharacterReference } from "./html-entities.js";
 import { pattern, type Pattern } from "../core/pattern.js";
 
 /** Where a table column's cells sit, from the colons on its delimiter cell. None is GFM's no alignment, which Rich leaves to its column: left. */
@@ -1039,7 +1039,7 @@ function referenceAt(text: string, i: number): InlineMatch | undefined {
   }
   const named = matchAt(NAMED_REFERENCE, text, i);
   if (!named) return undefined;
-  const chars = namedReference(named[1]!);
+  const chars = namedCharacterReference(named[1]!);
   return chars === undefined ? undefined : { kind: "text", text: chars, end: i + named[0].length };
 }
 
@@ -1053,7 +1053,7 @@ function unescapeAll(text: string): string {
   return text.replace(unescapes(), (whole: string, escaped: string | undefined) => {
     if (escaped !== undefined) return escaped;
     const numeric = DESTINATION_NUMERIC.exec(whole);
-    const chars = numeric ? referencedCharacter(referencedCode(numeric[1]!)) : namedReference(whole.slice(1, -1));
+    const chars = numeric ? referencedCharacter(referencedCode(numeric[1]!)) : namedCharacterReference(whole.slice(1, -1));
     return chars ?? whole;
   });
 }

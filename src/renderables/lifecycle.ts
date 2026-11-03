@@ -23,11 +23,11 @@
  * them with its hold at the frame's time (`placedRender`). The exit is
  * drawn over whatever the arrival draws, so an element told to leave while
  * it is still arriving leaves from where it is, never shown whole first —
- * though a colour exit is spread over the cells each frame shows, so a cell
+ * though a color exit is spread over the cells each frame shows, so a cell
  * the arrival adds can move one already leaving back toward whole
  * (`ownChange`, `./effects.ts`). [LAW:dataflow-not-control-flow]
  *
- * A half draws the element through a colour transition (`throughColors`, a
+ * A half draws the element through a color transition (`throughColors`, a
  * `fadeIn`) or a glyph one (`throughGlyphs`, a `typewriter`): each binds its
  * transition to the one wrapper that draws it, so nothing here asks which kind
  * a half is, and a line can type itself in and dissolve out. A half
@@ -64,12 +64,12 @@ import type { GlyphTransition } from "./glyph-effects.js";
  */
 export type Half = (element: Renderable, key: string) => Animation<Renderable>;
 
-/** `transition`'s colours drawn over an element, arriving from and leaving to the ground of the terminal the frame is drawn on. */
+/** `transition`'s colors drawn over an element, arriving from and leaving to the ground of the terminal the frame is drawn on. */
 export function throughColors(transition: Transition): Half {
   return (element, key) => scheduled(new Effected(element, transition.effect, { key }), transition.schedule);
 }
 
-/** `transition`'s glyphs drawn over an element, at every depth, with no colour too. */
+/** `transition`'s glyphs drawn over an element, at every depth, with no color too. */
 export function throughGlyphs(transition: GlyphTransition): Half {
   return (element, key) => scheduled(new GlyphEffected(element, transition.effect, { key }), transition.schedule);
 }
@@ -79,14 +79,14 @@ export function throughGlyphs(transition: GlyphTransition): Half {
  * `schedule`, the transition's own, says: its frames with the one word on
  * when they change that the transition has and the wrapper lacks, whose own
  * answer is "now" until it is drawn. [LAW:one-source-of-truth] Reduced,
- * both are reduced together, as `onBeat` steps both: a one-shot's effect
+ * both are reduced together, as `sampleAndHold` steps both: a one-shot's effect
  * and its schedule each reduce to a cut at 0 (`transition`, `./effects.ts`).
  */
 function scheduled(placed: Animation<Renderable>, schedule: Animation<unknown>): Animation<Renderable> {
   return Animation.of({
     at: (t: number) => placed.at(t),
-    nextChange: (t: number) => schedule.nextChange(t),
-    lastChange: (t: number) => schedule.lastChange(t),
+    validUntil: (t: number) => schedule.validUntil(t),
+    validFrom: (t: number) => schedule.validFrom(t),
     reduced: () => scheduled(placed.reduced(), schedule.reduced()),
   });
 }
@@ -178,7 +178,7 @@ function life(element: Renderable, options: LifecycleOptions, halves: Halves, en
   const arriving = Timeline.run(Timeline.play(entered), arrival);
   // What the element draws by `t` if it is not leaving: arriving through `enter`, then itself.
   const shown = (t: number): Renderable => (t < arrived ? arrival.at(t - entered) : element);
-  const held = (schedule: Animation<unknown>, t: number) => ({ last: schedule.lastChange(t), next: schedule.nextChange(t) });
+  const held = (schedule: Animation<unknown>, t: number) => ({ last: schedule.validFrom(t), next: schedule.validUntil(t) });
   // [LAW:one-source-of-truth] Each phase's frame and its hold, side by side, so the two cannot disagree.
   // The frames say nothing of when they change — the hold does, stamped where the lifecycle is placed.
   const phase = (t: number): { readonly frame: Renderable; readonly last: number; readonly next: number } => {
@@ -202,16 +202,16 @@ function life(element: Renderable, options: LifecycleOptions, halves: Halves, en
         : { frame: NOTHING, last: left, next: t < goneAt ? goneAt : Number.POSITIVE_INFINITY };
   const present: Animation<Renderable> = Animation.of({
     at: (t: number) => there(t).frame,
-    nextChange: (t: number) => there(t).next,
-    lastChange: (t: number) => there(t).last,
+    validUntil: (t: number) => there(t).next,
+    validFrom: (t: number) => there(t).last,
     reduced: () => present,
   });
   return Animation.of({
     entered,
     left,
     at: (t: number) => phase(t).frame,
-    nextChange: (t: number) => phase(t).next,
-    lastChange: (t: number) => phase(t).last,
+    validUntil: (t: number) => phase(t).next,
+    validFrom: (t: number) => phase(t).last,
     // Reduced, the element is there from when it entered until it is told to leave: no arrival or exit to show, and the times kept.
     reduced: () => present,
     // [LAW:one-source-of-truth] The moment `phase` draws nothing from, so an element not yet told to leave is never asked its exit at -Infinity.

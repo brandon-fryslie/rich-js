@@ -81,7 +81,7 @@ test.beforeAll(async () => {
   await build();
 });
 
-test("a Table prints in colour", async ({ page }) => {
+test("a Table prints in color", async ({ page }) => {
   const errors = await open(page);
   await play(
     page,
@@ -95,7 +95,7 @@ test("a Table prints in colour", async ({ page }) => {
   );
   await expect.poll(() => rows(page)).toContain("Mercury");
   expect(await rows(page)).toContain("Planets");
-  // A cell drawn in a colour of its own, not the terminal's foreground.
+  // A cell drawn in a color of its own, not the terminal's foreground.
   await expect(page.locator("#terminal .xterm-rows span", { hasText: "Mercury" })).toHaveAttribute("class", /\bxterm-fg-\d+/);
   expect(errors).toEqual([]);
 });

@@ -17,7 +17,7 @@
  * times.
  */
 
-import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, replaceWithheld, splitAtCells, unicodeEscape, wireText } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, replaceZeroWidth, splitAtCells, unicodeEscape, wireText } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Memo } from "./memo.js";
 import { Segment } from "./segment.js";
@@ -59,7 +59,7 @@ export interface PrettyOptions {
    */
   indentGuides?: boolean;
   /**
-   * Who colours the formatted text. Defaults to a `ReprHighlighter`.
+   * Who colors the formatted text. Defaults to a `ReprHighlighter`.
    *
    * Passed rather than imported so a caller's choice survives. `Console.print`
    * routes data arguments through here, and its `highlight` flag and custom
@@ -432,7 +432,7 @@ function fitOneLine(lines: Lines, budget: number): Lines | null {
  * A typed array is an array with a fixed element type, and neither of the two
  * questions asked elsewhere in this file recognises it: `Array.isArray` says
  * false, and its own `toString` answers the bare `1,2,3` — no brackets, nothing
- * for the highlighter to colour per element. Both spellings reach the one arm
+ * for the highlighter to color per element. Both spellings reach the one arm
  * that knows what a sequence looks like. `DataView` is excluded because it is a
  * window onto bytes, not a sequence of values.
  *
@@ -750,7 +750,7 @@ const unprintable = (): RegExp => /(?! )[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{
 
 /** `value` in double quotes, every character that does not print or that the wire would withhold escaped. */
 const quoted = (value: string): string =>
-  replaceWithheld(JSON.stringify(value), unicodeEscape).replace(unprintable(), unicodeEscape);
+  replaceZeroWidth(JSON.stringify(value), unicodeEscape).replace(unprintable(), unicodeEscape);
 
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;

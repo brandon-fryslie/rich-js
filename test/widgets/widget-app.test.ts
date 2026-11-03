@@ -232,13 +232,13 @@ describe("WidgetApp focus", () => {
 
     host.resize({ cols: 1, rows: 4 });
     await tick();
-    expect(app.present).toContainEqual({ widget: b, presence: "held" });
+    expect(app.mounted).toContainEqual({ widget: b, visibility: "hidden" });
     expect(app.focusManager.current).toBe(b);
     expect(app.focusManager.widgets).not.toContain(b);
 
     host.resize({ cols: 20, rows: 4 });
     await tick();
-    expect(app.present).toContainEqual({ widget: b, presence: "drawn" });
+    expect(app.mounted).toContainEqual({ widget: b, visibility: "visible" });
     expect(b.focused).toBe(true);
   });
 
@@ -256,7 +256,7 @@ describe("WidgetApp focus", () => {
 
     host.resize({ cols: 10, rows: 4 });
     await tick();
-    expect(app.present).toContainEqual({ widget: b, presence: "held" });
+    expect(app.mounted).toContainEqual({ widget: b, visibility: "hidden" });
     host.type(TAB);
     expect(app.focusManager.current).toBe(c);
   });

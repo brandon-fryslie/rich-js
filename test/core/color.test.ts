@@ -460,7 +460,7 @@ describe("ColorSpec.flattenAlpha()", () => {
 // ---------------------------------------------------------------------------
 
 describe("ColorSpec.fixedValue", () => {
-  it("is the colour every terminal draws: a truecolor value, or a 256-colour cube or grey entry", () => {
+  it("is the color every terminal draws: a truecolor value, or a 256-color cube or grey entry", () => {
     expect(ColorSpec.parse("#123456").fixedValue?.hex).toBe("#123456");
     expect(ColorSpec.fromAnsi(23).fixedValue?.hex).toBe(EIGHT_BIT_TABLE.get(23).hex);
     expect(ColorSpec.fromAnsi(240).fixedValue?.hex).toBe(EIGHT_BIT_TABLE.get(240).hex);
@@ -578,25 +578,25 @@ describe("ColorSpec.downgrade()", () => {
     expect([std.downgrade(ColorDepth.WINDOWS).type, std.downgrade(ColorDepth.WINDOWS).number]).toEqual([ColorDepth.WINDOWS, 12]);
   });
 
-  it("a blend of named colours drawn at WINDOWS ramps between the console's own shades", () => {
+  it("a blend of named colors drawn at WINDOWS ramps between the console's own shades", () => {
     // Mixed from the VGA ends instead, three quarters of the way to yellow is green (slot 2).
     const blend = ColorSpec.parse("blend(black,yellow,0.75)").downgrade(ColorDepth.WINDOWS);
     expect([blend.type, blend.number]).toEqual([ColorDepth.WINDOWS, 3]);
   });
 
-  it("with no theme named, a colour drawn at WINDOWS reads as the console's own colour", () => {
+  it("with no theme named, a color drawn at WINDOWS reads as the console's own color", () => {
     expect(ColorSpec.parse("red").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(WINDOWS_TABLE.get(1));
     expect(ColorSpec.parse("#0037da").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(new ColorRgba(0, 55, 218));
     expect(ColorSpec.parse("red").getTruecolor()).toEqual(STANDARD_TABLE.get(1));
   });
 
-  it("a WINDOWS colour is drawn at every richer depth as itself", () => {
+  it("a WINDOWS color is drawn at every richer depth as itself", () => {
     const win = new ColorSpec("color(12)", ColorDepth.WINDOWS, 12);
     expect(win.downgrade(ColorDepth.EIGHT_BIT)).toBe(win);
     expect(win.downgrade(ColorDepth.TRUECOLOR)).toBe(win);
   });
 
-  it("TRUECOLOR downgrades to WINDOWS as the console's nearest colour, in ANSI slot order", () => {
+  it("TRUECOLOR downgrades to WINDOWS as the console's nearest color, in ANSI slot order", () => {
     for (let i = 0; i < 16; i++) {
       const downgraded = ColorSpec.fromRgba(WINDOWS_TABLE.get(i)).downgrade(ColorDepth.WINDOWS);
       expect([downgraded.type, downgraded.number]).toEqual([ColorDepth.WINDOWS, i]);
@@ -606,7 +606,7 @@ describe("ColorSpec.downgrade()", () => {
     expect(ColorSpec.parse("#0000c0").downgrade(ColorDepth.WINDOWS).getAnsiCodes(false)).toEqual(["44"]);
   });
 
-  it("EIGHT_BIT downgrades to WINDOWS: a cube colour is matched, an ANSI slot keeps its index", () => {
+  it("EIGHT_BIT downgrades to WINDOWS: a cube color is matched, an ANSI slot keeps its index", () => {
     const cube = ColorSpec.parse("color(196)").downgrade(ColorDepth.WINDOWS);
     expect(cube.type).toBe(ColorDepth.WINDOWS);
     expect(cube.number).toBe(WINDOWS_TABLE.match(EIGHT_BIT_TABLE.get(196)));
@@ -619,7 +619,7 @@ describe("ColorSpec.matchOn()", () => {
   const codes = (value: ColorRgba, depth: ColorDepth, foreground: boolean): string[] =>
     ColorSpec.matchOn(value, depth, CATPPUCCIN_MOCHA, foreground).getAnsiCodes(foreground);
 
-  it("draws each of the theme's sixteen as its own slot, at sixteen colours and at 256", () => {
+  it("draws each of the theme's sixteen as its own slot, at sixteen colors and at 256", () => {
     for (const depth of [ColorDepth.STANDARD, ColorDepth.WINDOWS, ColorDepth.EIGHT_BIT]) {
       for (let n = 0; n < 16; n++) {
         expect(ColorSpec.matchOn(CATPPUCCIN_MOCHA.ansiColors.get(n), depth, CATPPUCCIN_MOCHA, true).number).toBe(n);
@@ -629,14 +629,14 @@ describe("ColorSpec.matchOn()", () => {
     expect(ColorSpec.fromRgba(CATPPUCCIN_MOCHA.ansiColors.get(1)).downgrade(ColorDepth.STANDARD).number).not.toBe(1);
   });
 
-  it("draws the theme's default colours as the default, glyph and ground each its own", () => {
+  it("draws the theme's default colors as the default, glyph and ground each its own", () => {
     for (const depth of [ColorDepth.STANDARD, ColorDepth.EIGHT_BIT]) {
       expect(codes(CATPPUCCIN_MOCHA.foregroundColor, depth, true)).toEqual(["39"]);
       expect(codes(CATPPUCCIN_MOCHA.backgroundColor, depth, false)).toEqual(["49"]);
     }
   });
 
-  it("reaches into the cube at 256 colours only when a cube colour is nearer", () => {
+  it("reaches into the cube at 256 colors only when a cube color is nearer", () => {
     expect(codes(new ColorRgba(255, 0, 0), ColorDepth.EIGHT_BIT, true)).toEqual(["38", "5", "196"]);
     expect(codes(new ColorRgba(255, 0, 0), ColorDepth.STANDARD, true)).toEqual(["31"]);
   });
@@ -678,7 +678,7 @@ describe("ColorSpec.getTruecolor()", () => {
     expect(result).toEqual(MONOKAI.ansiColors.get(1));
   });
 
-  it("a named colour draws in the bundled theme's own shade, not VGA's", () => {
+  it("a named color draws in the bundled theme's own shade, not VGA's", () => {
     const blue = ColorSpec.parse("blue");
     expect(blue.getTruecolor(ATOM_ONE_DARK).hex).toBe("#61afef");
     expect(blue.getTruecolor(ATOM_ONE_LIGHT).hex).toBe("#0184bc");
@@ -741,19 +741,19 @@ describe("ColorSpec.blend()", () => {
     expect(mixed.downgrade(ColorDepth.EIGHT_BIT)).toEqual(ColorSpec.fromRgba(standard).downgrade(ColorDepth.EIGHT_BIT));
   });
 
-  it("mixes two fixed colours to a fixed colour", () => {
+  it("mixes two fixed colors to a fixed color", () => {
     const mixed = ColorSpec.blend(ColorSpec.parse("#000000"), ColorSpec.parse("color(231)"), 0.5);
     expect(mixed).toEqual(ColorSpec.fromRgba(blendRgb(new ColorRgba(0, 0, 0), new ColorRgba(255, 255, 255), 0.5)));
   });
 
-  it("refuses an end that is no one colour, and a fraction outside [0, 1]", () => {
+  it("refuses an end that is no one color, and a fraction outside [0, 1]", () => {
     expect(() => ColorSpec.blend(ColorSpec.default(), red, 0.5)).toThrow(ColorParseError);
     expect(() => ColorSpec.blend(ColorSpec.parse("#ffffff80"), red, 0.5)).toThrow(/translucent/);
     expect(() => ColorSpec.blend(blue, red, 1.5)).toThrow(ColorParseError);
     expect(() => ColorSpec.blend(blue, red, NaN)).toThrow(ColorParseError);
   });
 
-  it("is named for what it mixes, so two mixes with one standard RGB stay two colours", () => {
+  it("is named for what it mixes, so two mixes with one standard RGB stay two colors", () => {
     const navy = ColorSpec.parse("#000080");
     expect(ColorSpec.blend(blue, red, 0.5).value).toEqual(ColorSpec.blend(navy, red, 0.5).value);
     expect(ColorSpec.blend(blue, red, 0.5).name).not.toBe(ColorSpec.blend(navy, red, 0.5).name);
@@ -774,7 +774,7 @@ describe("ColorSpec.blend()", () => {
     expect(Style.parse(style.toString()).equals(style)).toBe(true);
   });
 
-  it("parses the form as written: any colour at each end, spaces allowed", () => {
+  it("parses the form as written: any color at each end, spaces allowed", () => {
     expect(ColorSpec.parse("blend(Blue, rgb(1, 2, 3), .5)").name).toBe(ColorSpec.blend(blue, ColorSpec.fromRgb(1, 2, 3), 0.5).name);
     for (const bad of ["blend(blue,red)", "blend(blue,red,0.5,0.5)", "blend(blue,red,)", "blend(blue,red,half)", "blend(nope,red,0.5)"]) {
       expect(() => ColorSpec.parse(bad), bad).toThrow(ColorParseError);
@@ -812,7 +812,7 @@ describe("parseRgbHex", () => {
 
 // [LAW:single-enforcer] One hex grammar behind three entry points: each admits
 // only its own lengths, and everything else is a ColorParseError naming the
-// input — never a colour read from a valid prefix, never ColorRgba's RangeError.
+// input — never a color read from a valid prefix, never ColorRgba's RangeError.
 describe("hex parsers", () => {
   it("parseRgbaHex splits the alpha byte into the 0..1 channel", () => {
     expect(parseRgbaHex("3b82f680")).toEqual(new ColorRgba(59, 130, 246, 128 / 255));
@@ -837,7 +837,7 @@ describe("hex parsers", () => {
   });
 
   it("ColorSpec.parse reports a malformed #-literal as malformed hex", () => {
-    expect(() => ColorSpec.parse("#1g0000")).toThrow(/Invalid hex colour "#1g0000"/);
+    expect(() => ColorSpec.parse("#1g0000")).toThrow(/Invalid hex color "#1g0000"/);
   });
 });
 
@@ -909,7 +909,7 @@ describe("TerminalTheme", () => {
     expect(theme.palette).toBe(palette);
   });
 
-  it("refuses ansiColors that are not the sixteen ANSI colours", () => {
+  it("refuses ansiColors that are not the sixteen ANSI colors", () => {
     const palette = DEFAULT_TERMINAL_THEME.palette;
     const black = new ColorRgba(0, 0, 0);
     const theme = (table: ColorTable) => () => new TerminalTheme(black, black, table, palette);

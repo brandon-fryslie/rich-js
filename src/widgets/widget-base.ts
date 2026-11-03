@@ -15,7 +15,7 @@ import { NULL_STYLE, type Style } from "../core/style.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type {
   InteractiveWidget,
-  KeyEvent,
+  WidgetKeyEvent,
   WidgetMouseEvent,
   WidgetFocusEvent,
 } from "./types.js";
@@ -37,7 +37,7 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   // --- Event handlers (override in subclass) ---
 
-  abstract handleKey(event: KeyEvent): void;
+  abstract handleKey(event: WidgetKeyEvent): void;
 
   handleMouse(_event: WidgetMouseEvent): void {}
 

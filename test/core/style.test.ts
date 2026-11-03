@@ -207,8 +207,8 @@ describe("Style.parse", () => {
       expect(Style.parse("o").overline).toBe(true);
     });
 
-    it('parses "uu" as underline2', () => {
-      expect(Style.parse("uu").underline2).toBe(true);
+    it('parses "uu" as doubleUnderline', () => {
+      expect(Style.parse("uu").doubleUnderline).toBe(true);
     });
   });
 
@@ -272,7 +272,7 @@ describe("Style.parse errors", () => {
   it.each([
     ["foreground", "color(300)", 'Invalid style definition "color(300)"'],
     ["background", "on color(300)", 'Invalid background color "color(300)"'],
-  ])("a %s colour failure keeps the colour parser's reason", (_, definition, failure) => {
+  ])("a %s color failure keeps the color parser's reason", (_, definition, failure) => {
     let thrown: unknown;
     try {
       Style.parse(definition);
@@ -287,13 +287,13 @@ describe("Style.parse errors", () => {
   });
 
   it.each([
-    ["a colour", "rd", 'Invalid style definition "rd" (did you mean "red"?)'],
+    ["a color", "rd", 'Invalid style definition "rd" (did you mean "red"?)'],
     ["an attribute", "bolt", 'Invalid style definition "bolt" (did you mean "bold"?)'],
     ["a transposed name", "bold cyna", 'Invalid style definition "cyna" (did you mean "cyan"?)'],
     ["a negated attribute", "not itallic", 'Invalid attribute: "itallic" (did you mean "italic"?)'],
-    ["a background colour", "on magneta", 'Invalid background color "magneta" (did you mean "magenta"?)'],
-    ["a capitalised colour", "bold Cyna", 'Invalid style definition "Cyna" (did you mean "cyan"?)'],
-    ["the default colour", "on defualt", 'Invalid background color "defualt" (did you mean "default"?)'],
+    ["a background color", "on magneta", 'Invalid background color "magneta" (did you mean "magenta"?)'],
+    ["a capitalised color", "bold Cyna", 'Invalid style definition "Cyna" (did you mean "cyan"?)'],
+    ["the default color", "on defualt", 'Invalid background color "defualt" (did you mean "default"?)'],
     ["a keyword", "nto bold", 'Invalid style definition "nto" (did you mean "not"?)'],
   ])("a near miss for %s names its target", (_, definition, message) => {
     expect(() => Style.parse(definition)).toThrow(message);
@@ -307,7 +307,7 @@ describe("Style.parse errors", () => {
 
   // A position suggests only what it can hold. `bolt` is one edit from `bold`,
   // which a background can never be, so there it has no near miss at all.
-  it("a background suggests colours only", () => {
+  it("a background suggests colors only", () => {
     expect(() => Style.parse("on bolt")).toThrow(/^Invalid background color "bolt": /);
   });
 
@@ -365,34 +365,34 @@ describe("Style.toString", () => {
 
 // rich-animation-xi28.6rs: when a style's cells next change rides on the
 // style, as the anchor does, and two styles laid together change at the sooner.
-describe("Style.nextChange", () => {
+describe("Style.validUntil", () => {
   it("is never, by default, and a style that is only a time is not null", () => {
-    expect(new Style().hold.nextChange).toBe(Number.POSITIVE_INFINITY);
-    expect(new Style({ hold: { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY } }).isNull).toBe(true);
-    expect(new Style({ hold: { lastChange: 0, nextChange: 2 } }).isNull).toBe(false);
+    expect(new Style().validity.validUntil).toBe(Number.POSITIVE_INFINITY);
+    expect(new Style({ validity: { validFrom: Number.NEGATIVE_INFINITY, validUntil: Number.POSITIVE_INFINITY } }).isNull).toBe(true);
+    expect(new Style({ validity: { validFrom: 0, validUntil: 2 } }).isNull).toBe(false);
   });
 
   it("add keeps the sooner, whichever side it is on, under the other's look", () => {
-    const soon = new Style({ hold: { lastChange: 0, nextChange: 1.5 } });
-    const later = new Style({ color: "red", hold: { lastChange: 0, nextChange: 4 } });
-    expect(soon.add(later).hold.nextChange).toBe(1.5);
-    expect(later.add(soon).hold.nextChange).toBe(1.5);
+    const soon = new Style({ validity: { validFrom: 0, validUntil: 1.5 } });
+    const later = new Style({ color: "red", validity: { validFrom: 0, validUntil: 4 } });
+    expect(soon.add(later).validity.validUntil).toBe(1.5);
+    expect(later.add(soon).validity.validUntil).toBe(1.5);
     expect(later.add(soon).color?.name).toBe("red");
-    expect(new Style({ bold: true }).add(soon).hold.nextChange).toBe(1.5);
+    expect(new Style({ bold: true }).add(soon).validity.validUntil).toBe(1.5);
   });
 
   it("makes two styles that draw alike unequal", () => {
-    expect(new Style({ bold: true, hold: { lastChange: 0, nextChange: 1 } }).equals(new Style({ bold: true, hold: { lastChange: 0, nextChange: 2 } }))).toBe(false);
-    expect(new Style({ bold: true, hold: { lastChange: 0, nextChange: 1 } }).equals(new Style({ bold: true, hold: { lastChange: 0, nextChange: 1 } }))).toBe(true);
+    expect(new Style({ bold: true, validity: { validFrom: 0, validUntil: 1 } }).equals(new Style({ bold: true, validity: { validFrom: 0, validUntil: 2 } }))).toBe(false);
+    expect(new Style({ bold: true, validity: { validFrom: 0, validUntil: 1 } }).equals(new Style({ bold: true, validity: { validFrom: 0, validUntil: 1 } }))).toBe(true);
   });
 
   it("writes no byte", () => {
-    expect(new Style({ color: "red", hold: { lastChange: 0, nextChange: 1 } }).toString()).toBe(new Style({ color: "red" }).toString());
+    expect(new Style({ color: "red", validity: { validFrom: 0, validUntil: 1 } }).toString()).toBe(new Style({ color: "red" }).toString());
   });
 
   it("refuses a time that is not a time or never", () => {
-    expect(() => new Style({ hold: { lastChange: 0, nextChange: Number.NaN } })).toThrow(RangeError);
-    expect(() => new Style({ hold: { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.NEGATIVE_INFINITY } })).toThrow(RangeError);
+    expect(() => new Style({ validity: { validFrom: 0, validUntil: Number.NaN } })).toThrow(RangeError);
+    expect(() => new Style({ validity: { validFrom: Number.NEGATIVE_INFINITY, validUntil: Number.NEGATIVE_INFINITY } })).toThrow(RangeError);
   });
 });
 
@@ -987,11 +987,11 @@ describe("DEFAULT_STYLES", () => {
       "italic",
       "underline",
       "blink",
-      "blink2",
+      "rapidBlink",
       "reverse",
       "conceal",
       "strike",
-      "underline2",
+      "doubleUnderline",
       "frame",
       "encircle",
       "overline",
@@ -1003,7 +1003,7 @@ describe("DEFAULT_STYLES", () => {
 
   // An entry that paints its own ground has fixed one half of the pair, so the
   // other half must not be left to the terminal theme: WCAG's 4.5 for body text,
-  // on every bundled theme. Measured at full depth; at 16 colours what is drawn
+  // on every bundled theme. Measured at full depth; at 16 colors what is drawn
   // is the renderable's business, and test/renderables/grounded-defaults.test.ts
   // measures it there.
   const grounded = Object.entries(DEFAULT_STYLES).filter(([, style]) => style.bgcolor);
@@ -1089,11 +1089,11 @@ describe("DEFAULT_STYLES (additional)", () => {
     expect(reset.italic).toBe(false);
     expect(reset.underline).toBe(false);
     expect(reset.blink).toBe(false);
-    expect(reset.blink2).toBe(false);
+    expect(reset.rapidBlink).toBe(false);
     expect(reset.reverse).toBe(false);
     expect(reset.conceal).toBe(false);
     expect(reset.strike).toBe(false);
-    expect(reset.underline2).toBe(false);
+    expect(reset.doubleUnderline).toBe(false);
     expect(reset.frame).toBe(false);
     expect(reset.encircle).toBe(false);
     expect(reset.overline).toBe(false);
@@ -1110,7 +1110,7 @@ describe("DEFAULT_STYLES (additional)", () => {
   });
 });
 
-describe("a style on the wire at a colour depth", () => {
+describe("a style on the wire at a color depth", () => {
   it("renders with ANSI codes when colorSystem is STANDARD", () => {
     const s = Style.parse("red");
     const result = drawn(s, "x", ColorDepth.STANDARD);
@@ -1215,7 +1215,7 @@ describe("toSgrCodes parameter order", () => {
   it.each([
     ["bold red on blue", "1;31;44"],
     ["bold on blue", "1;44"],
-    ["underline2 frame encircle overline dim on #102030", "2;21;51;52;53;48;2;16;32;48"],
+    ["doubleUnderline frame encircle overline dim on #102030", "2;21;51;52;53;48;2;16;32;48"],
     ["bold italic strike #ff8800 on red", "1;3;9;38;2;255;136;0;41"],
     // An attribute set false writes nothing, not its off code (rich-style-h93).
     ["not bold red", "31"],
@@ -1226,7 +1226,7 @@ describe("toSgrCodes parameter order", () => {
   });
 });
 
-describe("toSgrCodes at 256 colours rounds every colour on its own", () => {
+describe("toSgrCodes at 256 colors rounds every color on its own", () => {
   it("a foreground that is a neighbour's background rounds exactly as that background does", () => {
     // A powerline arrow is drawn in the left cell's background: the seam
     // stays one shape only if both round to the same index.

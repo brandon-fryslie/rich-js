@@ -9,7 +9,7 @@ import { SOLARIZED_LIGHT } from "../../src/themes/terminalThemes.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] What a reader of the exported page gets: which
-// colours paint it, which CSS each run carries, where links go. What a look
+// colors paint it, which CSS each run carries, where links go. What a look
 // *is* under a theme is pinned in export-lines.test.ts; this pins its encoding.
 
 const PAPER = new ColorRgba(16, 32, 48);
@@ -67,7 +67,7 @@ describe("encodeHtml runs", () => {
     expect(cssOf(html(Style.parse("reverse")))).toBe(`color:${PAPER.hex};background-color:${INK.hex}`);
   });
 
-  it("draws dim as a blended colour, never opacity", () => {
+  it("draws dim as a blended color, never opacity", () => {
     const css = cssOf(html(Style.parse("dim on #ff0000")));
     expect(css).not.toContain("opacity");
     expect(css).not.toContain(`color:${INK.hex};`);
@@ -86,7 +86,7 @@ describe("encodeHtml runs", () => {
   });
 
   it("doubles only the underline, on an outer span that carries the paint and the blink", () => {
-    expect(html(Style.parse("underline2 strike overline blink on #ff0000"))).toContain(
+    expect(html(Style.parse("doubleUnderline strike overline blink on #ff0000"))).toContain(
       `<span style="color:${INK.hex};background-color:#ff0000;text-decoration-line:underline;` +
         `text-decoration-style:double;animation:rich-blink 1s step-end infinite">` +
         `<span style="color:${INK.hex};text-decoration-line:line-through overline;` +
@@ -96,7 +96,7 @@ describe("encodeHtml runs", () => {
 
   it("blinks slow and fast against keyframes that hide the glyph", () => {
     expect(cssOf(html(Style.parse("blink")))).toContain("animation:rich-blink 1s step-end infinite");
-    expect(cssOf(html(Style.parse("blink2")))).toContain("animation:rich-blink 0.5s step-end infinite");
+    expect(cssOf(html(Style.parse("rapidBlink")))).toContain("animation:rich-blink 0.5s step-end infinite");
     expect(html(Style.parse("blink"))).toContain("@keyframes rich-blink{50%{color:transparent}}");
   });
 
@@ -122,7 +122,7 @@ describe("encodeHtml runs", () => {
   });
 
   it("boxes a double-underlined wide stretch between the underline and the glyph's own lines", () => {
-    const page = html(Style.parse("underline2 strike"), "東");
+    const page = html(Style.parse("doubleUnderline strike"), "東");
     expect(page).toContain(`<span style="${box(2)}"><span style="color:${INK.hex};text-decoration-line:line-through">東</span></span>`);
   });
 
@@ -135,7 +135,7 @@ describe("encodeHtml runs", () => {
     }
   });
 
-  it("frames and encircles in the glyph's own colour", () => {
+  it("frames and encircles in the glyph's own color", () => {
     expect(cssOf(html(Style.parse("frame")))).toBe(`color:${INK.hex};box-shadow:inset 0 0 0 1px currentColor`);
     expect(cssOf(html(Style.parse("encircle")))).toBe(
       `color:${INK.hex};box-shadow:inset 0 0 0 1px currentColor;border-radius:0.5em`,

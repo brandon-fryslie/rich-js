@@ -175,7 +175,7 @@ export function cutLabel(text: RichText, width: number, marker: string): void {
  * `Text` are not, and markup that styles nothing is — it reads as empty text,
  * but the string that holds it is not empty.
  */
-export function present(content: string | RichText | undefined): content is string | RichText {
+export function mounted(content: string | RichText | undefined): content is string | RichText {
   // Asked of what the content is rather than of what it is not, so a `null`
   // from untyped JS is no content, as Rich's `None` is.
   return typeof content === "string" ? content !== "" : content instanceof RichText && content.plain !== "";
@@ -198,5 +198,5 @@ export function drawLabel(text: RichText, options: RenderOptions, base: Style | 
  * label, which still opens a gap in the rule, as Rich's does.
  */
 export function inlineLabel(content: string | RichText | undefined): InlineLabel | undefined {
-  return present(content) ? new InlineLabel(content) : undefined;
+  return mounted(content) ? new InlineLabel(content) : undefined;
 }

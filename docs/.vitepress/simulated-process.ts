@@ -1,12 +1,12 @@
 /**
  * A terminal we supply, standing in for Node's `process`, so an example's own
  * `new Console()` — written the way a reader will copy it, with no
- * `environment:` or `file:` — writes to that terminal at its size and colour
+ * `environment:` or `file:` — writes to that terminal at its size and color
  * depth.
  *
  * It needs no library change. `Console` given no environment reads the bare
  * name `process` (`ambientEnvironment` in src/core/console.ts) and takes its
- * size, TTY and colour depth from that, so whatever `process` resolves to
+ * size, TTY and color depth from that, so whatever `process` resolves to
  * where the library's code runs is the host it talks to.
  *
  * [LAW:no-shared-mutable-globals] That resolution is made lexical, never
@@ -228,7 +228,7 @@ class SimulatedProcess extends Events implements ConsoleEnvironment {
 /** The part of Node's global `console` a program writes with. */
 type ProgramConsole = Readonly<Record<"log" | "info" | "debug" | "warn" | "error", (...args: unknown[]) => void>>;
 
-/** The `FORCE_COLOR` values Node colours at; any other forces colour off. */
+/** The `FORCE_COLOR` values Node colors at; any other forces color off. */
 const FORCED_COLOUR: ReadonlySet<string> = new Set(["", "1", "true", "2", "3"]);
 
 /**
@@ -240,20 +240,20 @@ const FORCED_COLOUR: ReadonlySet<string> = new Set(["", "1", "true", "2", "3"]);
  * and this lacks is not a function here, so a call to it fails loudly rather
  * than landing somewhere unseen.
  *
- * It colours as Node's does, reading the program's env at each call: any
- * `FORCE_COLOR` decides alone ("", "1", "true", "2" and "3" colour), and
- * otherwise a TTY colours unless a non-empty `NO_COLOR` or
+ * It colors as Node's does, reading the program's env at each call: any
+ * `FORCE_COLOR` decides alone ("", "1", "true", "2" and "3" color), and
+ * otherwise a TTY colors unless a non-empty `NO_COLOR` or
  * `NODE_DISABLE_COLORS`, or `TERM=dumb`, says not to. Past those Node looks
  * the terminal's `TERM` up in a table this does not carry; this takes every
- * terminal as a colour one.
+ * terminal as a color one.
  */
 function programConsole(process: SimulatedProcess): ProgramConsole {
   const { env } = process;
-  const colours = (stream: Output): boolean =>
+  const colors = (stream: Output): boolean =>
     env["FORCE_COLOR"] !== undefined
       ? FORCED_COLOUR.has(env["FORCE_COLOR"])
       : stream.isTTY && !env["NO_COLOR"] && !env["NODE_DISABLE_COLORS"] && env["TERM"] !== "dumb";
-  const to = (stream: Output) => (...args: unknown[]) => void stream.write(`${formatWithOptions({ colors: colours(stream) }, ...args)}\n`);
+  const to = (stream: Output) => (...args: unknown[]) => void stream.write(`${formatWithOptions({ colors: colors(stream) }, ...args)}\n`);
   return { log: to(process.stdout), info: to(process.stdout), debug: to(process.stdout), warn: to(process.stderr), error: to(process.stderr) };
 }
 

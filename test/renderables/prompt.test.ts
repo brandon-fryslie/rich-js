@@ -5,10 +5,10 @@ import { Theme } from "../../src/core/style.js";
 import { Confirm, FloatPrompt, IntPrompt, Prompt, type PromptInput } from "../../src/renderables/prompt.js";
 
 // [LAW:behavior-not-structure] What a prompt shows the reader: its text and the
-// bytes a colour terminal draws it as, compared with the same prompt written
+// bytes a color terminal draws it as, compared with the same prompt written
 // out in markup by hand.
 
-/** Draws `item` on a 256-colour terminal, with no line ending of its own. */
+/** Draws `item` on a 256-color terminal, with no line ending of its own. */
 function draw(item: RichText | string): string {
   const chunks: string[] = [];
   const file = { write: (data: string) => (chunks.push(data), true) } as NodeJS.WritableStream;
@@ -17,7 +17,7 @@ function draw(item: RichText | string): string {
 }
 
 /**
- * `run` answered with each of `answers` in turn, on a 256-colour console:
+ * `run` answered with each of `answers` in turn, on a 256-color console:
  * what it returned, the prompts it showed, and what it printed between them.
  */
 async function answered<T>(run: (input: PromptInput, console: Console) => Promise<T>, ...answers: string[]) {

@@ -3,7 +3,7 @@
  * The landing page's hero, in the built site: its text and buttons are on the
  * page before the terminal under them has loaded; the showcase program then
  * moves in that terminal, or holds one still frame for a reader who asked for
- * reduced motion; it wears the site's colour mode; and at phone width it fits
+ * reduced motion; it wears the site's color mode; and at phone width it fits
  * the page whole. What the terminal shows is read from xterm's rows.
  */
 import { test, expect, type Page } from "@playwright/test";

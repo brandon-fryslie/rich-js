@@ -5,10 +5,10 @@
  *
  * [LAW:one-source-of-truth] A console asks its destination four things: where
  * bytes go, is it a terminal, how big is it, and — through the environment —
- * what colours it draws. A bare sink answers only the first, and the other
+ * what colors it draws. A bare sink answers only the first, and the other
  * three fall to the ambient `process`: some other stream's answer in node,
  * none in a browser, where a console on xterm.js saw an unnamed TTY and drew
- * 16 colours. Handing the console the whole environment keeps all four
+ * 16 colors. Handing the console the whole environment keeps all four
  * answers the host's.
  *
  * The host's size is `size()`, so the environment handed on carries no

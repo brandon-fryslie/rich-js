@@ -23,7 +23,7 @@ import {
   GlyphEffected,
   Group,
   Panel,
-  Phase,
+  WrapMode,
   ProgressBar,
   RichText,
   Rule,
@@ -33,7 +33,7 @@ import {
   ATTRIBUTE_DEFAULTS,
   GLYPH_DEFAULTS,
   backspace,
-  beat,
+  stepSequence,
   blink,
   caseWave,
   cellLen,
@@ -126,7 +126,7 @@ const HUES = new ColorRamp(EASES.linear, [
   { at: 1, color: new ColorRgba(255, 120, 100) },
 ]);
 // Each loop is a phase of its own seconds; reduced, each holds at 0, the ramp unmoved.
-const flowing = HUES.moving({ scroll: Animation.continuous(Phase.loop(4)), hue: Animation.continuous(Phase.loop(12)) });
+const flowing = HUES.moving({ scroll: Animation.continuous(WrapMode.loop(4)), hue: Animation.continuous(WrapMode.loop(12)) });
 
 // --- Glyph effects: text that arrives and leaves ---
 
@@ -200,7 +200,7 @@ const marquee = scroll(new RichText(NEWS, { style: "bold #f9e2af" }), {
   width: SLOT,
   height: 1,
   // From the line's start, so with motion reduced the loop holds it in view.
-  col: Animation.continuous((t) => ((Phase.loop(14)(t) * (cellLen(NEWS) + SLOT) + SLOT) % (cellLen(NEWS) + SLOT)) - SLOT),
+  col: Animation.continuous((t) => ((WrapMode.loop(14)(t) * (cellLen(NEWS) + SLOT) + SLOT) % (cellLen(NEWS) + SLOT)) - SLOT),
 });
 const sliding = rotating(4, [scroll(new RichText("arrived, and holding still", { style: "#a6e3a1" }), { width: SLOT, height: 1, col: tween(-SLOT, 0, { seconds: 1, ease: EASES["back-out"] }) })]);
 
@@ -235,15 +235,15 @@ const STEPS = [
 // Lit for half a second, then dim for a second and a half: half a second apart, the light walks down.
 const tabling = Animation.map(
   Timeline.stagger(
-    STEPS.map(() => beat([0.5, 1.5])),
+    STEPS.map(() => stepSequence([0.5, 1.5])),
     0.5,
   ),
   (holds) => {
     const table = Table.grid({ padding: [0, 2] });
     table.addColumn();
     table.addColumn(undefined, { justify: "right" });
-    holds.forEach((hold, i) => {
-      const style = hold === 0 ? "bold #94e2d5" : MUTED;
+    holds.forEach((validity, i) => {
+      const style = validity === 0 ? "bold #94e2d5" : MUTED;
       table.addRow(new RichText(STEPS[i]![0]!, { style }), new RichText(STEPS[i]![1]!, { style }));
     });
     return table;
@@ -254,7 +254,7 @@ const tabling = Animation.map(
 
 const nobody = Animation.map(Timeline.stagger<Renderable>([], 0.2), (children) => new Group(...children));
 // From the word's start, as the marquee is, so with motion reduced it holds in view.
-const narrow = scroll(new RichText("hi", { style: "#f9e2af" }), { width: 12, height: 1, col: Animation.continuous((t) => ((Math.round(Phase.loop(4)(t) * 26) + 12) % 26) - 12) });
+const narrow = scroll(new RichText("hi", { style: "#f9e2af" }), { width: 12, height: 1, col: Animation.continuous((t) => ((Math.round(WrapMode.loop(4)(t) * 26) + 12) % 26) - 12) });
 const same = new RichText("unchanged", { style: "#a6e3a1" });
 const sameFade = rotating(STAY, [crossfade(CHANGE).effect({ from: same, to: same })]);
 const early = rotating(4, [
@@ -278,7 +278,7 @@ const edges = Animation.map(Animation.all([nobody, narrow, sameFade, early]), (c
 export const KINDS: readonly Kind[] = [
   placed("tween · a counter", Animation.map(counting, (v) => new RichText(`${Math.round(v).toLocaleString("en-US").padStart(6)} files`, { style: "bold #f9e2af" }))),
   placed("tween · ProgressBar", Animation.map(filling, (v) => new ProgressBar({ total: 1204, completed: v, width: SLOT }))),
-  placed("tween · a colour", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
+  placed("tween · a color", Animation.map(fading, (v) => new RichText(`██████  ${fadeRamp.at(v).hex}`, { style: fadeRamp.at(v).hex }))),
   placed("moving ramp · Rule", new Effected(new Rule("scrolls and turns", { style: BORDER }), gradient(flowing, [BORDER]), { key: "rule" })),
   aroundPanel("moving ramp · border", new RichText("the border is the ramp", { style: TEXT }), (framed) => new Effected(framed, gradient(flowing, [BORDER]), { key: "border" })),
   aroundPanel("marching border", new RichText("the ants march round", { style: TEXT }), (framed) => new GlyphEffected(framed, marchingAnts(GLYPH_DEFAULTS.march), { key: "march" })),

@@ -27,7 +27,7 @@ import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js"
 import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { Recolored } from "./effect.js";
-import { requireCurve, transition, veiled, type Curve, type Transition } from "./effects.js";
+import { requireCurve, transition, mask, type Curve, type Transition } from "./effects.js";
 
 /** What a change is between: the renderable drawn until now and the one drawn from now on. */
 export interface Between {
@@ -110,7 +110,7 @@ class ChangeFrame implements Renderable, Measurable {
       ...(row < after.length - 1 || ended ? [Segment.line()] : []),
     ]);
     // The change's own animation says it moves every frame, and reads nothing this frame tells.
-    const veil = veiled(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
+    const veil = mask(() => (cell) => shows(at(cell.row, cell.col)), this.swing);
     return render(new Recolored({ render: () => rows }, veil, { t: this.t, key: "change" }), options);
   }
 

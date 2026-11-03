@@ -2,10 +2,10 @@
  * FlexStrip — wrap-to-width horizontal layout for `StyledRenderable` items.
  *
  * Pack as many items as fit on a line, then break and continue. Each line is
- * an independent sub-strip: optional `Joiner` end-caps fire at every line
+ * an independent sub-strip: optional `Separator` end-caps fire at every line
  * boundary (not just the strip's first/last position), so a line break looks
- * the same as an endpoint to the joiner. Composes with the Strip + Joiner
- * primitive in `core/strip` — same `Joiner` protocol, no new join semantics.
+ * the same as an endpoint to the joiner. Composes with the Strip + Separator
+ * primitive in `core/strip` — same `Separator` protocol, no new join semantics.
  *
  * [LAW:dataflow-not-control-flow] The pack walk is the same shape every
  * render: measure each item, render every joiner form (start-cap, end-cap,
@@ -23,13 +23,13 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { render } from "../core/protocol.js";
-import { drawItem, drawJoin, type Joiner, type StyledRenderable } from "../core/strip.js";
+import { drawItem, drawJoin, type Separator, type StyledRenderable } from "../core/strip.js";
 
 export type FlexAlign = "left" | "center" | "right" | "justify";
 
 export interface FlexStripOptions<T extends StyledRenderable> {
-  /** Joiner used between items within a line, and at line endpoints. */
-  joiner?: Joiner<T>;
+  /** Separator used between items within a line, and at line endpoints. */
+  separator?: Separator<T>;
   /** Cells of horizontal space inserted on each side of an inter-item joiner (default 0). */
   gap?: number;
   /** Line alignment when packed items don't fill the available width (default "left"). */
@@ -81,13 +81,13 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
   implements Renderable, Measurable
 {
   readonly items: readonly T[];
-  readonly joiner: Joiner<T> | undefined;
+  readonly separator: Separator<T> | undefined;
   readonly gap: number;
   readonly align: FlexAlign;
 
   constructor(items: readonly T[], options?: FlexStripOptions<T>) {
     this.items = items;
-    this.joiner = options?.joiner;
+    this.separator = options?.separator;
     this.gap = options?.gap ?? 0;
     this.align = options?.align ?? "left";
   }
@@ -98,7 +98,7 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
 
     const maxWidth = Math.max(1, options.maxWidth);
     const gap = this.gap;
-    const joiner = this.joiner;
+    const joiner = this.separator;
 
     // Pre-render every item and every joiner form we might need. Doing this
     // up-front turns packing into a pure data computation over widths.
@@ -227,24 +227,24 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
     let maximum = 0;
     for (let i = 0; i < items.length; i++) {
       const itemWidth = renderToBlock(items[i]!, options).width;
-      const sc = this.joiner
-        ? renderToBlock(drawJoin(this.joiner, null, items[i]!, { index: i }), options).width
+      const sc = this.separator
+        ? renderToBlock(drawJoin(this.separator, null, items[i]!, { index: i }), options).width
         : 0;
-      const ec = this.joiner
-        ? renderToBlock(drawJoin(this.joiner, items[i]!, null, { index: i + 1 }), options).width
+      const ec = this.separator
+        ? renderToBlock(drawJoin(this.separator, items[i]!, null, { index: i + 1 }), options).width
         : 0;
       minimum = Math.max(minimum, itemWidth + sc + ec);
       maximum += itemWidth;
       if (i > 0) {
         maximum += this.gap * 2;
-        if (this.joiner) {
-          maximum += renderToBlock(drawJoin(this.joiner, items[i - 1]!, items[i]!, { index: i }), options).width;
+        if (this.separator) {
+          maximum += renderToBlock(drawJoin(this.separator, items[i - 1]!, items[i]!, { index: i }), options).width;
         }
       }
     }
-    if (this.joiner) {
-      maximum += renderToBlock(drawJoin(this.joiner, null, items[0]!, { index: 0 }), options).width;
-      maximum += renderToBlock(drawJoin(this.joiner, items[items.length - 1]!, null, { index: items.length }), options).width;
+    if (this.separator) {
+      maximum += renderToBlock(drawJoin(this.separator, null, items[0]!, { index: 0 }), options).width;
+      maximum += renderToBlock(drawJoin(this.separator, items[items.length - 1]!, null, { index: items.length }), options).width;
     }
     return { minimum, maximum };
   }

@@ -6,7 +6,7 @@ import { Palette, drawnOn, type PaletteRoles } from "../../src/themes/palette.js
 describe("Palette", () => {
   const primary = new ColorRgba(133, 165, 152);
   const roles = (stated: Partial<PaletteRoles>): PaletteRoles => ({
-    ...getThemePalette("default").mapRoles((colour) => colour),
+    ...getThemePalette("default").mapRoles((color) => color),
     ...stated,
   });
 
@@ -46,15 +46,15 @@ describe("Palette", () => {
 
   it("mapRoles puts every role through the function and says which it is", () => {
     const p = getThemePalette("nord");
-    const mapped = p.mapRoles((colour, role) => (role === "primary" ? primary : colour));
+    const mapped = p.mapRoles((color, role) => (role === "primary" ? primary : color));
     expect(mapped.primary).toBe(primary);
     expect(mapped.accent).toBe(p.get("accent"));
     expect(Object.keys(mapped)).toEqual([...p.vars.keys()]);
   });
 
-  it("draws a tint onto the background, and a fully transparent colour as itself", () => {
+  it("draws a tint onto the background, and a fully transparent color as itself", () => {
     // drawnOn is what buildPalette and getThemeBaseColors draw through too, so
-    // every producer of palette colours reads #00000000 the same way.
+    // every producer of palette colors reads #00000000 the same way.
     const draw = drawnOn("t", new ColorRgba(200, 200, 200));
     expect(draw(new ColorRgba(0, 0, 0, 0))).toEqual(new ColorRgba(0, 0, 0, 0));
     expect(draw(new ColorRgba(0, 0, 0, 0.5))).toEqual(new ColorRgba(100, 100, 100));

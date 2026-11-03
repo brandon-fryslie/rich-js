@@ -10,7 +10,7 @@
  * [LAW:one-source-of-truth] Playback is the app's `timeline` and the frame
  * rate is the app's `rate`, and nothing else: pause, reverse, speed and seek
  * are `Timeline` operations at the clock's now, and the readout reads both
- * back. The two things an app is handed once — reduced motion and the colour
+ * back. The two things an app is handed once — reduced motion and the color
  * depth its environment says — are `Preferences`; changing one stops the app
  * and builds the next over the same host, clock, widgets and gallery, handing
  * on the timeline, the rate and the focus, so the animation goes on from the
@@ -27,7 +27,7 @@ import {
   Timeline,
   Viewport,
   SCROLLBAR,
-  beat,
+  stepSequence,
   frameRate,
   render,
   type Anchor,
@@ -42,14 +42,14 @@ import type { TerminalHost } from "@promptctl/rich-js/host";
 import { KINDS, MUTED, TEXT, THEME, panel } from "./kinds.js";
 
 /**
- * The colour depths the playground can ask its terminal for, each by the
- * environment variables colour detection reads. The first is the host's own
+ * The color depths the playground can ask its terminal for, each by the
+ * environment variables color detection reads. The first is the host's own
  * environment untouched, so a run starts at what the terminal and its user say.
  */
 const DEPTHS = {
-  "terminal's own colours": {},
-  "16 colours": { FORCE_COLOR: "1", NO_COLOR: undefined },
-  "no colour": { NO_COLOR: "1" },
+  "terminal's own colors": {},
+  "16 colors": { FORCE_COLOR: "1", NO_COLOR: undefined },
+  "no color": { NO_COLOR: "1" },
   truecolor: { FORCE_COLOR: "3", NO_COLOR: undefined },
 } as const satisfies Record<string, Env>;
 type Depth = keyof typeof DEPTHS;
@@ -114,8 +114,8 @@ const SHORTEST = 10;
  * not motion, so reduced it is itself: with motion reduced it still says where
  * the timeline is.
  */
-const steps = beat(Array.from({ length: TRACK }, () => WINDOW / TRACK));
-const marker: Animation<number> = { at: (t) => steps.at(t), nextChange: (t) => steps.nextChange(t), lastChange: (t) => steps.lastChange(t), reduced: () => marker };
+const steps = stepSequence(Array.from({ length: TRACK }, () => WINDOW / TRACK));
+const marker: Animation<number> = { at: (t) => steps.at(t), validUntil: (t) => steps.validUntil(t), validFrom: (t) => steps.validFrom(t), reduced: () => marker };
 
 /**
  * What drew a scrub track: the window it showed and the cells it took. Every
@@ -188,7 +188,7 @@ function controls() {
     forward: button("+5 s"),
     far: button("seek 999 990 s"),
     motion: button("reduced motion", "warning"),
-    depth: button("colour depth", "warning"),
+    depth: button("color depth", "warning"),
     fps: button("frame rate", "warning"),
     quit: button("quit", "danger"),
     input: new TextInput({ placeholder: "type here: the caret blinks" }),

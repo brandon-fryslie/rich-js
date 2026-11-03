@@ -57,8 +57,8 @@ describe("dispositionOf", () => {
     expect(dispositionOf(0x41)).toBe("keep");
     expect(dispositionOf(0x4e00)).toBe("keep");
     expect(dispositionOf(0x2028)).toBe("line-break");
-    expect(dispositionOf(0xad)).toBe("withheld");
-    expect(dispositionOf(0xe0100)).toBe("withheld");
+    expect(dispositionOf(0xad)).toBe("zeroWidth");
+    expect(dispositionOf(0xe0100)).toBe("zeroWidth");
   });
 });
 

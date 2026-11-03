@@ -7,12 +7,12 @@
  * own `new Console()`, a CLI's output shown inside a Panel, a log replayed into
  * a Table cell.
  *
- * [LAW:types-are-the-program] Every colour decodes to the `ColorSpec` its
- * escape names — `31` the standard colour 1, `38;5;n` palette index n,
+ * [LAW:types-are-the-program] Every color decodes to the `ColorSpec` its
+ * escape names — `31` the standard color 1, `38;5;n` palette index n,
  * `38;2;r;g;b` that truecolor — and none is resolved to RGB here. A standard
- * colour is a slot in whatever theme draws it, so one captured run exports
+ * color is a slot in whatever theme draws it, so one captured run exports
  * correctly under a light theme and a dark one; resolved here, dark mode would
- * show light mode's colours. Resolution belongs to `export-lines`.
+ * show light mode's colors. Resolution belongs to `export-lines`.
  *
  * [LAW:types-are-the-program] The link is decoder state of its own, beside
  * the SGR style, not a field of it: a terminal ends a hyperlink only at an OSC
@@ -88,7 +88,7 @@ const STRING_ESCAPE = String.raw`\x1b[\]P_^X][^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
 const ESCAPES = [
   String.raw`\r|\x1b\[(?<sgr>[0-9;:]*)m|\x1b\[(?<mode>[012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
-  controlClass((disposition) => disposition !== "keep" && disposition !== "withheld"),
+  controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
 
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
@@ -127,7 +127,7 @@ function* tokens(line: string): Generator<Token> {
 
 /**
  * What one SGR code does to the style. `rest` is the parameters after it; an
- * extended colour takes its arguments from there.
+ * extended color takes its arguments from there.
  */
 type SgrOp = (style: Style, rest: Iterator<number>) => Style;
 
@@ -143,7 +143,7 @@ function next(rest: Iterator<number>): number | undefined {
 
 /**
  * `5;n` or `2;r;g;b`, the arguments of `38` and `48`. A sequence cut short
- * names no colour, and the codes it did consume are spent, as in Rich.
+ * names no color, and the codes it did consume are spent, as in Rich.
  */
 function extendedColor(rest: Iterator<number>): ColorSpec | undefined {
   const kind = next(rest);
@@ -169,8 +169,8 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   [23, adding({ italic: false })],
   // ECMA-48: 24 is "neither singly nor doubly underlined", 25 "steady" at
   // either speed. Rich's table clears only the first of each pair.
-  [24, adding({ underline: false, underline2: false })],
-  [25, adding({ blink: false, blink2: false })],
+  [24, adding({ underline: false, doubleUnderline: false })],
+  [25, adding({ blink: false, rapidBlink: false })],
   [27, adding({ reverse: false })],
   [28, adding({ conceal: false })],
   [29, adding({ strike: false })],
@@ -178,7 +178,7 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   [39, adding({ color: ColorSpec.default() })],
   [48, (style, rest) => style.add(new Style({ bgcolor: extendedColor(rest) }))],
   [49, adding({ bgcolor: ColorSpec.default() })],
-  // Underline colour has no field on Style; its arguments are still spent, or
+  // Underline color has no field on Style; its arguments are still spent, or
   // `58;2;1;2;3` would read on as bold, dim and italic.
   [58, (style, rest) => (extendedColor(rest), style)],
   [54, adding({ frame: false, encircle: false })],

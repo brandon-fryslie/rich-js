@@ -266,10 +266,10 @@ export function runDemo(host: TerminalHost): DemoHandle {
       let shown = 0;
       // A fully transparent var draws nothing, so its chip shows the background it lets through.
       const ground = palette.get("background")!;
-      for (const [key, colour] of matches) {
+      for (const [key, color] of matches) {
         const chip = ` ${key} `;
         if (used + chip.length + 1 > rowWidth) break;
-        const c = colour.compositeOver(ground);
+        const c = color.compositeOver(ground);
         const fgLight = luminance(c) > 0.179;
         out.push(
           new Segment(chip, new Style({

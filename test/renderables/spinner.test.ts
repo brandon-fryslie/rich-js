@@ -63,11 +63,11 @@ describe("Spinner", () => {
 
   describe("the frame for the time it is handed", () => {
     it("draws the frame in progress at t, each held for the interval, looping, with no clock", () => {
-      const hold = SPINNERS["dots"]!.interval / 1000;
+      const validity = SPINNERS["dots"]!.interval / 1000;
       expect(dotAt(0)).toBe(DOTS[0]);
-      expect(dotAt(hold * 1.5)).toBe(DOTS[1]);
-      expect(dotAt(hold * 9.5)).toBe(DOTS[9]);
-      expect(dotAt(hold * 10.5)).toBe(DOTS[0]);
+      expect(dotAt(validity * 1.5)).toBe(DOTS[1]);
+      expect(dotAt(validity * 9.5)).toBe(DOTS[9]);
+      expect(dotAt(validity * 10.5)).toBe(DOTS[0]);
     });
 
     it("sampled sixty times a second, shows each dots frame for 4 or 5 samples, in order, none skipped", () => {
@@ -98,17 +98,17 @@ describe("Spinner", () => {
     });
 
     it("at twice the speed, turns twice as fast", () => {
-      const hold = SPINNERS["dots"]!.interval / 1000;
-      expect(dotAt(hold * 1.5, 2)).toBe(DOTS[3]);
+      const validity = SPINNERS["dots"]!.interval / 1000;
+      expect(dotAt(validity * 1.5, 2)).toBe(DOTS[3]);
     });
 
     it("steps backwards at a negative speed: its timeline run down from the first frame's start at t = 0, each held the interval", () => {
-      const hold = SPINNERS["dots"]!.interval / 1000;
+      const validity = SPINNERS["dots"]!.interval / 1000;
       expect(dotAt(0, -1)).toBe(DOTS[0]);
-      expect(dotAt(hold * 0.5, -1)).toBe(DOTS[9]);
-      expect(dotAt(hold * 1.5, -1)).toBe(DOTS[8]);
-      expect(dotAt(hold * 0.25, -2)).toBe(DOTS[9]);
-      expect(dotAt(hold * 0.75, -2)).toBe(DOTS[8]);
+      expect(dotAt(validity * 0.5, -1)).toBe(DOTS[9]);
+      expect(dotAt(validity * 1.5, -1)).toBe(DOTS[8]);
+      expect(dotAt(validity * 0.25, -2)).toBe(DOTS[9]);
+      expect(dotAt(validity * 0.75, -2)).toBe(DOTS[8]);
     });
 
     it("refuses a speed of zero, which would hold one frame forever", () => {

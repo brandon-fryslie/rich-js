@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Animation } from "../../src/core/animation.js";
-import { beat } from "../../src/core/easing.js";
-import { activePass, afterPass, measure, render, type Presence, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { stepSequence } from "../../src/core/easing.js";
+import { activePass, afterPass, measure, render, type Visibility, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 
 // A renderable that draws regardless of its width, so what `render` lets
@@ -23,9 +23,9 @@ describe("render", () => {
   });
 
   /** Every report `render` makes for `renderable` under `options`. */
-  const reports = (renderable: Renderable, options: RenderOptions): [Renderable, Presence][] => {
-    const heard: [Renderable, Presence][] = [];
-    [...render(renderable, { ...options, onPresent: (reported, presence) => heard.push([reported, presence]) })];
+  const reports = (renderable: Renderable, options: RenderOptions): [Renderable, Visibility][] => {
+    const heard: [Renderable, Visibility][] = [];
+    [...render(renderable, { ...options, onVisibility: (reported, visibility) => heard.push([reported, visibility]) })];
     return heard;
   };
 
@@ -35,7 +35,7 @@ describe("render", () => {
   it("reports what a held container holds under the options it hands each child", () => {
     const a: Renderable = { render: () => [] };
     const b: Renderable = { render: () => [] };
-    const child = Animation.map(beat([1, 1]), (i) => (i === 0 ? a : b));
+    const child = Animation.map(stepSequence([1, 1]), (i) => (i === 0 ? a : b));
     const framed: Renderable = {
       render: (options) => render(child, { ...options, frame: { time: 1.5, host: {} } }),
     };
@@ -48,8 +48,8 @@ describe("render", () => {
   it("reports held everything a held container draws, whatever width it hands it", () => {
     const widens: Renderable = { render: (options) => render(drawsAnyway, { ...options, maxWidth: 10 }) };
     expect(reports(widens, { maxWidth: 0 })).toEqual([
-      [widens, "held"],
-      [drawsAnyway, "held"],
+      [widens, "hidden"],
+      [drawsAnyway, "hidden"],
     ]);
   });
 
@@ -124,14 +124,14 @@ describe("afterPass", () => {
     const frame: Renderable = {
       *render(options) {
         measure(measured, options);
-        yield* render(handing("drawn", ran), options);
+        yield* render(handing("visible", ran), options);
       },
     };
     [...render(frame, { maxWidth: 10 })];
     // Nor does a renderable held: nothing it drew is on the frame.
-    const holds: Renderable = { render: (options) => render(handing("held", ran), { ...options, maxWidth: 10 }) };
+    const holds: Renderable = { render: (options) => render(handing("hidden", ran), { ...options, maxWidth: 10 }) };
     [...render(holds, { maxWidth: 0 })];
-    expect(ran).toEqual(["drawn"]);
+    expect(ran).toEqual(["visible"]);
   });
 
   it("runs an effect now outside a pass", () => {

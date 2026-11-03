@@ -1,4 +1,4 @@
-// onBeat: any effect sampled and held on a beat — its time held at each
+// sampleAndHold: any effect sampled and held on a beat — its time held at each
 // hold's start — at one redraw a second and at sixty.
 
 import { describe, expect, it } from "vitest";
@@ -13,9 +13,9 @@ import {
   Oklch,
   RichText,
   Style,
-  beat,
+  stepSequence,
   drawnOf,
-  onBeat,
+  sampleAndHold,
   wheel,
   type Effect,
 } from "../../src/index.js";
@@ -23,7 +23,7 @@ import {
 /** The attributes of a cell whose style sets none. */
 const PLAIN = cellAttributes(Style.null());
 
-// [LAW:behavior-not-structure] What is asserted is the colour a terminal is
+// [LAW:behavior-not-structure] What is asserted is the color a terminal is
 // sent at each handed time: held within a hold, moved at each hold's start.
 
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
@@ -39,10 +39,10 @@ function fillAt(effect: Effect, t: number): number {
 }
 const turned = (from: number, to: number): number => (((to - from) % 360) + 360) % 360;
 
-describe("onBeat — an effect sampled and held on a beat", () => {
-  const walk = onBeat(quick, beat([1]));
+describe("sampleAndHold — an effect sampled and held on a beat", () => {
+  const walk = sampleAndHold(quick, stepSequence([1]));
 
-  it("holds one colour within a step and changes at each step's start, sampled every 1/60 s", () => {
+  it("holds one color within a step and changes at each step's start, sampled every 1/60 s", () => {
     const samples = Array.from({ length: 180 }, (_, i) => fillAt(walk, i / 60));
     const runs = samples.reduce<{ hue: number; count: number }[]>((runs, hue) => {
       const last = runs[runs.length - 1];
@@ -61,16 +61,16 @@ describe("onBeat — an effect sampled and held on a beat", () => {
   });
 
   it("a hold shorter than a second is skipped at one redraw a second, and seen at sixty", () => {
-    const quarters = onBeat(quick, beat([0.25]));
+    const quarters = sampleAndHold(quick, stepSequence([0.25]));
     expect(new Set([0, 1, 2, 3].map((t) => fillAt(quarters, t))).size).toBe(4);
     for (const t of [0, 1, 2, 3]) expect(fillAt(quarters, t)).toBe(fillAt(quick, t));
     expect(new Set(Array.from({ length: 60 }, (_, i) => fillAt(quarters, i / 60))).size).toBe(4);
-    const frozen = onBeat(quick, beat([0.25, 0.25, 0.25, 0.25]));
+    const frozen = sampleAndHold(quick, stepSequence([0.25, 0.25, 0.25, 0.25]));
     expect(fillAt(frozen, 1.1)).toBe(fillAt(quick, 1));
   });
 
   it("holds may differ: each is drawn at its own start", () => {
-    const uneven = onBeat(quick, beat([1, 0.5, 2.5]));
+    const uneven = sampleAndHold(quick, stepSequence([1, 0.5, 2.5]));
     expect(fillAt(uneven, 1.4)).toBe(fillAt(quick, 1));
     expect(fillAt(uneven, 1.5)).toBe(fillAt(quick, 1.5));
     expect(fillAt(uneven, 3.9)).toBe(fillAt(quick, 1.5));
@@ -79,7 +79,7 @@ describe("onBeat — an effect sampled and held on a beat", () => {
 
   it("the held time reaches the effect as a time: an effect that reads nothing of it is unchanged", () => {
     const red: Effect = () => Animation.continuous(() => (colors) => ({ ...colors, fg: new ColorRgba(255, 0, 0) }));
-    const held = onBeat(red, beat([1]));
+    const held = sampleAndHold(red, stepSequence([1]));
     for (const t of [0, 0.3, 7.9]) expect(held(drawnOf([], ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA)).at(t)({ fg: new ColorRgba(0, 0, 0), bg: new ColorRgba(0, 0, 0), attributes: PLAIN }, { row: 0, col: 0, seed: 0, pair: { fg: new ColorRgba(0, 0, 0), bg: new ColorRgba(0, 0, 0), terminal: { fg: false, bg: false }, reverse: false }, anchor: undefined, boxFrame: undefined }).fg.hex).toBe("#ff0000");
   });
 });

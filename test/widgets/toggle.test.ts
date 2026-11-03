@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import { Toggle } from "../../src/widgets/toggle.js";
-import { KeyEvent } from "../../src/widgets/types.js";
+import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
@@ -9,10 +9,10 @@ import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
 // What every widget draws a disabled cell in.
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
 
-// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
-const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
-const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
-const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
+// Factories — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
+const enterEvent = () => new WidgetKeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
+const spaceEvent = () => new WidgetKeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
+const escapeEvent = () => new WidgetKeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
 
 const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
 const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
@@ -115,7 +115,7 @@ describe("Toggle", () => {
       expect(off[0]!.text.length).toBe(on[0]!.text.length);
     });
 
-    it("ON and OFF use different background colours", () => {
+    it("ON and OFF use different background colors", () => {
       const off = new Toggle({ label: "Go", variant: "primary" });
       const on = new Toggle({ label: "Go", variant: "primary", on: true });
       const offBg = Segment.splitLines(off.render({ maxWidth: 80 }))[0]![0]!.style!.bgcolor;
@@ -125,7 +125,7 @@ describe("Toggle", () => {
       expect(offBg!.name).not.toBe(onBg!.name);
     });
 
-    it("ON state uses on-${accent} contrast colour as fg, not text-${accent}", () => {
+    it("ON state uses on-${accent} contrast color as fg, not text-${accent}", () => {
       const on = new Toggle({ label: "Go", variant: "primary", on: true });
       const fg = Segment.splitLines(on.render({ maxWidth: 80 }))[0]![0]!.style!.color!;
       // on-primary is pure black or pure white (WCAG contrast).
@@ -142,7 +142,7 @@ describe("Toggle", () => {
       }
     });
 
-    it("variants produce different ON background colours", () => {
+    it("variants produce different ON background colors", () => {
       const primary = new Toggle({ label: "Go", variant: "primary", on: true });
       const success = new Toggle({ label: "Go", variant: "success", on: true });
       const danger = new Toggle({ label: "Go", variant: "danger", on: true });

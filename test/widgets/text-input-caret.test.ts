@@ -1,7 +1,7 @@
 /**
  * Contract of `TextInput`'s caret blink: on the time the frame is drawn for
  * (`RenderOptions.frame`), restarted by the last key the field heard
- * (`KeyEvent.time`), and saying when it next flips so a host paints then and
+ * (`WidgetKeyEvent.time`), and saying when it next flips so a host paints then and
  * not between.
  *
  * [LAW:behavior-not-structure] Driven through a `WidgetApp` on a scripted
@@ -212,7 +212,7 @@ describe("TextInput caret blink", () => {
     input.focus(0);
     const segments = [...render(input, { maxWidth: 10 })];
     expect(segments.some((s) => s.style?.reverse === true)).toBe(true);
-    expect(Segment.nextChange(segments)).toBe(0.5);
+    expect(Segment.validUntil(segments)).toBe(0.5);
     expect(segments).toEqual([...render(input, { maxWidth: 10, frame: { time: 0, host: {} } })]);
   });
 });

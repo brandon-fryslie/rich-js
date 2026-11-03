@@ -7,13 +7,13 @@ export type {
   OverlayRenderable,
   FocusManager,
 } from "./types.js";
-export { hasOverlay, KeyEvent } from "./types.js";
+export { hasOverlay, WidgetKeyEvent } from "./types.js";
 export { StaticItem } from "./static-item.js";
 export type { StaticItemOptions } from "./static-item.js";
 
 export { WidgetBase } from "./widget-base.js";
 export { WidgetApp } from "./widget-app.js";
-export type { WidgetAppOptions, WidgetPresence } from "./widget-app.js";
+export type { WidgetAppOptions, WidgetVisibility } from "./widget-app.js";
 export { Button } from "./button.js";
 export type { ButtonVariant, ButtonOptions } from "./button.js";
 export { Checkbox } from "./checkbox.js";

@@ -10,7 +10,7 @@ import type { HostFrame, Renderable, Measurable, RenderOptions } from "../core/p
 import type { Segment } from "../core/segment.js";
 import type { Anchor } from "../core/anchor.js";
 import type { Unsubscribe } from "../core/subscription.js";
-import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
+import type { KeyEvent, TerminalMouseEvent } from "../host/input.js";
 
 // --- Event types ---
 
@@ -19,14 +19,14 @@ import type { KeyPress, ScreenMouseEvent } from "../host/input.js";
 // keeping the moment of its last interaction — a caret's blink restarting —
 // compares it with the frame it draws and never reads a clock.
 
-// [LAW:types-are-the-program] KeyEvent is a `KeyPress` the app heard, plus
+// [LAW:types-are-the-program] WidgetKeyEvent is a `KeyEvent` the app heard, plus
 // when it was heard and the say over who else hears it. It carries a single mutable signal
 // (`stopped`) that participants in the dispatch chain set by calling
 // `stop()`. Treating it as an interface would force every handler to
 // shuttle a return value upward and the router to interpret it — the
 // class collapses that into one self-describing value flowing through
 // the chain.
-export class KeyEvent implements KeyPress {
+export class WidgetKeyEvent implements KeyEvent {
   readonly key: string;
   readonly character: string;
   readonly shift: boolean;
@@ -35,7 +35,7 @@ export class KeyEvent implements KeyPress {
   readonly time: number;
   private _stopped = false;
 
-  constructor(init: KeyPress, time: number) {
+  constructor(init: KeyEvent, time: number) {
     this.key = init.key;
     this.character = init.character;
     this.shift = init.shift;
@@ -68,7 +68,7 @@ export interface KeyHandlerOptions {
 // reads the layout of the frame the pointer is on, not of one drawn since.
 // The wheel is not a widget's: it scrolls the innermost `Scrollable` under the
 // pointer, whatever widget it shows there.
-export type WidgetMouseEvent = Extract<ScreenMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
+export type WidgetMouseEvent = Extract<TerminalMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
   readonly over: boolean;
   readonly cell: Anchor | undefined;
   readonly time: number;
@@ -101,7 +101,7 @@ export interface InteractiveWidget extends Renderable, Measurable {
   // [LAW:single-enforcer] handleKey claims a key by calling `event.stop()`.
   // The router walks an ordered priority chain; once stopped, no later
   // handler (including framework defaults like Tab → focus traversal) runs.
-  handleKey(event: KeyEvent): void;
+  handleKey(event: WidgetKeyEvent): void;
   handleMouse(event: WidgetMouseEvent): void;
   handleFocus(event: WidgetFocusEvent): void;
 
@@ -145,7 +145,7 @@ export function hasOverlay(value: object): value is OverlayRenderable {
 
 // Which widget has focus, and what Tab means. The widgets it moves between are
 // the ones on the frame on screen that can take focus, in document order
-// (`RenderOptions.onPresent`): nothing registers with it.
+// (`RenderOptions.onVisibility`): nothing registers with it.
 export interface FocusManager {
   readonly current: InteractiveWidget | null;
   /** The widgets Tab moves between, in the order it moves. */
@@ -157,7 +157,7 @@ export interface FocusManager {
 
   // Dispatch participant — EventRouter registers this as a normal-priority
   // handler so Tab/Shift+Tab participate in the chain like any other key.
-  handleKey(event: KeyEvent): void;
+  handleKey(event: WidgetKeyEvent): void;
 
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe;
 }

@@ -72,7 +72,7 @@ const STAGE_PLAN: ReadonlyArray<{ readonly description: string; readonly items: 
     items: [
       "src/core/color.ts", "src/core/style.ts", "src/core/segment.ts", "src/core/text.ts", "src/core/markup.ts",
       "src/core/console.ts", "src/renderables/table.ts", "src/renderables/panel.ts", "src/renderables/layout.ts",
-      "src/renderables/progress.ts", "src/host/app.ts", "src/widgets/widget-app.ts", "src/themes/transpose.ts",
+      "src/renderables/progress.ts", "src/host/app.ts", "src/widgets/widget-app.ts", "src/themes/adjust.ts",
     ],
   },
   {
@@ -81,7 +81,7 @@ const STAGE_PLAN: ReadonlyArray<{ readonly description: string; readonly items: 
       "test/core/color.test.ts", "test/core/style.test.ts", "test/core/text-wrap.test.ts", "test/core/markup.test.ts",
       "test/core/export-svg.test.ts", "test/renderables/table.test.ts", "test/renderables/layout.test.ts",
       "test/renderables/viewport.test.ts", "test/host/app-input.test.ts", "test/widgets/dropdown.test.ts",
-      "test/themes/transpose.test.ts", "test/seam/browser-safe.test.ts", "test/seam/tarball.test.ts",
+      "test/themes/adjust.test.ts", "test/seam/browser-safe.test.ts", "test/seam/tarball.test.ts",
       "test/coverage/coverage.test.ts",
     ],
   },
@@ -191,7 +191,7 @@ const RATE_LABEL = "rate ";
  * It picks a glyph per cell, so it yields its own segments rather than a text,
  * and it draws them with the names a running progress bar draws its fill and
  * track with — `bar.complete` and `bar.back` — resolved by `getStyle` against
- * the theme of the render, so a theme that recolours those recolours this too.
+ * the theme of the render, so a theme that recolors those recolors this too.
  * It is one row, cut to the width and the ceiling it is offered; offered no
  * bound, it is as wide as its label and every sample it keeps.
  */

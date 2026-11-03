@@ -7,7 +7,7 @@
  * type error shows up when the code runs, so it needs no completion and no
  * checker.
  *
- * Every colour is a custom property custom.css sets for each colour mode, so
+ * Every color is a custom property custom.css sets for each color mode, so
  * the editor follows the site's mode with nothing to reconfigure when it
  * changes.
  */

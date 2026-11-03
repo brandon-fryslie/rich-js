@@ -137,14 +137,14 @@ describe("getThemeBaseColors", () => {
 
 // [LAW:behavior-not-structure] A theme's translucent variable is a tint meant
 // for that theme's background. Whatever a palette hands out is drawn there
-// already, so the terminal and an export paint the same colour for it. A fully
+// already, so the terminal and an export paint the same color for it. A fully
 // transparent one draws nothing anywhere, so it is handed out as nothing.
-describe("every palette colour is opaque or draws nothing", () => {
-  it("holds for every bundled palette and its base colours", () => {
+describe("every palette color is opaque or draws nothing", () => {
+  it("holds for every bundled palette and its base colors", () => {
     const translucent: string[] = [];
     for (const name of ALL_NAMES) {
-      for (const [key, colour] of getThemePalette(name).vars) {
-        if (colour.alpha !== 1 && colour.alpha !== 0) translucent.push(`${name}.${key} ${colour.hex}`);
+      for (const [key, color] of getThemePalette(name).vars) {
+        if (color.alpha !== 1 && color.alpha !== 0) translucent.push(`${name}.${key} ${color.hex}`);
       }
       const base = getThemeBaseColors(name);
       for (const key of ["bg", "fg", "primary", "secondary", "accent", "success", "warning", "error"] as const) {

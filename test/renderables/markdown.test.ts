@@ -1123,18 +1123,18 @@ describe("Markdown", () => {
     expect(segment("Use `code` here", "code", { inlineCodeStyle: style }).style).toEqual(style);
   });
 
-  it("draws code on the terminal's own colours at 16 colours, where a fixed ground cannot be promised", () => {
+  it("draws code on the terminal's own colors at 16 colors, where a fixed ground cannot be promised", () => {
     const code = DEFAULT_THEME.resolve("markdown.code");
     const drawn = (markdown: string, colorSystem: ColorDepth) =>
       collectSegments(new Markdown(markdown), { maxWidth: 80, colorSystem })
         .filter((s) => s.text === "code" || s.text === "block")
         .map((s) => s.style);
-    // Bold, as Rich's own `markdown.code` is, so code stays set apart once its colours go.
+    // Bold, as Rich's own `markdown.code` is, so code stays set apart once its colors go.
     expect(code.bold).toBe(true);
     const grounded = code.add(Style.parse("default on default"));
     expect(drawn("Use `code` here\n\n```\nblock\n```", ColorDepth.STANDARD)).toEqual([grounded, grounded]);
     expect(drawn("Use `code` here\n\n```\nblock\n```", ColorDepth.EIGHT_BIT)).toEqual([code, code]);
-    // In a quote too: the quote's magenta lies under its blocks, and code keeps its own colours over it.
+    // In a quote too: the quote's magenta lies under its blocks, and code keeps its own colors over it.
     const quoted = DEFAULT_THEME.resolve("markdown.block_quote");
     expect(drawn("> Use `code` here\n>\n> ```\n> block\n> ```", ColorDepth.STANDARD)).toEqual([
       quoted.add(grounded),
@@ -1142,7 +1142,7 @@ describe("Markdown", () => {
     ]);
   });
 
-  it("draws an inline code style written in the terminal's own colours as written at 16 colours", () => {
+  it("draws an inline code style written in the terminal's own colors as written at 16 colors", () => {
     const drawn = (inlineCodeStyle: string) =>
       collectSegments(new Markdown("Use `code` here", { inlineCodeStyle }), { maxWidth: 80, colorSystem: ColorDepth.STANDARD })
         .find((s) => s.text === "code")!.style;

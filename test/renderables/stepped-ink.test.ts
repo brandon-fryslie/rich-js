@@ -1,4 +1,4 @@
-// steppedInk: a signal whose ink steps through colours on a beat, legible on
+// steppedInk: a signal whose ink steps through colors on a beat, legible on
 // its ground at every depth, at one redraw a second and at sixty.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -28,7 +28,7 @@ import {
 import { inFrame } from "./in-frame.js";
 
 // [LAW:behavior-not-structure] What is asserted is what a terminal is sent:
-// which colour each cell's ink is written in, at which handed time, and how
+// which color each cell's ink is written in, at which handed time, and how
 // it reads against the ground it is drawn on. What a frame costs no byte
 // shows, so the one test of it counts the search at the call it weighs through.
 
@@ -42,7 +42,7 @@ const signal = steppedInk(STEPS);
 /**
  * Each depth with the only slack a word cell gets there: what 8-bit rounding
  * of an OKLCH round trip can cost a contrast ratio in truecolor, and nothing
- * below it, where every colour written is one the depth holds exactly.
+ * below it, where every color written is one the depth holds exactly.
  */
 const depths = [
   ["truecolor", ColorDepth.TRUECOLOR, 0.01],
@@ -121,7 +121,7 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
     expect(contrastRatio(shown.fg, shown.bg)).toBeGreaterThanOrEqual(AA - 0.01);
   });
 
-  it("on a sixteen-colour terminal it steps from slot to slot", () => {
+  it("on a sixteen-color terminal it steps from slot to slot", () => {
     const chevrons = word(Style.parse("bold #cdd6f4 on #313244"));
     const written = [0, 1, 2].map((t) => renderToString(new Effected(chevrons, signal, { key: "k" }).at(t), { width: 10, terminal: CATPPUCCIN_MOCHA, colorSystem: ColorDepth.STANDARD }));
     expect(new Set(written).size).toBe(3);
@@ -145,7 +145,7 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
   });
 
   it("refuses no steps, and a hold that is not a positive number of seconds", () => {
-    expect(() => steppedInk([])).toThrow(/at least one hold/);
+    expect(() => steppedInk([])).toThrow(/at least one step/);
     expect(() => steppedInk([{ color: BRIGHT[0]!, seconds: 0 }])).toThrow(/positive number of seconds/);
   });
 
@@ -163,12 +163,12 @@ describe("steppedInk — each step's ink reads on its ground, as drawn, at every
 describe("steppedInk — at the host's rate, whatever it is", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  // On Mocha's base every step reads as itself, so the ink written is the step's own colour.
+  // On Mocha's base every step reads as itself, so the ink written is the step's own color.
   const chevrons = word(Style.parse("bold #cdd6f4 on #1e1e2e"));
   const inkAt = (effect: ReturnType<typeof steppedInk>, t: number): string =>
     pairOf(render(new Effected(chevrons, effect, { key: "k" }).at(t), ColorDepth.TRUECOLOR), ColorDepth.TRUECOLOR, CATPPUCCIN_MOCHA).fg.hex;
 
-  it("sampled every 1/60 s over 3 s, each colour is drawn for exactly 60 consecutive samples", () => {
+  it("sampled every 1/60 s over 3 s, each color is drawn for exactly 60 consecutive samples", () => {
     const samples = Array.from({ length: 180 }, (_, i) => inkAt(signal, i / 60));
     const runs = samples.reduce<{ hex: string; count: number }[]>((runs, hex) => {
       const last = runs[runs.length - 1];
@@ -181,7 +181,7 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
 
   it("sampled once a second, one-second steps change once a second, and a step shorter than a second is skipped", () => {
     expect([0, 1, 2, 3, 4].map((t) => inkAt(signal, t))).toEqual([...BRIGHT, BRIGHT[0]!, BRIGHT[1]!].map((c) => c.hex));
-    // Four quarter-second steps: a period of one whole second, which once a second shows one colour forever.
+    // Four quarter-second steps: a period of one whole second, which once a second shows one color forever.
     const quarters = steppedInk([...BRIGHT, new ColorRgba(139, 233, 253)].map((color) => ({ color, seconds: 0.25 })));
     expect(new Set([0, 1, 2, 3].map((t) => inkAt(quarters, t))).size).toBe(1);
     expect(new Set(Array.from({ length: 60 }, (_, i) => inkAt(quarters, i / 60))).size).toBe(4);
@@ -189,9 +189,9 @@ describe("steppedInk — at the host's rate, whatever it is", () => {
 
   it("the search runs once for the pair it reads on: no frame inside a step, no later step, nor the beat's next pass redoes it, at t = 0 and far from it", () => {
     // Counted, not timed: a stopwatch races whatever else the runner is
-    // doing. The search weighs each colour it may write as `Effected.shows`
+    // doing. The search weighs each color it may write as `Effected.shows`
     // draws it, so its calls are the work, and a frame making none redid
-    // none. At 256 colours it weighs every colour the depth has an index for,
+    // none. At 256 colors it weighs every color the depth has an index for,
     // once for each pair: which of them read there is the same for every step.
     const row = new RichText("›".repeat(120), { style: Style.parse("bold #cdd6f4 on #313244"), end: "", noWrap: true });
     const weighed = vi.spyOn(Effected, "shows");

@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { createEngine, marked, sprigConversions, sprigLists, sprigMath, type Engine, type EngineConfig, type FuncMap } from "@promptctl/go-template-js";
 import { renderToString } from "../../src/core/render.js";
-import { Style, type Hold } from "../../src/core/style.js";
+import { Style, type ValidityInterval } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { FrameSequence, type Frame } from "../../src/renderables/frames.js";
 import { paletteFuncs, renderTemplate, richTextFuncs, templateFrame, withAnimation, type TemplateFrame } from "../../src/template-bindings/index.js";
 import { render, type Renderable } from "../../src/core/protocol.js";
-import { EASES, Phase } from "../../src/core/easing.js";
+import { EASES, WrapMode } from "../../src/core/easing.js";
 import { Segment } from "../../src/core/segment.js";
 import { Timeline } from "../../src/core/timeline.js";
 import { tween } from "../../src/core/tween.js";
@@ -104,7 +104,7 @@ describe("stepped in a template", () => {
   const STEPPED = `{{ stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b" }}`;
   const HEXES = ["#ff5555", "#f1fa8c", "#50fa7b"];
 
-  it("is the colour in progress at the moment, as a colour value, looping", () => {
+  it("is the color in progress at the moment, as a color value, looping", () => {
     const clock = { t: 0 };
     const compiled = engineAt(clock).compile(STEPPED);
     for (const [t, hex] of [[0, 0], [0.99, 0], [1, 1], [2.5, 2], [3, 0], [1e6 + 0.5, 1]] as const) {
@@ -113,13 +113,13 @@ describe("stepped in a template", () => {
     }
   });
 
-  it("goes where a colour goes: fg, and readableOn against the ground the template names", () => {
+  it("goes where a color goes: fg, and ensureContrast against the ground the template names", () => {
     const clock = { t: 1 };
     const engine = engineAt(clock);
     const asInk = engine.compile(`{{ "›››" | fg (stepped 1 "#ff5555" 1 "#f1fa8c") }}`)({})[0]!;
     expect(asInk.resolvedStyle({ maxWidth: 10 }).color!.getTruecolor().hex).toBe("#f1fa8c");
-    // Pale yellow on white does not read; readableOn moves it, as it moves any colour.
-    const legible = engine.compile(`{{ readableOn (stepped 1 "#ff5555" 1 "#f1fa8c") "#ffffff" 4.5 }}`)({})[0]!.plain;
+    // Pale yellow on white does not read; ensureContrast moves it, as it moves any color.
+    const legible = engine.compile(`{{ ensureContrast (stepped 1 "#ff5555" 1 "#f1fa8c") "#ffffff" 4.5 }}`)({})[0]!.plain;
     expect(legible).not.toBe("#f1fa8c");
     expect(legible).toMatch(/^#[0-9a-f]{6}$/);
   });
@@ -135,11 +135,11 @@ describe("stepped in a template", () => {
     expect(Array.from({ length: 180 }, (_, i) => at(i / 60)).join(" ")).toBe(HEXES.map((hex) => Array.from({ length: 60 }, () => hex).join(" ")).join(" "));
   });
 
-  it("a trailing hold with no colour is refused, naming the pairs", () => {
+  it("a trailing hold with no color is refused, naming the pairs", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "#ff5555" 2 }}`).evaluate({})).toThrow(/^error calling stepped: last hold \(2 s\) has no color — the arguments are <seconds> <color> pairs$/);
   });
 
-  it("a value that is not a colour is refused as every colour function refuses one", () => {
+  it("a value that is not a color is refused as every color function refuses one", () => {
     expect(() => engineAt({ t: 0 }).parse(`{{ stepped 1 "primary" }}`).evaluate({})).toThrow(/stepped expected a color .* wrap it: stepped \(color "primary"\)/);
   });
 
@@ -151,7 +151,7 @@ describe("stepped in a template", () => {
 // ─── The toolbox: tween, loop, glyphs, the timeline ─────────────────────────
 
 /** The soonest moment any segment of `text`, drawn, says it changes. */
-const nextChangeOf = (text: RichText): number => Segment.nextChange(text.render({ maxWidth: 80 }));
+const validUntilOf = (text: RichText): number => Segment.validUntil(text.render({ maxWidth: 80 }));
 
 /**
  * An engine drawing for `clock.t` on `clock.timeline` (the host's own clock
@@ -159,7 +159,7 @@ const nextChangeOf = (text: RichText): number => Segment.nextChange(text.render(
  * with `color` and `ramp` over a real palette, sprig's maths and lists, and
  * `pulse`, a consumer's own marking function whose mark is not the binding's.
  */
-function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, options: { reducedMotion?: boolean; asciiOnly?: boolean } = {}): Engine<RichText> {
+function toolboxAt(clock: { t: number; timeline?: Timeline; told?: ValidityInterval[] }, options: { reducedMotion?: boolean; asciiOnly?: boolean } = {}): Engine<RichText> {
   return createEngine<RichText>(
     withAnimation(
       {
@@ -175,7 +175,7 @@ function toolboxAt(clock: { t: number; timeline?: Timeline; told?: Hold[] }, opt
           pulse: { fn: () => marked("p", "a mark of the consumer's own"), argTypes: [], arity: { kind: "exact" }, returnType: "string" },
         },
       },
-      () => ({ ...options, time: clock.t, onHold: (hold) => clock.told?.push(hold) }),
+      () => ({ ...options, time: clock.t, onValidity: (validity) => clock.told?.push(validity) }),
       { timeline: () => clock.timeline ?? Timeline.play(0) },
     ),
   );
@@ -233,7 +233,7 @@ describe("loop in a template", () => {
   it("is the way through its period from the moment it started, 0 to 1 and round again", () => {
     const clock = { t: 0 };
     const times = [2, 2.75, 5, 6.5, 1e6 + 0.3];
-    expect(sample(toolboxAt(clock), clock, `{{ loop 3 2 | printf "%.6f" }}`, times)).toEqual(times.map((t) => Phase.loop(3)(t - 2).toFixed(6)));
+    expect(sample(toolboxAt(clock), clock, `{{ loop 3 2 | printf "%.6f" }}`, times)).toEqual(times.map((t) => WrapMode.loop(3)(t - 2).toFixed(6)));
   });
 
   it("under reduced motion holds at its start", () => {
@@ -242,7 +242,7 @@ describe("loop in a template", () => {
   });
 });
 
-describe("a colour tween and a ramp scrolling are a tween and a loop read through a ramp", () => {
+describe("a color tween and a ramp scrolling are a tween and a loop read through a ramp", () => {
   it("a ramp read at a tween is the two-stop ramp read over time, byte for byte", () => {
     const clock = { t: 0 };
     const [from, to] = [GRUVBOX.palette.get("surface")!, GRUVBOX.palette.get("warning")!];
@@ -290,9 +290,9 @@ describe("glyphs in a template", () => {
     const clock = { t: 0 };
     const compiled = toolboxAt(clock).compile(`{{ "go" | glyphs "typewriter" 1 }}`);
     clock.t = 1.5;
-    expect(nextChangeOf(RichText.fromFragments(compiled({})))).toBe(1.5);
+    expect(validUntilOf(RichText.fromFragments(compiled({})))).toBe(1.5);
     clock.t = 10;
-    expect(nextChangeOf(RichText.fromFragments(compiled({})))).toBe(Number.POSITIVE_INFINITY);
+    expect(validUntilOf(RichText.fromFragments(compiled({})))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("draws the same bytes at one frame a second and at sixty, at every moment they share", () => {
@@ -330,7 +330,7 @@ describe("every function draws on the timeline the host hands in", () => {
     expect(new Set(sample(engine, clock, FRAMES, [1.5, 7, 1e6]))).toEqual(new Set(["b"]));
     expect(new Set(sample(engine, clock, TWEEN, [1.5, 7]))).toEqual(new Set(["3.750"]));
     clock.t = 7;
-    expect(nextChangeOf(RichText.fromFragments(engine.compile(FRAMES)({})))).toBe(Number.POSITIVE_INFINITY);
+    expect(validUntilOf(RichText.fromFragments(engine.compile(FRAMES)({})))).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("backwards, frames run in reverse and say when they turn on the host's clock", () => {
@@ -339,7 +339,7 @@ describe("every function draws on the timeline the host hands in", () => {
     expect(sample(engine, clock, FRAMES, [2.5, 3, 3.6, 4.6])).toEqual(["c", "c", "b", "a"]);
     clock.t = 3.5;
     // At host 3.5 the animation is at 1.5, in "b"'s hold from 1; coming down, it leaves it the first host moment after 4.
-    const next = nextChangeOf(RichText.fromFragments(engine.compile(FRAMES)({})));
+    const next = validUntilOf(RichText.fromFragments(engine.compile(FRAMES)({})));
     expect(next).toBeGreaterThan(4);
     expect(next).toBeLessThan(4 + 1e-9);
   });
@@ -357,15 +357,15 @@ describe("every function draws on the timeline the host hands in", () => {
 // one an `if`/`with`/`range` read, and a value bound where nobody reads it
 // tells nothing. Early, never late.
 describe("a hold reaches the frame only through what is drawn or decided", () => {
-  const NEVER: Hold = { lastChange: Number.NEGATIVE_INFINITY, nextChange: Number.POSITIVE_INFINITY };
+  const NEVER: ValidityInterval = { validFrom: Number.NEGATIVE_INFINITY, validUntil: Number.POSITIVE_INFINITY };
   const STEPPED = `stepped 1 "#ff0000" 1 "#0000ff"`;
   const TWEEN = `tween 2 "linear" 0 0 1`;
 
   /** `source` evaluated at `t`: the hold its emitted cells are in, and every hold told to the frame. */
-  function heldAt(source: string, t: number, options: { reducedMotion?: boolean } = {}): { cells: Hold; told: Hold[] } {
-    const clock = { t, told: [] as Hold[] };
+  function heldAt(source: string, t: number, options: { reducedMotion?: boolean } = {}): { cells: ValidityInterval; told: ValidityInterval[] } {
+    const clock = { t, told: [] as ValidityInterval[] };
     const segments = [...RichText.fromFragments(toolboxAt(clock, options).compile(source)({})).render({ maxWidth: 80 })];
-    return { cells: { lastChange: Segment.lastChange(segments), nextChange: Segment.nextChange(segments) }, told: clock.told };
+    return { cells: { validFrom: Segment.validFrom(segments), validUntil: Segment.validUntil(segments) }, told: clock.told };
   }
 
   describe("a value computed and never drawn or decided on tells nothing, at t = 0.25", () => {
@@ -378,9 +378,9 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
     });
   });
 
-  describe("a stepped colour drawn carries its step, [0, 1), on the cells, through whatever it passed", () => {
+  describe("a stepped color drawn carries its step, [0, 1), on the cells, through whatever it passed", () => {
     it.each([
-      [`a colour sink`, `{{ fg (${STEPPED}) "x" }}`],
+      [`a color sink`, `{{ fg (${STEPPED}) "x" }}`],
       [`a variable`, `{{ $c := ${STEPPED} }}{{ fg $c "x" }}`],
       [`printf, a function rich-js does not own`, `{{ $c := ${STEPPED} }}{{ printf "%s" $c }}`],
       [`an emission of the bare value`, `{{ $c := ${STEPPED} }}{{ $c }}`],
@@ -388,26 +388,26 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
       [`the dot of a template invocation`, `{{ define "paint" }}{{ fg . "x" }}{{ end }}{{ $c := ${STEPPED} }}{{ template "paint" $c }}`],
       [`a frame flattened by printf`, `{{ printf "%s" (frames 1 "a" 1 "b") }}`],
     ])("%s", (_, source) => {
-      expect(heldAt(source, 0.25)).toEqual({ cells: { lastChange: 0, nextChange: 1 }, told: [] });
+      expect(heldAt(source, 0.25)).toEqual({ cells: { validFrom: 0, validUntil: 1 }, told: [] });
     });
   });
 
   it("a tween through sprig maths moves every frame on the cells it reaches", () => {
-    expect(heldAt(`{{ printf "%.0f" (add 1 (${TWEEN})) }}`, 0.25)).toEqual({ cells: { lastChange: 0.25, nextChange: 0.25 }, told: [] });
+    expect(heldAt(`{{ printf "%.0f" (add 1 (${TWEEN})) }}`, 0.25)).toEqual({ cells: { validFrom: 0.25, validUntil: 0.25 }, told: [] });
   });
 
   it("a tween moves until it lands, then never changes", () => {
-    expect(heldAt(`{{ tween 1 "linear" 0 0 10 }}`, 0.5).cells).toEqual({ lastChange: 0.5, nextChange: 0.5 });
-    expect(heldAt(`{{ tween 1 "linear" 0 0 10 }}`, 2).cells).toEqual({ lastChange: 1, nextChange: Number.POSITIVE_INFINITY });
+    expect(heldAt(`{{ tween 1 "linear" 0 0 10 }}`, 0.5).cells).toEqual({ validFrom: 0.5, validUntil: 0.5 });
+    expect(heldAt(`{{ tween 1 "linear" 0 0 10 }}`, 2).cells).toEqual({ validFrom: 1, validUntil: Number.POSITIVE_INFINITY });
   });
 
   it("a loop moves at every moment, and reduced holds still", () => {
-    expect(heldAt(`{{ loop 2 0 }}`, 0.7).cells).toEqual({ lastChange: 0.7, nextChange: 0.7 });
-    expect(heldAt(`{{ loop 2 0 }}`, 0.7, { reducedMotion: true }).cells.nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(heldAt(`{{ loop 2 0 }}`, 0.7).cells).toEqual({ validFrom: 0.7, validUntil: 0.7 });
+    expect(heldAt(`{{ loop 2 0 }}`, 0.7, { reducedMotion: true }).cells.validUntil).toBe(Number.POSITIVE_INFINITY);
   });
 
   it("cells that read two animated values are in the intersection of their holds", () => {
-    expect(heldAt(`{{ fg (${STEPPED}) (printf "%.1f" (${TWEEN})) }}`, 0.25).cells).toEqual({ lastChange: 0.25, nextChange: 0.25 });
+    expect(heldAt(`{{ fg (${STEPPED}) (printf "%.1f" (${TWEEN})) }}`, 0.25).cells).toEqual({ validFrom: 0.25, validUntil: 0.25 });
   });
 
   describe("a decision on an animated value tells the frame, whichever arm it takes, at t = 0.25", () => {
@@ -416,11 +416,11 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
       [`a range over an empty list from an animated count`, `{{ range $i := until (int (${TWEEN})) }}x{{ end }}still`],
       [`a variable decided on later`, `{{ $t := ${TWEEN} }}{{ if gt $t 0.5 }}on{{ end }}still`],
     ])("%s", (_, source) => {
-      expect(heldAt(source, 0.25)).toEqual({ cells: NEVER, told: [{ lastChange: 0.25, nextChange: 0.25 }] });
+      expect(heldAt(source, 0.25)).toEqual({ cells: NEVER, told: [{ validFrom: 0.25, validUntil: 0.25 }] });
     });
 
     it("and the arm it takes carries the hold on its cells too", () => {
-      expect(heldAt(`{{ if lt (loop 2 0) 0.5 }}on{{ end }}`, 0.25)).toEqual({ cells: { lastChange: 0.25, nextChange: 0.25 }, told: [{ lastChange: 0.25, nextChange: 0.25 }] });
+      expect(heldAt(`{{ if lt (loop 2 0) 0.5 }}on{{ end }}`, 0.25)).toEqual({ cells: { validFrom: 0.25, validUntil: 0.25 }, told: [{ validFrom: 0.25, validUntil: 0.25 }] });
     });
   });
 
@@ -457,7 +457,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
     );
     const segments = [...RichText.fromFragments(engine.compile(`{{ if gt (loop 2 0) 0.5 }}x{{ end }}{{ printf "%.2f" (tween 2 "linear" 0 0 1) }}`)({})).render({ maxWidth: 80 })];
     expect(segments.map((s) => s.text).join("")).toBe("[0.25]");
-    expect(Segment.nextChange(segments)).toBe(0.5);
+    expect(Segment.validUntil(segments)).toBe(0.5);
     expect(heard).toEqual({ emitted: ["0.25"], decided: 1 });
   });
 });
@@ -475,23 +475,23 @@ describe("a template drawn in a frame is drawn as the frame says", () => {
     },
   });
   /** What `source` draws at `time` in a frame: its text, when its cells say they change, and every hold told to the frame. */
-  const drawnAt = (source: string, time: number, reducedMotion: boolean): { text: string; nextChange: number; told: Hold[] } => {
-    const told: Hold[] = [];
-    const segments = [...render(templated(source), { maxWidth: 20, reducedMotion, frame: { time, host: {} }, onHold: (hold) => told.push(hold) })];
-    return { text: segments.map((s) => s.text).join(""), nextChange: Segment.nextChange(segments), told };
+  const drawnAt = (source: string, time: number, reducedMotion: boolean): { text: string; validUntil: number; told: ValidityInterval[] } => {
+    const told: ValidityInterval[] = [];
+    const segments = [...render(templated(source), { maxWidth: 20, reducedMotion, frame: { time, host: {} }, onValidity: (validity) => told.push(validity) })];
+    return { text: segments.map((s) => s.text).join(""), validUntil: Segment.validUntil(segments), told };
   };
 
   it("draws at the frame's time and stamps the frame's cells", () => {
-    expect(drawnAt(`{{ loop 2 0 | printf "%.2f" }}`, 0.5, false)).toEqual({ text: "0.25", nextChange: 0.5, told: [] });
+    expect(drawnAt(`{{ loop 2 0 | printf "%.2f" }}`, 0.5, false)).toEqual({ text: "0.25", validUntil: 0.5, told: [] });
   });
 
   it("tells the frame's own listener of a decision that drew nothing", () => {
-    expect(drawnAt(`{{ if gt (loop 2 0) 0.9 }}late{{ end }}`, 0.5, false)).toEqual({ text: "", nextChange: Number.POSITIVE_INFINITY, told: [{ lastChange: 0.5, nextChange: 0.5 }] });
+    expect(drawnAt(`{{ if gt (loop 2 0) 0.9 }}late{{ end }}`, 0.5, false)).toEqual({ text: "", validUntil: Number.POSITIVE_INFINITY, told: [{ validFrom: 0.5, validUntil: 0.5 }] });
   });
 
   it("holds still under the frame's reduced motion", () => {
-    const { text, nextChange } = drawnAt(`{{ loop 2 0 | printf "%.2f" }}`, 0.5, true);
+    const { text, validUntil } = drawnAt(`{{ loop 2 0 | printf "%.2f" }}`, 0.5, true);
     expect(text).toBe("0.00");
-    expect(nextChange).toBe(Number.POSITIVE_INFINITY);
+    expect(validUntil).toBe(Number.POSITIVE_INFINITY);
   });
 });

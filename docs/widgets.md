@@ -136,7 +136,7 @@ On the alternate surface the view's height is the whole screen, so the status pa
 
 ## The widgets
 
-The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/transpose) whose palette supplies the widget's colors, defaulting to the dark `DEFAULT_TERMINAL_THEME` — and all expose the observable state `focused`, `hovered`, `active`, and `disabled`. `StaticItem`, described last, is the exception: it takes none of those.
+The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/adjust) whose palette supplies the widget's colors, defaulting to the dark `DEFAULT_TERMINAL_THEME` — and all expose the observable state `focused`, `hovered`, `active`, and `disabled`. `StaticItem`, described last, is the exception: it takes none of those.
 
 A widget takes the background under every cell it draws from that same palette rather than leaving the terminal's own showing through, because a palette's colors are only chosen to read against its own background. So a widget looks the same in a light terminal as in a dark one, and a light theme is as readable in a dark terminal as a dark theme is in a light one.
 
@@ -164,7 +164,7 @@ Same gestures as `Checkbox`, over an `on` boolean. Renders `[ON]  label` or `[OF
 
 `new TextInput({ value?, placeholder?, maxLength?, password?, multiline?, ... })`
 
-An editable field with a full readline-style key map: arrows and Home/End for character and line motion, Ctrl+A/E/B/F for the same, Alt+B/F and Ctrl+Left/Right for word motion, Ctrl+W/U/K for deletion, Ctrl+Y to yank back, Ctrl+T to transpose. Every motion and deletion steps over a whole glyph, so `👍🏽` or `👨‍👩‍👧` is one step. Read the current text from `value`; as in an HTML textarea, its line breaks are `\n`, whatever was set.
+An editable field with a full readline-style key map: arrows and Home/End for character and line motion, Ctrl+A/E/B/F for the same, Alt+B/F and Ctrl+Left/Right for word motion, Ctrl+W/U/K for deletion, Ctrl+Y to yank back, Ctrl+T to adjust. Every motion and deletion steps over a whole glyph, so `👍🏽` or `👨‍👩‍👧` is one step. Read the current text from `value`; as in an HTML textarea, its line breaks are `\n`, whatever was set.
 
 While the field has focus its cursor blinks: drawn for half a second, then hidden for half a second, starting over when the field takes focus, when a click places the cursor, and at each key the field handles, so it is solid the moment you type. A key the field passes on, such as Tab or Escape, does not restart it. The blink runs on the time the app draws each frame for, so a paused [timeline](/animation#playback-a-timeline) holds it still, and the frame says when the cursor next turns, so the app paints then and not between. Under [reduced motion](/app#reduced-motion) the cursor is always shown. Printed by a `Console`, outside any app, it is drawn shown.
 
@@ -233,7 +233,7 @@ import { observable, action } from "mobx";
 import { Segment, Style } from "@promptctl/rich-js";
 import type { RenderOptions } from "@promptctl/rich-js";
 import { WidgetBase } from "@promptctl/rich-js/widgets";
-import type { KeyEvent } from "@promptctl/rich-js/widgets";
+import type { WidgetKeyEvent } from "@promptctl/rich-js/widgets";
 
 class Counter extends WidgetBase {
   readonly id = "counter";
@@ -242,7 +242,7 @@ class Counter extends WidgetBase {
   @observable accessor count = 0;
 
   @action
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     if (event.key === "up") {
       this.count++;
       this.emitChange();
@@ -274,4 +274,4 @@ A `Dropdown` expanded over the widgets below it is drawing outside its own footp
 
 Nothing in a widget depends on `WidgetApp`. Because the contract is `InteractiveWidget` — typed events in, segments out — another framework can drive the same widgets through a thin adapter that maps its own message types onto `handleKey`, `handleMouse`, and `handleFocus`, and feeds `render()` output into its compositor. That adapter belongs in the host framework; rich-js widgets have no knowledge of it.
 
-The same seam makes widgets testable without a terminal. Construct one, call `handleKey(new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0))`, where the `0` is the time the key was heard on the frame's clock, and assert on the state or on the segments `render()` returns — no app, no host, no event loop.
+The same seam makes widgets testable without a terminal. Construct one, call `handleKey(new WidgetKeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0))`, where the `0` is the time the key was heard on the frame's clock, and assert on the state or on the segments `render()` returns — no app, no host, no event loop.

@@ -16,19 +16,19 @@ import type { Palette } from "../../src/themes/palette.js";
 import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
 import { darken, lighten, contrastFor, ensureContrast } from "../../src/themes/colorMath.js";
 import { blendRgb, ColorRgba } from "../../src/core/color.js";
-import { Oklch, IDENTITY, type ThemeKey } from "../../src/core/oklch.js";
+import { Oklch, IDENTITY, type ColorAdjustment } from "../../src/core/oklch.js";
 import { baseStyleOf } from "../core/base-style.js";
 
 // [LAW:behavior-not-structure] Tests assert the binding contract — fragments
 // produced by template evaluation are equivalent to fragments produced by
-// directly constructing the corresponding Style chain, and colours produced by
-// template evaluation are equivalent to colours produced by calling the
-// underlying rich-js colour function directly.
+// directly constructing the corresponding Style chain, and colors produced by
+// template evaluation are equivalent to colors produced by calling the
+// underlying rich-js color function directly.
 //
-// The colour surface is three separable pieces and the tests follow that split:
+// The color surface is three separable pieces and the tests follow that split:
 //   `color "name"`  (palette-dependent)  → a hex string
 //   `darken` / `mix` / … (palette-free)  → hex string in, hex string out
-//   `fg` / `bg`     (sinks)              → paint a colour spec onto a fragment
+//   `fg` / `bg`     (sinks)              → paint a color spec onto a fragment
 
 const engine = createRichTextEngine();
 
@@ -67,7 +67,7 @@ function fgHex(rt: RichText): string | undefined {
   return baseStyleOf(rt).color?.getTruecolor().hex;
 }
 
-// ─── Colour sinks: fg / bg ──────────────────────────────────────────────────
+// ─── Color sinks: fg / bg ──────────────────────────────────────────────────
 
 describe("fg / bg accept the whole ColorSpec vocabulary", () => {
   it("fg paints a hex literal as truecolor", () => {
@@ -81,14 +81,14 @@ describe("fg / bg accept the whole ColorSpec vocabulary", () => {
     expect(fgHex(rt)).toBe("#af00ff80");
   });
 
-  it("fg paints a symbolic ANSI colour name, matching Style.parse", () => {
+  it("fg paints a symbolic ANSI color name, matching Style.parse", () => {
     const rt = evalOne(`{{ fg "magenta" "x" }}`);
     expect(baseStyleOf(rt).color?.name).toBe(Style.parse("magenta").color?.name);
   });
 
-  it("fg paints a 256-index colour, matching Style.parse", () => {
-    // The sink takes symbolic colours the terminal resolves itself — the
-    // reach the old one-function-per-colour-name family could never have.
+  it("fg paints a 256-index color, matching Style.parse", () => {
+    // The sink takes symbolic colors the terminal resolves itself — the
+    // reach the old one-function-per-color-name family could never have.
     const rt = evalOne(`{{ fg "color(196)" "x" }}`);
     expect(baseStyleOf(rt).color?.name).toBe(Style.parse("color(196)").color?.name);
   });
@@ -137,7 +137,7 @@ describe("text attributes", () => {
   );
 });
 
-// ─── Colours are values ─────────────────────────────────────────────────────
+// ─── Colors are values ─────────────────────────────────────────────────────
 
 describe("color produces a value, not a styled fragment", () => {
   it("resolves a palette name to that palette's hex", () => {
@@ -146,12 +146,12 @@ describe("color produces a value, not a styled fragment", () => {
   });
 
   it("renders as its literal hex in text position — visibly wrong, never silently wrong", () => {
-    // A colour that lands where text was expected must show up, not vanish.
+    // A color that lands where text was expected must show up, not vanish.
     const rt = evalOneWith(gruvboxEngine, `{{ color "#af00ff" }}`);
     expect(rt.plain).toBe("#af00ff");
   });
 
-  it("is idempotent: an already-literal colour passes through unchanged", () => {
+  it("is idempotent: an already-literal color passes through unchanged", () => {
     const once = evalOneWith(gruvboxEngine, `{{ color "primary" }}`).plain;
     const twice = evalOneWith(gruvboxEngine, `{{ color (color "primary") }}`).plain;
     expect(twice).toBe(once);
@@ -163,7 +163,7 @@ describe("color produces a value, not a styled fragment", () => {
     expect(fgHex(rt)).toBe(gruvbox.get("primary")!.hex);
   });
 
-  it("one $var colour paints many fragments", () => {
+  it("one $var color paints many fragments", () => {
     const out = gruvboxEngine
       .parse(`{{ $c := color "accent" }}{{ fg $c "a" }}{{ bg $c "b" }}`)
       .evaluate({});
@@ -173,23 +173,23 @@ describe("color produces a value, not a styled fragment", () => {
   });
 });
 
-// ─── Colour math composes by nesting ────────────────────────────────────────
+// ─── Color math composes by nesting ────────────────────────────────────────
 
-describe("colour math composes by nesting and matches the underlying function", () => {
+describe("color math composes by nesting and matches the underlying function", () => {
   const primary = gruvbox.get("primary")!;
   const surface = gruvbox.get("surface")!;
 
-  it("darken (color name) n equals darken(palette colour, n)", () => {
+  it("darken (color name) n equals darken(palette color, n)", () => {
     const rt = evalOneWith(gruvboxEngine, `{{ fg (darken (color "primary") 2) "x" }}`);
     expect(fgHex(rt)).toBe(darken(primary, 2).hex);
   });
 
-  it("lighten (color name) n equals lighten(palette colour, n)", () => {
+  it("lighten (color name) n equals lighten(palette color, n)", () => {
     const rt = evalOneWith(gruvboxEngine, `{{ fg (lighten (color "primary") 2) "x" }}`);
     expect(fgHex(rt)).toBe(lighten(primary, 2).hex);
   });
 
-  it("mix at 0 returns the first colour and at 100 the second", () => {
+  it("mix at 0 returns the first color and at 100 the second", () => {
     const a = "#000000";
     const b = "#ffffff";
     expect(baseStyleOf(evalOne(`{{ fg (mix "${a}" "${b}" 0) "x" }}`)).color?.getTruecolor().hex).toBe(a);
@@ -217,16 +217,16 @@ describe("colour math composes by nesting and matches the underlying function", 
     }
   });
 
-  it("readableOn equals ensureContrast for the same pair", () => {
+  it("ensureContrast equals ensureContrast for the same pair", () => {
     const rt = evalOneWith(
       gruvboxEngine,
-      `{{ fg (readableOn (color "primary") "${DARK_BG.hex}" 4.5) "x" }}`,
+      `{{ fg (ensureContrast (color "primary") "${DARK_BG.hex}" 4.5) "x" }}`,
     );
     expect(fgHex(rt)).toBe(ensureContrast(primary, DARK_BG).hex);
   });
 
-  it("each OKLCH axis function equals the matching single-axis ThemeKey", () => {
-    const cases: [string, number, keyof ThemeKey][] = [
+  it("each OKLCH axis function equals the matching single-axis ColorAdjustment", () => {
+    const cases: [string, number, keyof ColorAdjustment][] = [
       ["shiftHue", 40, "hueShift"],
       ["scaleChroma", 0, "chromaScale"],
       ["scaleLightness", 1.2, "lightnessScale"],
@@ -252,7 +252,7 @@ describe("colour math composes by nesting and matches the underlying function", 
     expect(fgHex(rt)).toBe(darken(blendRgb(primary, surface, 0.5), 1).hex);
   });
 
-  it("a palette name passed to colour math throws with the wrap-it hint", () => {
+  it("a palette name passed to color math throws with the wrap-it hint", () => {
     // The one mistake that actually happens: `darken "primary" 2`. The error
     // must name the fix rather than just rejecting the shape.
     expect(() => evalOneWith(gruvboxEngine, `{{ fg (darken "primary" 2) "x" }}`)).toThrowError(
@@ -286,7 +286,7 @@ describe("paletteFuncs reads its palette at evaluate time, not registration time
     expect(fgHex(after[0]!)).not.toBe(fgHex(before[0]!));
   });
 
-  it("the swap reaches colours computed through the math chain too", () => {
+  it("the swap reaches colors computed through the math chain too", () => {
     let currentPalette: Palette = GRUVBOX.palette;
     const live = makePaletteEngine(() => currentPalette);
     const parsed = live.parse(`{{ fg (darken (color "accent") 2) "x" }}`);
@@ -371,7 +371,7 @@ describe("error surface", () => {
     );
   });
 
-  // One case per arity declaration site: attributes, colour sinks, `style`, `link`.
+  // One case per arity declaration site: attributes, color sinks, `style`, `link`.
   it.each([
     [`{{ bold "a" "b" }}`, /bold: want 1 got 2/],
     [`{{ bold }}`, /bold: want 1 got 0/],
@@ -417,7 +417,7 @@ describe("error surface", () => {
 
   it("color is unavailable on an engine built without a palette", () => {
     // [LAW:one-way-deps] `richTextFuncs()` is palette-free by construction;
-    // naming a theme colour requires the consumer to merge `paletteFuncs`.
+    // naming a theme color requires the consumer to merge `paletteFuncs`.
     expect(() => engine.parse(`{{ fg (color "primary") "x" }}`).evaluate({})).toThrowError(
       /color|FuncNotFound/,
     );
@@ -495,8 +495,8 @@ describe("style function (multi-attribute spec)", () => {
     expect(fgHex(spec)).toBe(fgHex(nested));
   });
 
-  it("takes a computed colour through the spec string, same as fg", () => {
-    // A colour is a hex string, so it flows into the `style` grammar via
+  it("takes a computed color through the spec string, same as fg", () => {
+    // A color is a hex string, so it flows into the `style` grammar via
     // `printf` with no extra machinery.
     const viaSpec = evalOneWith(
       gruvboxEngine,
@@ -593,14 +593,14 @@ describe("link function (cell-splitter contract)", () => {
     expect(baseStyleOf(rt).link).toBe("u");
   });
 
-  it("link composes with foreground / background colour", () => {
+  it("link composes with foreground / background color", () => {
     const rt = evalOne(`{{ link "u" (fg "red" (bg "white" "x")) }}`);
     expect(baseStyleOf(rt).link).toBe("u");
     expect(baseStyleOf(rt).color?.name).toBe("red");
     expect(baseStyleOf(rt).bgcolor?.name).toBe("white");
   });
 
-  it("link composes with a palette-derived colour", () => {
+  it("link composes with a palette-derived color", () => {
     const rt = evalOneWith(gruvboxEngine, `{{ link "u" (fg (color "primary") "x") }}`);
     expect(baseStyleOf(rt).link).toBe("u");
     expect(fgHex(rt)).toBe(gruvbox.get("primary")!.hex);

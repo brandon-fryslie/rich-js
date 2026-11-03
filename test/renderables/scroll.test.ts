@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Animation } from "../../src/core/animation.js";
 import { ColorDepth } from "../../src/core/color.js";
-import { EASES, Phase } from "../../src/core/easing.js";
+import { EASES, WrapMode } from "../../src/core/easing.js";
 import { Measurement } from "../../src/core/measure.js";
 import { render, type Measurable, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
@@ -95,7 +95,7 @@ describe("scroll", () => {
 
   it("draws the same bytes for the same moment at one sample a second and sixty, a million seconds in", () => {
     const marquee = (content: Renderable) =>
-      scroll(content, { width: 6, height: 1, col: Animation.continuous((t) => Phase.loop(4)(t) * 16 - 6) });
+      scroll(content, { width: 6, height: 1, col: Animation.continuous((t) => WrapMode.loop(4)(t) * 16 - 6) });
     const slow = new Map(sampled(1, 1e6, 1e6 + 8).map((t) => [t, bytes(draw(marquee(LINE).at(t)))]));
     const fast = marquee(LINE);
     let checked = 0;
@@ -108,11 +108,11 @@ describe("scroll", () => {
   });
 
   it("changes every frame while its offset moves, and never once a slide-in has arrived", () => {
-    const marquee = scroll(LINE, { width: 6, height: 1, col: Animation.continuous((t) => Phase.loop(4)(t) * 16 - 6) });
-    for (const t of [0, 1.5, 1e6]) expect(marquee.nextChange(t)).toBe(t);
+    const marquee = scroll(LINE, { width: 6, height: 1, col: Animation.continuous((t) => WrapMode.loop(4)(t) * 16 - 6) });
+    for (const t of [0, 1.5, 1e6]) expect(marquee.validUntil(t)).toBe(t);
     const slide = scroll(LINE, { width: 6, height: 1, col: tween(-6, 0, { seconds: 2, ease: EASES["ease-out"] }) });
-    expect(slide.nextChange(1)).toBe(1);
-    expect(slide.nextChange(2)).toBe(Number.POSITIVE_INFINITY);
+    expect(slide.validUntil(1)).toBe(1);
+    expect(slide.validUntil(2)).toBe(Number.POSITIVE_INFINITY);
     expect(rows(draw(slide.at(0)))).toEqual(["      "]);
     expect(rows(draw(slide.at(2)))).toEqual(["abcdef"]);
   });
@@ -140,14 +140,14 @@ describe("scroll", () => {
 
   it("keeps a frame's word on when it changes when the frame has no cells at the window's left edge or before it", () => {
     const nothing: Renderable & Measurable = { render: () => [], measure: () => ({ minimum: 0, maximum: 0 }) };
-    const entering = inFrame(Animation.of({ at: () => nothing, nextChange: () => 5, lastChange: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }), 0);
+    const entering = inFrame(Animation.of({ at: () => nothing, validUntil: () => 5, validFrom: () => Number.NEGATIVE_INFINITY, reduced: () => Animation.constant<Renderable>(nothing) }), 0);
     const content = new Group(entering, new RichText("hello"), new RichText("world"), entering);
-    expect(drawnAt(content, 0, OPTIONS).nextChange).toBe(5);
+    expect(drawnAt(content, 0, OPTIONS).validUntil).toBe(5);
     for (const [col, row] of [[0, 0], [3, 0], [9, 0], [0, 2], [0, 3], [-9, 9]] as const) {
       const frame = scroll(content, { width: 3, height: 1, col: Animation.constant(col), row: Animation.constant(row) }).at(0);
-      expect(drawnAt(frame, 0, OPTIONS).nextChange).toBe(5);
+      expect(drawnAt(frame, 0, OPTIONS).validUntil).toBe(5);
     }
-    expect(drawnAt(scroll(entering, { width: 6, height: 1 }).at(0), 0, OPTIONS).nextChange).toBe(5);
+    expect(drawnAt(scroll(entering, { width: 6, height: 1 }).at(0), 0, OPTIONS).validUntil).toBe(5);
   });
 
   it("writes nothing of the content left of its window, a combining mark included", () => {
@@ -165,9 +165,9 @@ describe("scroll", () => {
     const marquee = scroll(LINE, { width: 6, height: 2, col: Animation.continuous((t) => t) });
     const cells = draw(inFrame(marquee, 3)).filter((s) => !s.isControl && s.text !== "\n");
     expect(cells.length).toBeGreaterThan(1);
-    for (const segment of cells) expect(segment.style?.hold.nextChange).toBe(3);
+    for (const segment of cells) expect(segment.style?.validity.validUntil).toBe(3);
     const empty = Animation.map(Animation.continuous((t) => t), (): Renderable => ({ render: () => [] }));
-    expect(drawnAt(empty, 2, OPTIONS).nextChange).toBe(2);
+    expect(drawnAt(empty, 2, OPTIONS).validUntil).toBe(2);
   });
 
   describe("placed in a function view, on a nested timeline", () => {
@@ -178,13 +178,13 @@ describe("scroll", () => {
 
     it("at twice the speed, a slide-in says it moves until the host moment it arrives, and never after", () => {
       const fast = Timeline.play(0, 2);
-      for (const t of [0, 0.5, 0.99]) expect(drawn(fast, slide, t).nextChange).toBe(t);
-      expect(drawn(fast, slide, 1).nextChange).toBe(Number.POSITIVE_INFINITY);
+      for (const t of [0, 0.5, 0.99]) expect(drawn(fast, slide, t).validUntil).toBe(t);
+      expect(drawn(fast, slide, 1).validUntil).toBe(Number.POSITIVE_INFINITY);
     });
 
     it("paused mid-slide, says it never changes, so the host does not wake for it", () => {
       const paused = Timeline.pause(Timeline.play(0), 1);
-      for (const t of [1, 5]) expect(drawn(paused, slide, t).nextChange).toBe(Number.POSITIVE_INFINITY);
+      for (const t of [1, 5]) expect(drawn(paused, slide, t).validUntil).toBe(Number.POSITIVE_INFINITY);
     });
   });
 });

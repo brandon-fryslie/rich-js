@@ -477,7 +477,7 @@ describe("Live refresh rate", () => {
     const clock = fakeClock();
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
     const times: number[] = [];
-    const moving = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t } }))] });
+    const moving = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ validity: { validFrom: t, validUntil: t } }))] });
     const display = new Live(
       framed((t) => {
         times.push(t);
@@ -522,7 +522,7 @@ describe("Live refresh rate", () => {
       framed((t) => {
         times.push(t);
         clock.elapse(0.025);
-        return { render: () => [new Segment("x", new Style({ hold: { lastChange: t, nextChange: t + 0.02 } }))] };
+        return { render: () => [new Segment("x", new Style({ validity: { validFrom: t, validUntil: t + 0.02 } }))] };
       }),
       { console: target, clock, refreshPerSecond: 4 },
     );
@@ -540,7 +540,7 @@ describe("Live refresh rate", () => {
     const target = new Console({ width: 20, height: 5, colorSystem: null, forceTerminal: true, file: { write: () => {} } });
     const times: number[] = [];
     // A frame that changes 0.3 s after it is drawn, then holds.
-    const settled = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ hold: { lastChange: t <= 1 ? 0 : 1.3, nextChange: t <= 1 ? 1.3 : Number.POSITIVE_INFINITY } }))] });
+    const settled = (t: number): Renderable => ({ render: () => [new Segment("x", new Style({ validity: { validFrom: t <= 1 ? 0 : 1.3, validUntil: t <= 1 ? 1.3 : Number.POSITIVE_INFINITY } }))] });
     const display = new Live(
       framed((t) => {
         times.push(t);
@@ -683,7 +683,7 @@ describe("Live on a timeline", () => {
     const recorded: View =
       typeof view === "function"
         ? framed((t) => record(t, view(t)))
-        : Animation.of({ at: (t: number) => record(t, view.at(t)), nextChange: (t: number) => view.nextChange(t), lastChange: (t: number) => view.lastChange(t), reduced: () => view.reduced() });
+        : Animation.of({ at: (t: number) => record(t, view.at(t)), validUntil: (t: number) => view.validUntil(t), validFrom: (t: number) => view.validFrom(t), reduced: () => view.reduced() });
     return { display: new Live(recorded, { console: target, clock, refreshPerSecond: perSecond, timeline }), drawn };
   }
   const word = (text: string): Renderable => new RichText(text);
@@ -809,7 +809,7 @@ describe("Live on a timeline", () => {
     // The frames at the rate, at 4.5 and 3.5, say B began at the switch; time 3
     // is host 2.5, sooner than the next tick, and A is drawn the first moment
     // after it. A frame landing exactly on 3 would be drawn at the rate
-    // instead: there `lastChange(3) === 3`, which the Animation contract reads as moving.
+    // instead: there `validFrom(3) === 3`, which the Animation contract reads as moving.
     const first = drawn.findIndex(({ text }) => text === "A");
     expect(drawn.slice(0, first).map(({ t }) => t)).toEqual([4.5, 3.5]);
     expect(drawn[first]!.t).toBeLessThan(3);

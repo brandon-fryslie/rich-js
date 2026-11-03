@@ -214,7 +214,7 @@ describe("Measurement.get()", () => {
 // --- measureRenderables ---
 
 describe("measuring draws nothing", () => {
-  it("asks a measure that renders without reporting what it renders to onPresent", () => {
+  it("asks a measure that renders without reporting what it renders to onVisibility", () => {
     const drawn: Renderable = { render: () => [] };
     const told: Renderable[] = [];
     const rendersToMeasure: Measurable = {
@@ -224,7 +224,7 @@ describe("measuring draws nothing", () => {
       },
     };
 
-    Measurement.get({ maxWidth: 10, onPresent: (r) => told.push(r) }, rendersToMeasure);
+    Measurement.get({ maxWidth: 10, onVisibility: (r) => told.push(r) }, rendersToMeasure);
 
     expect(told).toEqual([]);
   });

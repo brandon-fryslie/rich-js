@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 
 import { Animation } from "../../src/core/animation.js";
 import { Console } from "../../src/core/console.js";
-import { beat } from "../../src/core/easing.js";
+import { stepSequence } from "../../src/core/easing.js";
 import { render, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { RichText } from "../../src/core/text.js";
 import { RenderClockError } from "../../src/core/view.js";
@@ -67,7 +67,7 @@ describe("a host's frame is read between frames, never in one", () => {
 describe("a print is drawn in the frame its caller names", () => {
   const a = new RichText("a");
   const b = new RichText("b");
-  const steps = Animation.map(beat([1, 1]), (i) => (i === 0 ? a : b));
+  const steps = Animation.map(stepSequence([1, 1]), (i) => (i === 0 ? a : b));
 
   it("at the frame's time, or at 0 with none", () => {
     const console = new Console({ file: { write: () => {} }, colorSystem: null, width: 10, record: true });

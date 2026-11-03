@@ -2,21 +2,21 @@
  * The effect catalogue: shimmer, pulse, sparkle and wheel, which loop for as
  * long as they are drawn, fade-in and dissolve-out, which run once and are
  * done, a blink and a bold pulse, which move an attribute on a beat, and a
- * gradient, which lays a colour ramp across an element and may move it. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
+ * gradient, which lays a color ramp across an element and may move it. Each is an `Effect` for `Effected` (`./effect.ts`); the defaults
  * in `EFFECT_CURVES` are the ones signed off by eye in the effects-feel demo
  * (`npm run effects-feel`), at 30 fps and at one frame a second, and
  * `EFFECT_CATALOGUE` makes every one of them at those, by name, one way.
  *
  * Each effect is something a first-time observer already knows from life —
- * a slow glow, sunlight moving on water, the colours of daylight, fireflies, ink
+ * a slow glow, sunlight moving on water, the colors of daylight, fireflies, ink
  * blooming in water, mist lifting — because a motion the eye recognises
  * reads as calm and alive, where a motion it has to learn reads as a widget.
  * One effect here is not ambience but a signal, and keeps none of this on
- * purpose: `steppedInk` steps its ink through colours on a beat, the news
+ * purpose: `steppedInk` steps its ink through colors on a beat, the news
  * that something is at its limit, and jumps from slot to slot where the
  * loops hold still. Nor is `gradient` a light: it paints an ink rather than
  * lighting it, so it may darken one, and a ramp scrolled across it jumps
- * where the ramp wraps unless its ends are one colour. Of the list below it
+ * where the ramp wraps unless its ends are one color. Of the list below it
  * keeps the words. What makes the loops' motions familiar is what every
  * curve of theirs keeps:
  *
@@ -32,13 +32,13 @@
  *   filaments, fronts — never per-cell static.
  * - Light only ever lights, and never takes the words away. Ink and the
  *   fill under it both move toward the light and never darken, each by its
- *   own share: the share a colour can take while every cell it is drawn in
+ *   own share: the share a color can take while every cell it is drawn in
  *   still reads at its resting contrast or WCAG AA, whichever is lower. A
  *   cell with contrast to spare glows brightly; one with none barely moves.
  * - Elements are apart. Each sits at its own `z` in the noise, so two
  *   elements under one effect do not move in lockstep.
  *
- * Colour moves are in OKLCH, where equal steps look equal. A curve's `ease`
+ * Color moves are in OKLCH, where equal steps look equal. A curve's `ease`
  * maps its intensity in [0, 1] — how strongly the effect acts on a cell at a
  * moment — onto its swing, for the loops and the transitions alike.
  *
@@ -53,7 +53,7 @@
 
 import { Animation } from "../core/animation.js";
 import { ColorDepth, ColorRgba, ColorSpec, contrastRatio, relativeLuminance, type TerminalColors } from "../core/color.js";
-import { EASES, Phase, beat, type Beat, type Timing } from "../core/easing.js";
+import { EASES, WrapMode, stepSequence, type StepSequence, type Timing } from "../core/easing.js";
 import { fbm, hash, noise, smoothstep } from "../core/noise.js";
 import { Memo, WeakMemo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
@@ -62,8 +62,8 @@ import { ensureContrast } from "../themes/colorMath.js";
 import type { ColorRamp } from "../themes/ramp.js";
 import { Effected, type CellAttributes, type CellColors, type Drawn, type Effect, type EffectCell, type EffectFrame, type ListedCell, type Pair, type Placed } from "./effect.js";
 
-/** What a loop does to one colour at strength `w` in [0, 1]: at 0, nothing. */
-export type Touch = (color: ColorRgba, w: number) => ColorRgba;
+/** What a loop does to one color at strength `w` in [0, 1]: at 0, nothing. */
+export type ColorModifier = (color: ColorRgba, w: number) => ColorRgba;
 
 /**
  * How strongly a loop acts at a moment `t` on each cell of a frame drawing
@@ -73,9 +73,9 @@ export type Touch = (color: ColorRgba, w: number) => ColorRgba;
  */
 export type Field = (t: number, drawn: Drawn) => (cell: EffectCell) => number;
 
-/** A looping effect: what it does to a colour, and where and when, how strongly. */
+/** A looping effect: what it does to a color, and where and when, how strongly. */
 export interface Loop {
-  readonly touch: Touch;
+  readonly touch: ColorModifier;
   readonly field: Field;
 }
 
@@ -85,7 +85,7 @@ const LEGIBLE = 4.5;
 /**
  * The strengths a cell is drawn at: a field is snapped to one of these, and
  * a share is checked at every one, so every strength drawn was checked. A
- * 256-colour cube colour changes in jumps between strengths, and no check of
+ * 256-color cube color changes in jumps between strengths, and no check of
  * a continuous strength between two of them could see every jump. A step is
  * a 48th of a swing, well under a just-noticeable difference.
  */
@@ -98,7 +98,7 @@ const ROUNDING = 0.01;
 /**
  * The contrast no loop draws `pair` below at `depth`: its resting contrast or
  * `LEGIBLE`, whichever is lower, less what truecolor's rounding can cost.
- * Below truecolor every colour written is one the depth holds exactly, so
+ * Below truecolor every color written is one the depth holds exactly, so
  * there is nothing to forgive. [LAW:one-source-of-truth] The floor `shares`
  * settles the light against and `wheel` writes its turn above.
  */
@@ -114,40 +114,40 @@ const SIDES: readonly Side[] = ["fg", "bg"];
  * How much of `touch` each of `colors` (hex) can take: the largest share in
  * [0, 1] at which every pair `drawn` shows it in, touched at the same
  * strength, still reads at its resting contrast or `LEGIBLE`, whichever is
- * lower, in the colours `Effected` writes it in at `drawn`'s depth and terminal.
- * A colour in a pair but not in `colors` takes none, and so does one
+ * lower, in the colors `Effected` writes it in at `drawn`'s depth and terminal.
+ * A color in a pair but not in `colors` takes none, and so does one
  * the terminal supplies, whatever its hex, as in `onColors`. One of `colors`
  * no pair writes has nothing to be measured against, and takes it all.
  *
- * Colours are settled lightest first, each against every partner: one
+ * Colors are settled lightest first, each against every partner: one
  * already settled at its share, one not yet settled as it is. So the lighter
- * colour of a cell takes the light first and its darker partner spends
+ * color of a cell takes the light first and its darker partner spends
  * whatever contrast is left — pale lettering lifting off a dark fill gives
- * the fill room to glow — and a darker colour left as it is always holds,
+ * the fill room to glow — and a darker color left as it is always holds,
  * because its lighter partner was settled against exactly that.
  */
-export function shares({ pairs, depth, terminal }: Drawn, colors: ReadonlySet<string>, touch: Touch): Map<string, number> {
-  // [LAW:one-source-of-truth] A slot shows a subject colour, by hex, only
+export function shares({ pairs, depth, terminal }: Drawn, colors: ReadonlySet<string>, touch: ColorModifier): Map<string, number> {
+  // [LAW:one-source-of-truth] A slot shows a subject color, by hex, only
   // where the element writes it: the reading `onColors` lights by.
   const own = (pair: Pair, side: Side): string | undefined => (pair.terminal[side] ? undefined : pair[side].hex);
   const rgba = new Map(pairs.flatMap((pair) => SIDES.flatMap((side): [string, ColorRgba][] => {
     const hex = own(pair, side);
     return hex === undefined ? [] : [[hex, pair[side]]];
   })));
-  // A colour no pair writes keeps no word legible, so nothing bounds its share:
-  // a frame drawing a lit colour only under blanks and seams, or not at all,
+  // A color no pair writes keeps no word legible, so nothing bounds its share:
+  // a frame drawing a lit color only under blanks and seams, or not at all,
   // is a frame like any other.
   const settled = new Map([...colors].filter((hex) => !rgba.has(hex)).map((hex): [string, number] => [hex, 1]));
   const lightness = (hex: string): number => Oklch.fromRgba(rgba.get(hex)!).l;
   for (const hex of [...colors].filter((hex) => rgba.has(hex)).sort((a, b) => lightness(b) - lightness(a))) {
-    // Each pair showing the colour, with the side it shows it on and the share its partner takes.
+    // Each pair showing the color, with the side it shows it on and the share its partner takes.
     const facing = pairs.flatMap((pair): [Pair, Side, number][] => {
       const mine = SIDES.find((side) => own(pair, side) === hex);
       if (mine === undefined) return [];
       const partner = own(pair, mine === "fg" ? "bg" : "fg");
       return [[pair, mine, partner === undefined ? 0 : (settled.get(partner) ?? 0)]];
     });
-    // [LAW:one-source-of-truth] A pair reads in the colours `Effected` writes it in, touched at each side's share.
+    // [LAW:one-source-of-truth] A pair reads in the colors `Effected` writes it in, touched at each side's share.
     const holds = (share: number): boolean =>
       facing.every(([pair, mine, theirs]) => {
         const floor = floorOf(pair, depth);
@@ -168,19 +168,19 @@ export function shares({ pairs, depth, terminal }: Drawn, colors: ReadonlySet<st
 }
 
 /**
- * A loop as an `Effect` on the element's own colours, by hex, wherever a cell
+ * A loop as an `Effect` on the element's own colors, by hex, wherever a cell
  * shows them, each touched at its share of the cell's strength: the share
  * `shares` settles for it against the pairs the element draws its words in
  * (`Drawn`), touched as `Effected` writes them at the frame's depth — at 256
- * colours a touched colour lands on a colour the slot can write, and the
- * contrast it spends is that colour's; on a sixteen-colour terminal nothing
- * moves (`stillWhereNothingMoves`). `colors` are the ones lit, by default every colour the element
+ * colors a touched color lands on a color the slot can write, and the
+ * contrast it spends is that color's; on a sixteen-color terminal nothing
+ * moves (`staticWhereUnchanged`). `colors` are the ones lit, by default every color the element
  * sets itself. A powerline strip's fill is the ground of its cells and the
  * ink of the seam glyphs between them, so the arrow moves with the cell it
- * points out of. A colour the terminal supplies (`Pair.terminal`) is
+ * points out of. A color the terminal supplies (`Pair.terminal`) is
  * not the element's, whatever its hex, and takes no share.
  *
- * Settling shares is costly, so it is done once for each set of colours an
+ * Settling shares is costly, so it is done once for each set of colors an
  * element draws: make the effect once and draw it in every frame, and a frame
  * drawing what an earlier one drew costs no settling.
  */
@@ -192,7 +192,7 @@ export function onColors(loop: Loop, colors?: ReadonlySet<string>): Effect {
     const key = [drawnKey(drawn), "|", ...lit].join(" ");
     return settled.get(drawn.terminal, () => new Memo()).get(key, () => shares(drawn, lit, loop.touch));
   };
-  return stillWhereNothingMoves(SIDES, litIn, atShares(loop, settle));
+  return staticWhereUnchanged(SIDES, litIn, atShares(loop, settle));
 }
 
 /** What a frame draws, as a key: its depth and its pairs, which its `colors` and `fills` are read off. */
@@ -213,10 +213,10 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
 }
 
 /**
- * A ramp laid across the element: each lit cell's ink is the colour `ramp`
+ * A ramp laid across the element: each lit cell's ink is the color `ramp`
  * shows at `t` at the cell's column, the element's leftmost cell reading
  * the ramp's first stop and its rightmost its last, each at its cell's
- * centre — or, where that colour would not read on the cell's ground, the
+ * centre — or, where that color would not read on the cell's ground, the
  * nearest that does (`legibleInks`, as `steppedInk` writes its steps). A
  * ramp that moves (`ColorRamp.moving`) scrolls along the element and turns
  * its hues, and the frame changes when the ramp does — every frame for a
@@ -224,27 +224,27 @@ function pairKey({ fg, bg, terminal, reverse }: Pair): string {
  * `Animation.constant(ramp)`. Lit cells are those whose ink is one of
  * `colors`, named as a style names them (`"#a6e3a1"`, `"bright_green"`),
  * opaque, and matched as the screen shows them at the frame's depth — so
- * below truecolor every ink that lands on the same palette colour is lit —
- * by default every colour the element sets itself — never an ink the terminal supplies: a
- * rule's line by its colour and not its title, a panel's border and not its
+ * below truecolor every ink that lands on the same palette color is lit —
+ * by default every color the element sets itself — never an ink the terminal supplies: a
+ * rule's line by its color and not its title, a panel's border and not its
  * body. The element is where its frame lists
  * cells, as the fireflies read it, so a padded or confined element has the
- * ramp across what it shows. On a sixteen-colour terminal nothing moves
- * (`stillWhereNothingMoves`): a gradient there is jumps between slots, and the cells
+ * ramp across what it shows. On a sixteen-color terminal nothing moves
+ * (`staticWhereUnchanged`): a gradient there is jumps between slots, and the cells
  * hold as drawn.
  */
 export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[]): Effect {
   const legible = legibleInks();
-  // [LAW:parse-dont-validate] Parsed at the call, so a misspelt colour fails
+  // [LAW:parse-dont-validate] Parsed at the call, so a misspelt color fails
   // where it was written and not on some later frame.
   const named = colors?.map(opaqueInk);
-  // [LAW:one-source-of-truth] A colour named as a style spells it is lit
+  // [LAW:one-source-of-truth] A color named as a style spells it is lit
   // wherever a cell shows it, so it is resolved as `Effected` resolves a
   // cell's ink: drawn at the frame's depth, then read on its terminal.
   const shown = (spec: ColorSpec, { depth, terminal }: Drawn): string =>
     (Style.fromColor(spec).drawnColors(depth).color ?? ColorSpec.default()).getTruecolor(terminal, true).hex;
   const litIn = (drawn: Drawn): ReadonlySet<string> => (named === undefined ? drawn.colors : new Set(named.map((spec) => shown(spec, drawn))));
-  return stillWhereNothingMoves(["fg"], litIn, (drawn, lit) => {
+  return staticWhereUnchanged(["fg"], litIn, (drawn, lit) => {
     const inkOn = legible(drawn);
     const [left, right] = extent(drawn.cells().map((cell) => cell.col));
     return Animation.map(ramp, (now): EffectFrame => {
@@ -259,18 +259,18 @@ export function gradient(ramp: Animation<ColorRamp>, colors?: readonly string[])
 /**
  * `spec` parsed as an ink `gradient` lights. Opaque only: a translucent ink
  * is drawn over the ground of each cell it is in, so it shows as no one
- * colour to match, and naming one is refused here.
+ * color to match, and naming one is refused here.
  */
 function opaqueInk(spec: string): ColorSpec {
   const parsed = ColorSpec.parse(spec);
-  if (parsed.value !== undefined && parsed.value.alpha < 1) throw new RangeError(`gradient lights opaque colours, and ${spec} is translucent`);
+  if (parsed.value !== undefined && parsed.value.alpha < 1) throw new RangeError(`gradient lights opaque colors, and ${spec} is translucent`);
   return parsed;
 }
 
 /**
- * A loop as an `Effect` on colours by hex, each touched at the share
+ * A loop as an `Effect` on colors by hex, each touched at the share
  * `share` gives it of the cell's strength in a frame drawing what `Drawn`
- * says; a colour it gives none, and one the terminal supplies, stays as it is.
+ * says; a color it gives none, and one the terminal supplies, stays as it is.
  */
 export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string, number>): Effect {
   return (drawn) => {
@@ -279,7 +279,7 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
       const field = loop.field(t, drawn);
       return (look, cell) => {
         const w = Math.round(clamp01(field(cell)) * LEVELS) / LEVELS;
-        // [LAW:one-source-of-truth] A share belongs to the colour the element drew; the touch falls on what is there now.
+        // [LAW:one-source-of-truth] A share belongs to the color the element drew; the touch falls on what is there now.
         const moved = (side: Side): ColorRgba => touchedAt(loop.touch, look[side], (cell.pair.terminal[side] ? 0 : (shared.get(cell.pair[side].hex) ?? 0)) * w);
         return { ...look, fg: moved("fg"), bg: moved("bg") };
       };
@@ -288,20 +288,20 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
 }
 
 /**
- * `loop` as drawn at the frame's depth and on the colours it moves on `sides`
+ * `loop` as drawn at the frame's depth and on the colors it moves on `sides`
  * (`litIn`): where the depth writes only the
- * sixteen ANSI slots, or no colour, a move that shows at all is a jump to
+ * sixteen ANSI slots, or no color, a move that shows at all is a jump to
  * another slot, and a light on an element never jumps — so there it
  * holds every cell still, as it does where no cell that shows anything has
- * one of those colours of its own there, and anywhere else it moves. [LAW:single-enforcer]
+ * one of those colors of its own there, and anywhere else it moves. [LAW:single-enforcer]
  * `onColors`, `wheel` and `gradient` draw through this, so every loop in the catalogue
- * meets the sixteen-colour terminal here. `atShares` does not: a progress
+ * meets the sixteen-color terminal here. `atShares` does not: a progress
  * bar's pulse is the news that work is going on, and flashes a slot as
  * Rich's does; nor does `steppedInk`, a signal, which steps slot to slot.
  * A frame held still never changes, and says so, so a host drawing the
  * loop on such a terminal draws it once.
  */
-function stillWhereNothingMoves(sides: readonly Side[], litIn: (drawn: Drawn) => ReadonlySet<string>, loop: (drawn: Drawn, lit: ReadonlySet<string>) => Animation<EffectFrame>): Effect {
+function staticWhereUnchanged(sides: readonly Side[], litIn: (drawn: Drawn) => ReadonlySet<string>, loop: (drawn: Drawn, lit: ReadonlySet<string>) => Animation<EffectFrame>): Effect {
   return (drawn) => {
     const lit = litIn(drawn);
     const shows = ({ pair }: ListedCell): boolean => sides.some((side) => !pair.terminal[side] && lit.has(pair[side].hex));
@@ -309,7 +309,7 @@ function stillWhereNothingMoves(sides: readonly Side[], litIn: (drawn: Drawn) =>
   };
 }
 
-/** Whether `depth` writes nothing between the slots it has: the sixteen, at either sixteen-colour depth, or none. */
+/** Whether `depth` writes nothing between the slots it has: the sixteen, at either sixteen-color depth, or none. */
 function onlySlots(depth: ColorDepth): boolean {
   switch (depth) {
     case ColorDepth.DEFAULT:
@@ -323,11 +323,11 @@ function onlySlots(depth: ColorDepth): boolean {
 }
 
 /**
- * `color` under `touch` at strength `w`, and at strength 0 the colour itself,
- * exactly: an OKLCH round trip can land a step off, and at 16 colours a step
+ * `color` under `touch` at strength `w`, and at strength 0 the color itself,
+ * exactly: an OKLCH round trip can land a step off, and at 16 colors a step
  * off is another slot.
  */
-function touchedAt(touch: Touch, color: ColorRgba, w: number): ColorRgba {
+function touchedAt(touch: ColorModifier, color: ColorRgba, w: number): ColorRgba {
   return w === 0 ? color : touch(color, w);
 }
 
@@ -361,7 +361,7 @@ export function requireZ(what: string, z: number): void {
 /**
  * Each effect's curve as it was signed off. Every loop's period is a prime
  * number of seconds, so no two loops come back into step within a sitting.
- * The periods are long on purpose: at one frame a second a loop's colour
+ * The periods are long on purpose: at one frame a second a loop's color
  * moves by no more than a just-noticeable step from one frame to the next.
  */
 export const EFFECT_CURVES = {
@@ -386,8 +386,8 @@ const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
 /**
  * `w` of the way from `from` to `to` along a straight line in OKLab. Light
- * falling on a colour, or a colour thinning into its ground, moves straight
- * toward the other colour; `Oklch.mix` goes round the hue circle instead, so
+ * falling on a color, or a color thinning into its ground, moves straight
+ * toward the other color; `Oklch.mix` goes round the hue circle instead, so
  * blue lit by gold would pass through cyan on the way.
  */
 function blend(from: Oklch, to: Oklch, w: number): Oklch {
@@ -399,13 +399,13 @@ function blend(from: Oklch, to: Oklch, w: number): Oklch {
 }
 
 /**
- * A colour under `glow`: the one way every light here falls. It moves `w` of
- * the way toward the light's colour, and never below its own lightness —
- * light can warm a colour and lift it, never darken it. A colour already
+ * A color under `glow`: the one way every light here falls. It moves `w` of
+ * the way toward the light's color, and never below its own lightness —
+ * light can warm a color and lift it, never darken it. A color already
  * lighter than the light only warms, and white, which has no warmer shade at
  * its lightness, stays white.
  */
-export function light(glow: ColorRgba): Touch {
+export function light(glow: ColorRgba): ColorModifier {
   const to = Oklch.fromRgba(glow);
   return (color, w) => {
     const from = Oklch.fromRgba(color);
@@ -461,11 +461,11 @@ function given(shape: SwellShape, s: number, k: number): number {
 const FLASH: SwellShape = [[0.24, 1], [0.6, 0]];
 
 /**
- * Pulse, as a gentle glow on one element of a screen: the colours handed to
+ * Pulse, as a gentle glow on one element of a screen: the colors handed to
  * it, an element's own, warm into `light` and settle back, over and over, the
  * way an indicator breathes while something is waiting. Swing: how far into
  * the light it goes at the top of a beat, 0–1. The element glows as one —
- * every cell it is drawn in at once — and the colours not handed to it, the
+ * every cell it is drawn in at once — and the colors not handed to it, the
  * rest of the screen, stay as they are, so what pulses is what was chosen.
  * Each element keeps a time of its own, a little quicker or slower than
  * another's by `z`, and no beat is quite the last: the rhythm wanders ahead
@@ -490,8 +490,8 @@ export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
     // Each beat's own depth, 70% to the whole of the swing; it changes where
     // the beat is at rest, so nothing jumps.
     const depth = 0.7 + 0.3 * smoothstep(-0.5, 0.5, noise(n * 0.37, 2.1, z));
-    const beat = 0.5 - 0.5 * Math.cos(2 * Math.PI * (beats - n));
-    const level = curve.swing * curve.ease(depth * beat);
+    const stepSequence = 0.5 - 0.5 * Math.cos(2 * Math.PI * (beats - n));
+    const level = curve.swing * curve.ease(depth * stepSequence);
     return () => level;
   };
   return { touch: light(glow), field };
@@ -500,7 +500,7 @@ export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
 /**
  * How many columns a passing light crosses in its period: its pace.
  * Sunlight moves at a speed, not in a time set by how long the row is,
- * so a wider element is crossed for longer, never faster, and no cell's colour
+ * so a wider element is crossed for longer, never faster, and no cell's color
  * changes quicker on it from one frame to the next.
  */
 const STRIDE = 80;
@@ -703,11 +703,11 @@ export type Visibility = (t: number, drawn: Drawn) => (cell: EffectCell) => numb
  * A cell mixed toward the ground of the terminal the frame is drawn on
  * (`Drawn.terminal`) by how hidden it is: its fill toward the ground, and its ink
  * toward that fill, so an element with fills of its own — a powerline strip —
- * arrives and leaves whole, fill and words together, never as bare coloured
+ * arrives and leaves whole, fill and words together, never as bare colored
  * blocks. Invisible is ink and fill equal to the ground. `swing` scales the
  * hiding — 1 reaches fully invisible. A cell wholly shown is returned as it was.
  */
-export function veiled(visibility: Visibility, swing: number): Effect {
+export function mask(visibility: Visibility, swing: number): Effect {
   return (drawn) => {
     // [LAW:one-source-of-truth] The ground is the terminal `Effected` draws on, never a second one handed here.
     const ground = Oklch.fromRgba(drawn.terminal.backgroundColor);
@@ -745,8 +745,8 @@ function order(z: number): (cell: Placed) => number {
  * `schedule` is when its frame next changes on that clock, whatever the
  * element draws: what a caller drawing the transition inside an animation —
  * a lifecycle — says its frame does, since the frame it hands over carries
- * no word of its own (`stampFrame`, `../core/animation.ts`). Until done it changes
- * every frame, or on each hold of a beat (`onBeat`), and from then never.
+ * no word of its own (`stampValidityFrame`, `../core/animation.ts`). Until done it changes
+ * every frame, or on each hold of a beat (`sampleAndHold`), and from then never.
  * [LAW:one-source-of-truth] `done` is that schedule read as a fact — done
  * from the first moment it never changes again — so no transition carries
  * two answers to when it is over.
@@ -765,7 +765,7 @@ export class Transition<E = Effect> {
 /**
  * `effect` run once over `seconds` as a `Transition`: what it draws until it
  * is done, then held. [LAW:single-enforcer] The one rule for when a
- * transition is done and what it answers after, for a colour effect and a
+ * transition is done and what it answers after, for a color effect and a
  * glyph effect (`./glyph-effects.ts`) alike.
  */
 export function transition<D, F>(seconds: number, effect: (drawn: D) => Animation<F>): Transition<(drawn: D) => Animation<F>> {
@@ -781,9 +781,9 @@ export function transition<D, F>(seconds: number, effect: (drawn: D) => Animatio
       const moving = effect(drawn);
       return Animation.of({
         at: (t: number) => moving.at(t),
-        nextChange: (t: number): number => (ran.done(t) ? Number.POSITIVE_INFINITY : moving.nextChange(t)),
+        validUntil: (t: number): number => (ran.done(t) ? Number.POSITIVE_INFINITY : moving.validUntil(t)),
         // Done, the frame settled when the transition did; until then it is the effect's.
-        lastChange: (t: number) => (ran.done(t) ? schedule.lastChange(t) : moving.lastChange(t)),
+        validFrom: (t: number) => (ran.done(t) ? schedule.validFrom(t) : moving.validFrom(t)),
         // A one-shot, reduced, cuts from its start to its end, whatever the effect it runs would hold as a loop.
         reduced: () => Animation.cut(moving.at(0), moving.at(seconds)),
       });
@@ -795,14 +795,14 @@ export function transition<D, F>(seconds: number, effect: (drawn: D) => Animatio
 
 /**
  * `effect` sampled and held on `beat`: drawn at the moment the hold in
- * progress began (`Beat.lastChange`), so within a hold every frame is the frame
+ * progress began (`StepSequence.validFrom`), so within a hold every frame is the frame
  * at its start, and at each hold's start it moves on. A continuous effect
  * given a short curve becomes one that steps — a `wheel` turning a sixth of
  * a turn once a second — and at one redraw a second a hold shorter than a
  * second is skipped, as frames are. [LAW:no-ambient-temporal-coupling] The
  * held time is a function of `t`, so the same `t` draws the same bytes at
  * any rate. The frame next changes at a hold's start, and only one the
- * sampled effect has moved by (`Animation.onBeat`): an effect that moves
+ * sampled effect has moved by (`Animation.sampleAndHold`): an effect that moves
  * every frame turns the beat at the end of this hold, and one that is done
  * and says never leaves the beat saying never too.
  *
@@ -810,13 +810,13 @@ export function transition<D, F>(seconds: number, effect: (drawn: D) => Animatio
  * beat arrives a hold at a time and is done at the first hold that starts
  * after it was: an element arriving through it wakes its host on the beats.
  */
-export function onBeat(effect: Effect, beat: Beat): Effect;
-export function onBeat<E extends (drawn: never) => Animation<unknown>>(transition: Transition<E>, beat: Beat): Transition<E>;
-export function onBeat(stepped: Effect | Transition<(drawn: never) => Animation<unknown>>, beat: Beat): Effect | Transition<(drawn: never) => Animation<unknown>> {
+export function sampleAndHold(effect: Effect, stepSequence: StepSequence): Effect;
+export function sampleAndHold<E extends (drawn: never) => Animation<unknown>>(transition: Transition<E>, stepSequence: StepSequence): Transition<E>;
+export function sampleAndHold(stepped: Effect | Transition<(drawn: never) => Animation<unknown>>, stepSequence: StepSequence): Effect | Transition<(drawn: never) => Animation<unknown>> {
   // [LAW:types-are-the-program] An effect is a function and a transition an object: the representation is the discriminator.
-  if (typeof stepped === "function") return (drawn) => Animation.onBeat(stepped(drawn), beat);
+  if (typeof stepped === "function") return (drawn) => Animation.sampleAndHold(stepped(drawn), stepSequence);
   const { effect, schedule } = stepped;
-  return new Transition((drawn: never) => Animation.onBeat(effect(drawn), beat), Animation.onBeat(schedule, beat));
+  return new Transition((drawn: never) => Animation.sampleAndHold(effect(drawn), stepSequence), Animation.sampleAndHold(schedule, stepSequence));
 }
 
 /**
@@ -859,7 +859,7 @@ function ownChange(curve: Curve, place: (cell: Placed) => number): (t: number, c
     const [first, last] = extent(cells.map(place));
     const stagger = (last > first ? 1 - OWN : 0) * curve.seconds;
     // One phase a frame, shifted per cell, so no cell builds its own.
-    const change = Phase.once(0, curve.seconds - stagger);
+    const change = WrapMode.once(0, curve.seconds - stagger);
     // A share of the way from the first place to the last, held to the order for a cell the frame does not list.
     return (cell) => {
       const along = last > first ? clamp01((place(cell) - first) / (last - first)) : 0;
@@ -890,7 +890,7 @@ export function fadeIn(curve: Curve, z: number): Transition {
   const risen = ownChange(curve, order(1.7 + z));
   return transition(
     curve.seconds,
-    veiled((t, drawn) => {
+    mask((t, drawn) => {
       const of = risen(t, drawn.cells());
       return (cell) => curve.ease(of(cell).progress);
     }, curve.swing),
@@ -924,7 +924,7 @@ export function dissolveOut(curve: Curve, z: number): Transition {
   const { depth, from, to, maskFrom, maskTo, late } = DISSOLVE_SHAPE;
   return transition(
     curve.seconds,
-    veiled((t, drawn) => {
+    mask((t, drawn) => {
       const of = faded(t, drawn.cells());
       return (cell) => {
         const { along, progress } = of(cell);
@@ -964,7 +964,7 @@ interface Place {
   readonly centre: number;
 }
 
-/** A region of cells the wheel turns as one segment: the colour it is a region of, and the rows and columns it spans. */
+/** A region of cells the wheel turns as one segment: the color it is a region of, and the rows and columns it spans. */
 interface Region {
   readonly hex: string;
   top: number;
@@ -977,22 +977,22 @@ interface Region {
 const ownPlace = (cell: Placed, width: number): Place => ({ row: cell.row, centre: cell.col + width / 2 });
 
 /**
- * The segments `drawn` draws, as where each colour of each cell turns: a
+ * The segments `drawn` draws, as where each color of each cell turns: a
  * segment is a region of adjacent cells — beside or above one another — of
- * one colour of the element's own, each cell carrying it as its ground or,
+ * one color of the element's own, each cell carrying it as its ground or,
  * on the terminal's ground, as its ink, read off `Drawn.all` once a frame.
  * So a panel's ground is one segment whatever words lie on it, a blank
  * carrying the ink keeps a styled paragraph one segment across its spaces
- * and lines, a caption in a bar's colour written under the bar turns with
+ * and lines, a caption in a bar's color written under the bar turns with
  * it, and a blank in the terminal's ink splits a segment. A seam a joiner
- * drew is in none, since its colours are its neighbours' edges: each colour
- * of a seam cell turns with the region of that colour past the seam on
+ * drew is in none, since its colors are its neighbours' edges: each color
+ * of a seam cell turns with the region of that color past the seam on
  * either side — a two-cell rail reads past its other cell — so a powerline
- * cap keeps the colour of the cell it caps, a custom joiner's handed cap
+ * cap keeps the color of the cell it caps, a custom joiner's handed cap
  * included, and with the cell's own place where none is beside it — a
  * neighbour's edge the frame does not show, handed at the seam's cell. Any
- * other cell's colours turn with the region covering it: a letter in a
- * neighbour's fill colour is a word, not a cap. A cell the frame lists
+ * other cell's colors turn with the region covering it: a letter in a
+ * neighbour's fill color is a word, not a cap. A cell the frame lists
  * nowhere, which a hand-built `Drawn` hands, is one column wide. The place
  * is the region's centre column from the element's left edge, with its
  * centre row: a region that grows by a column moves its centre by half of
@@ -1004,10 +1004,10 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
   const { colors } = drawn;
   const at = (row: number, col: number): string => `${row}:${col}`;
   const listed = new Map<string, ListedCell>();
-  // Every column a seam cell covers: what a seam's colours look past to the region beside the seam.
+  // Every column a seam cell covers: what a seam's colors look past to the region beside the seam.
   const seams = new Set<string>();
-  // The colour a cell is a region of: its own ground, else on the terminal's ground its own ink, else none.
-  const regionColour = (cell: ListedCell): string | undefined => {
+  // The color a cell is a region of: its own ground, else on the terminal's ground its own ink, else none.
+  const regionColor = (cell: ListedCell): string | undefined => {
     if (cell.seam) return undefined;
     const own = (terminal: boolean, hex: string): string | undefined => (!terminal && colors.has(hex) ? hex : undefined);
     return own(cell.pair.terminal.bg, cell.pair.bg.hex) ?? own(cell.pair.terminal.fg, cell.pair.fg.hex);
@@ -1017,7 +1017,7 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
   const index = new Map<string, number>();
   for (const cell of drawn.all()) {
     listed.set(at(cell.row, cell.col), cell);
-    const hex = regionColour(cell);
+    const hex = regionColor(cell);
     for (let col = cell.col; col < cell.col + cell.width; col++) {
       if (cell.seam) seams.add(at(cell.row, col));
       if (hex === undefined) continue;
@@ -1025,7 +1025,7 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
       covered.push({ row: cell.row, col, hex });
     }
   }
-  // Union-find over the covered columns: two of one colour beside or above one another are one region.
+  // Union-find over the covered columns: two of one color beside or above one another are one region.
   const parent = covered.map((_, i) => i);
   const find = (i: number): number => {
     while (parent[i] !== i) {
@@ -1054,7 +1054,7 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
     return i === undefined ? undefined : regions.get(find(i));
   };
   const placeOf = (region: Region): Place => ({ row: (region.top + region.bottom) / 2, centre: (region.left + region.right + 1) / 2 });
-  // The region past the seam from `col` in `step`'s direction: what a seam's colour turns with.
+  // The region past the seam from `col` in `step`'s direction: what a seam's color turns with.
   const pastSeam = (row: number, col: number, step: -1 | 1): Region | undefined => {
     let past = col;
     while (seams.has(at(row, past))) past += step;
@@ -1070,17 +1070,17 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
 }
 
 /**
- * Wheel, as the colour of daylight going round: every hue turning the whole
+ * WheelEvent, as the color of daylight going round: every hue turning the whole
  * way round once a period — far too slowly to be seen moving, so a glance
  * sees a steady palette and an hour's absence a different one — each
  * segment of the element at its own pace. Swing: how far the segments stray
  * from one another, 0–1, 1 being half a turn apart. A segment is a region
- * of adjacent cells of one colour of the element's own, carried as their
+ * of adjacent cells of one color of the element's own, carried as their
  * ground or, on the terminal's ground, as their ink (`segmentsOf`), and it
- * paces by where it sits, not by its colour: two
- * regions of one fill at two places turn apart, and each colour of the seam
- * a joiner drew between them turns with the region of that colour beside
- * it, so a powerline cap keeps the colour of the cell it caps. An ink that
+ * paces by where it sits, not by its color: two
+ * regions of one fill at two places turn apart, and each color of the seam
+ * a joiner drew between them turns with the region of that color beside
+ * it, so a powerline cap keeps the color of the cell it caps. An ink that
  * is no fill turns with the ground it sits on, so a cell's words and fill
  * turn together. A segment's stray is slow noise at its place, at
  * `STRAY_PERIODS` in time and `STRAY_SPREAD` across the element, so
@@ -1089,13 +1089,13 @@ function segmentsOf(drawn: Drawn): (cell: Placed, hex: string) => Place {
  * column moves its hue a little, and those it pushes along as little. Only the
  * stray reads the place: a place in the shared turn would jump a growing
  * run by `360·t·Δ/P`, without bound in `t`.
- * A colour keeps its luminance as it turns (`hueTurned`), so every pair of
- * words reads at the contrast it rested at; at 256 colours a turned colour
- * lands on a colour the depth writes, one that keeps every pair of words it
+ * A color keeps its luminance as it turns (`hueTurned`), so every pair of
+ * words reads at the contrast it rested at; at 256 colors a turned color
+ * lands on a color the depth writes, one that keeps every pair of words it
  * is drawn in at its floor (`floorOf`) — its resting contrast or WCAG AA,
  * whichever is lower — as `shares` keeps the light's (`turnedBounds`). The
- * turn only happens to the element's own colours (`Drawn.colors`), never the
- * terminal's. On a sixteen-colour terminal nothing turns (`stillWhereNothingMoves`).
+ * turn only happens to the element's own colors (`Drawn.colors`), never the
+ * terminal's. On a sixteen-color terminal nothing turns (`staticWhereUnchanged`).
  */
 export function wheel(curve: Curve, z: number): Effect {
   requireCurve(curve);
@@ -1113,17 +1113,17 @@ export function wheel(curve: Curve, z: number): Effect {
   // Measured from where it stood at the start, as pulse's wander is, so the
   // first frame turns nothing and the second has turned only a frame's worth.
   const turned = (place: Place, t: number): number => (360 * t) / P + curve.swing * STRAY * ((stray(place, t) - stray(place, 0)) / 1.5);
-  // A turned colour's bounds rest on what a frame draws, never on `t`: settled once for each.
+  // A turned color's bounds rest on what a frame draws, never on `t`: settled once for each.
   const settled = new WeakMemo<Memo<ReadonlyMap<string, Bounds>>, TerminalColors>();
-  return stillWhereNothingMoves(SIDES, ({ colors }) => colors, (drawn) => {
+  return staticWhereUnchanged(SIDES, ({ colors }) => colors, (drawn) => {
     const { colors, fills, depth, terminal } = drawn;
-    // Whether a slot shows one of the element's colours: never the terminal's, whatever its hex.
+    // Whether a slot shows one of the element's colors: never the terminal's, whatever its hex.
     const own = (supplied: boolean, color: ColorRgba): boolean => !supplied && colors.has(color.hex);
-    // The colour an own colour is bounded with, under which its bounds are
-    // kept: itself if a fill or beside no own colour, else the ground beside
+    // The color an own color is bounded with, under which its bounds are
+    // kept: itself if a fill or beside no own color, else the ground beside
     // it. Where it turns is `segmentsOf`'s, not this.
     const boundWith = (color: ColorRgba, other: ColorRgba, theirs: boolean): string => (fills.has(color.hex) || !theirs ? color.hex : other.hex);
-    // The bounds a colour turns within, by the colour it is bounded with: one bound for every place a frame writes it at.
+    // The bounds a color turns within, by the color it is bounded with: one bound for every place a frame writes it at.
     const keyOf = (color: ColorRgba, bound: string): string => `${color.hex} ${bound}`;
     const bounds = settled.get(terminal, () => new Memo()).get(drawnKey(drawn), () =>
       turnedBounds(drawn.pairs, depth, (pair, side) => {
@@ -1131,19 +1131,19 @@ export function wheel(curve: Curve, z: number): Effect {
         return own(pair.terminal[side], pair[side]) ? keyOf(pair[side], boundWith(pair[side], pair[other], own(pair.terminal[other], pair[other]))) : undefined;
       }),
     );
-    // 256 colours writes a turned colour as one it has an index for; truecolor
+    // 256 colors writes a turned color as one it has an index for; truecolor
     // as one of the two either side of its luminance.
     const indexed = measuredIndexed(depth, terminal);
-    // Where each cell's colours turn, read off the frame's listing once.
+    // Where each cell's colors turn, read off the frame's listing once.
     const placeOf = segmentsOf(drawn);
     return Animation.continuous((t): EffectFrame => {
-      // [LAW:one-source-of-truth] A colour turned at a place within a
+      // [LAW:one-source-of-truth] A color turned at a place within a
       // segment's bounds is written once a frame, wherever it falls: the
       // key is the bounds' key with the place, so one entry never serves
       // two bounds.
       const written = new Map<string, ColorRgba>();
-      // The bounds are measured from the colour the element drew; a layer
-      // beneath may have lit it, so they travel with it, and a lit colour
+      // The bounds are measured from the color the element drew; a layer
+      // beneath may have lit it, so they travel with it, and a lit color
       // turns round its own luminance rather than snapping back unturned.
       const choose = (color: ColorRgba, rested: ColorRgba, bound: string, place: Place): ColorRgba => {
         const turn = hueTurned(color, turned(place, t));
@@ -1168,23 +1168,23 @@ export function wheel(curve: Curve, z: number): Effect {
   });
 }
 
-/** A colour turned round the hue circle at its luminance (`hueTurned`). */
+/** A color turned round the hue circle at its luminance (`hueTurned`). */
 interface Turned {
-  /** The turned colour, the nearest written stands in for. */
+  /** The turned color, the nearest written stands in for. */
   readonly looks: ColorRgba;
-  /** The 8-bit colours of the turned hue either side of the luminance, darker first. */
+  /** The 8-bit colors of the turned hue either side of the luminance, darker first. */
   readonly either: readonly ColorRgba[];
 }
 
 /**
  * `color` turned `degrees` round the hue circle at its own relative
  * luminance, and at its own chroma where the gamut has it. WCAG contrast is
- * a ratio of luminances, so a pair of colours each turned this way reads at
+ * a ratio of luminances, so a pair of colors each turned this way reads at
  * the contrast it did; one turned at its OKLCH lightness instead does not,
  * since equal lightness is not equal luminance across hues. The lightness
  * is found by bisection, as `ensureContrastToward` finds one, and 8-bit
- * rounding lands the luminance between two colours, so both are kept. At 0
- * degrees the colour itself, exactly: an OKLCH round trip can land a step
+ * rounding lands the luminance between two colors, so both are kept. At 0
+ * degrees the color itself, exactly: an OKLCH round trip can land a step
  * off (`touchedAt`).
  */
 function hueTurned(color: ColorRgba, degrees: number): Turned {
@@ -1197,7 +1197,7 @@ function greyOf(color: ColorRgba): ColorRgba {
   return new Oklch(l, 0, h, alpha).toRgba();
 }
 
-/** `color` turned `degrees` round the hue circle and brought to `luminance`: the two 8-bit colours either side of it. */
+/** `color` turned `degrees` round the hue circle and brought to `luminance`: the two 8-bit colors either side of it. */
 function atLuminance(color: ColorRgba, degrees: number, luminance: number): Turned {
   const from = Oklch.fromRgba(color);
   const at = (l: number): ColorRgba => new Oklch(l, from.c, from.h + degrees, from.alpha).toRgba();
@@ -1210,42 +1210,42 @@ function atLuminance(color: ColorRgba, degrees: number, luminance: number): Turn
 }
 
 /**
- * Where a colour sits on WCAG's contrast scale: the log of its contrast with
- * black. Two colours' contrast ratio is `exp` of the gap between their
- * stops, so a contrast to keep is a distance a colour may move.
+ * Where a color sits on WCAG's contrast scale: the log of its contrast with
+ * black. Two colors' contrast ratio is `exp` of the gap between their
+ * stops, so a contrast to keep is a distance a color may move.
  */
 const stop = (color: ColorRgba): number => Math.log(contrastRatio(color, new ColorRgba(0, 0, 0)));
 
-/** Where a colour's luminance may land, as `stop`: none is bounded until a pair bounds it. */
+/** Where a color's luminance may land, as `stop`: none is bounded until a pair bounds it. */
 interface Bounds {
   readonly lo: number;
   readonly hi: number;
 }
 const UNBOUNDED: Bounds = { lo: -Infinity, hi: Infinity };
-/** Bounds that admit no turn: the colour is written as it rests. */
+/** Bounds that admit no turn: the color is written as it rests. */
 const STILL: Bounds = { lo: Infinity, hi: -Infinity };
 
 /**
- * The widest 8-bit rounding parts `hueTurned`'s two colours, in stops. They
+ * The widest 8-bit rounding parts `hueTurned`'s two colors, in stops. They
  * are one point of the hue rounded two ways, so they differ by at most a
- * step in each channel, and a channel of a colour that dark or light can
+ * step in each channel, and a channel of a color that dark or light can
  * take a step only so large: worst near a luminance of 0.05, at 3.03% of
  * contrast. Bounds at least this wide admit one of the two whatever the
- * hue; narrower, a colour would turn at some hues and snap back to rest at
+ * hue; narrower, a color would turn at some hues and snap back to rest at
  * the next, so it holds still.
  */
 const ROUNDING_GAP = Math.log(1.031);
 
 /**
- * How far each turned colour's luminance may land from the one it rests at,
+ * How far each turned color's luminance may land from the one it rests at,
  * keyed as `turnedAs` keys each side of a pair — none for a side that holds
  * still — so that every pair of `pairs` reads at its floor (`floorOf`) at
- * `depth` however each of its colours lands within its bounds. Bounds
+ * `depth` however each of its colors lands within its bounds. Bounds
  * narrower than `ROUNDING_GAP` are `STILL`.
  *
  * A pair's contrast to spare above its floor, as a gap between stops, is
  * shared out evenly between its sides that turn: the lighter may land that
- * much darker, the darker that much lighter, and never further. So a colour
+ * much darker, the darker that much lighter, and never further. So a color
  * bounded once for every pair it is drawn in is bounded by each of them at
  * once, and every way a frame writes it — the wheel turns it at each place
  * it falls — lands within them. A pair whose floor is 1:1 holds however it
@@ -1267,7 +1267,7 @@ function turnedBounds(pairs: readonly Pair[], depth: ColorDepth, turnedAs: (pair
   return new Map([...bounds].map(([key, { lo, hi }]) => [key, hi - lo < ROUNDING_GAP ? STILL : { lo, hi }]));
 }
 
-/** A colour a turn may be written as, with what `nearestWithin` reads of it. */
+/** A color a turn may be written as, with what `nearestWithin` reads of it. */
 interface Measured {
   readonly color: ColorRgba;
   readonly looks: Oklch;
@@ -1275,14 +1275,14 @@ interface Measured {
 }
 const measured = (color: ColorRgba): Measured => ({ color, looks: Oklch.fromRgba(color), stop: stop(color) });
 
-/** `ColorSpec.indexed`'s colours, measured once for each terminal and depth. */
+/** `ColorSpec.indexed`'s colors, measured once for each terminal and depth. */
 const measuredMemo = new WeakMemo<readonly Measured[], readonly (readonly [ColorSpec, ColorRgba])[]>();
 function measuredIndexed(depth: ColorDepth, terminal: TerminalColors): readonly Measured[] {
   return measuredMemo.get(ColorSpec.indexed(depth, terminal), (indexed) => indexed.map(([, color]) => measured(color)));
 }
 
 /**
- * The colour that looks nearest `color` (OKLab's ΔE): `rest`, or one of
+ * The color that looks nearest `color` (OKLab's ΔE): `rest`, or one of
  * `candidates` whose luminance is within `bounds`. `rest` is what the bounds
  * are measured from, so it is always offered; ties go to it, then to the
  * earlier.
@@ -1306,9 +1306,9 @@ function nearestOf(color: ColorRgba, offered: readonly Measured[]): Measured | u
 const MEASURE = 1e-9;
 
 /**
- * The stops a colour written at `depth` can land on: everything between black
+ * The stops a color written at `depth` can land on: everything between black
  * and white in truecolor, and otherwise what the depth has an index for, so a
- * sixteen-colour terminal's reach is its slots.
+ * sixteen-color terminal's reach is its slots.
  */
 function reachOf(depth: ColorDepth, terminal: TerminalColors): readonly [bottom: number, top: number] {
   return depth === ColorDepth.TRUECOLOR ? [0, Math.log(21)] : extent(measuredIndexed(depth, terminal).map((candidate) => candidate.stop));
@@ -1319,7 +1319,7 @@ function reachOf(depth: ColorDepth, terminal: TerminalColors): readonly [bottom:
  * room to read on the side of it the ink rested on: a light ink caps its ground
  * at the floor below the lightest the depth writes, a dark one bars it from the
  * floor above the darkest. Where a ground rests is always within: a depth also
- * writes the terminal's own colour, which at sixteen colours lies past its
+ * writes the terminal's own color, which at sixteen colors lies past its
  * terminal's reach, and a ground no layer moved comes back as it was. These are
  * what the depth's reach leaves, so a ground any one effect moves is inside them.
  */
@@ -1338,15 +1338,15 @@ function groundBounds(pairs: readonly Pair[], depth: ColorDepth, terminal: Termi
  * Several effects on one element, as one effect: each layer is handed the look
  * the one before it left and the same cell, so later layers are on top, and each
  * recognises a cell by what the element drew (`EffectCell.pair`), never by the
- * colour it is handed. A hue a layer turned onto another of the element's
- * colours is not mistaken for it, and turns once. It changes when the soonest
+ * color it is handed. A hue a layer turned onto another of the element's
+ * colors is not mistaken for it, and turns once. It changes when the soonest
  * layer does, and with no layers it leaves every cell as drawn.
  *
  * Every word reads at its floor (`floorOf`), whatever the layers did and in
- * whatever order. Each loop proves that for colours as the element drew them,
- * and a colour another layer moved voids the proof: light lands at another
+ * whatever order. Each loop proves that for colors as the element drew them,
+ * and a color another layer moved voids the proof: light lands at another
  * luminance on a turned hue. So once the layers have moved a cell, its ground
- * lands where its inks can still read (`groundBounds`), a function of the colour
+ * lands where its inks can still read (`groundBounds`), a function of the color
  * alone so one fill stays one fill, and an ink that does not read on it slides
  * to the luminance that does, on the side of the ground it stands on while that
  * side has room. A layer that takes an ink across its ground crosses it here too:
@@ -1356,7 +1356,7 @@ function groundBounds(pairs: readonly Pair[], depth: ColorDepth, terminal: Termi
  * it would be alone. A frame that takes a ground past its bounds is the one
  * exception, whatever its ink reads: a swap of ink and ground lands at the floor,
  * since a bound cannot ask what one cell's ink does without splitting a fill.
- * The floor outranks a colour being the terminal's: a terminal
+ * The floor outranks a color being the terminal's: a terminal
  * ink is moved here where a ground under it left it unreadable. The rule is the
  * same for one layer as for five: a veil (`veiled`, or a transition's `effect`)
  * stops at the floor here, so a transition goes in an `Effected` around this
@@ -1370,12 +1370,12 @@ export function layered(...effects: readonly Effect[]): Effect {
     const words = new Set(drawn.pairs.map(pairKey));
     const offered = depth === ColorDepth.TRUECOLOR ? undefined : measuredIndexed(depth, terminal);
     // `color` as itself if it is within the first of `bounds`, else the nearest
-    // colour the depth writes there, else the same of the next; as itself where
+    // color the depth writes there, else the same of the next; as itself where
     // none has any. In truecolor that is its hue at the bound's luminance, or a
-    // grey there: a colour keeps its chroma only so near black or white, and a
+    // grey there: a color keeps its chroma only so near black or white, and a
     // bound may be at either. `rested` is always offered, since a depth also
-    // writes the terminal's own colour, which it has no index for, and the
-    // colour a pair rested in is the one a bound was measured from.
+    // writes the terminal's own color, which it has no index for, and the
+    // color a pair rested in is the one a bound was measured from.
     const landing = (color: ColorRgba, rested: ColorRgba, ...bounds: readonly Bounds[]): ColorRgba => {
       const at = stop(color);
       for (const { lo, hi } of bounds) {
@@ -1388,9 +1388,9 @@ export function layered(...effects: readonly Effect[]): Effect {
       return color;
     };
     const floored = (pair: Pair, moved: CellColors): CellColors => {
-      // [LAW:single-enforcer] Every measure below reads the colours as `Effected`
+      // [LAW:single-enforcer] Every measure below reads the colors as `Effected`
       // writes them: rounded to the depth, and a translucent one laid on what is
-      // beneath it, so a colour that passes here cannot draw as one that fails.
+      // beneath it, so a color that passes here cannot draw as one that fails.
       const ground = landing(Effected.shows(pair, moved, depth, terminal).bg, pair.bg, grounds.get(pair.bg.hex) ?? UNBOUNDED);
       const { fg } = Effected.shows(pair, { fg: moved.fg, bg: ground }, depth, terminal);
       const floor = floorOf(pair, depth);
@@ -1404,7 +1404,7 @@ export function layered(...effects: readonly Effect[]): Effect {
       return { fg: landing(fg, pair.fg, near!, far!), bg: ground };
     };
     return Animation.map(Animation.all(effects.map((effect) => effect(drawn))), (frames): EffectFrame => {
-      // A colour pair lands once a frame, wherever it falls. [LAW:one-source-of-truth]
+      // A color pair lands once a frame, wherever it falls. [LAW:one-source-of-truth]
       const landed = new Map<string, CellColors>();
       return (look, cell) => {
         const moved = frames.reduce((under, frame) => frame(under, cell), look);
@@ -1424,23 +1424,23 @@ export interface ColorStep {
 }
 
 /**
- * A signal: every cell's ink stepping through `steps`' colours on a beat,
- * one colour a hold, looping, for the time it is handed — a gauge's
- * chevrons in bright changing colours. The ground is left as the cell draws
+ * A signal: every cell's ink stepping through `steps`' colors on a beat,
+ * one color a hold, looping, for the time it is handed — a gauge's
+ * chevrons in bright changing colors. The ground is left as the cell draws
  * it, and the words stay legible on it: each step's ink is written as the
- * colour nearest the step's (OKLab's ΔE) that the depth draws and that
+ * color nearest the step's (OKLab's ΔE) that the depth draws and that
  * reads on the cell's ground, as `Effected` writes it, at the cell's floor
  * (`floorOf`) — its resting contrast or `LEGIBLE`, whichever is lower, the
  * floor every loop here keeps. In truecolor that is the step itself, or its
  * hue and chroma at the lightness nearest it that reaches the floor
- * (`ensureContrast`, the one slide a template's `readableOn` makes too);
- * below truecolor, the nearest of the colours the depth has an index for, so on a
- * sixteen-colour terminal it steps from slot to slot, the one effect here
- * that does (`stillWhereNothingMoves`). A cell whose ground no offered colour reads
+ * (`ensureContrast`, the one slide a template's `ensureContrast` makes too);
+ * below truecolor, the nearest of the colors the depth has an index for, so on a
+ * sixteen-color terminal it steps from slot to slot, the one effect here
+ * that does (`staticWhereUnchanged`). A cell whose ground no offered color reads
  * on keeps the ink it rested in.
  *
  * The search is settled once for each ground and step — below truecolor,
- * which colours read on a ground once for that ground — so a frame
+ * which colors read on a ground once for that ground — so a frame
  * inside a step redoes none, and nor does a later pass of the beat: at sixty
  * frames a second a one-second step is sixty identical frames, and the
  * frame changes when the beat does: the signal is the beat mapped to inks.
@@ -1448,7 +1448,7 @@ export interface ColorStep {
  * nothing here reads a clock.
  */
 export function steppedInk(steps: readonly ColorStep[]): Effect {
-  const rhythm = beat(steps.map((step) => step.seconds));
+  const rhythm = stepSequence(steps.map((step) => step.seconds));
   // A copy, as `beat` keeps of the holds: what the signal plays stays what
   // `steps` said whatever the caller does to its array.
   const inks = steps.map((step) => step.color);
@@ -1468,10 +1468,10 @@ export function steppedInk(steps: readonly ColorStep[]): Effect {
  * what an earlier one drew redoes no search. [LAW:single-enforcer] Every
  * effect that writes an ink of the caller's choosing writes it through
  * here — `steppedInk`'s steps and `gradient`'s ramp alike — so none of them
- * leaves a word unreadable. Below truecolor which of the depth's colours
+ * leaves a word unreadable. Below truecolor which of the depth's colors
  * read on a pair does not depend on the ink, so it is settled once for each
  * pair: a ramp, whose every frame offers inks no frame offered before,
- * then costs a nearest-colour scan a cell, not a contrast test of the whole
+ * then costs a nearest-color scan a cell, not a contrast test of the whole
  * palette.
  */
 function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, pair: Pair) => ColorRgba {
@@ -1493,9 +1493,9 @@ function legibleInks(): (drawn: Drawn) => (ink: ColorRgba, pair: Pair) => ColorR
 }
 
 /**
- * Of `offered`, the colours that read on `pair`'s ground at `pair`'s floor,
+ * Of `offered`, the colors that read on `pair`'s ground at `pair`'s floor,
  * as `Effected` writes them (`shows`). [LAW:one-source-of-truth] Measured the
- * way `shares` and `wheel` measure: the written colours, at the catalogue's
+ * way `shares` and `wheel` measure: the written colors, at the catalogue's
  * floor. An ink none of them is nearest stays `pair`'s own.
  */
 function legibleAmong(pair: Pair, offered: readonly Measured[], depth: ColorDepth, terminal: TerminalColors): readonly Measured[] {
@@ -1524,7 +1524,7 @@ export interface Blink {
  * (`ATTRIBUTE_DEFAULTS`) [LAW:one-type-per-behavior].
  */
 export function blink({ attribute, off, on }: Blink): Effect {
-  const rhythm = beat([off, on]);
+  const rhythm = stepSequence([off, on]);
   const frames: readonly EffectFrame[] = [(look) => look, (look) => ({ ...look, attributes: { ...look.attributes, [attribute]: true } })];
   return () => Animation.map(rhythm, (i) => frames[i]!);
 }
@@ -1563,7 +1563,7 @@ export type TransitionName = "fade" | "dissolve";
  * Every effect in the catalogue by its name in `EFFECT_CURVES`, each made the
  * one way: for an element, at its signed-off curve unless handed another,
  * with the light and the width it was signed off with. A loop comes lit on
- * the element's own colours (`onColors`); a transition comes as itself, to
+ * the element's own colors (`onColors`); a transition comes as itself, to
  * be told when it is done. [LAW:types-are-the-program] Keyed by the two
  * name types, which `EFFECT_CURVES` is held to as well: a curve signed off
  * does not compile until it is named a loop or a transition, and then not

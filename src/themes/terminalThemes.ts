@@ -6,7 +6,7 @@
  * [LAW:one-source-of-truth] Hex values live in `data/<name>.ts`, and a theme's
  * name means one palette: a constant here holds the very `Palette`
  * `getThemePalette(name)` returns, and takes the background and foreground off
- * it, with the theme's sixteen named colours beside it.
+ * it, with the theme's sixteen named colors beside it.
  *
  * [LAW:one-type-per-behavior] Every theme has the same shape — name,
  * `dark` flag, full Palette in the registry, `TerminalTheme` constant

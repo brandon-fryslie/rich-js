@@ -16,7 +16,7 @@
  * partner depends on luminance.
  */
 
-import { labelled } from "../core/orient.js";
+import { labeled } from "../core/orient.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
@@ -27,7 +27,7 @@ import type { TerminalTheme } from "../core/color.js";
 import type { PaletteRole } from "../themes/palette.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
-import type { KeyEvent, WidgetMouseEvent } from "./types.js";
+import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
 export type ButtonVariant = "default" | "primary" | "success" | "warning" | "danger";
 
@@ -44,7 +44,7 @@ export interface ButtonOptions {
 //   hover       — full accent bg; pair with hoverFg, NOT with `fg`. The
 //                 text-* keys are mostly-accent and would clash on a full
 //                 accent bg.
-//   hoverFg     — WCAG-correct contrast colour (on-${accent}) for full bg.
+//   hoverFg     — WCAG-correct contrast color (on-${accent}) for full bg.
 const VARIANT_KEYS: Record<ButtonVariant, { bg: PaletteRole; fg: PaletteRole; hover: PaletteRole; hoverFg: PaletteRole }> = {
   default:  { bg: "surface",       fg: "foreground",   hover: "primary", hoverFg: "on-primary" },
   primary:  { bg: "primary-muted", fg: "text-primary", hover: "primary", hoverFg: "on-primary" },
@@ -71,7 +71,7 @@ export class Button extends ThemedWidget {
   // --- Event handlers ---
 
   @action
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     if (this.disabled) return;
     if (event.key === "enter" || event.key === "space") {
       this.active = true;
@@ -114,13 +114,13 @@ export class Button extends ThemedWidget {
     const focused = this.focused;
     const left = focused ? "[" : " ";
     const right = focused ? "]" : " ";
-    const drawn = (style: Style): Segment[] => labelled(`${left} `, this.label, ` ${right}`, style, options.textOrder);
+    const drawn = (style: Style): Segment[] => labeled(`${left} `, this.label, ` ${right}`, style, options.textOrder);
 
     if (this.disabled) {
       return drawn(new Style(this.disabledInk));
     }
 
-    // Active and hover share the same colour pair (full accent bg + on-accent fg).
+    // Active and hover share the same color pair (full accent bg + on-accent fg).
     // Active is differentiated by bold, not by inverting fg/bg — inversion gives
     // mostly-accent text on mostly-bg-tinted background, which is unreadable for
     // accents whose contrast partner depends on luminance.

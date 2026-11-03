@@ -47,8 +47,8 @@
  * timeline refuses it.
  */
 
-import { Animation, frameTimeOf, holdOf, shownAt, stampFrame } from "../core/animation.js";
-import type { Hold } from "../core/style.js";
+import { Animation, frameTimeOf, validityOf, shownAt, stampValidityFrame } from "../core/animation.js";
+import type { ValidityInterval } from "../core/style.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
@@ -117,8 +117,8 @@ export class Spinner implements Animation<Renderable & Measurable> {
   private readonly _ascii: Sequence;
   /**
    * The spinner drawn at the frame's time, its cells saying the hold it is in
-   * on the host's clock (`stampFrame`) — exactly, for the frames the output
-   * draws, where `nextChange` must answer for both. Under reduced motion it
+   * on the host's clock (`stampValidityFrame`) — exactly, for the frames the output
+   * draws, where `validUntil` must answer for both. Under reduced motion it
    * is the spinner reduced, which never turns (`shownAt`).
    */
   private readonly _placed: Renderable & Measurable;
@@ -143,7 +143,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
     this._placed = this._frame((played, options) => {
       const t = frameTimeOf(options);
       const shown = shownAt(played, t, options);
-      return { value: shown.value, hold: holdOf(shown, t) };
+      return { value: shown.value, validity: validityOf(shown, t) };
     });
   }
 
@@ -184,14 +184,14 @@ export class Spinner implements Animation<Renderable & Measurable> {
 
   /** The frame `choose` picks from the frames the output can draw, and the label, saying the hold it is in if `choose` says. */
   private _frame(
-    choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly hold?: Hold },
+    choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly validity?: ValidityInterval },
   ): Renderable & Measurable {
     const drawn = (options: RenderOptions): Sequence => drawable(options, this._named, this._ascii, sequenceGlyphs);
     return {
       render: (options) => {
-        const { value, hold } = choose(drawn(options).played, options);
+        const { value, validity } = choose(drawn(options).played, options);
         const segments = this._render(value, options);
-        return hold === undefined ? segments : stampFrame(segments, hold);
+        return validity === undefined ? segments : stampValidityFrame(segments, validity);
       },
       // Measured at the frames' one width, the widest frame's, so a column
       // holding it never narrows as it turns, and never offered less than
@@ -212,13 +212,13 @@ export class Spinner implements Animation<Renderable & Measurable> {
    * output keeps its own interval. An early answer, on the output that draws
    * the other one, which the contract allows; the drawn cells carry the exact one.
    */
-  nextChange(t: number): number {
-    return Math.min(this._named.played.nextChange(t), this._ascii.played.nextChange(t));
+  validUntil(t: number): number {
+    return Math.min(this._named.played.validUntil(t), this._ascii.played.validUntil(t));
   }
 
   /** When the spinner drawn at `t` began to be drawn: the later of its two sequences' answers, by the same argument. */
-  lastChange(t: number): number {
-    return Math.max(this._named.played.lastChange(t), this._ascii.played.lastChange(t));
+  validFrom(t: number): number {
+    return Math.max(this._named.played.validFrom(t), this._ascii.played.validFrom(t));
   }
 
   private *_render(frame: RichText, options: RenderOptions): Iterable<Segment> {

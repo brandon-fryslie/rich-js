@@ -2,11 +2,11 @@
  * Tween — a value eased from one number to another over seconds, then held:
  * the animation a progress bar's fill, a counter or a width is handed so it
  * moves to its new value instead of jumping. The first `Animation` of a
- * value that is never drawn as cells, so its `nextChange` is its only way of
+ * value that is never drawn as cells, so its `validUntil` is its only way of
  * saying when to look again (`./animation.ts`).
  *
  * The value at `t` is the `Timing`'s ease of the way from `from` to `to`
- * through `Phase.once(0, seconds)`: `from` at `t ≤ 0` whenever the ease
+ * through `WrapMode.once(0, seconds)`: `from` at `t ≤ 0` whenever the ease
  * starts at 0, as every built-in does but `step-start` and the steps that
  * jump at the start of their interval, which show their first jump before
  * the tween begins, as `ColorRamp.at` does; `to` from `seconds` on. It is
@@ -25,9 +25,9 @@
  * tween(old.at(t₁), to, timing))` — and starts from where it is because
  * that is where it was built from. [LAW:no-ambient-temporal-coupling]
  *
- * Over colours it is a `ColorRamp` read over time (`../themes/ramp.ts`,
- * `over`): the ramp is already the one place two colours are blended, in
- * OKLCH, and a colour tween is a two-stop ramp over its seconds, not a
+ * Over colors it is a `ColorRamp` read over time (`../themes/ramp.ts`,
+ * `over`): the ramp is already the one place two colors are blended, in
+ * OKLCH, and a color tween is a two-stop ramp over its seconds, not a
  * second blender. [LAW:one-source-of-truth]
  *
  * Tier 6 of `src/core/`: `./easing.ts` and `./animation.ts`, nothing else.
@@ -35,7 +35,7 @@
  */
 
 import { Animation } from "./animation.js";
-import { Phase, type Timing } from "./easing.js";
+import { WrapMode, type Timing } from "./easing.js";
 
 /**
  * `from` eased to `to` over `timing`, as an `Animation<number>`: moving from
@@ -43,7 +43,7 @@ import { Phase, type Timing } from "./easing.js";
  * every ease that starts at 0), `to` after, and so
  * seen at its end, never mid-way, by a host whose frames are further apart
  * than it is long. `from` and `to` must be finite; the seconds are checked
- * where every one-shot's are, in `Phase.once`. A tween to where it already
+ * where every one-shot's are, in `WrapMode.once`. A tween to where it already
  * is is `Animation.constant(from)`, decided here once: the blend would land
  * one ulp off `from` at some `p`, and a value that never moves is one that
  * never changes, so a host is told not to look again. [LAW:parse-dont-validate]
@@ -53,7 +53,7 @@ export function tween(from: number, to: number, timing: Timing): Animation<numbe
     if (!Number.isFinite(v)) throw new RangeError(`tween ${name} must be finite, got ${v}`);
   }
   const { ease, seconds } = timing;
-  const phase = Phase.once(0, seconds);
+  const phase = WrapMode.once(0, seconds);
   if (from === to) return Animation.constant(from);
   return Animation.of({
     at(t: number) {
@@ -63,8 +63,8 @@ export function tween(from: number, to: number, timing: Timing): Animation<numbe
     // Before it begins the value is held until 0; while it moves, every
     // frame; from `seconds` on, never again — and it became what it is at
     // `seconds`, or always was before it began.
-    nextChange: (t: number) => (t < 0 ? 0 : t < seconds ? t : Number.POSITIVE_INFINITY),
-    lastChange: (t: number) => (t < 0 ? Number.NEGATIVE_INFINITY : t < seconds ? t : seconds),
+    validUntil: (t: number) => (t < 0 ? 0 : t < seconds ? t : Number.POSITIVE_INFINITY),
+    validFrom: (t: number) => (t < 0 ? Number.NEGATIVE_INFINITY : t < seconds ? t : seconds),
     // A one-shot, reduced, cuts from where it starts to where it arrives.
     reduced: () => Animation.cut(from, to),
   });

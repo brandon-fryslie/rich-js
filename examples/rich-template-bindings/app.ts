@@ -66,7 +66,7 @@ import {
   createRichTextEngine,
   paletteFuncs,
   colorFuncs,
-  readableOnFunc,
+  ensureContrastFunc,
   renderTemplate,
 } from "@promptctl/rich-js/template-bindings";
 import { makeAutoObservable } from "mobx";
@@ -75,8 +75,8 @@ import { makeAutoObservable } from "mobx";
 //
 // Two registrations, split by what needs a theme:
 //
-//   richTextFuncs()          — the colour sinks `fg`/`bg`, the palette-free
-//                              colour math (`darken`, `mix`, `contrastOn`, the
+//   richTextFuncs()          — the color sinks `fg`/`bg`, the palette-free
+//                              color math (`darken`, `mix`, `contrastOn`, the
 //                              OKLCH axes…), text attributes, `link`.
 //   paletteFuncs(getPalette) — `color`, which turns a palette variable name
 //                              into a `#RRGGBB` value, and `ramp`, whose
@@ -99,10 +99,10 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
   });
 }
 
-// A deliberately *sink-free* engine: `colorFuncs()` (the palette-free colour
+// A deliberately *sink-free* engine: `colorFuncs()` (the palette-free color
 // math) plus `color` — and nothing that can paint. Every expression it can
-// evaluate therefore produces a colour *value*, which lands in the output as
-// the literal `#RRGGBB` text it is. That is the point of §4 below: colours are
+// evaluate therefore produces a color *value*, which lands in the output as
+// the literal `#RRGGBB` text it is. That is the point of §4 below: colors are
 // ordinary values that flow through the template language, hold in `$vars`, and
 // only become style when a sink (`fg`/`bg`) consumes them.
 
@@ -118,11 +118,11 @@ function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
   });
 }
 
-// `readableOn` measures its contrast floor on the colours the terminal will
+// `ensureContrast` measures its contrast floor on the colors the terminal will
 // DRAW, so text that would lose its floor once the terminal rounds text and
-// background independently is replaced by the nearest 256-colour entry that
+// background independently is replaced by the nearest 256-color entry that
 // clears it. An engine drawn at one depth throughout passes it once —
-// `richTextFuncs(() => ({ depth, terminal }))`. This one shows the other shape: `readableOnFunc`
+// `richTextFuncs(() => ({ depth, terminal }))`. This one shows the other shape: `ensureContrastFunc`
 // registered over the key alone, for a host whose destination is not the engine's
 // (cc-candybar swaps it per segment).
 function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<RichText> {
@@ -133,7 +133,7 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
     funcs: {
       ...richTextFuncs(),
       ...paletteFuncs(() => theme.palette),
-      readableOn: readableOnFunc(() => ({ depth, terminal: theme })),
+      ensureContrast: ensureContrastFunc(() => ({ depth, terminal: theme })),
     },
   });
 }
@@ -173,8 +173,8 @@ const gruvboxCalcEngine = makeCalculatorEngine(GRUVBOX);
 // The third shape, and the one you reach for first: `createRichTextEngine()`
 // is `makeEngine` minus the palette — `richTextFuncs()` wired to RichText in a
 // single call, no `createEngine` boilerplate and no theme to thread. It paints
-// and it does colour math; what it cannot do is resolve a palette variable,
-// because `color` lives in `paletteFuncs`. Colours arrive as literals instead.
+// and it does color math; what it cannot do is resolve a palette variable,
+// because `color` lives in `paletteFuncs`. Colors arrive as literals instead.
 const themelessEngine = createRichTextEngine();
 
 const GALLERY_THEMES: [string, Engine<RichText>][] = [
@@ -422,8 +422,8 @@ function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticIt
 
 // ─── §1 — Push (commit-stream Panel) ───────────────────────────────────────
 // Two synthetic "commits" share eight `$` definitions — five style specs and
-// three colours. The user can recolour every author name by editing `$who`
-// once, exactly the way `$sha` governs every SHA. Colours name-once/use-many
+// three colors. The user can recolor every author name by editing `$who`
+// once, exactly the way `$sha` governs every SHA. Colors name-once/use-many
 // like any other value because `color` *returns* one instead of applying it.
 
 const PUSH_TMPL =
@@ -469,7 +469,7 @@ const secPush = makeSection(
 // ─── §2 — Theme matrix (same notice, every theme) ──────────────────────────
 // One reusable `$bg` feeds both `contrastOn $bg` (pick readable ink for it)
 // and `bg $bg` (paint it) — edit it once, both shift consistently. That pairing
-// is only expressible because `contrastOn` hands back a colour instead of
+// is only expressible because `contrastOn` hands back a color instead of
 // consuming it. The same template source renders once per theme below.
 
 const NOTICE_TMPL =
@@ -514,7 +514,7 @@ const secThemeMatrix = makeSection(
   [themeGridItem],
 );
 
-// ─── §3 — Ramps (lightness, mixing, the colour-spec vocabulary) ────────────
+// ─── §3 — Ramps (lightness, mixing, the color-spec vocabulary) ────────────
 // The "value" axis of the binding. A ramp used to need one spec-grammar
 // production per step (`"primary-darken-3"`, `"accent 50%"`); now each step is
 // the same function applied with a different number, so the ramp is a fold over
@@ -532,8 +532,8 @@ const RAMP_MIX =
 // `ramp` is the one function whose input is a *number*: a measurement mapped
 // onto ordered stops, interpolated in OKLCH (`linear`) or held until the next
 // stop (`step`, a threshold cascade as data). Stops are palette names, resolved
-// against the live palette on every evaluation, so the ramp recolours with the
-// theme like every other colour here.
+// against the live palette on every evaluation, so the ramp recolors with the
+// theme like every other color here.
 const RAMP_STOPS =
 `{{- define "cell" }}{{ $c := ramp . "linear" 0 "surface" 50 "warning" 80 "error" }}{{ printf " %3d%% " . | bg $c | fg (contrastOn $c) }}{{ end -}}
 {{ template "cell" 0 }}{{ template "cell" 25 }}{{ template "cell" 50 }}{{ template "cell" 65 }}{{ template "cell" 80 }}{{ template "cell" 100 }}  ramp · "linear" 0 surface · 50 warning · 80 error`;
@@ -543,13 +543,13 @@ const RAMP_STEPS =
 {{ template "cell" 0 }}{{ template "cell" 25 }}{{ template "cell" 50 }}{{ template "cell" 65 }}{{ template "cell" 80 }}{{ template "cell" 100 }}  ramp · "step" — the same stops as a threshold cascade`;
 
 // `fg`/`bg` accept the whole `ColorSpec.parse` vocabulary, not just the hex the
-// colour math produces: `"red"` and `"color(203)"` are *symbolic* colours the
+// color math produces: `"red"` and `"color(203)"` are *symbolic* colors the
 // terminal resolves against its own theme, so they can be painted but not
-// darkened. One sink, every colour that can mean something in a terminal.
+// darkened. One sink, every color that can mean something in a terminal.
 const RAMP_FORMS =
 `{{ "hex #ff6b6b" | fg "#ff6b6b" }}  ·  {{ "rgb(255,107,107)" | fg "rgb(255,107,107)" }}  ·  {{ "color(203)" | fg "color(203)" }}  ·  {{ "bright_blue" | fg "bright_blue" }}`;
 
-const secRamps = makeSection("Ramps — lightness · mixing · the fg colour vocabulary", [
+const secRamps = makeSection("Ramps — lightness · mixing · the fg color vocabulary", [
   makeDemoRow("primary luminance (7-step)",  RAMP_LUM,   gruvboxEngine),
   makeDemoRow("mix toward accent (× $bg)",   RAMP_MIX,   gruvboxEngine),
   makeDemoRow("ramp, linear (OKLCH stops)",  RAMP_STOPS, gruvboxEngine),
@@ -557,11 +557,11 @@ const secRamps = makeSection("Ramps — lightness · mixing · the fg colour voc
   makeDemoRow("hex / rgb() / color(N) / named", RAMP_FORMS, gruvboxEngine),
 ]);
 
-// ─── §4 — Colour values (compute → name → paint) ───────────────────────────
+// ─── §4 — Color values (compute → name → paint) ───────────────────────────
 //
 // The redesign in one scene. `color` and everything in `colorFuncs()` take
-// colours and return colours, carried across the template seam as `#RRGGBB`
-// strings — so a colour holds in a `$var`, prints, and only becomes *style*
+// colors and return colors, carried across the template seam as `#RRGGBB`
+// strings — so a color holds in a `$var`, prints, and only becomes *style*
 // when a sink (`fg`/`bg`) consumes it.
 //
 // The first row proves it by removing the sinks entirely: `gruvboxCalcEngine`
@@ -576,7 +576,7 @@ darken $p 3                      → {{ darken $p 3 }}
 lighten $p 2                     → {{ lighten $p 2 }}
 mix (color "background") $p 50   → {{ mix (color "background") $p 50 }}
 contrastOn (color "surface")     → {{ contrastOn (color "surface") }}
-readableOn "#4b6a8a" $p 4.5      → {{ readableOn "#4b6a8a" $p 4.5 }}
+ensureContrast "#4b6a8a" $p 4.5      → {{ ensureContrast "#4b6a8a" $p 4.5 }}
 shiftHue $p 120                  → {{ shiftHue $p 120 }}
 scaleChroma $p 0.2               → {{ scaleChroma $p 0.2 }}
 scaleLightness $p 1.25           → {{ scaleLightness $p 1.25 }}
@@ -593,26 +593,26 @@ const SWATCH_TMPL =
 {{- $g := scaleChroma $p 0.2 -}}
 {{ " darken 3 " | bg $d | fg (contrastOn $d) }}{{ " base " | bg $p | fg (contrastOn $p) }}{{ " lighten 2 " | bg $l | fg (contrastOn $l) }}{{ " hue +120 " | bg $h | fg (contrastOn $h) }}{{ " chroma ×0.2 " | bg $g | fg (contrastOn $g) }}`;
 
-// `contrastOn` maximizes legibility (black or white); `readableOn` keeps the
-// colour recognizably itself and only slides its OKLCH lightness until it
+// `contrastOn` maximizes legibility (black or white); `ensureContrast` keeps the
+// color recognizably itself and only slides its OKLCH lightness until it
 // clears WCAG AA — so the "after" swatch is still blue, just a legible blue.
 const READABLE_TMPL =
 `{{- $bg  := color "surface" -}}
 {{- $raw := "#4b6a8a" -}}
-{{ "  raw #4b6a8a on surface  " | bg $bg | fg $raw }}  {{ "  readableOn → clears AA  " | bg $bg | fg (readableOn $raw $bg 4.5) }}`;
+{{ "  raw #4b6a8a on surface  " | bg $bg | fg $raw }}  {{ "  ensureContrast → clears AA  " | bg $bg | fg (ensureContrast $raw $bg 4.5) }}`;
 
-// Same colour math, same sinks, no palette: every colour is a literal, and
+// Same color math, same sinks, no palette: every color is a literal, and
 // `contrastOn` still picks the ink. This is what `createRichTextEngine()` gets
 // you in one call.
 const NO_PALETTE_TMPL =
 `{{- $base := "#8f5fd0" -}}
 {{ "  base  " | bg $base | fg (contrastOn $base) }}{{ "  darken 3  " | bg (darken $base 3) | fg (contrastOn (darken $base 3)) }}{{ "  hue +120  " | bg (shiftHue $base 120) | fg (contrastOn (shiftHue $base 120)) }}`;
 
-const secColorValues = makeSection("Colour values — compute · name · paint", [
-  makeDemoRow("no sinks → colours print as hex", CALC_TMPL,     gruvboxCalcEngine),
+const secColorValues = makeSection("Color values — compute · name · paint", [
+  makeDemoRow("no sinks → colors print as hex", CALC_TMPL,     gruvboxCalcEngine),
   makeDemoRow("the same, painted (contrastOn)",  SWATCH_TMPL,   gruvboxEngine),
-  makeDemoRow("contrastOn vs readableOn",        READABLE_TMPL, gruvboxEngine),
-  makeDemoRow("readableOnFunc at 256 colours",   READABLE_TMPL, gruvbox256Engine),
+  makeDemoRow("contrastOn vs ensureContrast",        READABLE_TMPL, gruvboxEngine),
+  makeDemoRow("ensureContrastFunc at 256 colors",   READABLE_TMPL, gruvbox256Engine),
   makeDemoRow("createRichTextEngine() — literals", NO_PALETTE_TMPL, themelessEngine),
 ]);
 
@@ -622,7 +622,7 @@ const secColorValues = makeSection("Colour values — compute · name · paint",
 // template is evaluated, looping, every frame at the width of the widest so
 // nothing beside it moves. Holds are seconds, not frame counts: the same
 // template plays at this demo's thirty frames a second and at a statusline's
-// one. A frame is any fragment, so each carries its own colour.
+// one. A frame is any fragment, so each carries its own color.
 
 const GAUGE_TMPL =
 `{{- $up  := color "success" -}}
@@ -633,19 +633,19 @@ const GAUGE_TMPL =
 const BEAT_TMPL =
 `{{ "waiting" | dim }}{{ frames 0.4 "." 0.4 ".." 0.4 "..." }}  {{ frames 0.5 ("█" | fg (color "primary")) 0.5 " " }}  {{ "a hold of its own: " | dim }}{{ frames 2 ("long" | fg (color "accent")) 0.25 ("blink" | fg (color "warning")) }}`;
 
-// `stepped <seconds> <color> …` is the colour in progress at the moment, a
-// colour value like any other, so it goes wherever a colour goes: here into
-// `readableOn`, which keeps each step readable on the ground the template
+// `stepped <seconds> <color> …` is the color in progress at the moment, a
+// color value like any other, so it goes wherever a color goes: here into
+// `ensureContrast`, which keeps each step readable on the ground the template
 // names, and then into `fg`.
 const SIGNAL_TMPL =
 `{{- $bg  := color "surface" -}}
-{{- $ink := readableOn (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}
+{{- $ink := ensureContrast (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}
 {{ "effort " | dim }}{{ frames 1 "›" 1 "››" 1 "›››" | fg $ink | bg $bg | bold }}{{ " max" | dim }}`;
 
 const secFrames = makeSection("Frames — content on a beat, drawn for the frame's time", [
   makeDemoRow("one-second frames at one width", GAUGE_TMPL, animatedEngine),
   makeDemoRow("holds are seconds, and may differ", BEAT_TMPL, animatedEngine),
-  makeDemoRow("stepped colour, kept readable", SIGNAL_TMPL, animatedEngine),
+  makeDemoRow("stepped color, kept readable", SIGNAL_TMPL, animatedEngine),
 ]);
 
 // ─── §6 — Motion (tween, loop, glyphs) ─────────────────────────────────────
@@ -653,7 +653,7 @@ const secFrames = makeSection("Frames — content on a beat, drawn for the frame
 // `tween <seconds> <ease> <start> <from> <to>` is a number on its way to a
 // target and `loop <seconds> <start>` the way through a period, each from a
 // moment the template names; both are numbers, so a `$` variable carries
-// either into `ramp`, and a ramp read at a moving number is a moving colour.
+// either into `ramp`, and a ramp read at a moving number is a moving color.
 // `glyphs <name> <start>` runs a glyph effect over the piped fragment. Here
 // every row's `.since` is the start of the current four-second cycle, the
 // way a statusline's state would say when its value last changed.
@@ -664,7 +664,7 @@ const TWEEN_TMPL =
 {{- $ink := ramp $pct "linear" 0 "success" 50 "warning" 100 "error" -}}
 {{ "context " | style $muted }}{{ "■■■" | fg $ink }} {{ printf "%3.0f%%" $pct | fg $ink | bold }}{{ " used" | style $muted }}`;
 
-// A loop started a step later per cell: the ramp's colours travel the row.
+// A loop started a step later per cell: the ramp's colors travel the row.
 const SCROLL_TMPL =
 `{{- define "cell" -}}{{- $p := loop 2 . -}}{{- $ink := ramp $p "linear" 0 "primary" 0.5 "accent" 1 "primary" -}}{{ "██" | fg $ink }}{{- end -}}
 {{ template "cell" 0 }}{{ template "cell" 0.15 }}{{ template "cell" 0.3 }}{{ template "cell" 0.45 }}{{ template "cell" 0.6 }}{{ template "cell" 0.75 }}`;
@@ -677,7 +677,7 @@ const GLYPHS_TMPL =
 // frame's time, so it says when it next changes, as the functions do.
 const cycle = (): { since: number } => {
   const since = Math.floor(drawnIn.time / 4) * 4;
-  drawnIn.onHold?.({ lastChange: since, nextChange: since + 4 });
+  drawnIn.onValidity?.({ validFrom: since, validUntil: since + 4 });
   return { since };
 };
 
@@ -693,7 +693,7 @@ const secMotion = makeSection("Motion — tween, loop and glyphs, from a moment 
 
 const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps, secColorValues, secFrames, secMotion];
 
-const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps", "Colour Values", "Frames", "Motion"];
+const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps", "Color Values", "Frames", "Motion"];
 
 // ─── Always-visible header ─────────────────────────────────────────────────
 

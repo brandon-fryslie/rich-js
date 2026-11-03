@@ -23,7 +23,7 @@
  * than the header. See docs/widgets.md → Dropdown.
  */
 
-import { labelled } from "../core/orient.js";
+import { labeled } from "../core/orient.js";
 import type { TextOrder } from "../core/text-order.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
@@ -36,7 +36,7 @@ import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
 import type {
-  KeyEvent,
+  WidgetKeyEvent,
   WidgetMouseEvent,
   WidgetFocusEvent,
   OverlayRenderable,
@@ -105,7 +105,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   // --- Event handlers ---
 
   @action
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     if (this.disabled) return;
 
     const isPrintable =
@@ -267,7 +267,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     const headerLabel = this.headerText(maxLabelLen, caret);
     return [
       new Segment("[", baseStyle),
-      ...labelled("", headerLabel, ` ${arrowChar}`, baseStyle, options.textOrder),
+      ...labeled("", headerLabel, ` ${arrowChar}`, baseStyle, options.textOrder),
       new Segment("]", baseStyle),
     ];
   }
@@ -358,7 +358,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
 
     return [
       new Segment(" ", rowStyle),
-      ...labelled("", inner, "", rowStyle, order),
+      ...labeled("", inner, "", rowStyle, order),
       new Segment(" ", rowStyle),
     ];
   }

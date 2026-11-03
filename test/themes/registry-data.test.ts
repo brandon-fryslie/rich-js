@@ -26,7 +26,7 @@ const { getThemeBaseColors, getThemePalette } = await import("../../src/themes/r
 type Name = Parameters<typeof getThemeBaseColors>[0];
 
 describe("theme data hydration refuses what a theme cannot hold", () => {
-  it("takes a fully opaque #RRGGBBFF ANSI slot as the opaque colour it is", () => {
+  it("takes a fully opaque #RRGGBBFF ANSI slot as the opaque color it is", () => {
     expect(getThemeBaseColors("opaque-alpha" as Name).ansi.get(1).hex).toBe("#cc241d");
   });
 
@@ -38,13 +38,13 @@ describe("theme data hydration refuses what a theme cannot hold", () => {
 
   it("refuses a malformed ANSI slot with the hex grammar's own message", () => {
     expect(() => getThemeBaseColors("malformed-slot" as Name)).toThrow(
-      'Theme malformed-slot: ansi.red: Invalid hex colour "#cc241" (expected #RRGGBB or #RRGGBBAA)',
+      'Theme malformed-slot: ansi.red: Invalid hex color "#cc241" (expected #RRGGBB or #RRGGBBAA)',
     );
   });
 
   it("refuses a malformed palette var, naming the var", () => {
     expect(() => getThemePalette("malformed-var")).toThrow(
-      'Theme malformed-var: var muted: Invalid hex colour "#zzzzzz" (expected #RRGGBB or #RRGGBBAA)',
+      'Theme malformed-var: var muted: Invalid hex color "#zzzzzz" (expected #RRGGBB or #RRGGBBAA)',
     );
   });
 });

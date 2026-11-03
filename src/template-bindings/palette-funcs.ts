@@ -66,7 +66,7 @@
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
 import type { Palette } from "../themes/palette.js";
 import { resolveColorRef } from "../themes/colorRef.js";
-import { parseEase } from "../core/easing.js";
+import { parseEasing } from "../core/easing.js";
 import { ColorRamp, type ColorStop } from "../themes/ramp.js";
 import { computable } from "./color-funcs.js";
 
@@ -104,7 +104,7 @@ function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
  *
  * `color` resolves a palette variable name to its hex string — `#RRGGBB`, or
  * `#00000000` for a theme's "no background", which `bg` paints as no
- * background and the colour functions refuse — and passes
+ * background and the color functions refuse — and passes
  * an already-literal color through unchanged. That second half is not a
  * convenience — it makes `color` **idempotent**, which is what lets consumers
  * apply it unconditionally to any author-written color string without first
@@ -143,7 +143,7 @@ export function paletteFuncs(getPalette: () => Palette): FuncMap {
   // [LAW:types-are-the-program]
   const rampFunc: TemplateFunc = {
     fn: ((value: number, ease: string, ...tail: unknown[]) =>
-      new ColorRamp(parseEase(ease), colorStops(tail, getPalette())).at(value)
+      new ColorRamp(parseEasing(ease), colorStops(tail, getPalette())).at(value)
         .hex) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     arity: { kind: "alternating", minimum: 4 },

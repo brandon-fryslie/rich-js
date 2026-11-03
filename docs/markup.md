@@ -54,8 +54,8 @@ the middle of this line is both bold and italic:
 console.print("[bold]bold [italic]bold-italic[/italic] bold[/bold]");
 ```
 
-A colour cannot combine with another colour, so the inner one replaces it for
-the run it covers, and the outer colour resumes afterwards:
+A color cannot combine with another color, so the inner one replaces it for
+the run it covers, and the outer color resumes afterwards:
 
 ```typescript
 console.print("[red]red [blue]blue[/blue] red again[/red]");

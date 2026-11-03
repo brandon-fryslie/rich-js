@@ -5,7 +5,7 @@
  *
  * [LAW:one-type-per-behavior] A marquee, a scroll and a slide are one window
  * and differ only in the motion handed in: the offset along each axis is an
- * `Animation<number>`, so a marquee is a looping `Phase` scaled to the span
+ * `Animation<number>`, so a marquee is a looping `WrapMode` scaled to the span
  * it crosses and a slide-in is a `tween` to 0, and when the window next
  * changes is `Animation.all`'s answer over the two. Nothing here knows which
  * one it is drawing.
@@ -104,8 +104,8 @@ class ScrollFrame implements Renderable, Measurable {
     // [LAW:one-source-of-truth] What the window shows is cut from the whole content, so it may change
     // when anything in the content does — a row above the slot entering pushes every row down, and run
     // backwards, leaving it pulls them up. The cut throws away the cells that hold rode on, so it is
-    // told to the frame (`RenderOptions.onHold`).
-    options.onHold?.({ lastChange: Segment.lastChange(drawn), nextChange: Segment.nextChange(drawn) });
+    // told to the frame (`RenderOptions.onValidity`).
+    options.onValidity?.({ validFrom: Segment.validFrom(drawn), validUntil: Segment.validUntil(drawn) });
     for (let r = 0; r < this.height; r++) {
       const line = lines[this.row + r] ?? [];
       const shown = Segment.divide(line, [start, start + width - blank])[1] ?? [];

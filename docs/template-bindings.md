@@ -29,7 +29,7 @@ const template = engine.compile(`{{- $muted := "dim" -}}
 console.print(RichText.fromFragments(template({ build: "passed", tests: "passed" })));
 ```
 
-The two `$` lines at the top name each look once, and `style` applies a named look wherever it is piped, so editing `$ok` recolours both results. [Name a style once](#name-a-style-once-use-it-everywhere) covers the spec grammar.
+The two `$` lines at the top name each look once, and `style` applies a named look wherever it is piped, so editing `$ok` recolors both results. [Name a style once](#name-a-style-once-use-it-everywhere) covers the spec grammar.
 
 Evaluating a template produces a `RichText[]` — one fragment per top-level expression, not one concatenated string. `RichText.fromFragments` flattens that list into a single styled `RichText` that flows into `console.print` like any other renderable. The list stays visible because some consumers need it: a toolbar that treats each top-level `link` as an independently clickable cell reads the fragments directly rather than hunting for boundaries in a merged string.
 
@@ -37,7 +37,7 @@ Evaluating a template produces a `RichText[]` — one fragment per top-level exp
 
 The functions ship in two groups, split by exactly one question — does it need a theme?
 
-`richTextFuncs()` is everything that does not: the color sinks `fg` and `bg`, the palette-free color math, every text attribute, `link`, and `style`. It is safe to register unconditionally. Its one optional argument, `drawnAt: () => DrawnAt`, says where the text lands — `{ depth, terminal? }`, the depth the terminal will draw at and, when you know it, the `TerminalTheme` drawing it: `readableOn` measures its floor on the colours actually drawn, at sixteen colours in that terminal's own — what that guarantees, fallback included, is stated once in [Contrast](/contrast). Omitted, it is truecolor. A host that swaps `readableOn` alone — per segment, say — registers `readableOnFunc(drawnAt)` over the key instead. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
+`richTextFuncs()` is everything that does not: the color sinks `fg` and `bg`, the palette-free color math, every text attribute, `link`, and `style`. It is safe to register unconditionally. Its one optional argument, `drawnAt: () => DrawnAt`, says where the text lands — `{ depth, terminal? }`, the depth the terminal will draw at and, when you know it, the `TerminalTheme` drawing it: `ensureContrast` measures its floor on the colors actually drawn, at sixteen colors in that terminal's own — what that guarantees, fallback included, is stated once in [Contrast](/contrast). Omitted, it is truecolor. A host that swaps `ensureContrast` alone — per segment, say — registers `ensureContrastFunc(drawnAt)` over the key instead. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
 
 `paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
 
@@ -101,7 +101,7 @@ The width is deliberate. `#ff6b6b` is a *concrete* color; `bright_blue` and `col
 
 ### Attributes
 
-Each of the thirteen text attributes registers as a one-argument function: `bold`, `dim`, `italic`, `underline`, `blink`, `blink2`, `reverse`, `conceal`, `strike`, `underline2`, `frame`, `encircle`, `overline`. Each also registers a `not_`-prefixed form that turns the attribute off — `not_bold`, `not_dim`, and so on. Eight have short aliases: `b`, `d`, `i`, `u`, `s`, `r`, `o`, and `uu`. Both spellings produce the same fragment.
+Each of the thirteen text attributes registers as a one-argument function: `bold`, `dim`, `italic`, `underline`, `blink`, `rapidBlink`, `reverse`, `conceal`, `strike`, `doubleUnderline`, `frame`, `encircle`, `overline`. Each also registers a `not_`-prefixed form that turns the attribute off — `not_bold`, `not_dim`, and so on. Eight have short aliases: `b`, `d`, `i`, `u`, `s`, `r`, `o`, and `uu`. Both spellings produce the same fragment.
 
 ### Name a style once, use it everywhere
 
@@ -140,7 +140,7 @@ A color that can be held is a color that can be composed. `color` names one, the
 | `darken c n` / `lighten c n` | slide HSL lightness by `n` 10% levels (`n` a whole number) |
 | `mix a b pct` | blend `a` toward `b` by `pct`% (0 → `a`, 100 → `b`) |
 | `contrastOn bg` | black or white, whichever is readable on `bg` |
-| `readableOn fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |
+| `ensureContrast fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |
 | `shiftHue c deg` | rotate hue in OKLCH |
 | `scaleChroma c f` | multiply chroma (0 → gray, 1 → identity) |
 | `scaleLightness c f` | multiply lightness (1 → identity, -1 → invert) |
@@ -209,15 +209,15 @@ const swatch = `{{- $bg := "#1a1a2e" -}}
 console.print(RichText.fromFragments(engine.compile(swatch)({})));
 ```
 
-`contrastOn` and `readableOn` answer different questions, so they are different functions. `contrastOn` maximizes legibility and returns black or white. `readableOn` keeps a color recognizably itself and only slides its OKLCH lightness until it clears the ratio you ask for, so a blue on dark blue becomes a lighter blue rather than white. Its `ratio` is required rather than defaulted, because the threshold is the entire decision the function makes: 4.5 for body text, 3 for large text, and a hidden default would silently govern an accessibility outcome — or over-correct a caller whose point was to be quiet, since de-emphasized text floored at 4.5 is no longer de-emphasized.
+`contrastOn` and `ensureContrast` answer different questions, so they are different functions. `contrastOn` maximizes legibility and returns black or white. `ensureContrast` keeps a color recognizably itself and only slides its OKLCH lightness until it clears the ratio you ask for, so a blue on dark blue becomes a lighter blue rather than white. Its `ratio` is required rather than defaulted, because the threshold is the entire decision the function makes: 4.5 for body text, 3 for large text, and a hidden default would silently govern an accessibility outcome — or over-correct a caller whose point was to be quiet, since de-emphasized text floored at 4.5 is no longer de-emphasized.
 
 ::: tip Chain OKLCH axes sparingly
-Each OKLCH axis function round-trips sRGB → OKLCH → sRGB, so chaining three or more quantizes visibly. Compose two, or reach for [`transposePalette`](/transpose) when a whole palette needs adapting.
+Each OKLCH axis function round-trips sRGB → OKLCH → sRGB, so chaining three or more quantizes visibly. Compose two, or reach for [`adjustPalette`](/adjust) when a whole palette needs adapting.
 :::
 
 ## Naming theme colors
 
-`color "name-or-hex"` resolves a palette variable to a color, and passes an already-literal color straight through. That second half is not a convenience — it makes `color` idempotent, so a program can apply it unconditionally to any author-written color string without first asking whether it is a name or already a color. A palette color is opaque or fully transparent. A theme's translucent variable, such as a hover tint, arrives already drawn on that theme's own background; a fully transparent one, such as `link-background` in most bundled themes, is Textual's "no background" and stays transparent, so `bg (color "link-background")` leaves the background under it in place. It has no colour of its own to compute with, so the colour functions and `ramp` refuse it; use the colour of the surface it sits on instead.
+`color "name-or-hex"` resolves a palette variable to a color, and passes an already-literal color straight through. That second half is not a convenience — it makes `color` idempotent, so a program can apply it unconditionally to any author-written color string without first asking whether it is a name or already a color. A palette color is opaque or fully transparent. A theme's translucent variable, such as a hover tint, arrives already drawn on that theme's own background; a fully transparent one, such as `link-background` in most bundled themes, is Textual's "no background" and stays transparent, so `bg (color "link-background")` leaves the background under it in place. It has no color of its own to compute with, so the color functions and `ramp` refuse it; use the color of the surface it sits on instead.
 
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
@@ -249,14 +249,14 @@ Passing a palette name where a color belongs is the other common slip, and it na
 
 ## Animating a template
 
-`withAnimation(config, frame)` is your engine config with the functions that draw for a moment in time registered beside your own, and the two engine hooks that report which output depended on an animated value, `emitted` and `decided`, installed over any the config already had. It is one call because the functions without the hooks would draw and never say they move. The host owns the clock: `frame()` is read each time a template is evaluated. It returns the frame's `time`, an `onHold` listener if the host wants to hear the hold of an animated value the output may depend on with no cell to carry it, and the reader's preferences, `reducedMotion` and `asciiOnly`. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
+`withAnimation(config, frame)` is your engine config with the functions that draw for a moment in time registered beside your own, and the two engine hooks that report which output depended on an animated value, `emitted` and `decided`, installed over any the config already had. It is one call because the functions without the hooks would draw and never say they move. The host owns the clock: `frame()` is read each time a template is evaluated. It returns the frame's `time`, an `onValidity` listener if the host wants to hear the hold of an animated value the output may depend on with no cell to carry it, and the reader's preferences, `reducedMotion` and `asciiOnly`. So a template compiled once shows each redraw's moment, and a host that redraws once a second sees the same thing at each of its frames as a host that redraws sixty times a second. Every duration is in seconds.
 
 - `tween <seconds> <ease> <start> <from> <to>` is a number eased from `from` to `to` over `seconds`, starting at the moment `start`, and held at `to` afterwards. Every `start` is a moment on the timeline the functions are drawn on, which is the host's own clock unless you hand one in (below); with one handed in, record a change at `Timeline.at(timeline, host)`, not at the host time. The ease is any name in `EASES`, physics curves such as `"spring"` and `"back-out"` included. Pipe the target into it: `.pct | tween 0.4 "ease-out" .changedAt .was` eases from the old value to the new one, starting when your state says the value changed.
 - `loop <seconds> <start>` is the way through a period, rising from 0 towards 1 and starting again, measured from `start`. Give a row of cells starts a step apart and the same motion travels along the row.
 - `glyphs <name> <start>` passes the piped fragment through a [glyph effect](/animation#a-glyph-effect-text-typed-scrambled-and-rained-on), starting at `start`, with the catalogue's defaults. The names are `"typewriter"`, `"scramble"`, `"wave"`, `"rain"` and `"stars"`.
-- `frames` and `stepped` step through a sequence of fragments or colours ([Frames](/frames#in-a-template)).
+- `frames` and `stepped` step through a sequence of fragments or colors ([Frames](/frames#in-a-template)).
 
-`tween` and `loop` return numbers, so they work anywhere a number does. Save one in a `$` variable and hand it to `ramp`: a ramp read at a tween is a colour tween, blended in OKLCH like every ramp, and a ramp read at a loop cycles through its colours. Here a context gauge eases to its new reading, its colour moving with it, while a label types itself in:
+`tween` and `loop` return numbers, so they work anywhere a number does. Save one in a `$` variable and hand it to `ramp`: a ramp read at a tween is a color tween, blended in OKLCH like every ramp, and a ramp read at a loop cycles through its colors. Here a context gauge eases to its new reading, its color moving with it, while a label types itself in:
 
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
@@ -288,7 +288,7 @@ for (frameTime of [10, 10.2, 10.4, 10.6, 11, 12]) {
 }
 ```
 
-The tween changes with every frame and the typewriter stops changing once the text is typed. Every function says when what it drew will next change, so a host that schedules redraws knows when to look again, and it says so only for output that depends on it. A number or a colour has no cells to carry that moment, so each function marks its value instead, and the engine carries the mark beside the value through every variable, `printf`, comparison and `template` invocation it passes. `emitted` then stamps the cells of every fragment whose action read a marked value with the hold it is in, the way a placed [frame sequence](/frames) stamps its own cells, and `decided` tells the frame's `onHold` of a mark the output may depend on with no cell to say so yet: one an `if`, `with` or `range` decided on, whichever arm it took, and by the same rule one a writing function or a throwing action read; the engine's `decided` is the authority on when it is called. A value a template computes and never draws or decides on, <code v-pre>{{ $t := tween 2 "linear" 0 0 1 }}still</code>, reports nothing, so a still bar never claims to move.
+The tween changes with every frame and the typewriter stops changing once the text is typed. Every function says when what it drew will next change, so a host that schedules redraws knows when to look again, and it says so only for output that depends on it. A number or a color has no cells to carry that moment, so each function marks its value instead, and the engine carries the mark beside the value through every variable, `printf`, comparison and `template` invocation it passes. `emitted` then stamps the cells of every fragment whose action read a marked value with the hold it is in, the way a placed [frame sequence](/frames) stamps its own cells, and `decided` tells the frame's `onValidity` of a mark the output may depend on with no cell to say so yet: one an `if`, `with` or `range` decided on, whichever arm it took, and by the same rule one a writing function or a throwing action read; the engine's `decided` is the authority on when it is called. A value a template computes and never draws or decides on, <code v-pre>{{ $t := tween 2 "linear" 0 0 1 }}still</code>, reports nothing, so a still bar never claims to move.
 
 A template evaluated inside a rich-js frame, by a renderable in an [`App`](/app#animating-at-a-frame-rate) or a `Live`, hands on the frame it is drawn in. `templateFrame(options)` reads it off that renderable's render options. The app then paints while a tween moves, stops once it lands, and draws it reduced when the app's `reducedMotion` says so. The frame's time is already on the app's timeline, so register no `timeline` of your own here:
 
@@ -326,8 +326,8 @@ const engine = createEngine<RichText>(
   withAnimation({ fromString: (s) => new RichText(s), isT: (v) => v instanceof RichText, toString: (rt) => rt.plain, funcs: richTextFuncs() }, () => ({ time: host }), { timeline: () => timeline }),
 );
 
-const spinner = engine.compile(`{{- $beat := 0.25 -}}
-{{ frames $beat "◐" $beat "◓" $beat "◑" $beat "◒" }} syncing`);
+const spinner = engine.compile(`{{- $step := 0.25 -}}
+{{ frames $step "◐" $step "◓" $step "◑" $step "◒" }} syncing`);
 
 const draw = (label: string) => console.print(`${label.padEnd(16)}`, RichText.fromFragments(spinner({})));
 for (host of [0, 0.25, 0.5]) draw(`playing ${host}s`);
@@ -342,13 +342,13 @@ for (host of [5.25, 5.5]) draw(`reversed ${host}s`);
 `renderTemplate` is the shortcut for the live-render case — a preview pane, a status line, anything that recompiles a template the user is currently editing. It compiles, flattens the fragments, renders to a `Segment[]`, and a template that fails to parse or evaluate degrades instead of throwing:
 
 ```typescript
-import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
+import { segmentsToString, resolveOutputTarget } from "@promptctl/rich-js";
 import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/template-bindings";
 
 const engine = createRichTextEngine();
 
 const segments = renderTemplate(engine, `{{ .who | fg "green" | bold }}`, { who: "world" });
-process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\n");
+process.stdout.write(segmentsToString(segments, resolveOutputTarget("auto")) + "\n");
 ```
 
 ::: warning Don't route ANSI back through `Console`
@@ -358,7 +358,7 @@ process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\
 On a parse or evaluation failure it returns a single segment reading `[error: …]`, dim red unless `errorStyle` says otherwise — one line, drawn to the same `maxWidth` as a successful render and ending in `…` where the message had to be cut — which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
 
 ```typescript
-import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
+import { segmentsToString, resolveOutputTarget } from "@promptctl/rich-js";
 import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/template-bindings";
 
 const engine = createRichTextEngine();
@@ -368,7 +368,7 @@ const broken = renderTemplate(engine, `{{ darken "primary" 2 }}`, {}, {
   maxWidth: process.stdout.columns,
 });
 
-process.stdout.write(segmentsToString(broken, resolveDestination("auto")) + "\n");
+process.stdout.write(segmentsToString(broken, resolveOutputTarget("auto")) + "\n");
 ```
 
 The fourth argument takes any `RenderOptions` besides `errorStyle`, and the render receives them as given, so a renderable that wraps a template passes along the options it was handed. Among them, `theme` looks up the style names carried by fragments that arrive through `scope` — a `RichText` built from `[my.heading]` markup, or one whose whole style is `"my.heading"`. Piping such a fragment through a style function lays the piped style over the name, and the render draws the name from its theme with the pipe on top. The template functions themselves take style definitions, not names: a template runs before any render, so `style "my.heading"` fails as the template's `[error: …]` line. `onStyleError` hears about each style the render drops. A handler that rethrows makes `renderTemplate` throw, as described in [Failing on invalid styles](./style#failing-on-invalid-styles); so does any other error the render raises, because the `[error: …]` line reports a template that failed and nothing else.

@@ -5,7 +5,7 @@
 
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
-import { DEFAULT_THEME, NEVER_CHANGES, Style, type Hold, type StyleSyntaxError, type Theme } from "./style.js";
+import { DEFAULT_THEME, NEVER_CHANGES, Style, type ValidityInterval, type StyleSyntaxError, type Theme } from "./style.js";
 import { ColorDepth, type ColorSpec, type TerminalColors } from "./color.js";
 import type { TextOrder } from "./text-order.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
@@ -28,7 +28,7 @@ export type OverflowMethod = "fold" | "crop" | "ellipsis" | "ignore";
 
 /**
  * The frame being drawn, as a value: `time`, the moment it is drawn for, in
- * seconds, on the clock its cells' `nextChange` stamps are read on, and
+ * seconds, on the clock its cells' `validUntil` stamps are read on, and
  * `host`, the identity of what drew it — nothing to read, so what draws in
  * the frame has one time, this one, and cannot ask the host for another.
  * [LAW:types-are-the-program] A `Progress` keeps the identity to refuse a
@@ -101,18 +101,18 @@ export interface RenderOptions {
    */
   highlighter?: Highlighter;
   /**
-   * The depth the output will be encoded at, `null` when it carries no colour.
+   * The depth the output will be encoded at, `null` when it carries no color.
    * A renderable that measures what it draws — the strip's joiner, holding a
-   * seam's ink off its ground — measures the colours the terminal will draw at
-   * this depth, which at 256 colours or fewer are not the colours it was
+   * seam's ink off its ground — measures the colors the terminal will draw at
+   * this depth, which at 256 colors or fewer are not the colors it was
    * handed. Absent means truecolor.
    */
   colorSystem?: ColorDepth | null;
   /** What the output's destination does with direction. Absent is `"plain"`. */
   textOrder?: TextOrder;
   /**
-   * The terminal the output is drawn on: the colours a cell that sets none is
-   * drawn in, and the sixteen an ANSI colour names. The terminal's own palette
+   * The terminal the output is drawn on: the colors a cell that sets none is
+   * drawn in, and the sixteen an ANSI color names. The terminal's own palette
    * is never queried, so the program says what it is, once, where the output
    * is decided; a renderable reads it here (`Effected`, `ProgressBar`) and
    * nothing hands it down to one. Absent is the terminal the depth assumes
@@ -135,7 +135,7 @@ export interface RenderOptions {
    * The reader asked for reduced motion — CSS's `prefers-reduced-motion`,
    * which a terminal has no way to report, so a host is told. Every placed
    * animation is drawn reduced, its motion taken out and its content kept on
-   * time (`shownAt`, `Animation.reduced`, `./animation.ts`), and a `Destination`
+   * time (`shownAt`, `Animation.reduced`, `./animation.ts`), and an `OutputTarget`
    * told the same writes no blink (`shownOn`, `./render.ts`). Absent, everything
    * moves. Nothing here reads it from the environment.
    */
@@ -152,13 +152,13 @@ export interface RenderOptions {
   /**
    * Told of every renderable `render` is asked for, as it is asked, so the
    * calls arrive in document order: a container before what it holds, what
-   * it holds in the order it renders it. `"drawn"` is a renderable drawn at
-   * the width it was handed; `"held"` is one handed no column, which is still
+   * it holds in the order it renders it. `"visible"` is a renderable drawn at
+   * the width it was handed; `"hidden"` is one handed no column, which is still
    * in the view but has nothing drawn for it (`render`). A renderable rendered
    * twice is told twice. A render made to measure is not drawing and is not
    * told (`measuring`).
    */
-  onPresent?: (renderable: Renderable, presence: Presence) => void;
+  onVisibility?: (renderable: Renderable, visibility: Visibility) => void;
   /**
    * Told of a hold the frame is in that no cell of it may carry: an animation
    * placed in the view reports its own, whether or not it drew a cell — one
@@ -169,16 +169,16 @@ export interface RenderOptions {
    * (`measuring`) and a held render (`holding`) tell too: what they find
    * decides the frame's layout, so when it changes, the frame may.
    */
-  onHold?: (hold: Hold) => void;
+  onValidity?: (validity: ValidityInterval) => void;
   /**
    * Told of the hold the element `key` names, drawn for a time on its own
    * clock, is in: an effect's frame, which alone knows, since the answer
-   * depends on what it drew. `t` is that clock's, not the frame's, so this cannot be `onHold`:
+   * depends on what it drew. `t` is that clock's, not the frame's, so this cannot be `onValidity`:
    * the animation placed around the value carries the answer back through the
-   * combinators that remapped the time (`Moves`, `./animation.ts`). It reaches
+   * combinators that remapped the time (`Reads`, `./animation.ts`). It reaches
    * whatever `frame` reaches.
    */
-  onMoved?: (t: number, key: string, hold: Hold) => void;
+  onReads?: (t: number, key: string, validity: ValidityInterval) => void;
 }
 
 /** The one field of the render options that says whether the reader wants motion. */
@@ -188,7 +188,7 @@ export type Motion = Pick<RenderOptions, "reducedMotion">;
  * Whether a renderable the view holds was drawn, or held: in the view, handed
  * no column, and so not drawn (`render`).
  */
-export type Presence = "drawn" | "held";
+export type Visibility = "visible" | "hidden";
 
 /** Whether `text` is all ASCII — what an `asciiOnly` output can draw. */
 export const isAscii = (text: string): boolean => /^[\x00-\x7F]*$/.test(text);
@@ -327,19 +327,19 @@ const TERMINAL_GROUND = Style.parse("default on default");
 
 /**
  * `style` as the depth the render is encoded at can draw it. A style that
- * paints its own ground in fixed colours chose its ink and ground as a pair;
- * at sixteen colours the writer rounds a fixed colour to an ANSI slot, which
- * the terminal paints in its own theme's colour, and no pair of slots reads in
- * every bundled theme. So where the depth would turn a fixed colour of the
+ * paints its own ground in fixed colors chose its ink and ground as a pair;
+ * at sixteen colors the writer rounds a fixed color to an ANSI slot, which
+ * the terminal paints in its own theme's color, and no pair of slots reads in
+ * every bundled theme. So where the depth would turn a fixed color of the
  * pair into a slot, the pair is dropped and the run is drawn on the
  * terminal's own foreground and background, which its theme does make
  * readable; its attributes still set it apart. Both are named, not left
- * unset, so the colour of whatever the run sits in — a quote, a link — does
- * not show through: Rich's code keeps its own colours inside a quote, and the
- * terminal's are the ones it keeps here. A style whose colours are
+ * unset, so the color of whatever the run sits in — a quote, a link — does
+ * not show through: Rich's code keeps its own colors inside a quote, and the
+ * terminal's are the ones it keeps here. A style whose colors are
  * slots already (`white on blue`), or that paints no ground (`bold magenta`),
- * was written for the terminal's own colours and is drawn as written. Rich
- * draws a highlighted line number the same way below 256 colours
+ * was written for the terminal's own colors and is drawn as written. Rich
+ * draws a highlighted line number the same way below 256 colors
  * (`Syntax._get_number_styles`).
  */
 export function groundedStyle(options: RenderOptions, style: Style): Style {
@@ -394,7 +394,7 @@ export interface Pass {
  * it to run once it ends (`afterPass`). A measurement is a pass of the same
  * identity with effects of its own, which nothing runs.
  */
-interface Phase {
+interface WrapMode {
   readonly pass: Pass;
   readonly effects: (() => void)[];
 }
@@ -403,9 +403,9 @@ interface Phase {
 // else: only `render` and `measure` below open or enter a pass, and the rest of
 // the library reads it through `activePass` and `afterPass`. Set and restored
 // like a stack, so "not rendering" is `undefined` and needs no counter.
-let active: Phase | undefined;
+let active: WrapMode | undefined;
 
-function runIn<T>(phase: Phase | undefined, run: () => T): T {
+function runIn<T>(phase: WrapMode | undefined, run: () => T): T {
   const outer = active;
   active = phase;
   try {
@@ -450,13 +450,13 @@ export function afterPass(effect: () => void): void {
 }
 
 /** The pass in progress, or a new one when this call is the outermost. */
-const phaseHere = (): Phase => active ?? { pass: {} as Pass, effects: [] };
+const phaseHere = (): WrapMode => active ?? { pass: {} as Pass, effects: [] };
 
 /**
  * Every effect `phase`'s renders handed it, run now that it has ended — between
  * passes even when the iteration that ended it was stepped inside another.
  */
-function commit(phase: Phase): void {
+function commit(phase: WrapMode): void {
   runIn(undefined, () => {
     for (const effect of phase.effects.splice(0)) effect();
   });
@@ -476,7 +476,7 @@ function commit(phase: Phase): void {
  * takes a writable location `test/seam/render-purity.test.ts` refuses. Wrapping
  * every level cost a third of the render time, once per segment per level.
  */
-function withinPass(phase: Phase, drawn: Iterable<Segment>): Iterable<Segment> {
+function withinPass(phase: WrapMode, drawn: Iterable<Segment>): Iterable<Segment> {
   if (Array.isArray(drawn)) {
     commit(phase);
     return drawn;
@@ -520,7 +520,7 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
  * write during render is refused at: a `State` set in a pass that did not make
  * it throws (`./state.ts`).
  *
- * It is also the one reporter of what the view holds (`onPresent`). Under one
+ * It is also the one reporter of what the view holds (`onVisibility`). Under one
  * column a renderable is held: in the view, with nothing of it on the frame.
  * It is drawn all the same and what it drew dropped (`holding`), so what a held
  * container is reported holding is what it draws, under the options it hands
@@ -529,13 +529,13 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
  */
 export function render(renderable: Renderable, options: RenderOptions): Iterable<Segment> {
   const opens = active === undefined;
-  const presence: Presence = drawsNothing(options) ? "held" : "drawn";
-  const { phase, drawing } = presence === "drawn" ? { phase: phaseHere(), drawing: options } : holding(options);
+  const visibility: Visibility = drawsNothing(options) ? "hidden" : "visible";
+  const { phase, drawing } = visibility === "visible" ? { phase: phaseHere(), drawing: options } : holding(options);
   const drawn = runIn(phase, () => {
-    options.onPresent?.(renderable, presence);
+    options.onVisibility?.(renderable, visibility);
     return renderable.render(drawing);
   });
-  if (presence === "held") {
+  if (visibility === "hidden") {
     runIn(phase, () => {
       for (const _ of drawn);
     });
@@ -547,7 +547,7 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
 /**
  * Where a held renderable is drawn, and the options it is drawn under: what
  * it draws is dropped, and everything it draws is reported held, whatever
- * width it hands it. What it tells of its hold (`onHold`) still reaches the
+ * width it hands it. What it tells of its hold (`onValidity`) still reaches the
  * frame: an element not yet entered is held at no width, and must say when it
  * enters and takes some. A motion held at no width therefore wakes its host
  * for frames that look the same: when it next takes room is not a moment its
@@ -564,15 +564,15 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * as none, so none reaches a `render`, where it would be a count no string
  * can repeat.
  */
-function holding(options: RenderOptions): { phase: Phase; drawing: RenderOptions } {
-  const { onPresent, onMoved } = options;
+function holding(options: RenderOptions): { phase: WrapMode; drawing: RenderOptions } {
+  const { onVisibility, onReads } = options;
   return {
     phase: { pass: phaseHere().pass, effects: [] },
     drawing: {
       ...options,
       maxWidth: 0,
-      onPresent: onPresent && ((content) => onPresent(content, "held")),
-      onMoved: onMoved && ((t, key) => onMoved(t, key, NEVER_CHANGES)),
+      onVisibility: onVisibility && ((content) => onVisibility(content, "hidden")),
+      onReads: onReads && ((t, key) => onReads(t, key, NEVER_CHANGES)),
     },
   };
 }
@@ -592,16 +592,16 @@ export function measure(measurable: Measurable, options: RenderOptions): { minim
 
 /**
  * `options` as a measurement is asked with. A `measure` that renders to learn
- * its shape draws nothing on the frame, so it reports nothing to `onPresent` —
+ * its shape draws nothing on the frame, so it reports nothing to `onVisibility` —
  * one that did would put a widget in the view at the moment a container
  * measured it, and keep one the frame then cropped away — and nothing to
- * `onMoved`, which speaks only for what the frame shows. It still tells its
- * hold (`onHold`): a layout decided by a measurement changes when it does.
+ * `onReads`, which speaks only for what the frame shows. It still tells its
+ * hold (`onValidity`): a layout decided by a measurement changes when it does.
  *
  * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */
 function measuring(options: RenderOptions): RenderOptions {
-  return { ...options, onPresent: undefined, onMoved: undefined };
+  return { ...options, onVisibility: undefined, onReads: undefined };
 }
 
 /**

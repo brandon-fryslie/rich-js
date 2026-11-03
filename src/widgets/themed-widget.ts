@@ -18,7 +18,7 @@ import { ink } from "./ink.js";
 
 export abstract class ThemedWidget extends WidgetBase {
   // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render: every draw reads its colours through this reference.
+  // re-render: every draw reads its colors through this reference.
   @observableRef protected accessor theme: TerminalTheme;
 
   constructor(theme: TerminalTheme | undefined) {

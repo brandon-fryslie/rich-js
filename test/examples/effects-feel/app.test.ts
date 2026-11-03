@@ -1,5 +1,5 @@
 // The effects demo hands the terminal back on every way out, keeps drawing
-// frames at the rate it was given until then, and moves a strip's colour
+// frames at the rate it was given until then, and moves a strip's color
 // wherever the strip shows it.
 
 import { describe, expect, it, vi } from "vitest";
@@ -85,13 +85,13 @@ describe("effects-feel", () => {
     for (const loop of LOOPS) expect(out).toMatch(measured(loop));
   });
 
-  it("says no colour is drawn when there is none to measure", async () => {
+  it("says no color is drawn when there is none to measure", async () => {
     const { host, demo } = started(["--depth", "none"]);
     await shown(host, FIRST_FRAME);
     host.type("q");
     await demo.done;
-    expect(host.output()).toContain("no colour drawn");
-    // No colour parameter in any SGR: a reset is not a colour.
+    expect(host.output()).toContain("no color drawn");
+    // No color parameter in any SGR: a reset is not a color.
     expect(host.output()).not.toMatch(/\x1b\[(?:[0-9]+;)*(?:38|48|3[0-7]|4[0-7]|9[0-7]|10[0-7])[;m]/);
   });
 
@@ -181,7 +181,7 @@ describe("effects-feel", () => {
 describe("a strip under a pulse", () => {
   const options = new Console({ width: 200, colorSystem: "truecolor" }).options;
 
-  /** Each cell's two colours by hex, `"ground"` where the terminal's shows. */
+  /** Each cell's two colors by hex, `"ground"` where the terminal's shows. */
   function colorsByCell(renderable: Renderable, theme: TerminalTheme): [string, string][] {
     return [...renderable.render({ ...options, terminal: theme })].flatMap((segment) => {
       const drawn = (segment.style ?? Style.null()).drawnColors(options.colorSystem ?? undefined);
@@ -207,7 +207,7 @@ describe("a strip under a pulse", () => {
     expect(pairs.filter(({ fg }) => fills.has(fg.hex))).toEqual([]);
   });
 
-  it("is measured on the colours it sets in the cells it letters, and none of the terminal's", () => {
+  it("is measured on the colors it sets in the cells it letters, and none of the terminal's", () => {
     const strip = drawnIn(stripSubject(CATPPUCCIN_MOCHA));
     expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe(true);
     expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe(true);
@@ -216,7 +216,7 @@ describe("a strip under a pulse", () => {
   });
 
   it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
-    "on a %s ground moves each colour the strip sets, alike in neighbouring cells, and leaves the terminal's alone",
+    "on a %s ground moves each color the strip sets, alike in neighbouring cells, and leaves the terminal's alone",
     (_, theme) => {
       const strip = drawnSubject(stripSubject(theme), options);
       const loop = pulse({ seconds: 2, ease: EASES.linear, swing: 1 }, EFFECT_LIGHTS.sun, 0);
@@ -229,11 +229,11 @@ describe("a strip under a pulse", () => {
       const frames = Array.from({ length: 40 }, (_, i) => colorsByCell(new Effected(strip.renderable, lit, { key: "strip" }).at(i / 10), theme));
       frames.forEach((after) => expect(after).toHaveLength(before.length));
 
-      // Every colour the strip sets moves, but for one whose cells have no
+      // Every color the strip sets moves, but for one whose cells have no
       // contrast to spare; the terminal's own ground does not.
       const rgba = new Map(pairs.flatMap(({ fg, bg }) => [fg, bg]).map((c) => [c.hex, c]));
       const still = new Set(["ground", ...[...share].filter(([hex, s]) => loop.touch(rgba.get(hex)!, s).hex === hex).map(([hex]) => hex)]);
-      // A seam's ink lifted off a fill it would vanish into is a colour no
+      // A seam's ink lifted off a fill it would vanish into is a color no
       // lettering sets. The pulse never measures it: the seam is resolved
       // again from the fills beside it, so the ink holds still only where both
       // of them do.
@@ -249,10 +249,10 @@ describe("a strip under a pulse", () => {
   );
 
   it.each([["dark", CATPPUCCIN_MOCHA], ["light", CATPPUCCIN_LATTE]] as const)(
-    "on a %s ground keeps a fill one colour across neighbouring cells through a whole breath, at truecolour",
+    "on a %s ground keeps a fill one color across neighbouring cells through a whole breath, at truecolor",
     (_, theme) => {
       // A breath spreads, so cells far apart differ; neighbours that showed
-      // one colour — an arrow's ink and the fill of the cell it points out
+      // one color — an arrow's ink and the fill of the cell it points out
       // of, lettering and its fill — still show one as far as the eye can
       // tell (dE_OK 0.02), on the inhale and the exhale where the breath is
       // steepest as well as at its top. Near black an 8-bit step is large in
@@ -295,7 +295,7 @@ describe("every loop keeps the words readable", () => {
   const depths = [["truecolor", ColorDepth.TRUECOLOR, "truecolor"], ["256", ColorDepth.EIGHT_BIT, "256"], ["16", ColorDepth.STANDARD, "ansi"]] as const;
 
   it.each(grounds.flatMap(([g, theme]) => depths.flatMap(([d, depth, system]) => lights.map((loop) => [loop, g, d, theme, depth, system] as const))))(
-    "%s on a %s ground at %s colours: no lettered cell falls below its resting contrast or AA",
+    "%s on a %s ground at %s colors: no lettered cell falls below its resting contrast or AA",
     (loop, _g, _d, theme, depth, system) => {
       const at = new Console({ width: 200, colorSystem: system, terminal: theme }).options;
       for (const subject of [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, at))) {
@@ -323,7 +323,7 @@ describe("every loop keeps the words readable", () => {
         // never sees its brightest passes.
         const P = curves[loop].seconds;
         for (let t = 0; t < 12 * P; t += P / 36) {
-          // 8-bit rounding of a colour the shares settled exactly can cost a hair in truecolor; below it nothing is rounded.
+          // 8-bit rounding of a color the shares settled exactly can cost a hair in truecolor; below it nothing is rounded.
           const slack = depth === ColorDepth.TRUECOLOR ? 0.01 : 0;
           contrasts(t).forEach((now, i) => expect(now).toBeGreaterThanOrEqual(Math.min(rest[i]!, AA) - slack));
         }

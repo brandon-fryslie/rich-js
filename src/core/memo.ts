@@ -1,7 +1,7 @@
 /**
  * memo — a string-keyed memo with a size bound: the one cache shape for a
  * pure computation whose keys a long-running host derives without end. A
- * statusline daemon redrawing a time-varying colour parses a new hex string,
+ * statusline daemon redrawing a time-varying color parses a new hex string,
  * matches a new RGB triple, measures a new cell, on every frame; a memo that
  * never evicts grows by one entry per frame for the life of the process.
  */

@@ -53,7 +53,7 @@ const OUTLINE: Record<ExportLook["outline"], readonly string[]> = {
 };
 
 /**
- * The glyph colour, and the background when one is painted.
+ * The glyph color, and the background when one is painted.
  *
  * Dim arrives already blended into `foreground`. `opacity` is never written:
  * it fades a painted background along with the glyph, which is the bug the

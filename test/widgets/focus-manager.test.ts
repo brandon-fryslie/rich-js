@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/index.js";
-import type { KeyEvent, InteractiveWidget, WidgetFocusEvent } from "../../src/widgets/index.js";
+import type { WidgetKeyEvent, InteractiveWidget, WidgetFocusEvent } from "../../src/widgets/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 
@@ -13,7 +13,7 @@ class StubWidget extends WidgetBase {
     super();
   }
 
-  handleKey(_event: KeyEvent): void {}
+  handleKey(_event: WidgetKeyEvent): void {}
   protected draw(_options: RenderOptions): Iterable<Segment> {
     return [new Segment(this.id)];
   }
@@ -27,7 +27,7 @@ function managerOf(
   present: () => readonly StubWidget[],
   onScreen: () => readonly StubWidget[] = present,
 ): DefaultFocusManager {
-  return new DefaultFocusManager({ present, onScreen, frameTime: () => 0 });
+  return new DefaultFocusManager({ mounted: present, onScreen, frameTime: () => 0 });
 }
 
 /** A focus manager over `shown`, standing for the widgets on the frame. */

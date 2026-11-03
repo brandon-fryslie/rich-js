@@ -21,7 +21,7 @@ async function open(page: Page, path: string): Promise<string[]> {
 /** The first table on docs/tables.md, the one its "Basic usage" builds. */
 const firstCard = (page: Page) => page.locator(".rich-example-card").first();
 
-/** What the card's output shows, as text, in the light colour mode. */
+/** What the card's output shows, as text, in the light color mode. */
 const shown = (page: Page) => firstCard(page).locator(".rich-example-light pre").innerText();
 
 /** Put the editor in the card, its cursor where the page's code is clicked. */

@@ -14,7 +14,7 @@
  * when the display stops, as Rich's `Live` does.
  *
  * Live is not built on `App`, though both take a terminal, paint a frame over
- * the last and hand the terminal back. That much is the `Painter`'s, and both
+ * the last and hand the terminal back. That much is the `Renderer`'s, and both
  * hold one. The rest differs in who owns what. An `App` owns its terminal: it
  * starts and stops a `TerminalHost`, sets raw mode, reads keys and pointers,
  * suspends, and builds its own `Console` from the host. A `Live` owns none of
@@ -28,7 +28,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type Screen } from "../core/paint.js";
+import { FinalFrameRenderer, SurfaceRenderer, type FrameSource, type Renderer, type Screen } from "../core/paint.js";
 import { fitHeight, render, type HostFrame, type FrameHost, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
@@ -44,7 +44,7 @@ export interface LiveOptions {
    * positive and finite, fractional included. The next frame comes a frame
    * interval after the last one drawn, a `refresh()` of your own included,
    * or sooner when that frame's content says it changes sooner
-   * (`Segment.nextChange`).
+   * (`Segment.validUntil`).
    */
   refreshPerSecond?: number;
   /** What the auto-refresh waits on. The platform's, unless given. */
@@ -78,7 +78,7 @@ export class Live implements FrameHost {
   private readonly _autoRefresh: boolean;
   private readonly _transient: boolean;
   private readonly _verticalOverflow: "crop" | "ellipsis" | "visible";
-  private readonly _painter: Painter;
+  private readonly _painter: Renderer;
   // The one wait for the next auto-refresh frame, armed after each frame, and
   // the clock moment it is due at.
   private readonly _waking = new State<{ readonly at: number; readonly stop: Unsubscribe } | undefined>(undefined);
@@ -104,8 +104,8 @@ export class Live implements FrameHost {
     // The final frame is a print, as in Rich, so a recording or a capture
     // holds it with everything else the console wrote.
     this._painter = this._console.isInteractive
-      ? new SurfacePainter(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes))
-      : new FinalFramePainter((frame) => this._console.print(linesOf(frame)));
+      ? new SurfaceRenderer(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes))
+      : new FinalFrameRenderer((frame) => this._console.print(linesOf(frame)));
   }
 
   /**
@@ -215,7 +215,7 @@ export class Live implements FrameHost {
   }
 
   // Arm the one wait for the next auto-refresh frame while `held`, from what
-  // the frame says: at its `nextChange` when it holds until a moment sooner
+  // the frame says: at its `validUntil` when it holds until a moment sooner
   // than the rate, and at the rate otherwise — every view is drawn from state
   // that may change without saying so, which the auto-refresh polls, as
   // Rich's does, a paused timeline's included. Every moment is measured from the
@@ -223,11 +223,11 @@ export class Live implements FrameHost {
   // does not stretch by what a frame cost to draw, and a change that fell
   // due while it was drawn is drawn at once (`Clock.at` fires now for a time
   // already past).
-  private _wake(held: Unsubscribe, { t, nextChange }: FrameSays): void {
+  private _wake(held: Unsubscribe, { t, validUntil }: FrameSays): void {
     this._waking.get()?.stop();
     this._waking.set(undefined);
     const rate = t + this._rate.interval;
-    const at = nextChange <= t ? rate : Math.min(nextChange, rate);
+    const at = validUntil <= t ? rate : Math.min(validUntil, rate);
     if (!this._autoRefresh) return;
     // No caller is on the stack to run `stop()` for a frame that throws
     // here, and in Node the throw ends the process — so the terminal is

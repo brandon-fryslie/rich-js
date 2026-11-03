@@ -11,7 +11,7 @@
  *   disabled  — dimmed
  */
 
-import { labelled } from "../core/orient.js";
+import { labeled } from "../core/orient.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
@@ -21,7 +21,7 @@ import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
-import type { KeyEvent, WidgetMouseEvent } from "./types.js";
+import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
 export interface CheckboxOptions {
   label: string;
@@ -49,7 +49,7 @@ export class Checkbox extends ThemedWidget {
   // --- Event handlers ---
 
   @action
-  handleKey(event: KeyEvent): void {
+  handleKey(event: WidgetKeyEvent): void {
     if (this.disabled) return;
     if (event.key === "space") {
       this.checked = !this.checked;
@@ -77,7 +77,7 @@ export class Checkbox extends ThemedWidget {
 
   protected draw(options: RenderOptions): Iterable<Segment> {
     const indicator = this.checked ? drawable(options, "✓", "x") : " ";
-    const drawn = (style: Style): Segment[] => labelled(`[${indicator}] `, this.label, "", style, options.textOrder);
+    const drawn = (style: Style): Segment[] => labeled(`[${indicator}] `, this.label, "", style, options.textOrder);
 
     if (this.disabled) {
       return drawn(new Style(this.disabledInk));

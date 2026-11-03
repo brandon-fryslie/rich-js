@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from "vitest";
 import { exportedRenderables } from "../seam/exported-renderables.js";
-import { render, type Presence, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { render, type Visibility, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
 import { STILL } from "./in-frame.js";
 import { Segment } from "../../src/core/segment.js";
 import { NULL_STYLE, type Style } from "../../src/core/style.js";
@@ -30,7 +30,7 @@ import {
   FlexStrip,
   FrameSequence,
   Group,
-  JOINERS,
+  SEPARATOR_STYLES,
   JSONRenderable,
   Layout,
   ListView,
@@ -86,7 +86,7 @@ type Row = (probe: (name: string) => Probe) => Renderable;
 const ROWS: Record<string, Row> = {
   // src/index.ts
   RichText: () => new RichText("plain"),
-  Strip: (p) => new Strip([p("a"), p("b")], JOINERS.plain),
+  Strip: (p) => new Strip([p("a"), p("b")], SEPARATOR_STYLES.plain),
   Emoji: () => new Emoji("smile"),
   Pretty: () => new Pretty({ a: [1, "two"] }),
   JSONRenderable: () => JSONRenderable.fromData({ a: 1 }),
@@ -118,7 +118,7 @@ const ROWS: Record<string, Row> = {
     return tree;
   },
   Columns: (p) => new Columns([p("a"), p("b"), p("c")]),
-  FlexStrip: (p) => new FlexStrip([p("a"), p("b")], { joiner: JOINERS.plain }),
+  FlexStrip: (p) => new FlexStrip([p("a"), p("b")], { separator: SEPARATOR_STYLES.plain }),
   Progress: (p) => {
     const cells = new Map<number, Probe>();
     const progress = new Progress(
@@ -174,9 +174,9 @@ const VARIANTS: Record<string, Row> = {
 };
 
 /** Every report `render` makes for `renderable` at `maxWidth`. */
-function reports(renderable: Renderable, maxWidth: number): [Renderable, Presence][] {
-  const heard: [Renderable, Presence][] = [];
-  const options: RenderOptions = { maxWidth, frame: STILL.frameNow(), onPresent: (reported, presence) => heard.push([reported, presence]) };
+function reports(renderable: Renderable, maxWidth: number): [Renderable, Visibility][] {
+  const heard: [Renderable, Visibility][] = [];
+  const options: RenderOptions = { maxWidth, frame: STILL.frameNow(), onVisibility: (reported, visibility) => heard.push([reported, visibility]) };
   [...render(renderable, options)];
   return heard;
 }
@@ -192,7 +192,7 @@ function build(row: Row): { renderable: Renderable; probes: Probe[] } {
   return { renderable, probes };
 }
 
-const probesIn = (heard: [Renderable, Presence][]): string[] =>
+const probesIn = (heard: [Renderable, Visibility][]): string[] =>
   heard.flatMap(([reported]) => (reported instanceof Probe ? [reported.name] : []));
 
 describe("a renderable handed no column", () => {
@@ -205,12 +205,12 @@ describe("a renderable handed no column", () => {
       const drawn = build(row);
       const held = build(row);
       const atWidth = reports(drawn.renderable, 40);
-      expect(atWidth.every(([, presence]) => presence === "drawn")).toBe(true);
+      expect(atWidth.every(([, visibility]) => visibility === "visible")).toBe(true);
 
       const atNone = reports(held.renderable, 0);
-      expect(atNone[0]).toEqual([held.renderable, "held"]);
+      expect(atNone[0]).toEqual([held.renderable, "hidden"]);
       expect(probesIn(atNone)).toEqual(probesIn(atWidth));
-      expect(atNone.every(([, presence]) => presence === "held")).toBe(true);
+      expect(atNone.every(([, visibility]) => visibility === "hidden")).toBe(true);
     });
 
     it(`${name}, with nothing listening, draws nothing at any width under one`, () => {

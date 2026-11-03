@@ -77,7 +77,7 @@ function rewritten(line: readonly Segment[], keep: (text: string) => string): Se
 }
 
 /** What a row of a directed line is, given the text it started as and its offset in the line. */
-export interface Directed {
+export interface ReorderedLine {
   /** The line to cut: X9's removals gone where the terminal will not need them. */
   readonly line: readonly Segment[];
   /** Whether a row's cells may not be merged with the padding beside them. */
@@ -86,7 +86,7 @@ export interface Directed {
   orient(shown: readonly Segment[], start: number, source: string): Segment[];
 }
 
-const UNTOUCHED = (line: readonly Segment[]): Directed => ({ line, oriented: false, orient: (shown) => [...shown] });
+const UNTOUCHED = (line: readonly Segment[]): ReorderedLine => ({ line, oriented: false, orient: (shown) => [...shown] });
 
 const VISUAL_STAMP: BidiStamp = { order: "visual" };
 
@@ -175,7 +175,7 @@ const REMOVALS: Readonly<Record<TextOrder, (text: string) => string>> = {
 };
 
 /** What `order` does with `line`, one logical line of drawn segments. */
-export function directed(line: readonly Segment[], order: TextOrder): Directed {
+export function reorder(line: readonly Segment[], order: TextOrder): ReorderedLine {
   if (!isBidi(Segment.plainOf(line))) return UNTOUCHED(line);
   if (order === "plain") return UNTOUCHED(rewritten(line, REMOVALS.plain));
 
@@ -248,8 +248,8 @@ function ordered(text: string): number[] {
  * button's brackets would be mirrored around it. A label `directed` leaves alone
  * is one segment with its frame, as it always was.
  */
-export function labelled(before: string, label: string, after: string, style: Style | undefined, order: TextOrder | undefined): Segment[] {
-  const { line, oriented, orient } = directed([new Segment(label, style)], order ?? "plain");
+export function labeled(before: string, label: string, after: string, style: Style | undefined, order: TextOrder | undefined): Segment[] {
+  const { line, oriented, orient } = reorder([new Segment(label, style)], order ?? "plain");
   const text = Segment.plainOf(line);
   if (!oriented) return [new Segment(before + text + after, style)];
   return [new Segment(before, style), ...orient(line, 0, text), new Segment(after, style)].filter((segment) => segment.text !== "");

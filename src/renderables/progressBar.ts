@@ -28,7 +28,7 @@ const HALF_BAR_LEFT = "╺";
  */
 const PULSE_CURVE = { ...EFFECT_CURVES.shimmer, seconds: 5 } as const;
 const PULSE_REACH = 10;
-/** Rich's pulse back where the back style names no colour. */
+/** Rich's pulse back where the back style names no color. */
 const PULSE_BACK = ColorSpec.fromRgba(new ColorRgba(0, 0, 0));
 
 export interface ProgressBarOptions {
@@ -109,11 +109,11 @@ export class ProgressBar implements Renderable, Measurable {
       return;
     }
     const depth = options.colorSystem ?? ColorDepth.TRUECOLOR;
-    // Rich's pulse resolves its colours on the terminal a depth assumes, as
+    // Rich's pulse resolves its colors on the terminal a depth assumes, as
     // `get_truecolor` does with no theme; so does this with none named.
     const terminal = resolveTerminal(options.terminal, depth);
-    // Rich writes the pulse's back as a colour of its own, black where the
-    // back style names none, so the light always has the bar's colour to fall
+    // Rich writes the pulse's back as a color of its own, black where the
+    // back style names none, so the light always has the bar's color to fall
     // on: one the terminal supplies takes no light.
     const style = getStyle(options, this.style);
     const ink = style.color?.isDefault === false ? style.color : ColorSpec.fromRgba((style.color ?? PULSE_BACK).getTruecolor(terminal, true));
@@ -125,7 +125,7 @@ export class ProgressBar implements Renderable, Measurable {
   }
 
   /**
-   * The shimmer over this bar's back colour as `Effected` sees it drawn,
+   * The shimmer over this bar's back color as `Effected` sees it drawn,
    * toward `bar.pulse`. A bar has no words to keep legible, so its back takes
    * the whole of the light.
    */
@@ -160,7 +160,7 @@ export class ProgressBar implements Renderable, Measurable {
     if (barCount) yield new Segment(bar.repeat(barCount), fillStyle);
     if (halfBarCount) yield new Segment(drawable(options, HALF_BAR_RIGHT, " "), fillStyle);
 
-    // The back is drawn in colour alone, so an output with none leaves it blank.
+    // The back is drawn in color alone, so an output with none leaves it blank.
     if (options.colorSystem === null) return;
     let remaining = width - barCount - halfBarCount;
     if (remaining && !halfBarCount && barCount) {

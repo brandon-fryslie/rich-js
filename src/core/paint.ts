@@ -5,7 +5,7 @@
  * back.
  *
  * [LAW:one-source-of-truth] Where the cursor rests between frames, and how
- * many rows the next paint goes back over, is one fact, and a `SurfacePainter`
+ * many rows the next paint goes back over, is one fact, and a `SurfaceRenderer`
  * is its only owner: `App` holds one, and so does `Live` on a terminal, so
  * they cannot disagree about it. They once did: `Live` wrote a newline after its last row, and on a
  * frame as tall as the terminal that newline scrolled the screen, so every
@@ -14,7 +14,7 @@
  * is handed back.
  */
 
-import type { Destination } from "./color.js";
+import type { OutputTarget } from "./color.js";
 import type { Height } from "./protocol.js";
 import { segmentsToString, shownOn } from "./render.js";
 import { Segment } from "./segment.js";
@@ -108,7 +108,7 @@ export type FrameSource = () => Segment[][];
 /**
  * What paints a run of frames on an output, from `take` to `handBack`.
  */
-export interface Painter {
+export interface Renderer {
   /** The budget a frame renders under, on a screen `screenRows` tall. */
   height(screenRows: number): Height;
   /** Take the output. */
@@ -117,12 +117,12 @@ export interface Painter {
    * Paint `frame` over the last frame. `frame` is already shaped to its
    * height by whoever set its budget. An empty frame erases the last one.
    */
-  paint(frame: FrameSource, screen: Screen, destination: Destination): void;
+  paint(frame: FrameSource, screen: Screen, destination: OutputTarget): void;
   /**
    * The bytes that write `text` while `frame` is the frame standing on the
    * output, for the caller to write in one piece.
    */
-  around(text: string, frame: FrameSource, screen: Screen, destination: Destination): string;
+  around(text: string, frame: FrameSource, screen: Screen, destination: OutputTarget): string;
   /** Hand the output back. The next `take` starts from wherever it then is. */
   handBack(): void;
 }
@@ -132,7 +132,7 @@ export interface Painter {
  * rows on the terminal — what the next paint goes back over — from `take` to
  * `handBack`.
  */
-export class SurfacePainter implements Painter {
+export class SurfaceRenderer implements Renderer {
   private readonly geometry: Geometry;
   private rows = 0;
 
@@ -159,7 +159,7 @@ export class SurfacePainter implements Painter {
    * not go back over. The rows returned are what `destination` shows
    * (`shownOn`): under reduced motion, nothing in them blinks.
    */
-  paint(frame: FrameSource, screen: Screen, destination: Destination): Segment[][] {
+  paint(frame: FrameSource, screen: Screen, destination: OutputTarget): Segment[][] {
     const rows = fitRows(frame(), screen).map((row) => row.map((segment) => shownOn(segment, destination)));
     this.write(SYNC_START + this.over(rows, screen, destination) + SYNC_END);
     return rows;
@@ -170,7 +170,7 @@ export class SurfacePainter implements Painter {
    * under it — in one string, so no terminal ever shows the frame gone. The
    * frame fills whole lines, so text that stops mid-line is ended before it.
    */
-  around(text: string, frame: FrameSource, screen: Screen, destination: Destination): string {
+  around(text: string, frame: FrameSource, screen: Screen, destination: OutputTarget): string {
     // Drawn before `over` moves the row count, so a frame that throws leaves
     // the painter matching the terminal it left untouched.
     const rows = fitRows(frame(), screen);
@@ -183,7 +183,7 @@ export class SurfacePainter implements Painter {
 
   // The bytes that paint `rows` over the last frame. They go out in one
   // string, so whatever takes the last frame away arrives with the new one.
-  private over(rows: Segment[][], screen: Screen, destination: Destination): string {
+  private over(rows: Segment[][], screen: Screen, destination: OutputTarget): string {
     const painted = this.geometry.painted(rows.length, this.rows, screen.rows);
     const body = Array.from(
       { length: painted },
@@ -217,7 +217,7 @@ export class SurfacePainter implements Painter {
  * the output is handed back. What is written around the frame goes out as it
  * was given. No frame is drawn but the one handed back.
  */
-export class FinalFramePainter implements Painter {
+export class FinalFrameRenderer implements Renderer {
   private last: FrameSource = () => [];
 
   constructor(private readonly print: (frame: Segment[][]) => void) {}

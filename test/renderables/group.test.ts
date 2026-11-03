@@ -80,7 +80,7 @@ describe("Group", () => {
 
   // rich-flexstrip-5kf: Group inserts nothing between children (docs/group.md)
   // — every child must end its own line. Strip and FlexStrip are siblings
-  // over the same Joiner protocol, documented on one page, and must agree.
+  // over the same Separator protocol, documented on one page, and must agree.
   describe("a Strip/FlexStrip followed by another renderable", () => {
     const cellA = new RichText("a", { style: "white on red", end: "" });
     const cellB = new RichText("b", { style: "white on blue", end: "" });
@@ -93,7 +93,7 @@ describe("Group", () => {
     });
 
     it("FlexStrip puts the next renderable on its own line", () => {
-      const flexStrip = new FlexStrip([cellA, cellB], { joiner: arrows() });
+      const flexStrip = new FlexStrip([cellA, cellB], { separator: arrows() });
       const group = new Group(flexStrip, after);
       expect(collectText(group, { maxWidth: 80 })).toBe("<a>b>\nafter\n");
     });

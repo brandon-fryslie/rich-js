@@ -81,7 +81,7 @@
 /* ─── Example widget: code and the output it produces, one card ─────
  * A `.rich-example` around VitePress's own code block, and under it the output
  * panel — a label strip naming where the output came from, then the output (a
- * light and a dark fragment, one shown per colour mode) or a note in its
+ * light and a dark fragment, one shown per color mode) or a note in its
  * place, or a live terminal. The card component draws it (theme/RichExample.ts).
  */
 .vp-doc .rich-example {
@@ -283,7 +283,7 @@
 }
 
 /* A card of several files names each on a tab above its editor; the chosen
- * one is underlined in the brand colour, as the docs' own code groups mark theirs. */
+ * one is underlined in the brand color, as the docs' own code groups mark theirs. */
 .vp-doc .rich-example-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -550,7 +550,7 @@
   min-height: calc(var(--rich-example-rows) * 1lh + 2em);
 }
 
-/* Code in a card is coloured in One Light and One Dark Pro, the themes the
+/* Code in a card is colored in One Light and One Dark Pro, the themes the
  * site highlights code in (config.ts), so an edited card reads the same as the
  * fence it replaced. */
 .rich-example-card {

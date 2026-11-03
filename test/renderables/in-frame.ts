@@ -29,7 +29,7 @@ export function inFrame(renderable: Renderable, t: number): Renderable & Measura
 /**
  * `view` drawn by a host on `timeline` (playing from 0 unless given), at host
  * time `t`: the lines, and when the frame says it next changes — what its
- * cells carry and what it was told no cell carries (`RenderOptions.onHold`) —
+ * cells carry and what it was told no cell carries (`RenderOptions.onValidity`) —
  * read by `drawView`, the one place a host reads it.
  */
 export function drawnAt(view: View, t: number, options: RenderOptions, timeline: Timeline = Timeline.play(0)): DrawnView {

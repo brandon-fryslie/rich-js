@@ -141,7 +141,7 @@ const HIDDEN = "rgba(0, 0, 0, 0)";
 const { red, green, blue } = SOLARIZED_LIGHT.foregroundColor;
 const INK = `rgb(${red}, ${green}, ${blue})`;
 
-for (const [attribute, cycleMs] of [["blink", 1000], ["blink2", 500]] as const) {
+for (const [attribute, cycleMs] of [["blink", 1000], ["rapidBlink", 500]] as const) {
   const segments = [new Segment(attribute, Style.parse(attribute))];
   for (const [where, load] of [
     ["a fragment", async (page: Page) => { await page.setContent(BLANK); await embed(page, encodeHtmlFragment(segments, SOLARIZED_LIGHT)); }],
@@ -163,7 +163,7 @@ for (const [attribute, cycleMs] of [["blink", 1000], ["blink2", 500]] as const) 
 test("a column after wide glyphs lines up with the same column after narrow ones, styled or not", async ({ page }) => {
   await page.setContent(BLANK);
   const painted = Style.parse("underline on blue");
-  const doubled = Style.parse("underline2 strike");
+  const doubled = Style.parse("doubleUnderline strike");
   await embed(page, encodeHtmlFragment(
     [
       new Segment("abcd|\n"),

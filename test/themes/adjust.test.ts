@@ -4,17 +4,17 @@ import {
   IDENTITY,
   INVERT_LIGHTNESS,
   Oklch,
-  type ThemeKey,
+  type ColorAdjustment,
 } from "../../src/core/oklch.js";
 import { PALETTE_ROLES } from "../../src/themes/buildPalette.js";
 import { Palette, type AccentRole, type PaletteRoles } from "../../src/themes/palette.js";
 import { getThemePalette } from "../../src/themes/registry.js";
 import {
-  ANCHORED_ROOTS,
-  isAnchored,
-  transposePalette,
-  themeKeyForRoot,
-} from "../../src/themes/transpose.js";
+  HUE_LOCKED_ROOTS,
+  isHueLocked,
+  adjustPalette,
+  adjustmentForRoot,
+} from "../../src/themes/adjust.js";
 
 /** Circular distance between two hue angles (degrees), handling the 0°/360°
  * wrap so e.g. 359.5° and 0.5° are 1° apart, not 359°. */
@@ -23,30 +23,30 @@ function hueDelta(a: number, b: number): number {
   return Math.min(d, 360 - d);
 }
 
-describe("ANCHORED_ROOTS / isAnchored", () => {
+describe("HUE_LOCKED_ROOTS / isHueLocked", () => {
   it("anchors the three semantic roots", () => {
-    expect(ANCHORED_ROOTS).toEqual(new Set(["error", "success", "warning"]));
+    expect(HUE_LOCKED_ROOTS).toEqual(new Set(["error", "success", "warning"]));
   });
 
   it("anchors exactly the palette roles that name an anchored root", () => {
     for (const role of PALETTE_ROLES) {
-      expect(isAnchored(role), role).toBe(role.split("-").some((segment) => ANCHORED_ROOTS.has(segment)));
+      expect(isHueLocked(role), role).toBe(role.split("-").some((segment) => HUE_LOCKED_ROOTS.has(segment)));
     }
   });
 
   it("does not anchor a name outside a root's family", () => {
     // `no-` draws nothing, so this name's root is `no`.
-    expect(isAnchored("no-error")).toBe(false);
+    expect(isHueLocked("no-error")).toBe(false);
     // Defensive: an "errors" plural would not match the strict root set.
-    expect(isAnchored("errors")).toBe(false);
+    expect(isHueLocked("errors")).toBe(false);
   });
 });
 
-describe("transposePalette — identity", () => {
+describe("adjustPalette — identity", () => {
   it("IDENTITY returns byte-exact colors (no round-trip)", () => {
     const gruv = getThemePalette("gruvbox");
     expect(gruv).not.toBeNull();
-    const out = transposePalette(gruv!, IDENTITY);
+    const out = adjustPalette(gruv!, IDENTITY);
     // Same vars, same instance equality on each ColorRgba would be too
     // strict (we construct a new Palette wrapper). Byte equality on every
     // channel is the contract.
@@ -64,22 +64,22 @@ describe("transposePalette — identity", () => {
 
   it("IDENTITY preserves the name when no override is given", () => {
     const gruv = getThemePalette("gruvbox")!;
-    expect(transposePalette(gruv, IDENTITY).name).toBe("gruvbox");
+    expect(adjustPalette(gruv, IDENTITY).name).toBe("gruvbox");
   });
 
   it("name override is applied when provided", () => {
     const gruv = getThemePalette("gruvbox")!;
-    expect(transposePalette(gruv, IDENTITY, "gruv-renamed").name).toBe("gruv-renamed");
+    expect(adjustPalette(gruv, IDENTITY, "gruv-renamed").name).toBe("gruv-renamed");
   });
 });
 
-describe("transposePalette — anchor hue is locked", () => {
+describe("adjustPalette — anchor hue is locked", () => {
   // Build a synthetic palette so we can assert hue exactly without
   // entangling the test with theme-data values. A `background` is required
-  // — `transposePalette` reads it to derive the resulting `dark` flag.
+  // — `adjustPalette` reads it to derive the resulting `dark` flag.
   function syntheticPalette(stated: Partial<PaletteRoles> = {}): Palette {
     return new Palette("synth", true, {
-      ...getThemePalette("gruvbox").mapRoles((colour) => colour),
+      ...getThemePalette("gruvbox").mapRoles((color) => color),
       background: new ColorRgba(30, 30, 30),   // a dark gray
       primary: new ColorRgba(80, 140, 200),    // a blue
       accent: new ColorRgba(220, 180, 60),     // a yellow
@@ -91,7 +91,7 @@ describe("transposePalette — anchor hue is locked", () => {
     });
   }
 
-  const ROTATE_60: ThemeKey = {
+  const ROTATE_60: ColorAdjustment = {
     hueShift: 60,
     chromaScale: 1,
     lightnessScale: 1,
@@ -100,7 +100,7 @@ describe("transposePalette — anchor hue is locked", () => {
 
   it("decorative vars shift hue, anchored vars do not", () => {
     const before = syntheticPalette();
-    const after = transposePalette(before, ROTATE_60);
+    const after = adjustPalette(before, ROTATE_60);
 
     const primaryHueBefore = Oklch.fromRgba(before.get("primary")!).h;
     const primaryHueAfter  = Oklch.fromRgba(after.get("primary")!).h;
@@ -123,13 +123,13 @@ describe("transposePalette — anchor hue is locked", () => {
     const errorBefore = Oklch.fromRgba(gruv.get("error")!);
 
     for (const hueShift of [60, 120, 180, 240, 300]) {
-      const transposed = transposePalette(gruv, {
+      const adjusted = adjustPalette(gruv, {
         hueShift,
         chromaScale: 1,
         lightnessScale: 1,
         lightnessShift: 0,
       });
-      const errorAfter = Oklch.fromRgba(transposed.get("error")!);
+      const errorAfter = Oklch.fromRgba(adjusted.get("error")!);
       expect(hueDelta(errorAfter.h, errorBefore.h)).toBeLessThan(2);
     }
   });
@@ -147,7 +147,7 @@ describe("transposePalette — anchor hue is locked", () => {
   it.each(Object.entries(TURN) as [AccentRole, number][])("what is drawn on %s turns %d°", (role, turn) => {
     // Unlike any accent, and far enough from grey that its hue survives the round trip.
     const magenta = new ColorRgba(200, 60, 160);
-    const after = transposePalette(
+    const after = adjustPalette(
       syntheticPalette({ [`text-${role}`]: magenta, [`on-${role}`]: magenta }),
       ROTATE_60,
     );
@@ -157,20 +157,20 @@ describe("transposePalette — anchor hue is locked", () => {
   });
 });
 
-describe("transposePalette — INVERT_LIGHTNESS", () => {
+describe("adjustPalette — INVERT_LIGHTNESS", () => {
   it("flips the dark flag", () => {
     const gruv = getThemePalette("gruvbox")!;     // dark = true
-    const flipped = transposePalette(gruv, INVERT_LIGHTNESS);
+    const flipped = adjustPalette(gruv, INVERT_LIGHTNESS);
     expect(flipped.dark).toBe(false);
 
     const light = getThemePalette("solarized-light")!;   // dark = false
-    const flippedLight = transposePalette(light, INVERT_LIGHTNESS);
+    const flippedLight = adjustPalette(light, INVERT_LIGHTNESS);
     expect(flippedLight.dark).toBe(true);
   });
 
   it("pure hue rotation does NOT flip the dark flag", () => {
     const gruv = getThemePalette("gruvbox")!;
-    const rotated = transposePalette(gruv, {
+    const rotated = adjustPalette(gruv, {
       hueShift: 120,
       chromaScale: 1,
       lightnessScale: 1,
@@ -184,7 +184,7 @@ describe("transposePalette — INVERT_LIGHTNESS", () => {
     // very-bright (~0.95) backgrounds humans typically author by hand.
     // The demo's section 3 visualizes this delta on purpose.
     const gruv = getThemePalette("gruvbox")!;
-    const flipped = transposePalette(gruv, INVERT_LIGHTNESS);
+    const flipped = adjustPalette(gruv, INVERT_LIGHTNESS);
     const bgBefore = Oklch.fromRgba(gruv.get("background")!);
     const bgAfter  = Oklch.fromRgba(flipped.get("background")!);
     expect(bgAfter.l).toBeGreaterThan(bgBefore.l);
@@ -195,7 +195,7 @@ describe("transposePalette — INVERT_LIGHTNESS", () => {
     // A pure additive shift (no scale flip) on a dark theme should still
     // produce dark=false when it makes the background bright enough.
     const gruv = getThemePalette("gruvbox")!;
-    const brightened = transposePalette(gruv, {
+    const brightened = adjustPalette(gruv, {
       hueShift: 0,
       chromaScale: 1,
       lightnessScale: 1,
@@ -205,7 +205,7 @@ describe("transposePalette — INVERT_LIGHTNESS", () => {
 
     // Conversely, a "flip" that crushes everything toward L=0 should
     // report dark=true even though lightnessScale is negative.
-    const crushed = transposePalette(gruv, {
+    const crushed = adjustPalette(gruv, {
       hueShift: 0,
       chromaScale: 1,
       lightnessScale: -1,
@@ -215,13 +215,13 @@ describe("transposePalette — INVERT_LIGHTNESS", () => {
   });
 });
 
-describe("themeKeyForRoot", () => {
+describe("adjustmentForRoot", () => {
   it("lands the tonic var on the requested hue (round-trip ±2°)", () => {
     const gruv = getThemePalette("gruvbox")!;
     for (const target of [0, 60, 137, 240, 300]) {
-      const key = themeKeyForRoot(gruv, "primary", target);
-      const transposed = transposePalette(gruv, key);
-      const resultHue = Oklch.fromRgba(transposed.get("primary")!).h;
+      const key = adjustmentForRoot(gruv, "primary", target);
+      const adjusted = adjustPalette(gruv, key);
+      const resultHue = Oklch.fromRgba(adjusted.get("primary")!).h;
       const delta = Math.min(
         Math.abs(resultHue - target),
         360 - Math.abs(resultHue - target),
@@ -233,14 +233,14 @@ describe("themeKeyForRoot", () => {
   it("requesting the tonic's own hue is a no-op shift (~0°)", () => {
     const gruv = getThemePalette("gruvbox")!;
     const natural = Oklch.fromRgba(gruv.get("primary")!).h;
-    const key = themeKeyForRoot(gruv, "primary", natural);
+    const key = adjustmentForRoot(gruv, "primary", natural);
     // hueShift wraps to [0,360); a self-request is either ~0 or ~360.
     expect(Math.min(key.hueShift, 360 - key.hueShift)).toBeLessThan(1);
   });
 
   it("returns a hue-only key: chroma and lightness are identity", () => {
     const gruv = getThemePalette("gruvbox")!;
-    const key = themeKeyForRoot(gruv, "accent", 123);
+    const key = adjustmentForRoot(gruv, "accent", 123);
     expect(key.chromaScale).toBe(1);
     expect(key.lightnessScale).toBe(1);
     expect(key.lightnessShift).toBe(0);
@@ -248,49 +248,49 @@ describe("themeKeyForRoot", () => {
 
   it("hueShift is normalized into [0, 360)", () => {
     const gruv = getThemePalette("gruvbox")!;
-    const key = themeKeyForRoot(gruv, "primary", 10);
+    const key = adjustmentForRoot(gruv, "primary", 10);
     expect(key.hueShift).toBeGreaterThanOrEqual(0);
     expect(key.hueShift).toBeLessThan(360);
   });
 
-  it("anchored vars still hold their hue when transposing to a root", () => {
-    // root-note selection produces a normal ThemeKey, so transposePalette's
+  it("anchored vars still hold their hue when adjusting to a root", () => {
+    // root-note selection produces a normal ColorAdjustment, so adjustPalette's
     // anchor logic applies unchanged: error stays red-ish.
     const gruv = getThemePalette("gruvbox")!;
     const errorBefore = Oklch.fromRgba(gruv.get("error")!).h;
-    const key = themeKeyForRoot(gruv, "primary", 300);
-    const transposed = transposePalette(gruv, key);
-    const errorAfter = Oklch.fromRgba(transposed.get("error")!).h;
+    const key = adjustmentForRoot(gruv, "primary", 300);
+    const adjusted = adjustPalette(gruv, key);
+    const errorAfter = Oklch.fromRgba(adjusted.get("error")!).h;
     expect(hueDelta(errorAfter, errorBefore)).toBeLessThan(2);
   });
 
   it("throws when the tonic var is missing (loud failure)", () => {
-    expect(() => themeKeyForRoot(getThemePalette("gruvbox"), "no-such-role", 120)).toThrow(/no "no-such-role" var/);
+    expect(() => adjustmentForRoot(getThemePalette("gruvbox"), "no-such-role", 120)).toThrow(/no "no-such-role" var/);
   });
 
   it("throws on a non-finite target hue at the boundary, not downstream", () => {
     const gruv = getThemePalette("gruvbox")!;
-    expect(() => themeKeyForRoot(gruv, "primary", NaN)).toThrow(/finite/);
-    expect(() => themeKeyForRoot(gruv, "primary", Infinity)).toThrow(/finite/);
+    expect(() => adjustmentForRoot(gruv, "primary", NaN)).toThrow(/finite/);
+    expect(() => adjustmentForRoot(gruv, "primary", Infinity)).toThrow(/finite/);
   });
 });
 
-describe("transposePalette — composition", () => {
-  it("transpose ∘ transpose ≈ single transpose with composed hue", () => {
+describe("adjustPalette — composition", () => {
+  it("adjust ∘ adjust ≈ single adjust with composed hue", () => {
     const gruv = getThemePalette("gruvbox")!;
-    const step1 = transposePalette(gruv, {
+    const step1 = adjustPalette(gruv, {
       hueShift: 30,
       chromaScale: 1,
       lightnessScale: 1,
       lightnessShift: 0,
     });
-    const step2 = transposePalette(step1, {
+    const step2 = adjustPalette(step1, {
       hueShift: 50,
       chromaScale: 1,
       lightnessScale: 1,
       lightnessShift: 0,
     });
-    const combined = transposePalette(gruv, {
+    const combined = adjustPalette(gruv, {
       hueShift: 80,
       chromaScale: 1,
       lightnessScale: 1,

@@ -115,14 +115,14 @@ export interface TerminalHost {
 
   /**
    * Whether the bytes `write` sends land on a terminal, whatever the input
-   * is. Colour detection asks this: a program with piped stdin and a terminal
+   * is. Color detection asks this: a program with piped stdin and a terminal
    * stdout still draws on a terminal, and `isTTY` would call it plain.
    */
   readonly writesToTerminal: boolean;
 
   /**
    * The environment a program running on this terminal sees — `TERM`,
-   * `COLORTERM`, `NO_COLOR` and the rest. Colour detection reads it: what a
+   * `COLORTERM`, `NO_COLOR` and the rest. Color detection reads it: what a
    * terminal can draw is a fact about the host, so it travels with the host
    * rather than being read off whatever `process` the renderer happens to
    * share a runtime with, which in a browser is none.
@@ -253,7 +253,7 @@ export class BrowserTerminalHost implements TerminalHost {
 
   // What xterm.js is, stated the way a terminal states it: it identifies as
   // `xterm-256color` and draws 24-bit SGR. With no env at all, detection saw
-  // an unnamed TTY and drew every colour at 16-colour depth.
+  // an unnamed TTY and drew every color at 16-color depth.
   get env(): Env {
     return XTERM_ENV;
   }

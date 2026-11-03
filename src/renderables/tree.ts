@@ -38,17 +38,17 @@ const ASCII_GUIDES: GuideGlyphs = { fork: "+-- ", end: "`-- ", continue: "|   ",
  * The guide attributes a glyph set stands for, switched off on the guide itself
  * as Rich's `remove_guide_styles` does: a bold guide is drawn heavy, not bold.
  */
-const REMOVE_GUIDE_STYLES = new Style({ bold: false, underline2: false });
+const REMOVE_GUIDE_STYLES = new Style({ bold: false, doubleUnderline: false });
 
 const guideGlyphs = (glyphs: GuideGlyphs): string => Object.values(glyphs).join("");
 
 /**
  * The glyphs a column of guide is drawn with, read off its resolved guide style
- * as Rich does: heavy when bold, double when underline2, light otherwise — and
+ * as Rich does: heavy when bold, double when doubleUnderline, light otherwise — and
  * ASCII whenever the terminal cannot draw the chosen set.
  */
 function glyphsFor(options: RenderOptions, style: Style): GuideGlyphs {
-  const weight = style.bold === true ? HEAVY_GUIDES : style.underline2 === true ? DOUBLE_GUIDES : LIGHT_GUIDES;
+  const weight = style.bold === true ? HEAVY_GUIDES : style.doubleUnderline === true ? DOUBLE_GUIDES : LIGHT_GUIDES;
   return drawable(options, weight, ASCII_GUIDES, guideGlyphs);
 }
 

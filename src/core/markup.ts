@@ -812,7 +812,7 @@ function compose(frame: Frame, baseStyle?: string | Style): RichText {
   // The reversal is the whole of the tie-break, not decoration.
   // `[red][blue]x[/blue][/red]` yields two spans that both start at 0, and a
   // stable sort leaves those in the order they arrived — closing order,
-  // innermost first — which is the outer colour winning. Reversed first, the
+  // innermost first — which is the outer color winning. Reversed first, the
   // outer arrives first and the inner repaints it (rich-markup-krk).
   const spans = [...frame.spans].reverse().sort((a, b) => a.start - b.start);
 

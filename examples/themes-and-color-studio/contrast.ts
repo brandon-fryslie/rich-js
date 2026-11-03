@@ -7,9 +7,9 @@ import {
   contrastFor,
   contrastRatio,
   darken,
-  drawnColour,
+  compositedColor,
   ensureContrast,
-  ensureDrawn,
+  ensureMinimumDelta,
   getThemePalette,
   lighten,
   Oklch,
@@ -111,23 +111,23 @@ export function section8Contrast(out: Console): void {
   }
   out.print(blank());
 
-  // ensureDrawn: a floor that is not text. A green selected cell beside a
-  // blue one is far apart in truecolor, but 256 colours round both to one
-  // cube entry and the selection disappears. ensureDrawn keeps the chosen
-  // colour when its rounding holds the floor, and otherwise hands back the
+  // ensureMinimumDelta: a floor that is not text. A green selected cell beside a
+  // blue one is far apart in truecolor, but 256 colors round both to one
+  // cube entry and the selection disappears. ensureMinimumDelta keeps the chosen
+  // color when its rounding holds the floor, and otherwise hands back the
   // nearest entry that does.
-  out.print(bold("    ensureDrawn — a selection that must stay distinct once drawn at 256"));
+  out.print(bold("    ensureMinimumDelta — a selection that must stay distinct once drawn at 256"));
   const neighbour = parseRgbHex("003070");
   const selected = parseRgbHex("107030");
-  // drawnColour: the colour a ground is shown as at a depth — the rounding
-  // ensureDrawn hands its predicate as `drawn`.
-  const at256 = (c: ColorRgba) => ColorSpec.fromRgba(drawnColour(c, ColorDepth.EIGHT_BIT)).downgrade(ColorDepth.EIGHT_BIT);
-  const kept = ensureDrawn(selected, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
+  // compositedColor: the color a ground is shown as at a depth — the rounding
+  // ensureMinimumDelta hands its predicate as `drawn`.
+  const at256 = (c: ColorRgba) => ColorSpec.fromRgba(compositedColor(c, ColorDepth.EIGHT_BIT)).downgrade(ColorDepth.EIGHT_BIT);
+  const kept = ensureMinimumDelta(selected, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
     Oklch.fromRgba(candidate).deltaE(Oklch.fromRgba(drawn(neighbour))) >= 0.1,
   );
   // No entry at all may hold a floor; a real caller says so rather than
-  // drawing the colour it refused.
-  if (kept === undefined) throw new Error("no 256-colour entry holds the selection floor");
+  // drawing the color it refused.
+  if (kept === undefined) throw new Error("no 256-color entry holds the selection floor");
   for (const [label, cell] of [["before", selected], ["after ", kept]] as const) {
     out.print(
       new RichText(`      ${label}  `)

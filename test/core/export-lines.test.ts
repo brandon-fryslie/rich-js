@@ -22,14 +22,14 @@ const THEME = new TerminalTheme(
 
 const look = (markup: string) => resolveLook(Style.parse(markup), THEME);
 
-describe("resolveLook colours", () => {
+describe("resolveLook colors", () => {
   it("resolves default ink through the theme and lets the canvas show through", () => {
     const l = look("none");
     expect(l.foreground).toEqual(INK);
     expect(l.background).toBe("canvas");
   });
 
-  it("resolves ANSI colours through the theme's table, not a fixed one", () => {
+  it("resolves ANSI colors through the theme's table, not a fixed one", () => {
     expect(look("red").foreground).toEqual(RETINTED_RED);
   });
 
@@ -43,9 +43,9 @@ describe("resolveLook colours", () => {
     expect(plain.foreground).toEqual(PAPER);
     expect(plain.background).toEqual(INK);
 
-    const coloured = look("reverse #112233 on #445566");
-    expect(coloured.foreground).toEqual(new ColorRgba(0x44, 0x55, 0x66));
-    expect(coloured.background).toEqual(new ColorRgba(0x11, 0x22, 0x33));
+    const colored = look("reverse #112233 on #445566");
+    expect(colored.foreground).toEqual(new ColorRgba(0x44, 0x55, 0x66));
+    expect(colored.background).toEqual(new ColorRgba(0x11, 0x22, 0x33));
   });
 
   it("dim fades the glyph toward the background it ends up on", () => {
@@ -68,7 +68,7 @@ describe("resolveLook colours", () => {
     expect(concealed.foreground).toEqual(new ColorRgba(0, 0, 128));
   });
 
-  it("draws a translucent colour as the colour the terminal is sent, whatever the canvas", () => {
+  it("draws a translucent color as the color the terminal is sent, whatever the canvas", () => {
     // The truecolor SGR bytes are absolute, so a terminal under THEME shows
     // exactly them; the export must too. THEME's canvas is not black, so a
     // second substrate would show here.
@@ -116,10 +116,10 @@ describe("resolveLook attributes", () => {
 
   it("names the underline, blink and outline variants, the stronger one winning", () => {
     expect(look("underline").underline).toBe("single");
-    expect(look("underline2").underline).toBe("double");
-    expect(look("underline underline2").underline).toBe("double");
+    expect(look("doubleUnderline").underline).toBe("double");
+    expect(look("underline doubleUnderline").underline).toBe("double");
     expect(look("blink").blink).toBe("slow");
-    expect(look("blink2").blink).toBe("fast");
+    expect(look("rapidBlink").blink).toBe("fast");
     expect(look("frame").outline).toBe("frame");
     expect(look("frame encircle").outline).toBe("encircle");
   });

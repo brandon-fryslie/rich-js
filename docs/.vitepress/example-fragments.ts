@@ -1,7 +1,7 @@
 /**
  * An example's output as the docs draw it: the bytes a program wrote,
- * decoded (`decodeAnsi`, each colour kept the kind it was emitted as) and
- * encoded as one HTML fragment per site colour mode.
+ * decoded (`decodeAnsi`, each color kept the kind it was emitted as) and
+ * encoded as one HTML fragment per site color mode.
  *
  * [LAW:one-source-of-truth] Two places draw output from bytes: the build,
  * which runs every example and hands what it printed to its card

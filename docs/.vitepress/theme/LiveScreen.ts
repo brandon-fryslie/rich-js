@@ -10,7 +10,7 @@
  * code above a terminal scrolled out of sight still has their edit run, and
  * hears at the code how it failed. A reader who asked their system for reduced
  * motion gets one still frame instead, and a button to run it live. It wears
- * the theme of the site's colour mode, as static output does.
+ * the theme of the site's color mode, as static output does.
  *
  * `program` makes the program to run, and is asked afresh for each run: the
  * terminal, and the worker it runs in, are fetched only when it first scrolls

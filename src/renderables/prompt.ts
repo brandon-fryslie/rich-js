@@ -35,7 +35,7 @@ import { pattern } from "../core/pattern.js";
  * on, and resolves with the raw user response. Implementations decide where
  * the input comes from (stdin readline, network, in-memory queue, etc.); the
  * console is what the prompt is drawn with, as Rich's `Console.input` draws
- * it — its theme, its colours, the target it writes to.
+ * it — its theme, its colors, the target it writes to.
  *
  * [LAW:effects-at-boundaries] The prompt arrives as a `RichText`, not bytes:
  * encoding it is the console's job, and the console arrives with it.

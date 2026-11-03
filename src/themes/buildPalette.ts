@@ -43,19 +43,19 @@ const ACCENT_KEYS: readonly AccentRole[] = ["primary", "secondary", "accent", "s
 /** The eight roles every palette is given, and every role it may also state. */
 export type StatedRoles = BaseColors & Partial<PaletteRoles>;
 
-/** A role's colour in the palette being built, derived if it was not stated. */
+/** A role's color in the palette being built, derived if it was not stated. */
 type At = (role: PaletteRole) => ColorRgba;
 type Rule = (at: At, dark: boolean) => ColorRgba;
 
 const TRANSPARENT = new ColorRgba(0, 0, 0, 0);
 const WHITE = new ColorRgba(255, 255, 255);
 
-const withAlpha = (colour: ColorRgba, alpha: number): ColorRgba =>
-  new ColorRgba(colour.red, colour.green, colour.blue, alpha);
+const withAlpha = (color: ColorRgba, alpha: number): ColorRgba =>
+  new ColorRgba(color.red, color.green, color.blue, alpha);
 
 const textOn = (alpha: number): Rule => (at) => withAlpha(contrastFor(at("background")), alpha);
 
-// [LAW:one-type-per-behavior] The roles naming another role's colour outright.
+// [LAW:one-type-per-behavior] The roles naming another role's color outright.
 const same = (role: PaletteRole): Rule => (at) => at(role);
 const none: Rule = () => TRANSPARENT;
 
@@ -96,7 +96,7 @@ function accentRules<A extends AccentRole>(accent: A) {
  * How each role not given to `buildPalette` is derived, following Textual's
  * `ColorSystem`, which generated the bundled themes:
  *
- * - `*-muted`  = the colour blended 70% toward its opposite base role — every
+ * - `*-muted`  = the color blended 70% toward its opposite base role — every
  *               accent AND the two base roles themselves, so a caller
  *               de-emphasizing body text reaches for `foreground-muted` the
  *               way it reaches for `primary-muted` to de-emphasize an accent.
@@ -105,7 +105,7 @@ function accentRules<A extends AccentRole>(accent: A) {
  *               terminal-support-dependent SGR attribute.
  * - `text-*`   = contrast text tinted 66% with the accent, the foreground for
  *               a `*-muted` ground; `buildPalette` then holds it to that ground
- * - `on-*`     = WCAG-correct contrast colour (black or white) for use as
+ * - `on-*`     = WCAG-correct contrast color (black or white) for use as
  *               foreground when the FULL accent is the background. Picked by
  *               relative luminance — single source of truth so widgets never
  *               need to invert fg/bg to get readable text. `contrastFor` is
@@ -210,13 +210,13 @@ const ROLE_NAMES: ReadonlySet<string> = new Set(PALETTE_ROLES);
 
 /**
  * Build a full semantic palette from its base colors and any other role it
- * states: a stated role keeps its colour, and everything derived from it
+ * states: a stated role keeps its color, and everything derived from it
  * follows it, but for `text-*`, which is held to read on its `*-muted`. An
  * authored theme is this with roles stated; see `RULES` for what a role
  * not stated becomes.
  *
- * A translucent colour is drawn onto `background` before anything is derived
- * from it, so `on-*` is chosen against the colour the accent is drawn as.
+ * A translucent color is drawn onto `background` before anything is derived
+ * from it, so `on-*` is chosen against the color the accent is drawn as.
  * `boost` alone stays a layer: it is what `panel` composites.
  */
 export function buildPalette(name: string, dark: boolean, given: StatedRoles): Palette {
@@ -225,9 +225,9 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
   // [LAW:no-ambient-temporal-coupling] A rule asks for the roles it reads, so
   // no order among the rules matters. The eight base roles are always known.
   const at: At = (role) => {
-    const colour = known.get(role) ?? RULES[role as keyof typeof RULES](at, dark);
-    known.set(role, colour);
-    return colour;
+    const color = known.get(role) ?? RULES[role as keyof typeof RULES](at, dark);
+    known.set(role, color);
+    return color;
   };
 
   // [LAW:single-enforcer] Stated and derived `text-*` alike: the tint is the
@@ -248,23 +248,23 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
  */
 function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRgba> {
   const drawn = drawnOn(name, given.background);
-  const stated = Object.entries(given).flatMap(([role, colour]: [string, ColorRgba | undefined]): [PaletteRole, ColorRgba][] => {
+  const stated = Object.entries(given).flatMap(([role, color]: [string, ColorRgba | undefined]): [PaletteRole, ColorRgba][] => {
     if (!ROLE_NAMES.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role`);
-    if (colour === undefined) return [];
-    return [[role as PaletteRole, role === "boost" ? colour : drawn(colour)]];
+    if (color === undefined) return [];
+    return [[role as PaletteRole, role === "boost" ? color : drawn(color)]];
   });
   const known = new Map(stated);
-  // Every base colour is derived from, and a fully transparent one draws no
-  // colour of its own to derive a muted shade or a contrast from.
+  // Every base color is derived from, and a fully transparent one draws no
+  // color of its own to derive a muted shade or a contrast from.
   // [LAW:no-silent-failure]
   for (const key of BASE_KEYS) {
-    const colour = given[key];
-    if (colour.alpha === 0) {
+    const color = given[key];
+    if (color.alpha === 0) {
       throw new RangeError(
-        `palette ${JSON.stringify(name)}: ${key} is fully transparent (${colour.hex}), so there is no colour to derive the palette from`,
+        `palette ${JSON.stringify(name)}: ${key} is fully transparent (${color.hex}), so there is no color to derive the palette from`,
       );
     }
-    known.set(key, drawn(colour));
+    known.set(key, drawn(color));
   }
   return known;
 }
@@ -273,7 +273,7 @@ function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRg
  * A palette's `text-*`: its tint held to WCAG AA on `*-muted`, moved toward
  * the palette's own text side so it also reads on `background`, where widgets
  * draw it too. The muted floor is the promise: where no lightness on the text
- * side clears it, the colour that does is on the other side, and the
+ * side clears it, the color that does is on the other side, and the
  * background pair is the one given up. Every bundled palette clears both
  * (test/themes/text-on-muted.test.ts).
  *

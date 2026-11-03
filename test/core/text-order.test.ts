@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { resolveDestination } from "../../src/core/color.js";
+import { resolveOutputTarget } from "../../src/core/color.js";
 import { detectTextOrder, type TextOrder } from "../../src/core/text-order.js";
 
 const VTE = { TERM: "xterm-256color", VTE_VERSION: "7600" };
@@ -41,15 +41,15 @@ describe("detectTextOrder", () => {
   });
 });
 
-describe("resolveDestination", () => {
-  test("a colour spec says nothing about order", () => {
+describe("resolveOutputTarget", () => {
+  test("a color spec says nothing about order", () => {
     for (const spec of ["auto", "truecolor", null] as const) {
-      expect(resolveDestination(spec, { env: VTE, isTTY: true }).textOrder).toBe("logical");
-      expect(resolveDestination(spec, { env: VTE, isTTY: false }).textOrder).toBe("plain");
+      expect(resolveOutputTarget(spec, { env: VTE, isTTY: true }).textOrder).toBe("logical");
+      expect(resolveOutputTarget(spec, { env: VTE, isTTY: false }).textOrder).toBe("plain");
     }
   });
 
   test("an order the program states wins", () => {
-    expect(resolveDestination("auto", { env: {}, isTTY: false, textOrder: "visual" }).textOrder).toBe("visual");
+    expect(resolveOutputTarget("auto", { env: {}, isTTY: false, textOrder: "visual" }).textOrder).toBe("visual");
   });
 });

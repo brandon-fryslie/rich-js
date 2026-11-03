@@ -29,7 +29,7 @@ console.print(syntax);
 
 ## Highlighting lines
 
-`startLine` sets the number the first line is given, for a snippet cut from the middle of a file. `highlightLines` names lines by those numbers, and draws their numbers in the `syntax.line_number.highlight` style, bold `grey93` on `grey27` — at sixteen colours, bold in the terminal's own colours, as Rich draws them below 256:
+`startLine` sets the number the first line is given, for a snippet cut from the middle of a file. `highlightLines` names lines by those numbers, and draws their numbers in the `syntax.line_number.highlight` style, bold `grey93` on `grey27` — at sixteen colors, bold in the terminal's own colors, as Rich draws them below 256:
 
 ```typescript
 const syntax = new Syntax(code, "typescript", {
@@ -60,7 +60,7 @@ new Console({ width: 40 }).print(syntax);
 
 ## Theme
 
-The colours are names in the console's theme, so a `Theme` restyles every `Syntax` it prints: `syntax.keyword`, `syntax.constant`, `syntax.string`, `syntax.number` and `syntax.comment` for the code, `syntax.line_number` for the gutter, and `syntax.line_number.highlight` for the number of a line in `highlightLines`.
+The colors are names in the console's theme, so a `Theme` restyles every `Syntax` it prints: `syntax.keyword`, `syntax.constant`, `syntax.string`, `syntax.number` and `syntax.comment` for the code, `syntax.line_number` for the gutter, and `syntax.line_number.highlight` for the number of a line in `highlightLines`.
 
 ```typescript
 const theme = new Theme({

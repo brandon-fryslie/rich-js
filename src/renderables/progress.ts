@@ -218,7 +218,7 @@ export class BarColumn implements ProgressColumn {
    * toward, pulses, and a pulse draws no fill. Otherwise the bar is the
    * task's `fill` drawn at the frame's time, every cell stamped with when the
    * fill next moves, so a host draws while it eases and the bar asks for
-   * nothing once it lands. Its colour is the task's: an ease that overshoots
+   * nothing once it lands. Its color is the task's: an ease that overshoots
    * the total does not finish the bar, and one that dips back does not
    * unfinish it.
    */

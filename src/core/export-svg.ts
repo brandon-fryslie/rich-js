@@ -9,11 +9,11 @@
  *
  * The geometry is Rich's — a 20px character, a cell 0.61 of that wide, a row
  * 1.22 of it tall, the same margin and padding — so a screenshot of the same
- * program matches the library this ports. The frame's colour is not Rich's:
+ * program matches the library this ports. The frame's color is not Rich's:
  * Rich strokes it white at 35% whatever the theme, which vanishes around a
  * light canvas. Here it is the theme's ink blended 35% into the canvas — over
- * a black canvas the colour Rich draws — and opaque, so the half of the stroke
- * lying outside the canvas does not take on the colour of the page around it.
+ * a black canvas the color Rich draws — and opaque, so the half of the stroke
+ * lying outside the canvas does not take on the color of the page around it.
  *
  * Nor is how a glyph lands on its cell. The exporter has no font engine and
  * does not know which font the viewer will draw with, so no advance width can
@@ -186,7 +186,7 @@ function textSvg({ text, column, cells }: Chunk, baseline: number, inVisualOrder
 /**
  * One run: its glyphs, then its lines and outline over them, in a group whose
  * class carries the look — so the lines take the glyph's `fill` and blink
- * with it. The outline is a stroke, so it names its colour itself.
+ * with it. The outline is a stroke, so it names its color itself.
  */
 function runSvg(run: PlacedRun, className: string): string {
   const { look } = run;

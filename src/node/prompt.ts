@@ -16,7 +16,7 @@
  * The prompt is printed by the `Console` it was asked on — the app's, when it
  * passed one as `console`, a new default one otherwise — and then a line is
  * read, as Rich's `Console.input` prints its prompt and calls `input()`. So
- * the prompt is coloured exactly as that console's own output would be and
+ * the prompt is colored exactly as that console's own output would be and
  * goes to its target: a console on stderr asks on stderr, beside the
  * invalid-answer messages it prints. It goes as one logical line, never broken
  * at the console's width: the terminal wraps it at whatever width it has.

@@ -30,7 +30,7 @@ describe("an effect's program", () => {
     const dissolve = programs.dissolve;
     const fn = effects.slice(effects.indexOf("export function dissolveOut("), effects.indexOf("\n}\n", effects.indexOf("export function dissolveOut(")) + 2);
     expect(dissolve).toContain(fn.replace(/^export /, ""));
-    for (const reached of ["const DISSOLVE_SHAPE", "function order(", "function veiled(", "const OWN = 0.45;", "function fbm(", "function noise("]) expect(dissolve).toContain(reached);
+    for (const reached of ["const DISSOLVE_SHAPE", "function order(", "function mask(", "const OWN = 0.45;", "function fbm(", "function noise("]) expect(dissolve).toContain(reached);
     // Nothing is imported from a module the package does not export.
     expect(dissolve).not.toContain("noise.js");
     // Not what it does not reach.
@@ -80,7 +80,7 @@ describe("an effect's card", { timeout: 120_000 }, () => {
 
   const cardOf = (effect: string) => cards.find((c) => c.effect === effect)!.card;
 
-  it("is every effect's, in the demo's order, each with sliders and every colour as drawn", () => {
+  it("is every effect's, in the demo's order, each with sliders and every color as drawn", () => {
     expect(cards.map((c) => c.effect)).toEqual([...EFFECTS]);
     for (const { effect, card } of cards) {
       expect(card.program.files.map((file) => file.name)).toEqual([`${effect}.ts`, "kit.ts", "../effects-feel/subjects.ts"]);
@@ -90,7 +90,7 @@ describe("an effect's card", { timeout: 120_000 }, () => {
     }
   });
 
-  it("carries every colour as drawn to the playground, where the effect is shown as on the card", async () => {
+  it("carries every color as drawn to the playground, where the effect is shown as on the card", async () => {
     for (const { card } of cards) expect((await decodeProgram(card.tryIt.program)).contrast).toBe("as drawn");
   });
 

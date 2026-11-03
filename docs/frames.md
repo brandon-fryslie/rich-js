@@ -1,12 +1,12 @@
 # Frames
 
-Frames change *what* an element shows on a beat: a sequence of frames, each held for its own number of seconds and then replaced by the next, looping. An [effect](/effects) changes how an element's cells are coloured and may never change a glyph; frames are the other kind of motion, and the two compose by nesting.
+Frames change *what* an element shows on a step sequence: a sequence of frames, each shown for its own number of seconds and then replaced by the next, looping. An [effect](/effects) changes how an element's cells are colored and may never change a glyph; frames are the other kind of motion, and the two compose by nesting.
 
 Nothing here reads a clock. A `FrameSequence` is the frames prepared to draw, built once and kept, and placed like any renderable it draws the frame in progress at the time of the frame it is drawn in. The same time always draws the same bytes, at one redraw a second or sixty, and finding which frame the time lands on is all a draw does, so a frame costs the same over ninety frames as over one.
 
 ## A sequence of frames
 
-Each frame is a `RichText`, free to carry its own style, and its hold in seconds. Ask the sequence for a moment and it hands back the frame in progress then, counted from the first frame at `t = 0` and wrapping every period:
+Each frame is a `RichText`, free to carry its own style, and its duration in seconds. Ask the sequence for a moment and it hands back the frame in progress then, counted from the first frame at `t = 0` and wrapping every period:
 
 ```typescript
 import { FrameSequence, RichText, Style } from "@promptctl/rich-js";
@@ -25,11 +25,11 @@ for (const t of [0, 1.5, 2.2, 3]) {
 
 Every frame draws at one width, the widest frame's, padded on the right, so whatever sits beside the frames never moves as they turn; the sequence's `width` says what that is. A frame is a fragment of a line: it ends no line of its own, a newline inside one becomes a space, and it measures at exactly its width; a slot forced narrower crops it, and never folds or wraps it onto a second line.
 
-A `FrameSequence` is an [animation](/animation) of the frame shown: `at(t)` is the frame in progress as a `RichText` of its own, a copy, and `nextChange(t)` is when it gives way to the next. Placed in a panel, a table cell or a view, it draws that frame at the frame's time, its cells [saying when it turns](#when-the-frame-next-changes). The holds are the sequence's `beat`, whose `period` is their sum.
+A `FrameSequence` is an [animation](/animation) of the frame shown: `at(t)` is the frame in progress as a `RichText` of its own, a copy, and `validUntil(t)` is when it gives way to the next. Placed in a panel, a table cell or a view, it draws that frame at the frame's time, its cells [saying when it turns](#when-the-frame-next-changes). The durations are the sequence's `stepSequence`, whose `period` is their sum.
 
-## Holds are seconds
+## Durations are seconds
 
-A hold is a number of seconds, never a count of frames, so one sequence plays unchanged whatever the redraw rate. Redrawn sixty times a second, a one-second frame shows for exactly sixty frames. Redrawn once a second, as a status line is, the same sequence turns once a second: a frame held for less than a second is skipped, and a sequence whose period is a whole number of seconds shows one frame forever:
+A frame's duration is a number of seconds, never a count of frames, so one sequence plays unchanged whatever the redraw rate. Redrawn sixty times a second, a one-second frame shows for exactly sixty frames. Redrawn once a second, as a status line is, the same sequence turns once a second: a frame shown for less than a second is skipped, and a sequence whose period is a whole number of seconds shows one frame forever:
 
 ```typescript
 import { FrameSequence, RichText } from "@promptctl/rich-js";
@@ -43,11 +43,11 @@ console.print(`once a second:  ${onceASecond.join(" ")}`);
 console.print(`sixty a second: ${[...new Set(sixtyASecond)].join(" ")}`);
 ```
 
-A sequence does not adapt to the rate: the rate belongs to whoever draws the frames, and so does the fix, which is holds that the host's rate can show. The [easing and phase vocabulary](/easing) is where the timing comes from, and the beat is part of it.
+A sequence does not adapt to the rate: the rate belongs to whoever draws the frames, and so does the fix, which is durations that the host's rate can show. The [easing and phase vocabulary](/easing) is where the timing comes from, and the step sequence is part of it.
 
 ## When the frame next changes
 
-A frame drawn at `t` is drawn until the next frame begins, and the sequence's `nextChange(t)` says when that is, the answer every [animation](/animation) gives:
+A frame drawn at `t` is drawn until the next frame begins, and the sequence's `validUntil(t)` says when that is, the answer every [animation](/animation) gives:
 
 ```typescript
 import { FrameSequence, RichText } from "@promptctl/rich-js";
@@ -56,17 +56,17 @@ const quarters = new FrameSequence(["a", "b", "c", "d"].map((glyph) => ({ text: 
 const whole = new FrameSequence(["›", "››", "›››"].map((glyph) => ({ text: new RichText(glyph), seconds: 1 })));
 
 for (const t of [0, 1, 2]) {
-  console.print(`t=${t}s  quarters change at ${quarters.nextChange(t)}s, chevrons at ${whole.nextChange(t)}s`);
+  console.print(`t=${t}s  quarters change at ${quarters.validUntil(t)}s, chevrons at ${whole.validUntil(t)}s`);
 }
 ```
 
-Placed, the sequence stamps every cell of the frame it draws with that moment, on its `Style`, where it rides up through any container the frame sits in, as a cell's anchor does, and writes no byte. Whoever holds the composed frame reads the soonest off it with `Segment.nextChange`, and with what it was told through the render options' `onHold` of holds no cell carries, so a host knows when to draw again without asking each container what it holds. An [effect](/effects) stamps its frame the same way. `at(t)` alone is the frame and no stamp, for every animation: the time an animation is asked for may be one a [timeline](/animation#playback-a-timeline) or a lifecycle mapped from the host's, and a stamp made there would be on a clock the host cannot read.
+Placed, the sequence stamps every cell of the frame it draws with that moment, on its `Style`, where it rides up through any container the frame sits in, as a cell's anchor does, and writes no byte. Whoever holds the composed frame reads the soonest off it with `Segment.validUntil`, and with what it was told through the render options' `onValidity` of holds no cell carries, so a host knows when to draw again without asking each container what it holds. An [effect](/effects) stamps its frame the same way. `at(t)` alone is the frame and no stamp, for every animation: the time an animation is asked for may be one a [timeline](/animation#playback-a-timeline) or a lifecycle mapped from the host's, and a stamp made there would be on a clock the host cannot read.
 
 A host that draws once a second can read from the answers alone that it is skipping frames: at each `t` the quarters above change at `t + 0.25`, before its next draw at `t + 1`, while the chevrons change exactly at it. A host drawing sixty times a second sees the next change never come before its next frame. A [`Live`](/live#auto-refresh) reads the answer off every frame it draws and wakes then, so it draws each frame of a sequence rather than a sample of them.
 
 ## Spinners
 
-A `Spinner` is an [animation](/animation) built on a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame held for the spinner's interval, with an optional label after it. It is built once and placed like any renderable, drawing the frame in progress at the frame's time, and a spinner reads no clock. `spinner.at(t)` is the frame at a time you name, as Rich's `Spinner.render(time)` is. `speed` is a [timeline](/animation#playback-a-timeline) the frames run on from `t = 0`: `2` turns the spinner twice as fast, and a negative speed runs it backwards. Whichever way it turns, a placed spinner's cells say when it turns next on the host's clock — exactly, for the frames the output draws, an ASCII-only output drawing the `line` spinner in its place. `spinner.nextChange(t)` answers before the output is known, so it is the sooner of the two.
+A `Spinner` is an [animation](/animation) built on a `FrameSequence` over one of the named spinners — `dots`, `line`, `bouncingBall` and the rest of the cli-spinners set — each frame shown for the spinner's interval, with an optional label after it. It is built once and placed like any renderable, drawing the frame in progress at the frame's time, and a spinner reads no clock. `spinner.at(t)` is the frame at a time you name, as Rich's `Spinner.render(time)` is. `speed` is a [timeline](/animation#playback-a-timeline) the frames run on from `t = 0`: `2` turns the spinner twice as fast, and a negative speed runs it backwards. Whichever way it turns, a placed spinner's cells say when it turns next on the host's clock — exactly, for the frames the output draws, an ASCII-only output drawing the `line` spinner in its place. `spinner.validUntil(t)` answers before the output is known, so it is the sooner of the two.
 
 ```typescript
 import { Group, Spinner } from "@promptctl/rich-js";
@@ -125,7 +125,7 @@ for (frameTime of [0, 1.5, 2.2, 3]) {
 
 The template is compiled once and reads the time each time it is evaluated, so a host that evaluates it on every redraw hands in each redraw's time and nothing else changes.
 
-`stepped <seconds> <color> <seconds> <color> …` is the same beat for a colour: the colour in progress at the moment, as a [colour value](/template-bindings#colors-are-values), so it goes wherever a colour goes. Here the chevrons turn and their ink steps through three bright colours, each kept readable on the ground the template names:
+`stepped <seconds> <color> <seconds> <color> …` is the same step sequence for a color: the color in progress at the moment, as a [color value](/template-bindings#colors-are-values), so it goes wherever a color goes. Here the chevrons turn and their ink steps through three bright colors, each kept readable on the ground the template names:
 
 ```typescript
 import { createEngine } from "@promptctl/go-template-js";
@@ -138,7 +138,7 @@ const engine = createEngine<RichText>(
 );
 
 const gauge = engine.compile(`{{- $bg := "#313244" -}}
-{{- $ink := readableOn (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}
+{{- $ink := ensureContrast (stepped 1 "#ff5555" 1 "#f1fa8c" 1 "#50fa7b") $bg 4.5 -}}
 {{ frames 1 "›" 1 "››" 1 "›››" | fg $ink | bg $bg }}`);
 
 for (frameTime of [0, 1, 2, 3]) {

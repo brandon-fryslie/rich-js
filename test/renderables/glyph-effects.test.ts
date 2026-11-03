@@ -23,12 +23,12 @@ function lines(...rows: string[]): Renderable {
 const words = lines("hello, wide 漢字 world");
 const field = lines(" ".repeat(24), "     a few words        ", " ".repeat(24), " ".repeat(24));
 
-/** What `effect` draws over `child` at `t`, with no colour, the frame's next change, and the animation it drew it from. */
+/** What `effect` draws over `child` at `t`, with no color, the frame's next change, and the animation it drew it from. */
 function draw(effect: GlyphEffect, child: Renderable, t: number): { text: string; next: number; animation: Animation<GlyphFrame> } {
   let animation: Animation<GlyphFrame> | undefined;
   const watched: GlyphEffect = (cells) => (animation = effect(cells));
   const segments = [...inFrame(new GlyphEffected(child, watched, { key: "k" }), t).render({ maxWidth: 80, colorSystem: null })];
-  return { text: segments.map((s) => s.text).join(""), next: Segment.nextChange(segments), animation: animation! };
+  return { text: segments.map((s) => s.text).join(""), next: Segment.validUntil(segments), animation: animation! };
 }
 
 /** `count` times `rate` a second apart from 0. */
@@ -55,7 +55,7 @@ describe("the glyph effect catalogue — at one frame a second and sixty", () =>
         const [before, after] = [draw(effect, child, times[i - 1]!), draw(effect, child, times[i]!)];
         if (before.text === after.text) continue;
         expect(before.next).toBeLessThanOrEqual(times[i]!);
-        expect(after.animation.lastChange(times[i]!)).toBeGreaterThan(times[i - 1]!);
+        expect(after.animation.validFrom(times[i]!)).toBeGreaterThan(times[i - 1]!);
       }
     });
 

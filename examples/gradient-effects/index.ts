@@ -1,12 +1,12 @@
 /**
- * gradient-effects — a colour ramp laid across a rule and a panel's border,
+ * gradient-effects — a color ramp laid across a rule and a panel's border,
  * scrolling, turning its hue, and settling, playing in a `Live` for twenty
  * seconds.
  *
  * THIS IS A DEMO: `ColorRamp.moving` and the `gradient` effect
  * (`src/themes/ramp.ts`, `src/renderables/effects.ts`), for seeing them move.
  * Each element is wrapped in an `Effected` drawn at the `Live`'s time, so what
- * it shows at a `t` is the same at any frame rate; on a sixteen-colour
+ * it shows at a `t` is the same at any frame rate; on a sixteen-color
  * terminal every ramp holds still.
  */
 
@@ -21,7 +21,7 @@ import {
   Console,
   Live,
   Panel,
-  Phase,
+  WrapMode,
   RichText,
   Rule,
   gradient,
@@ -42,15 +42,15 @@ const hues = new ColorRamp(EASES.linear, [
 ]);
 
 const ELEMENTS: readonly [string, Animation<ColorRamp>][] = [
-  ["scrolling once every four seconds", hues.moving({ scroll: Animation.continuous(Phase.loop(4)) })],
-  ["its hues turning once every ten", hues.moving({ hue: Animation.continuous(Phase.loop(10)) })],
-  ["swaying, and settling a quarter turn round", hues.moving({ scroll: Animation.continuous(Phase.pingPong(6)), hue: tween(0, 0.25, { seconds: 3, ease: EASES["ease-out"] }) })],
+  ["scrolling once every four seconds", hues.moving({ scroll: Animation.continuous(WrapMode.loop(4)) })],
+  ["its hues turning once every ten", hues.moving({ hue: Animation.continuous(WrapMode.loop(10)) })],
+  ["swaying, and settling a quarter turn round", hues.moving({ scroll: Animation.continuous(WrapMode.pingPong(6)), hue: tween(0, 0.25, { seconds: 3, ease: EASES["ease-out"] }) })],
 ];
 
 const view: Renderable = new Group(
   ...ELEMENTS.flatMap(([title, ramp]) => [
     new Effected(new Rule(title, { style: LINE }), gradient(ramp, [LINE]), { key: `rule ${title}` }),
-    new Effected(new Panel(new RichText("the words keep their own colour", { style: "#cdd6f4" }), { borderStyle: LINE, width: 50 }), gradient(ramp, [LINE]), {
+    new Effected(new Panel(new RichText("the words keep their own color", { style: "#cdd6f4" }), { borderStyle: LINE, width: 50 }), gradient(ramp, [LINE]), {
       key: `panel ${title}`,
     }),
   ]),

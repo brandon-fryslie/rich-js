@@ -71,21 +71,21 @@ export interface LiveTerminalOptions {
   readonly theme: TerminalTheme;
   readonly font: { readonly family: string; readonly size: number };
   /**
-   * The least contrast xterm lets a colour have against its background; it
-   * changes a colour to reach it. 1 shows every colour as drawn.
+   * The least contrast xterm lets a color have against its background; it
+   * changes a color to reach it. 1 shows every color as drawn.
    */
   readonly minimumContrast: number;
 }
 
 /**
  * The contrast a docs example is shown at. A program that picks its own
- * colours picks them for a background it cannot see: `[white]` is white on
- * white in the light theme. The terminal keeps every colour readable against
+ * colors picks them for a background it cannot see: `[white]` is white on
+ * white in the light theme. The terminal keeps every color readable against
  * its background (WCAG AA), as several desktop terminals can.
  */
 export const READABLE_CONTRAST = 4.5;
 
-/** The least contrast a card's live terminal lets a colour have, by the card's `Contrast` (example-card.ts). */
+/** The least contrast a card's live terminal lets a color have, by the card's `Contrast` (example-card.ts). */
 export const MINIMUM_CONTRAST: Readonly<Record<Contrast, number>> = { readable: READABLE_CONTRAST, "as drawn": 1 };
 
 /**
@@ -105,7 +105,7 @@ export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
   return { family: style.fontFamily, size: parseFloat(style.fontSize) };
 }
 
-/** xterm's colour options, from the theme a program's output is drawn in everywhere else. */
+/** xterm's color options, from the theme a program's output is drawn in everywhere else. */
 function xtermTheme(theme: TerminalTheme): Record<string, string> {
   const names = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
   const ansi = Object.fromEntries(

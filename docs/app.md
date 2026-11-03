@@ -29,11 +29,11 @@ await app.run();
 
 ## Keys and the pointer
 
-`onKey(handler)` hears every key the terminal sends, as a `KeyPress`: the `key`, the `character` it types (`""` for a key that types none), and whether `shift`, `ctrl` and `meta` were held. `keyName(press)` is the one name a key goes by, so a keymap is a table keyed by it. A key that types a character is named by that character — `q`, `G`, `>` — and any other key by its name — `up`, `enter`, `space`, `f5` — with the modifiers held in front, always in the order `ctrl+`, `meta+`, `shift+`: `ctrl+z`, `shift+tab`, `meta+left`. Shift is never named on a character, which already carries it, with Alt held or not: Shift+G is `G`, Alt+Shift+G is `meta+G`.
+`onKey(handler)` hears every key the terminal sends, as a `KeyEvent`: the `key`, the `character` it types (`""` for a key that types none), and whether `shift`, `ctrl` and `meta` were held. `keyName(press)` is the one name a key goes by, so a keymap is a table keyed by it. A key that types a character is named by that character — `q`, `G`, `>` — and any other key by its name — `up`, `enter`, `space`, `f5` — with the modifiers held in front, always in the order `ctrl+`, `meta+`, `shift+`: `ctrl+z`, `shift+tab`, `meta+left`. Shift is never named on a character, which already carries it, with Alt held or not: Shift+G is `G`, Alt+Shift+G is `meta+G`.
 
 `onMouse(handler)` hears every pointer event but the vertical wheel — presses, releases, motion and sideways scrolling — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
 
-`onWheel(handler)` is offered each notch of the wheel as a `Wheel` — the cell under the pointer and `lines`, `1` towards the end of the content and `-1` back — and returns whether it moved anything with it. A notch nothing moved with is passed outward, to the host's `passWheel`: on a page the page scrolls, and in a terminal, which is the outermost thing, nothing happens. An app that reads no wheel passes every notch, so a still app on a page never traps the page's scrolling. A `WidgetApp` offers the wheel to the viewport under the pointer first, then to its own `onWheel` handlers.
+`onWheel(handler)` is offered each notch of the wheel as a `WheelEvent` — the cell under the pointer and `lines`, `1` towards the end of the content and `-1` back — and returns whether it moved anything with it. A notch nothing moved with is passed outward, to the host's `passWheel`: on a page the page scrolls, and in a terminal, which is the outermost thing, nothing happens. An app that reads no wheel passes every notch, so a still app on a page never traps the page's scrolling. A `WidgetApp` offers the wheel to the viewport under the pointer first, then to its own `onWheel` handlers.
 
 Ctrl+C stops the app. No other key means anything to the app: every other key does what your handlers make it do, so `q` quits only an app that binds it. `quitKeys` lists the keys that stop the app, by `keyName`, and they are heard before any handler, so no handler can swallow one. `["ctrl+c"]` is the default; `[]` leaves every key to you. A name no key goes by — `esc`, `Ctrl+C`, `shift+g` — throws when the app is made, rather than binding a key that never fires:
 
@@ -135,7 +135,7 @@ const app = new App({
 });
 ```
 
-A `WidgetApp` takes the same options. Its `theme` names styles; it does not colour the widgets, each of which takes its own [`theme`](/widgets#the-widgets) palette.
+A `WidgetApp` takes the same options. Its `theme` names styles; it does not color the widgets, each of which takes its own [`theme`](/widgets#the-widgets) palette.
 
 ## Asking the terminal
 
@@ -143,7 +143,7 @@ A terminal reports what it is when asked, and a running app is what asks: it hol
 
 The result says how the ask ended: `answered`, `timeout`, `left` (the app handed the terminal back first), or `unasked` (the host writes to no terminal). It rejects only when writing to the terminal throws. Asks run one at a time, and only while the app runs: an ask from an app that has stopped or suspended ends `left`, and one from an app that has not started, or with a timeout that is not a positive, finite number of seconds, throws. A reply that arrives after its ask has ended is dropped rather than typed when it arrives in one read; one split across reads by then cannot be told from Alt+], Alt+P or Alt+_ typed fast, and is read as those keys.
 
-`terminalColors(app)` asks OSC 10 and OSC 11 for the terminal's own foreground and background, and returns the terminal the app draws on with them in place, or `undefined` when the terminal did not report both. Set it as `app.terminal`, and every frame from the next on measures its contrast against the colours actually on screen rather than the ones the colour depth assumes:
+`terminalColors(app)` asks OSC 10 and OSC 11 for the terminal's own foreground and background, and returns the terminal the app draws on with them in place, or `undefined` when the terminal did not report both. Set it as `app.terminal`, and every frame from the next on measures its contrast against the colors actually on screen rather than the ones the color depth assumes:
 
 ```ts node
 import { RichText } from "@promptctl/rich-js";
@@ -161,7 +161,7 @@ if (learned !== undefined) app.terminal = learned;
 await running;
 ```
 
-Inside tmux, tmux answers OSC 10 and OSC 11 itself, with its client terminal's colours, and only DA1 when no client is attached. `npm run terminal-colors` shows what your terminal says.
+Inside tmux, tmux answers OSC 10 and OSC 11 itself, with its client terminal's colors, and only DA1 when no client is attached. `npm run terminal-colors` shows what your terminal says.
 
 ## Every exit hands the terminal back
 

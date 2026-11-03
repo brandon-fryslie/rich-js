@@ -12,7 +12,7 @@ const cellLenMemo = new Memo<number>();
 const ZWJ = 0x200d;
 const ZWJ_CHARACTER = String.fromCodePoint(ZWJ);
 const VS16 = 0xfe0f;
-const JOINERS = pattern(/[\u200d\ufe0f]/);
+const SEPARATOR_STYLES = pattern(/[\u200d\ufe0f]/);
 const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
 // Segmented afresh on every call: a cursor's step costs a few microseconds
 // even in 10k code units, and a cache of segmentations would hold native
@@ -28,7 +28,7 @@ function dispositionCells(codePoint: number): 0 | 1 | 2 {
     case "keep": return codePointWidth(codePoint);
     case "line-break": return 0;
     case "pictured": return 0;
-    case "withheld": return 0;
+    case "zeroWidth": return 0;
   }
 }
 
@@ -60,7 +60,7 @@ function selectsAGlyph(text: string, index: number): boolean {
  * across it would need (UAX #29 GB11). So the width of a string stays the sum over
  * the clusters of the text as it was given, and every cut stays exact.
  */
-export function replaceWithheld(text: string, replacement: (character: string) => string): string {
+export function replaceZeroWidth(text: string, replacement: (character: string) => string): string {
   if (text.match(WITHHELD) === null) return text;
   const gone = new Set<number>();
   const extended = new RegExp(`[\\p{Grapheme_Extend}\\p{Emoji_Modifier}${ZWJ_CHARACTER}]*`, "uy");
@@ -100,7 +100,7 @@ export function unicodeEscape(character: string): string {
 
 /** `text` as the wire may hold it. */
 export function wireText(text: string): string {
-  return replaceWithheld(text, () => "");
+  return replaceZeroWidth(text, () => "");
 }
 
 // Rich's `cell_len` over a run of text: each code point the cells Rich's table
@@ -139,7 +139,7 @@ function richCells(text: string): number {
 function measure(text: string): number {
   if (PRINTABLE_ASCII.test(text)) return text.length;
   const drawn = wireText(text);
-  if (!JOINERS.test(drawn)) return richCells(drawn);
+  if (!SEPARATOR_STYLES.test(drawn)) return richCells(drawn);
   let cells = 0;
   for (const { segment } of SEGMENTER.segment(drawn)) cells += richCells(segment);
   return cells;

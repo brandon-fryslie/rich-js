@@ -132,22 +132,22 @@ export class Segment {
    * again: a frame of frames answers the next frame's start, a transition
    * `t` until it is done, still content never.
    */
-  static nextChange(segments: Iterable<Segment>): number {
+  static validUntil(segments: Iterable<Segment>): number {
     let soonest = Number.POSITIVE_INFINITY;
-    for (const segment of segments) soonest = Math.min(soonest, segment.style?.hold.nextChange ?? Number.POSITIVE_INFINITY);
+    for (const segment of segments) soonest = Math.min(soonest, segment.style?.validity.validUntil ?? Number.POSITIVE_INFINITY);
     return soonest;
   }
 
   /**
    * Since when what `segments` show has been what it is, on the same
    * timeline: the latest `Style.hold` among them, the other end of the
-   * hold `nextChange` reads — `t` for a frame something in moves every
+   * hold `validUntil` reads — `t` for a frame something in moves every
    * frame, `-Infinity` for one that always was. What a host running its
    * timeline backwards asks before drawing again.
    */
-  static lastChange(segments: Iterable<Segment>): number {
+  static validFrom(segments: Iterable<Segment>): number {
     let latest = Number.NEGATIVE_INFINITY;
-    for (const segment of segments) latest = Math.max(latest, segment.style?.hold.lastChange ?? Number.NEGATIVE_INFINITY);
+    for (const segment of segments) latest = Math.max(latest, segment.style?.validity.validFrom ?? Number.NEGATIVE_INFINITY);
     return latest;
   }
 

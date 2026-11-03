@@ -463,7 +463,7 @@ The second argument takes three options:
 - `sortKeys` — sort object keys at every depth, including objects inside
   arrays. Keys compare by UTF-16 code unit, so `"Zebra"` sorts before `"apple"`.
   Defaults to `false`.
-- `highlight` — colour keys, strings, numbers, booleans, `null` and braces.
+- `highlight` — color keys, strings, numbers, booleans, `null` and braces.
   Defaults to `true`; `false` prints plain text.
 
 ```typescript
@@ -473,7 +473,7 @@ console.printJson({ name: "Alice" }, { highlight: false });
 ```
 
 `highlight` belongs to `printJson`, not to the console. A console constructed
-with `highlight: false` still colours `printJson` output, because that setting
+with `highlight: false` still colors `printJson` output, because that setting
 controls what `print()` does to strings. Pass `{ highlight: false }` to
 `printJson` itself to get plain text.
 
@@ -575,7 +575,7 @@ Each export clears the recording unless you pass `{ clear: false }`, which is
 why the first call above passes it: without it, `exportHtml` would have nothing
 left to draw.
 
-`exportHtml` draws the page in a `TerminalTheme`. The theme supplies the page background, the default text colour and the colours ANSI colour names resolve to; with no theme the page is white text on black over the standard ANSI colours.
+`exportHtml` draws the page in a `TerminalTheme`. The theme supplies the page background, the default text color and the colors ANSI color names resolve to; with no theme the page is white text on black over the standard ANSI colors.
 
 ```typescript
 import { SOLARIZED_LIGHT } from "@promptctl/rich-js";
@@ -583,7 +583,7 @@ import { SOLARIZED_LIGHT } from "@promptctl/rich-js";
 console.print("[bold]Hello![/bold] [red]red[/] [blue]blue[/]");
 const html = console.exportHtml({ theme: SOLARIZED_LIGHT });
 
-// The page's colours, and the span that drew "red"
+// The page's colors, and the span that drew "red"
 const page = /body\{.*\}/.exec(html)?.[0];
 const red = /<span[^>]*>red<\/span>/.exec(html)?.[0];
 new Console().print(new RichText(`${page}\n${red}`));
@@ -692,7 +692,7 @@ When output is not going to a terminal (e.g. piped to a file), rich-js strips co
 ```typescript
 const colored = new Console({ forceTerminal: true });     // always emit ANSI codes
 const animated = new Console({ forceInteractive: true }); // always show animations
-colored.print("[bold green]colour[/] even when piped");
+colored.print("[bold green]color[/] even when piped");
 ```
 
 ## ASCII-only terminals
@@ -722,10 +722,10 @@ takes an option of its own for it. `renderToString` takes the same
 
 ## The terminal a frame is drawn on
 
-An effect that fades toward the ground, or moves a colour the terminal supplies,
-has to know the colours of the terminal it is drawn on, and a terminal's palette
+An effect that fades toward the ground, or moves a color the terminal supplies,
+has to know the colors of the terminal it is drawn on, and a terminal's palette
 cannot be queried. So the program says what it is, once, and every effect this
-console draws resolves its colours there:
+console draws resolves its colors there:
 
 ```typescript
 import { Console, Effected, EFFECT_CATALOGUE, RichText, SOLARIZED_LIGHT } from "@promptctl/rich-js";
@@ -738,7 +738,7 @@ light.print(new Effected(new RichText("arriving"), arriving, { key: "status" }).
 `renderToString` and an [`App`](./app) take the same `terminal` option. A
 renderable reads it from its render options, as it reads `colorSystem`, so a
 container passes it down without knowing it is there. With none named it is the
-terminal the colour depth assumes. It is apart from `theme`, the names a style
+terminal the color depth assumes. It is apart from `theme`, the names a style
 string may use, and from the `theme` of an [export](#exporting), which draws the
 recording for its own reader.
 
@@ -748,7 +748,7 @@ recording for its own reader.
 frame of a `Live` drawn through it, with its motion taken out: a spinner on
 its first frame, a fade arrived, a typewriter done, and an element shown
 from when it entered until it is told to leave. Nothing asks to be drawn
-again but a change of content. Nothing blinks either: a `blink` or `blink2`
+again but a change of content. Nothing blinks either: a `blink` or `rapidBlink`
 style is written without it, wherever it came from, and the exports of a
 recording console show the text steady. A terminal cannot report the preference, so
 the program hands it in, here or to `renderToString`;
@@ -806,7 +806,7 @@ with no ambient `process` involved. Node's own `process` satisfies the same
 needed at either end.
 
 The environment supplies both streams, and `stderr: true` binds the console to
-`stderr` for all three questions at once — colour, dimensions, and where bytes
+`stderr` for all three questions at once — color, dimensions, and where bytes
 go. A console bound to `stderr` therefore wraps at the width of `stderr`, which
 matters in the ordinary CLI shape where stdout is piped to a file and stderr is
 still an interactive terminal.

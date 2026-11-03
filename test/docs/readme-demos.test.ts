@@ -34,7 +34,7 @@ describe("readme-demos rule", () => {
     ["# pkg", "## Demos", "| Script | Demo | What it shows |", "|---|---|---|", ...rows, "## Next", "| `npm run other` | elsewhere | not a demo row |"].join("\n");
 
   it("reads only the rows under the Demos heading", () => {
-    expect(readmeDemos(table("| `npm run strip` | rich-strip | Joiners. |"))).toEqual(["strip → rich-strip"]);
+    expect(readmeDemos(table("| `npm run strip` | rich-strip | Separators. |"))).toEqual(["strip → rich-strip"]);
   });
 
   it("throws when the Demos heading is gone", () => {
