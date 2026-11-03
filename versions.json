@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-546",
+      "ref": "refs/pull/546/merge",
+      "sha": "d05db8594e511d5e9e7304c3d93c2067e8f0fddc",
+      "timestamp": "2026-11-03T13:17:12.624Z",
+      "commits": [
+        {
+          "sha": "d05db8594e511d5e9e7304c3d93c2067e8f0fddc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T06:14:55-07:00",
+          "message": "Merge d5a72397fa67f832191bdbe990e3ff66a0e270d2 into c891ff7282f7b63c259c98e17faa626b8798c9f9\n"
+        },
+        {
+          "sha": "d5a72397fa67f832191bdbe990e3ff66a0e270d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T06:13:56-07:00",
+          "message": "Pulse and shimmer stay under the 0.04 bar as drawn: the loops test measures the snapped field, and the two loops slow to 53 s and 127 s (rich-animation-42lg.twz)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-545",
       "ref": "refs/pull/545/merge",
       "sha": "dbc0241d0a8b28937a524d50ee9af29b7252ff7d",
