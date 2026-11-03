@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-542",
+      "ref": "refs/pull/542/merge",
+      "sha": "f8b43b918298348420e164ad683bbbb7a71bc2b9",
+      "timestamp": "2026-11-03T11:52:30.135Z",
+      "commits": [
+        {
+          "sha": "f8b43b918298348420e164ad683bbbb7a71bc2b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T11:50:08Z",
+          "message": "Merge bc0bc64a0db716271a314c5a51dadba124a8a96c into 75a997116d79f6aea9a5ea0f8c52afd76d6a42d8\n"
+        },
+        {
+          "sha": "bc0bc64a0db716271a314c5a51dadba124a8a96c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:49:43-07:00",
+          "message": "Docs claim only what a crop drops: an Effected's frames past a Viewport\n\nSecond high review of #542: lifecycle halves and other switches still tell\npast a crop; that and the double walk are on rich-animation-27tq.4dc.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "7333422c5716271aee2aa880dac08d5256c2d318",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:43:24-07:00",
+          "message": "A hidden effect stays early: placed always stamps with what was read\n\nReview of #542: the empty-reads shortcut stamped UNLAID, so an effect whose\ndrawing a container hid answered 'never' and froze. Test for the lone case;\ndocs name the containers that drop an effect's hold and the scroll slot's\nexception.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "a6076d88eb6d58b3ee08892eaea59d4db985bad1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:37:56-07:00",
+          "message": "Keep ScrollFrame's whole-content hold; scope the claim to effects in a Viewport\n\nReview of #542: dropping ScrollFrame's report lost a template's width change\ncropped left of the slot. Restored; the look/layout split moves to the stamp\nitself on its own ticket. placed skips the second walk when nothing was read.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "c532c30cb2189fbb5bd3003470bd9334dab6d86d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:31:22-07:00",
+          "message": "A crop drops the holds of the looks it drops (rich-animation-27tq.b7e)\n\nA placed animation tells the frame only the hold of which cells it draws\n(its switches); an effect's frames ride only on its cells, so a Viewport\nor scroll slot cropping them away no longer wakes the host. ScrollFrame's\nown report of its whole content is deleted: placed already tells geometry\nfrom inside it. The caret stays a told switch: its look is a caller-supplied\nStyle that may be reverse, which an effect's CellLook cannot carry.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-541",
       "ref": "refs/pull/541/merge",
       "sha": "b45fd099ce122e9ec154669479c4a8191c71b429",
@@ -34,42 +77,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-03T04:30:34-07:00",
           "message": "The e2e suite serves the site's xterm.js from disk, not jsDelivr (rich-unfiled-791c.5v4l)\n\nA stalled CDN fetch left every live terminal at Run with no error, which\nread as a regression in the page. e2e/test.ts routes jsDelivr for every\nspec: XTERM's files come from the pinned @xterm/xterm devDependency (the\nbrowser's integrity check holds the two to one version), anything else\nthere is aborted.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-542",
-      "ref": "refs/pull/542/merge",
-      "sha": "abb987eb3b617457d5313a76f38953a5c74eab6e",
-      "timestamp": "2026-11-03T11:45:46.539Z",
-      "commits": [
-        {
-          "sha": "abb987eb3b617457d5313a76f38953a5c74eab6e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T11:43:36Z",
-          "message": "Merge 7333422c5716271aee2aa880dac08d5256c2d318 into 75a997116d79f6aea9a5ea0f8c52afd76d6a42d8\n"
-        },
-        {
-          "sha": "7333422c5716271aee2aa880dac08d5256c2d318",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:43:24-07:00",
-          "message": "A hidden effect stays early: placed always stamps with what was read\n\nReview of #542: the empty-reads shortcut stamped UNLAID, so an effect whose\ndrawing a container hid answered 'never' and froze. Test for the lone case;\ndocs name the containers that drop an effect's hold and the scroll slot's\nexception.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "a6076d88eb6d58b3ee08892eaea59d4db985bad1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:37:56-07:00",
-          "message": "Keep ScrollFrame's whole-content hold; scope the claim to effects in a Viewport\n\nReview of #542: dropping ScrollFrame's report lost a template's width change\ncropped left of the slot. Restored; the look/layout split moves to the stamp\nitself on its own ticket. placed skips the second walk when nothing was read.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "c532c30cb2189fbb5bd3003470bd9334dab6d86d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:31:22-07:00",
-          "message": "A crop drops the holds of the looks it drops (rich-animation-27tq.b7e)\n\nA placed animation tells the frame only the hold of which cells it draws\n(its switches); an effect's frames ride only on its cells, so a Viewport\nor scroll slot cropping them away no longer wakes the host. ScrollFrame's\nown report of its whole content is deleted: placed already tells geometry\nfrom inside it. The caret stays a told switch: its look is a caller-supplied\nStyle that may be reverse, which an effect's CellLook cannot carry.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     },
