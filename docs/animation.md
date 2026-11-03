@@ -71,17 +71,18 @@ These pieces build every animation, and each says how `validUntil` and `validFro
 - `Animation.all([a, b, …])` is every one's value at once, in order, changing when the soonest of them does — so several effects drawn as one stay still exactly while each of them does — and having become that when the latest of them did.
 - `Animation.sequence(first, seconds, then)` is `first` until `seconds`, then `then`, handed the time since it began, so each part runs on its own clock from 0.
 - `Animation.repeat(period, nth)` is `nth(n)` through the `n`th turn of `period` seconds, handed the time since that turn began: a one-shot played again every `period`, a different one each turn if `nth` says so. Turns go on before 0 too, so a timeline run backwards past the start is still in one, and a turn begins on the same moment a [step sequence](/easing) or a `WrapMode.loop` of the same period does.
+- `cyclic(items)` is item `n` of a list for every integer `n`, counted round it both ways, so `-1` is the last: what a rotation through a list is indexed by. `Animation.repeat(period, cyclic(turns))` plays the turns in order for ever, and before 0 too. An empty list is refused when the rotation is made.
 
 Each says its [reduced](#reduced-motion) form the same way: a constant is itself, a continuous animation holds its value at 0, as a loop holds its first, a mapped one is its source reduced through `f`, several at once are each reduced, and a sequence or a repeat is each part reduced with its switches kept. A one-shot, such as a tween or a transition, cuts to its end when it starts.
 
 Here a counter moves to a new total every two seconds, each time from the last one, and before 0 it is still counting:
 
 ```typescript
-import { Animation, EASES, tween } from "@promptctl/rich-js";
+import { Animation, EASES, cyclic, tween } from "@promptctl/rich-js";
 
 const totals = [0, 120, 870, 430];
-const total = (n: number) => totals[((n % totals.length) + totals.length) % totals.length]!;
-const counting = Animation.repeat(2, (n) => tween(total(n - 1), total(n), { seconds: 1, ease: EASES["ease-out"] }));
+const total = cyclic(totals);
+const counting = Animation.repeat(2, cyclic(totals.map((to, i) => tween(total(i - 1), to, { seconds: 1, ease: EASES["ease-out"] }))));
 
 for (const t of [0.5, 1.5, 2, 2.5, 4.5, -0.5]) {
   const next = counting.validUntil(t);
@@ -314,25 +315,22 @@ A list whose items come and go is the lifecycles it holds, each dropped once it 
 
 ## Scroll, marquee and slide
 
-A long line panning across a fixed width, a log tail stepping down, a panel sliding into place: each is a window over content wider or taller than its slot, with the content's offset in the slot moving with time. `scroll(content, { width, height, col, row })` is that window as an `Animation` of what it draws. `col` is how many cells of the content sit left of the slot, and `row` how many rows sit above it. Each is an `Animation<number>`, 0 when not given, and is rounded to the nearest cell. A marquee, a scroll and a slide are the same window with a different offset handed in: a looping phase across a span, a step sequence, or a tween to 0.
+A long line panning across a fixed width, a log tail stepping down, a panel sliding into place: each is a window over content wider or taller than its slot, with the content's offset in the slot moving with time. `scroll(content, { width, height, col, row })` is that window as an `Animation` of what it draws. `col` is how many cells of the content sit left of the slot, and `row` how many rows sit above it. Each is an `Animation<number>`, 0 when not given, and is rounded to the nearest cell. A scroll and a slide are the same window with a different offset handed in: a step sequence, or a tween to 0.
 
-The window is its slot. It measures as its width and draws exactly its rows of its width at every offset, cropped only to a narrower room it is given, so nothing beside it moves. An offset before or past the content shows blank cells instead of stopping at an edge, which is how a marquee enters from the right and a slide-in arrives from outside the slot. The content is drawn at its own natural width and length. Content that should wrap to the slot instead goes in a `Constrain` of the slot's width, and so does content with no natural width of its own, such as a `Rule`, which fills whatever it is given; the scroll refuses that content by name rather than draw it at an unbounded width. An offset that is not a finite number is refused the same way. A wide glyph cut by an edge is blanked, never halved, and each cell keeps its anchor in the content, so hit-testing finds its owner through a moving window. When it next changes is when either offset does: every frame while a marquee runs, on each step of a stepped scroll, and never once a slide-in has arrived. A frame it draws also carries the soonest change of anything in its content, shown or not, because an element entering above the slot moves every row in it.
+`marquee(content, { width, step })` is that window crossing its content: the content moves one cell left every `step` seconds, leaves on the left, and comes in again from the right, for ever and before 0 too. Its span is the content's natural width plus the slot's, read when the frame is drawn, so any renderable with a natural width crosses, not only a line of text. The slot is as tall as the content, so every row of it crosses. It changes only on a step's boundary, whatever the content's width, so the host sleeps between steps. Reduced, it holds at step 0, the content's start in view.
+
+The window is its slot. It measures as its width and draws exactly its rows of its width at every offset, cropped only to a narrower room it is given, so nothing beside it moves. An offset before or past the content shows blank cells instead of stopping at an edge, which is how a marquee enters from the right and a slide-in arrives from outside the slot. The content is drawn at its own natural width and length. Content that should wrap to the slot instead goes in a `Constrain` of the slot's width, and so does content with no natural width of its own, such as a `Rule`, which fills whatever it is given; the scroll refuses that content by name rather than draw it at an unbounded width. An offset that is not a finite number is refused the same way. A wide glyph cut by an edge is blanked, never halved, and each cell keeps its anchor in the content, so hit-testing finds its owner through a moving window. When it next changes is when either offset does: on each step of a stepped scroll, and never once a slide-in has arrived. A frame it draws also carries the soonest change of anything in its content, shown or not, because an element entering above the slot moves every row in it.
 
 ```typescript
-import { Animation, EASES, WrapMode, RichText, cellLen, scroll, tween } from "@promptctl/rich-js";
+import { EASES, RichText, marquee, scroll, tween } from "@promptctl/rich-js";
 
-const news = "every motion is one Animation ·";
-const marquee = scroll(new RichText(news, { style: "bold yellow" }), {
-  width: 16,
-  height: 1,
-  col: Animation.continuous((t) => ((WrapMode.loop(4)(t) * (cellLen(news) + 16) + 16) % (cellLen(news) + 16)) - 16),
-});
+const news = marquee(new RichText("every motion is one Animation ·", { style: "bold yellow" }), { width: 16, step: 0.1 });
 const slide = scroll(new RichText("arrived", { style: "green" }), { width: 16, height: 1, col: tween(-16, 0, { seconds: 1, ease: EASES["ease-out"] }) });
 
 for (const t of [0, 0.5, 1, 2, 3]) {
-  console.print(marquee.at(t));
+  console.print(news.at(t));
   console.print(slide.at(t));
-  console.print(`t=${t}s  slide next change ${slide.validUntil(t) === t ? "every frame" : "never"}`);
+  console.print(`t=${t}s  marquee next change at ${news.validUntil(t)}s, slide next change ${slide.validUntil(t) === t ? "every frame" : "never"}`);
 }
 ```
 

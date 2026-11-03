@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import xterm from "@xterm/headless";
 import { run } from "../../../examples/animation-playground/playground.js";
-import { KINDS } from "../../../examples/animation-playground/kinds.js";
+import { KINDS } from "../../../examples/animation-playground/gallery.js";
 import { fakeClock, type FakeClock } from "../../core/fake-clock.js";
 import { scriptedHost, type ScriptedHost } from "../../host/scripted-host.js";
 import type { Env } from "../../../src/core/env.js";
@@ -200,18 +200,28 @@ describe("animation playground", () => {
     await q.stop();
   });
 
-  it("asks its terminal for sixteen colors and then none, through the host's environment", async () => {
-    const p = await playground();
+  it("steps through truecolor, 256 colors, 16 colors and none, each drawn in its own encoding", async () => {
+    const p = await playground(undefined, { TERM: "xterm-256color", COLORTERM: "truecolor" });
+    /** What three seconds of the gallery wrote, the readout naming `depth`. */
+    const written = async (depth: string): Promise<string> => {
+      expect((await p.screen()).join("\n")).toContain(`·  ${depth}  ·`);
+      const from = p.host.output().length;
+      await p.advance(3);
+      return p.host.output().slice(from);
+    };
+    expect(await written("truecolor")).toMatch(/\x1b\[[\d;]*38;2;/);
     await p.click("color depth");
-    expect((await p.screen()).join("\n")).toContain("16 colors");
-    let from = p.host.output().length;
-    await p.advance(3);
-    expect(p.host.output().slice(from)).not.toMatch(/\x1b\[[\d;]*[34]8;[25];/);
+    const eight = await written("256 colors");
+    expect(eight).toMatch(/\x1b\[[\d;]*38;5;/);
+    expect(eight).not.toMatch(/\x1b\[[\d;]*[34]8;2;/);
     await p.click("color depth");
-    expect((await p.screen()).join("\n")).toContain("no color");
-    from = p.host.output().length;
-    await p.advance(3);
-    expect(colorParameters(p.host.output().slice(from))).toEqual([]);
+    const sixteen = await written("16 colors");
+    expect(colorParameters(sixteen).length).toBeGreaterThan(0);
+    expect(sixteen).not.toMatch(/\x1b\[[\d;]*[34]8;[25];/);
+    await p.click("color depth");
+    expect(colorParameters(await written("no color"))).toEqual([]);
+    await p.click("color depth");
+    expect((await p.screen()).join("\n")).toContain("·  truecolor  ·");
   });
 
   it("marches the border's ants clockwise: right along the top, left along the bottom", () => {
@@ -237,12 +247,39 @@ describe("animation playground", () => {
     expect(line).toMatch(/narrow marquee\s+hi/);
   });
 
-  it("starts at the colors its terminal's environment says", async () => {
-    const p = await playground(undefined, { TERM: "xterm-256color", NO_COLOR: "1" });
-    expect((await p.screen()).join("\n")).toContain("terminal's own colors");
-    const from = p.host.output().length;
-    await p.advance(3);
-    expect(colorParameters(p.host.output().slice(from))).toEqual([]);
+  it("starts on the depth its terminal's environment says, named as a depth", async () => {
+    const p = await playground();
+    expect((await p.screen()).join("\n")).toContain("·  256 colors  ·");
+    await p.stop();
+    const q = await playground(undefined, { TERM: "xterm-256color", NO_COLOR: "1" });
+    expect((await q.screen()).join("\n")).toContain("·  no color  ·");
+    const from = q.host.output().length;
+    await q.advance(3);
+    expect(colorParameters(q.host.output().slice(from))).toEqual([]);
+  });
+
+  it("seeks while the scrub bar is dragged, pins a drag past its end to the window's end, and seeks half a second an arrow key", async () => {
+    const p = await playground();
+    await p.click("play / pause");
+    const rows = await p.screen();
+    const row = rows.findIndex((line) => line.includes("●"));
+    const left = rows[row]!.search(/[━●]/);
+    // The readout rounds to a tenth; the bar seeks to the middle of a half-second cell.
+    const near = (t: number, want: number) => expect(Math.abs(t - want)).toBeLessThanOrEqual(0.051);
+    // A press, two moves with the button held, then a release past the right end.
+    p.host.type(`\x1b[<0;${left + 11};${row + 1}M`);
+    near(await p.time(), 5.25);
+    p.host.type(`\x1b[<32;${left + 21};${row + 1}M`);
+    near(await p.time(), 10.25);
+    p.host.type(`\x1b[<32;${left + 41};${row + 1}M`);
+    near(await p.time(), 20.25);
+    p.host.type(`\x1b[<0;${left + 100};${row + 1}m`);
+    near(await p.time(), 29.75);
+    // The press focused the bar: the arrow keys are its.
+    p.host.type("\x1b[D");
+    near(await p.time(), 29.25);
+    p.host.type("\x1b[C\x1b[C");
+    near(await p.time(), 30.25);
   });
 
   it("at eighty columns the controls wrap and push the gallery down, and the readout stays on screen", async () => {

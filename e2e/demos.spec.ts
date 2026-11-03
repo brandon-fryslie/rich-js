@@ -362,3 +362,60 @@ test("folded, the toggle's arrows move between files: claude-sessions", async ({
   await expect(toggle).toBeFocused();
   await expect(editor(page)).toContainText("Main loop for claude-sessions");
 });
+
+// The animation playground's card, driven as a reader drives it: its kinds
+// are files of their own in the card, its editor stops at a bounded height
+// and scrolls, a drag on the scrub bar seeks while the button is held, and
+// the color depth steps from the card's own truecolor to 256 colors.
+test("the animation playground's card: its kinds are files, its editor scrolls, a drag scrubs, the depth steps", async ({ page }) => {
+  const errors = await openDemo(page, "animation-playground");
+  await expect.poll(() => shown(page), LOADED).toMatch(/t = [\d,.]+ s/);
+  await expect(card(page).getByRole("tab", { name: "kinds/tweens.ts", includeHidden: true })).toHaveCount(1);
+
+  // Every card's editor, not only the playground page's, is capped and scrolls.
+  await tab(page, "playground.ts").click();
+  await expect(editor(page)).toContainText("every kind of motion rich-js has", LOADED);
+  const sizes = await card(page).locator(".rich-example-editor > .cm-editor").evaluate((element) => {
+    const scroller = element.querySelector(".cm-scroller")!;
+    return { height: element.getBoundingClientRect().height, viewport: window.innerHeight, scrolls: scroller.scrollHeight > scroller.clientHeight };
+  });
+  expect(sizes.height).toBeLessThanOrEqual(sizes.viewport * 0.7 + 1);
+  expect(sizes.scrolls).toBe(true);
+
+  /** The page point at the middle of the terminal's cell `col`, `row`. */
+  const point = async (col: number, row: number) => {
+    const box = (await card(page).locator(".rich-live .xterm-rows").boundingBox())!;
+    const rows = await cardRows(page);
+    const cell = { width: box.width / 120, height: box.height / rows.length };
+    return { x: box.x + (col + 0.5) * cell.width, y: box.y + (row + 0.5) * cell.height };
+  };
+  const press = async (label: string) => {
+    const rows = await cardRows(page);
+    const row = rows.findIndex((line) => line.includes(label));
+    expect(row, `"${label}" is not on the screen`).toBeGreaterThanOrEqual(0);
+    const { x, y } = await point(rows[row]!.indexOf(label) + 1, row);
+    await page.mouse.click(x, y);
+  };
+  const time = async () => Number((await shown(page)).match(/t = (-?[\d,]+\.\d) s/)![1]!.replaceAll(",", ""));
+
+  await expect.poll(() => shown(page)).toContain("·  truecolor  ·");
+  await press("play / pause");
+  await expect.poll(() => shown(page)).toContain("paused");
+
+  // Down on the track's first cell, then moved with the button held: each move seeks.
+  const rows = await cardRows(page);
+  const row = rows.findIndex((line) => line.includes("●"));
+  const left = rows[row]!.search(/[━●]/);
+  const start = await point(left, row);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await expect.poll(time).toBeCloseTo(0.3, 1);
+  const moved = await point(left + 20, row);
+  await page.mouse.move(moved.x, moved.y, { steps: 4 });
+  await expect.poll(time).toBeCloseTo(10.3, 1);
+  await page.mouse.up();
+
+  await press("color depth");
+  await expect.poll(() => shown(page), LOADED).toContain("·  256 colors  ·");
+  expect(errors).toEqual([]);
+});
