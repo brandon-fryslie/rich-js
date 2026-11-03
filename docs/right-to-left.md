@@ -114,11 +114,10 @@ example in a [`Strip`](./strip.md) beside the prefix.
 
 Under `visual`, a row is ordered by levels resolved over its whole line, so no
 `RichText` cut from it draws it alone. Take the placed rows off the render
-instead: it ends each row in a line break, so `Segment.splitLines` returns each
-row as drawn and in visual order, one per row `wrap` would give under
-`logical`. Each followed by a line break, they are the render, in terminal
-bytes and in HTML and SVG export. A row is padded to the width only when the
-text is justified; `Segment.splitAndCropLines` pads every row.
+instead. Under the default `end`, the render ends each row in a line break, so
+`Segment.splitLines` returns each row as drawn and in visual order, one per row
+`wrap` would give under `logical`. Each followed by a line break, they are the
+render, in terminal bytes and in HTML and SVG export.
 
 ```ts silent
 const line = new RichText("שלום עולם, hello world! 123 עוד מילים");
