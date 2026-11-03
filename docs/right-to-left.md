@@ -93,6 +93,18 @@ start of the sentence. In right-to-left text that is its right-hand side, and th
 Lam-alef stays two cells in `visual`, as two joined letters rather than the
 one-cell ligature, because the ligature would change a line's width after layout.
 
+## Stating a paragraph's direction
+
+A paragraph's direction normally comes from its first strong character. Set a
+`RichText`'s `direction` to `"ltr"` or `"rtl"` to state it instead, as HTML's
+`dir` does (UAX #9 rule P3). Ordering, placement and the edges a `Strip`
+separator meets all follow the stated direction.
+
+[`wrap`](./text.md#wrapped-rows) under `logical` sets this on every row of a
+bidi line, because a row alone cannot find its line's direction again. The row
+also starts with the controls its line still had open at that point. It refuses
+`visual`, where a row is ordered by levels resolved over its whole line.
+
 ## Known limits
 
 - **VTE at column 0.** VTE discards zero-width characters at the start of a row,
