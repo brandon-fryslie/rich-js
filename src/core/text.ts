@@ -196,9 +196,8 @@ const DIRECTION_OF: readonly [Direction, Direction] = ["ltr", "rtl"];
  * `RichText`. Under `visual` a row is laid out by levels resolved over its whole
  * line — trimmed, placed and stamped by them — so no text cut from it draws
  * that row alone, and the type refuses the order rather than return rows that
- * would not. Visual rows are taken off the render instead: it puts one
- * `Segment.line()` between rows, so `Segment.splitLines` of it is each row as
- * drawn.
+ * would not. Visual rows are taken off the render instead: it ends each row
+ * in a `Segment.line()`, so `Segment.splitLines` of it is each row as drawn.
  */
 export type WrapOptions = RenderOptions & { readonly textOrder?: "plain" | "logical" };
 
