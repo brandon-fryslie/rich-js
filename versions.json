@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-541",
+      "ref": "refs/pull/541/merge",
+      "sha": "80ddaef9b6d6ba669dddc2c664d03ac58d757eca",
+      "timestamp": "2026-11-03T11:33:03.258Z",
+      "commits": [
+        {
+          "sha": "80ddaef9b6d6ba669dddc2c664d03ac58d757eca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:30:47-07:00",
+          "message": "Merge 759d1d8ca3f2f7d5de52a679f9416023bcdc4341 into 75a997116d79f6aea9a5ea0f8c52afd76d6a42d8\n"
+        },
+        {
+          "sha": "759d1d8ca3f2f7d5de52a679f9416023bcdc4341",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T04:30:34-07:00",
+          "message": "The e2e suite serves the site's xterm.js from disk, not jsDelivr (rich-unfiled-791c.5v4l)\n\nA stalled CDN fetch left every live terminal at Run with no error, which\nread as a regression in the page. e2e/test.ts routes jsDelivr for every\nspec: XTERM's files come from the pinned @xterm/xterm devDependency (the\nbrowser's integrity check holds the two to one version), anything else\nthere is aborted.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "75a997116d79f6aea9a5ea0f8c52afd76d6a42d8",
