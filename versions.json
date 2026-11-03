@@ -4,15 +4,22 @@
     {
       "version": "pr-546",
       "ref": "refs/pull/546/merge",
-      "sha": "e73b018fc61dd60a04e5df7b652572e65e31dff3",
-      "timestamp": "2026-11-03T13:34:13.217Z",
+      "sha": "374d9de6579c7890e7c11b2717dba6e9fce36f5b",
+      "timestamp": "2026-11-03T13:38:12.321Z",
       "commits": [
         {
-          "sha": "e73b018fc61dd60a04e5df7b652572e65e31dff3",
+          "sha": "374d9de6579c7890e7c11b2717dba6e9fce36f5b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T13:31:58Z",
-          "message": "Merge f8cd2f0aa510cb7a3b070a3ee12654f64c8a6051 into 57a1610baefa7b0c2df845782b91114c1f2e7998\n"
+          "timestamp": "2026-11-03T13:36:10Z",
+          "message": "Merge 935b6bddf73c02d86237d95527210783c259a572 into 57a1610baefa7b0c2df845782b91114c1f2e7998\n"
+        },
+        {
+          "sha": "935b6bddf73c02d86237d95527210783c259a572",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T06:35:32-07:00",
+          "message": "The contrast settling checks through drawnAt too, and a share is always stated (rich-animation-42lg.twz)\n"
         },
         {
           "sha": "f8cd2f0aa510cb7a3b070a3ee12654f64c8a6051",
