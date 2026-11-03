@@ -186,9 +186,12 @@ function drawable(value: unknown): Renderable {
  * An animation placed in the frame `options` draws: its value at the frame's
  * time (`frameTimeOf`, `shownAt`), drawn whole by `draw` under the options it
  * is handed, every segment then stamped with its hold there under whatever
- * its own cells say, and the hold told to the frame (`RenderOptions.onValidity`),
- * because a frame of no cells — an element not yet entered — may have cells
- * later, and must say when without taking a row to say it in. Drawn first,
+ * its own cells say. The frame is told (`RenderOptions.onValidity`) only the
+ * hold of its geometry — its combinators' switches, never an effect's frames
+ * (`UNLAID`) — because a frame of no cells, an element not yet entered, may
+ * have cells later and must say when without a row to say it in, and a switch
+ * cropped away may still move the rows that show. A look change is seen only
+ * on its own cells, so it rides only on them, and a crop drops it with them. Drawn first,
  * because the hold is asked with what the drawing said (`Reads`); each report
  * goes on outward too, since a value drawn inside a placement in this value
  * may be a part of an animation placed further out. [LAW:single-enforcer]
@@ -208,9 +211,10 @@ export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw:
     options.onReads?.(at, key, validity);
   };
   const segments = [...draw(shown.value, { ...options, onReads })];
-  const validity = validityOf(shown, t, (at, key) => said.get(part(at, key)));
-  options.onValidity?.(validity);
-  yield* stampValidityFrame(segments, validity);
+  // The cells carry the whole hold, so a crop takes it away with them; the frame is told only the hold
+  // of which cells exist, because a change there moves what is visible even when it is cropped away.
+  options.onValidity?.(validityOf(shown, t, UNLAID));
+  yield* stampValidityFrame(segments, validityOf(shown, t, (at, key) => said.get(part(at, key))));
 }
 
 /**
