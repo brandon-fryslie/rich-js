@@ -166,6 +166,12 @@ describe("a moving effect still moves under a combinator", () => {
     expect(validUntilOf(hidden, 1.25)).toBe(1.25);
   });
 
+  it("a lone part a container hides its drawing of stays early", () => {
+    const hiding = (child: Renderable): Renderable => ({ render: (options) => render(child, { maxWidth: options.maxWidth, colorSystem: options.colorSystem ?? null }) });
+    const hidden = Animation.map(new Effected(label, drifting, { key: "a" }), (b) => hiding(b));
+    expect(validUntilOf(hidden, 1.25)).toBe(1.25);
+  });
+
   it("an effect never drawn answers the time it is asked at", () => {
     expect(color().validUntil(3)).toBe(3);
     expect(color().validFrom(3)).toBe(3);

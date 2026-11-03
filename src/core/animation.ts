@@ -213,10 +213,10 @@ export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw:
   const segments = [...draw(shown.value, { ...options, onReads })];
   // The cells carry the whole hold, so a crop takes it away with them. The frame is told the hold
   // without an effect's frames (`UNLAID`): a switch may move the rows that show even when it is
-  // cropped away, and an effect's frame never does. Nothing read, the two answers are one.
-  const laid = validityOf(shown, t, UNLAID);
-  options.onValidity?.(laid);
-  yield* stampValidityFrame(segments, said.size === 0 ? laid : validityOf(shown, t, (at, key) => said.get(part(at, key))));
+  // cropped away, and an effect's frame never does. Two walks: a drawing nothing read reads as none
+  // and stays early, which is not `UNLAID`'s answer.
+  options.onValidity?.(validityOf(shown, t, UNLAID));
+  yield* stampValidityFrame(segments, validityOf(shown, t, (at, key) => said.get(part(at, key))));
 }
 
 /**
