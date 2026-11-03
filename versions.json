@@ -4,22 +4,15 @@
     {
       "version": "pr-548",
       "ref": "refs/pull/548/merge",
-      "sha": "880173aec42961425b72088e1a0194513e641c78",
-      "timestamp": "2026-11-03T14:55:47.778Z",
+      "sha": "cafa9f97b6bf2df40182deaa56dc20f8026614f5",
+      "timestamp": "2026-11-03T14:58:06.851Z",
       "commits": [
         {
-          "sha": "880173aec42961425b72088e1a0194513e641c78",
+          "sha": "cafa9f97b6bf2df40182deaa56dc20f8026614f5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T14:53:26Z",
-          "message": "Merge 83f986d8e3e8ab600266f2dff16ea6f7b8f1c2f4 into 86819f00c52ec1fa4bac59cb3daafe21664cedf2\n"
-        },
-        {
-          "sha": "83f986d8e3e8ab600266f2dff16ea6f7b8f1c2f4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:53:15-07:00",
-          "message": "Review: step/phase names where validity and stepSequence leaked, END_CAPS, visibility pointer (rich-unfiled-791c.oqod)\n"
+          "timestamp": "2026-11-03T07:46:02-07:00",
+          "message": "Merge ba52be7d58680536ec295652fc080bc59bbe9e02 into 86819f00c52ec1fa4bac59cb3daafe21664cedf2\n"
         },
         {
           "sha": "ba52be7d58680536ec295652fc080bc59bbe9e02",
