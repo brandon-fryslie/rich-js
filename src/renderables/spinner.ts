@@ -5,7 +5,7 @@
  * A spinner is a `FrameSequence` (`./frames.ts`) over one entry of the named spinner
  * data (`core/spinnerData.ts`): each frame held for the spinner's interval,
  * looping, the frame in progress at `t` drawn. The data names the frames and
- * the interval; the beat, the width every frame draws at and which frame `t`
+ * the interval; the step sequence, the width every frame draws at and which frame `t`
  * lands on are the frames primitive's, so a spinner is one more sequence on
  * it and not a second way of turning frames. Custom frames are a `FrameSequence`
  * placed directly. [LAW:one-source-of-truth]
@@ -16,7 +16,7 @@
  * draws, so a `Status` or `SpinnerColumn` holding one pays for the name and
  * the styling once, and a bad name fails at the call that gave it.
  * [LAW:parse-dont-validate] What a `FrameSequence` makes of the frames —
- * the beat, the width, each frame padded to it — is made there too, so a
+ * the step sequence, the width, each frame padded to it — is made there too, so a
  * drawn frame costs only finding which one `t` lands on.
  *
  * [LAW:no-ambient-temporal-coupling] Placed, a spinner draws at the time of
@@ -31,10 +31,10 @@
  * on that clock, and a draw costs the same at `t = 0` and `t = 10⁶`.
  *
  * `speed` is a `Timeline` (`core/timeline.ts`) playing from `t = 0` at
- * that rate, as Rich scales the time, `t × speed` into the beat: the frames
+ * that rate, as Rich scales the time, `t × speed` into the step sequence: the frames
  * are held for the interval the data gives, and the spinner is asked for the
  * frame at the time the timeline maps the host's to. [LAW:one-source-of-truth]
- * When the frame next changes (`Style.hold`) is a time on the host's
+ * When the frame next changes (`Style.validity`) is a time on the host's
  * timeline, and the sequence answers on its own, so the timeline carries the
  * answer back. `at` hands over the frame alone, as every animation's does;
  * placed, a spinner draws at the frame's time and stamps its cells with that
@@ -116,7 +116,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
   private readonly _named: Sequence;
   private readonly _ascii: Sequence;
   /**
-   * The spinner drawn at the frame's time, its cells saying the hold it is in
+   * The spinner drawn at the frame's time, its cells saying the validity interval it is in
    * on the host's clock (`stampValidityFrame`) — exactly, for the frames the output
    * draws, where `validUntil` must answer for both. Under reduced motion it
    * is the spinner reduced, which never turns (`shownAt`).
@@ -182,7 +182,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
     return measure(this._placed, options);
   }
 
-  /** The frame `choose` picks from the frames the output can draw, and the label, saying the hold it is in if `choose` says. */
+  /** The frame `choose` picks from the frames the output can draw, and the label, saying the validity interval it is in if `choose` says. */
   private _frame(
     choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly validity?: ValidityInterval },
   ): Renderable & Measurable {

@@ -404,41 +404,41 @@ export function positiveSeconds(what: string, seconds: number): void {
 }
 
 /**
- * A beat: holds of given lengths in seconds, played in order and looped, the
+ * A step sequence: steps of given lengths in seconds, played in order and looped, the
  * way the frames of an animation are each held and then replaced. `at(t)` is
- * the index of the hold in progress at `t`, counted from the first hold at
+ * the index of the step in progress at `t`, counted from the first step at
  * `t = 0`, and the sequence wraps every `period` seconds, before zero too,
- * as `WrapMode.loop` wraps. With equal holds `at` is `steps(n)` read as an
- * index; the holds here may differ, which `steps` cannot say, so a frame
- * held for a second and the next for a quarter are one beat.
+ * as `WrapMode.loop` wraps. With equal steps `at` is `steps(n)` read as an
+ * index; the steps here may differ, which `steps` cannot say, so a frame
+ * held for a second and the next for a quarter are one step sequence.
  */
 export interface StepSequence {
   readonly holds: readonly number[];
-  /** The sum of the holds: how long one pass takes, in seconds. */
+  /** The sum of the steps: how long one pass takes, in seconds. */
   readonly period: number;
-  /** Which hold is in progress at `t` seconds: an index into `holds`. */
+  /** Which step is in progress at `t` seconds: an index into `holds`. */
   at(t: number): number;
   /**
-   * When the hold in progress at `t` began, in seconds on `t`'s own
-   * timeline: what a sample-and-hold on this beat reads at `t`. Every `t`
-   * inside one hold of one pass answers the same number, to the bit, so an
+   * When the step in progress at `t` began, in seconds on `t`'s own
+   * timeline: what a sample-and-hold on this step sequence reads at `t`. Every `t`
+   * inside one step of one pass answers the same number, to the bit, so an
    * effect handed it draws the same frame throughout. With `validUntil`,
-   * the two ends of the hold, as every `Animation` answers them.
+   * the two ends of the step, as every `Animation` answers them.
    */
   validFrom(t: number): number;
   /**
-   * When the hold in progress at `t` ends, in seconds on `t`'s own timeline:
-   * the start of the next hold, the first moment `at` places in it, so it is
-   * always after `t`. What is drawn on this beat at `t` is drawn until then.
-   * With `at`, this makes a beat an `Animation` of the hold in progress
+   * When the step in progress at `t` ends, in seconds on `t`'s own timeline:
+   * the start of the next step, the first moment `at` places in it, so it is
+   * always after `t`. What is drawn on this step sequence at `t` is drawn until then.
+   * With `at`, this makes a step sequence an `Animation` of the step in progress
    * (`./animation.ts`).
    */
   validUntil(t: number): number;
-  /** The beat with its motion taken out: its first hold, held for good, as a loop holds its first value. */
+  /** The step sequence with its motion taken out: its first step, held for good, as a loop holds its first value. */
   reduced(): StepSequence;
 }
 
-/** A beat of one hold that never ends: hold 0 at every time, never changing — what every beat is reduced to. */
+/** A step sequence of one step that never ends: step 0 at every time, never changing — what every step sequence is reduced to. */
 const STILL: StepSequence = {
   holds: [Number.POSITIVE_INFINITY],
   period: Number.POSITIVE_INFINITY,
@@ -451,7 +451,7 @@ const STILL: StepSequence = {
 /**
  * `t`, unless it is not a finite number of seconds, which throws naming
  * `what`. [LAW:single-enforcer] The one refusal of a moment to draw at, for
- * every loop and beat that reads time and every renderable drawn at a time.
+ * every loop and step sequence that reads time and every renderable drawn at a time.
  */
 export function finiteTime(what: string, t: number): number {
   if (!Number.isFinite(t)) throw new RangeError(`${what} needs a finite t, got ${t}`);
@@ -461,7 +461,7 @@ export function finiteTime(what: string, t: number): number {
 /**
  * The seconds into the current pass of a `period` at `t`: `t` taken modulo
  * the period, into [0, period), before zero too. [LAW:single-enforcer] The
- * one wrap `WrapMode.loop` and `beat` both read time through, so a `t` that is
+ * one wrap `WrapMode.loop` and a step sequence both read time through, so a `t` that is
  * not a finite number of seconds fails here, loudly, and nowhere else. A
  * `t` at or past zero is `t % period` alone, which is exact; only a negative
  * `t` is carried up by a period, so a boundary a host samples exactly lands
@@ -478,7 +478,7 @@ function wrapSeconds(what: string, t: number, period: number): number {
 
 /**
  * Which pass of a `period` `t` is in, as a whole number of either sign, and
- * the seconds into it, read through the one wrap: what a `beat` and an
+ * the seconds into it, read through the one wrap: what a step sequence and an
  * `Animation.repeat` (`./animation.ts`) both ask, so the two agree on the
  * pass of every float, a boundary included.
  */
@@ -521,7 +521,7 @@ const ULPS_OF_ROUNDING = 8;
 
 /**
  * The first float from `sum` up at which `reached` holds: a time built as a
- * sum to land on a boundary — where a hold begins, where an animation's next
+ * sum to land on a boundary — where a step begins, where an animation's next
  * part changes — that rounding put an ulp or two under it, walked up to the
  * first moment on the far side. [LAW:single-enforcer] The one walk, so every
  * boundary a time is carried onto is the moment the change shows, to the
@@ -576,41 +576,41 @@ export function firstReaching(near: number, reached: (x: number) => boolean): nu
   }
 }
 
-/** `holds` as a `StepSequence`; a beat with no hold, or a hold that is not a positive number of seconds, throws. */
+/** `holds` as a `StepSequence`; a step sequence with no step, or a step that is not a positive number of seconds, throws. */
 export function stepSequence(holds: readonly number[]): StepSequence {
   if (holds.length === 0) throw new RangeError("a step sequence needs at least one step");
-  holds.forEach((validity, i) => positiveSeconds(`step ${i}`, validity));
-  const period = holds.reduce((sum, validity) => sum + validity, 0);
-  // Where each hold begins, in seconds into the period: the unit
+  holds.forEach((seconds, i) => positiveSeconds(`step ${i}`, seconds));
+  const period = holds.reduce((sum, seconds) => sum + seconds, 0);
+  // Where each step begins, in seconds into the period: the unit
   // `wrapSeconds` answers in, so the sum a boundary sits at is the number
-  // the wrap of a `t` on that boundary produces, and the hold that begins
+  // the wrap of a `t` on that boundary produces, and the step that begins
   // there is the one in progress, at any rate the host samples.
   const starts: number[] = [];
   let elapsed = 0;
-  for (const validity of holds) {
+  for (const seconds of holds) {
     starts.push(elapsed);
-    elapsed += validity;
+    elapsed += seconds;
   }
   // A copy, and the one `at` walks: what `at` and `period` were built from
   // stays what `holds` says whatever the caller does to its array.
   const own = [...holds];
-  // The last hold whose start the time has reached. The first starts at
-  // 0, so the walk always stops, and its length is the count of holds,
+  // The last step whose start the time has reached. The first starts at
+  // 0, so the walk always stops, and its length is the count of steps,
   // never a function of `t`.
   const index = (into: number): number => {
     let i = own.length - 1;
     while (starts[i]! > into) i--;
     return i;
   };
-  // Where hold `i` of pass `pass` begins: the pass's start plus the hold's,
-  // two integers and two constants, so every `t` in the hold builds the one
-  // float. That sum can land an ulp or two under the boundary when the holds
+  // Where step `i` of pass `pass` begins: the pass's start plus the step's,
+  // two integers and two constants, so every `t` in the step builds the one
+  // float. That sum can land an ulp or two under the boundary when the steps
   // are not exact in binary — a tenth of a second is not — and `at` would
-  // then read it as the hold before, so it is walked up to the first float
-  // `at` places in the hold. The walk is a function of the pass and the hold
-  // alone, so every `t` in the hold still answers one float. It is walked
-  // until `at` places it in this hold of this pass: with one hold, every
-  // float is in hold 0, and only the pass tells the boundary from the float
+  // then read it as the step before, so it is walked up to the first float
+  // `at` places in the step. The walk is a function of the pass and the step
+  // alone, so every `t` in the step still answers one float. It is walked
+  // until `at` places it in this step of this pass: with one step, every
+  // float is in step 0, and only the pass tells the boundary from the float
   // under it.
   const boundary = (what: string, p: number, i: number, t: number): number =>
     walkUp(
@@ -631,7 +631,7 @@ export function stepSequence(holds: readonly number[]): StepSequence {
       const { pass, into } = passAt("StepSequence.validFrom", t, period);
       return boundary("StepSequence.validFrom", pass, index(into), t);
     },
-    // The next hold's start, in the next pass when this hold is the last.
+    // The next step's start, in the next pass when this step is the last.
     validUntil(t) {
       const { pass, into } = passAt("StepSequence.validUntil", t, period);
       const i = index(into);

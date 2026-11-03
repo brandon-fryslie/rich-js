@@ -168,7 +168,7 @@ describe("FrameSequence — at the host's rate, whatever it is", () => {
     expect(drawn(wide, 0, 3)).not.toContain("\n");
   });
 
-  it("refuses a t that is not finite, and a hold that is not a positive number of seconds", () => {
+  it("refuses a t that is not finite, and a frame that is not a positive number of seconds", () => {
     const sequence = new FrameSequence(chevrons);
     expect(() => sequence.at(Number.POSITIVE_INFINITY)).toThrow(/finite t/);
     expect(() => new FrameSequence([{ text: new RichText("a"), seconds: 0 }])).toThrow(/positive number of seconds/);

@@ -9,7 +9,7 @@
  * `glyphs` takes.
  *
  * Where a color loop glides, a glyph cannot: a cell shows one glyph or
- * another, so every loop here moves in steps, on a `beat`, and says when its
+ * another, so every loop here moves in steps, on a step sequence, and says when its
  * next step is. The transitions are `Transition`s by the one rule the
  * color transitions follow (`transition`): they move every frame until
  * their seconds are up, and never after.
@@ -71,8 +71,8 @@ function arrived(n: number, p: number): number {
  * Steps of `seconds`, counted from 0 on the animation's own clock: for a
  * `frame` of each step, the animation holding it through the step and
  * changing at its end, and reduced, `still`. [LAW:one-source-of-truth] The step and its two ends
- * are a `beat`'s, the one timing vocabulary, so a step boundary is the moment
- * the change shows. The beat is made once, for every frame drawn on it.
+ * are a step sequence's, the one timing vocabulary, so a step boundary is the moment
+ * the change shows. The step sequence is made once, for every frame drawn on it.
  */
 function stepped(seconds: number): <F>(frame: (step: number) => F, still: F) => Animation<F> {
   const pace = stepSequence([seconds]);

@@ -47,7 +47,7 @@ describe("a render that sets a State it did not make throws", () => {
     expect(() => drain(parent)).toThrow(RenderWriteError);
   });
 
-  it("held, handed no column: it is drawn all the same", () => {
+  it("hidden, handed no column: it is drawn all the same", () => {
     const count = new State(0);
     const writes: Renderable = {
       *render() {

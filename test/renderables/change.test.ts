@@ -100,7 +100,7 @@ describe("a change from one renderable to another", () => {
     expect(midway).toMatch(/^b+a+\n$/);
   });
 
-  it("reports the old renderable and the new one in the same order drawn as held", () => {
+  it("reports the old renderable and the new one in the same order drawn as hidden", () => {
     const frame = crossfade(curve).effect({ from: building, to: done }).at(0.5);
     const seen = (maxWidth: number): Renderable[] => {
       const present: Renderable[] = [];

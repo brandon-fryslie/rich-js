@@ -33,7 +33,7 @@ import { scriptedHost } from "../../host/scripted-host.js";
 
 const HAND_BACK = "\x1b[?1049l";
 
-/** Whether a strip's joiner drew the cell. */
+/** Whether a strip's separator drew the cell. */
 const joined = (style: Style): boolean => {
   for (let anchor = style.anchor; anchor; anchor = anchor.inner) if (anchor.owner === JOIN) return true;
   return false;

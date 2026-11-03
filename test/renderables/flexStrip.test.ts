@@ -11,7 +11,7 @@ function cell(text: string, style?: string | Style): RichText {
 }
 
 // [LAW:behavior-not-structure] Tests assert what callers observe — packed
-// lines, line widths, joiner placement at line boundaries — not the packer's
+// lines, line widths, separator placement at line boundaries — not the packer's
 // internals.
 
 const OPTS = (maxWidth: number): RenderOptions => ({ maxWidth });
@@ -115,7 +115,7 @@ describe("FlexStrip", () => {
     const strip = new FlexStrip(items, { gap: 1 });
     const m = strip.measure(OPTS(80));
     expect(m.minimum).toBe(5);
-    // 3 + 2(gaps) + 0(no joiner) + 5 = 10
+    // 3 + 2(gaps) + 0(no separator) + 5 = 10
     expect(m.maximum).toBe(10);
   });
 });

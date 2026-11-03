@@ -1,4 +1,4 @@
-// rich-animation-27tq.vmc: an effect's hold is known only from what it drew,
+// rich-animation-27tq.vmc: an effect's validity interval is known only from what it drew,
 // so the frame's one drawing tells it, and the combinators that remapped the
 // time carry it back. An effect held still at the output lets the host sleep
 // wherever it is placed.
@@ -36,7 +36,7 @@ const NEVER = Number.POSITIVE_INFINITY;
 const EVER = Number.NEGATIVE_INFINITY;
 
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
-/** Reads every frame, promising no hold. */
+/** Reads every frame, promising no validity interval. */
 const drifting: Effect = () => Animation.continuous((t) => (look) => ({ ...look, fg: new ColorRgba(Math.floor(t * 50) % 256, 0, 0) }));
 /** Reads every frame where the element sets a color of its own, and holds where it sets none. */
 const onItsColors: Effect = (drawn) => (drawn.colors.size === 0 ? Animation.constant((look) => look) : drifting(drawn));
@@ -126,7 +126,7 @@ describe("a moving effect still moves under a combinator", () => {
     it(`in ${name}, it answers the frame's time`, () => expect(validUntilOf(placed, 1.25)).toBe(1.25));
   }
 
-  it("on a beat, it holds to the beat's end", () => {
+  it("on a step sequence, it holds to the step's end", () => {
     expect(validUntilOf(Animation.sampleAndHold(color(), stepSequence([1])), 1.25)).toBe(2);
   });
 
@@ -178,14 +178,14 @@ describe("a moving effect still moves under a combinator", () => {
   });
 });
 
-describe("the hold comes back on the host's clock", () => {
+describe("the validity interval comes back on the host's clock", () => {
   const holdAt = (animation: Renderable, t: number): ValidityInterval => {
     const segments = [...render(inFrame(animation, t), OPTIONS)];
     return { validFrom: Segment.validFrom(segments), validUntil: Segment.validUntil(segments) };
   };
   const stepped = (): Effected => new Effected(label, stepping, { key: "k" });
 
-  it("a stepped effect at twice speed changes at half the time, both ends of the hold", () => {
+  it("a stepped effect at twice speed changes at half the time, both ends of the validity interval", () => {
     const { validFrom, validUntil } = holdAt(Timeline.run(Timeline.play(0, 2), stepped()), 0.6);
     expect(validFrom).toBeCloseTo(0.5, 9);
     expect(validUntil).toBeCloseTo(1, 9);
@@ -229,7 +229,7 @@ describe("one frame, one drawing", () => {
     expect(drawn()).toBe(1);
   });
 
-  it("a measurement draws nothing for the hold, and tells only what a layout can change on", () => {
+  it("a measurement draws nothing for the validity interval, and tells only what a layout can change on", () => {
     const { child, drawn } = counting();
     const measurable = { ...child, measure: () => ({ minimum: 5, maximum: 5 }) };
     const told: ValidityInterval[] = [];

@@ -77,7 +77,7 @@ export class ListView implements Renderable, Measurable {
     // A range reaching past either end is clamped by the viewport, which holds
     // its offset to the lines that exist. Followed, not ensured: the wheel can
     // scroll away from the selection until the selection moves. Items handed
-    // no column are held, not drawn, and so is the viewport's content, which
+    // no column are hidden, not drawn, and so is the viewport's content, which
     // keeps nothing it is handed — the range last followed stands.
     // [LAW:effects-at-boundaries] Shown through the viewport rather than
     // handed to it: the viewport keeps the lines' range once the frame is drawn.

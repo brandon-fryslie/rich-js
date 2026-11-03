@@ -102,7 +102,7 @@ export interface RenderOptions {
   highlighter?: Highlighter;
   /**
    * The depth the output will be encoded at, `null` when it carries no color.
-   * A renderable that measures what it draws — the strip's joiner, holding a
+   * A renderable that measures what it draws — the strip's separator, holding a
    * seam's ink off its ground — measures the colors the terminal will draw at
    * this depth, which at 256 colors or fewer are not the colors it was
    * handed. Absent means truecolor.
@@ -160,19 +160,19 @@ export interface RenderOptions {
    */
   onVisibility?: (renderable: Renderable, visibility: Visibility) => void;
   /**
-   * Told of a hold the frame is in that no cell of it may carry: an animation
+   * Told of a validity interval the frame is in that no cell of it may carry: an animation
    * placed in the view reports its own, an effect's frames left out, whether
    * or not it drew a cell — one not yet entered draws none — and one a
    * container crops away is still reported, since its switch may move the
    * rows in view. An effect's frames ride only on the effect's cells. It reaches whatever `frame` reaches, so a container that hands
-   * its child the frame's time hands back the child's hold with no word about
+   * its child the frame's time hands back the child's validity with no word about
    * either. [LAW:composability] Absent, nobody is listening. A measurement
-   * (`measuring`) and a held render (`holding`) tell too: what they find
+   * (`measuring`) and a hidden render (`holding`) tell too: what they find
    * decides the frame's layout, so when it changes, the frame may.
    */
   onValidity?: (validity: ValidityInterval) => void;
   /**
-   * Told of the hold the element `key` names, drawn for a time on its own
+   * Told of the validity interval the element `key` names, drawn for a time on its own
    * clock, is in: an effect's frame, which alone knows, since the answer
    * depends on what it drew. `t` is that clock's, not the frame's, so this cannot be `onValidity`:
    * the animation placed around the value carries the answer back through the
@@ -186,7 +186,7 @@ export interface RenderOptions {
 export type Motion = Pick<RenderOptions, "reducedMotion">;
 
 /**
- * Whether a renderable the view holds was drawn, or held: in the view, handed
+ * Whether a renderable the view holds was drawn, or hidden: in the view, handed
  * no column, and so not drawn (`render`).
  */
 export type Visibility = "visible" | "hidden";
@@ -522,9 +522,9 @@ const ITERATOR_PROTOTYPE: object = Object.getPrototypeOf(Object.getPrototypeOf([
  * it throws (`./state.ts`).
  *
  * It is also the one reporter of what the view holds (`onVisibility`). Under one
- * column a renderable is held: in the view, with nothing of it on the frame.
- * It is drawn all the same and what it drew dropped (`holding`), so what a held
- * container is reported holding is what it draws, under the options it hands
+ * column a renderable is hidden: in the view, with nothing of it on the frame.
+ * It is drawn all the same and what it drew dropped (`holding`), so what a hidden
+ * container reports hidden is what it draws, under the options it hands
  * each child — one description of a container's traversal, not a second
  * kept beside it.
  */
@@ -546,15 +546,15 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
 }
 
 /**
- * Where a held renderable is drawn, and the options it is drawn under: what
- * it draws is dropped, and everything it draws is reported held, whatever
- * width it hands it. What it tells of its hold (`onValidity`) still reaches the
- * frame: an element not yet entered is held at no width, and must say when it
- * enters and takes some. A motion held at no width therefore wakes its host
+ * Where a hidden renderable is drawn, and the options it is drawn under: what
+ * it draws is dropped, and everything it draws is reported hidden, whatever
+ * width it hands it. What it tells of its validity (`onValidity`) still reaches the
+ * frame: an element not yet entered is hidden at no width, and must say when it
+ * enters and takes some. A motion hidden at no width therefore wakes its host
  * for frames that look the same: when it next takes room is not a moment its
- * hold can name, and an early answer costs a frame where a late one hides the
+ * validity can name, and an early answer costs a frame where a late one hides the
  * element. An effect is not such a motion: it cannot give itself room, so
- * however it moves, a held one reports held for good, and whatever gives it
+ * however it moves, a hidden one reports it never changes, and whatever gives it
  * room wakes the host. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown
@@ -597,7 +597,7 @@ export function measure(measurable: Measurable, options: RenderOptions): { minim
  * one that did would put a widget in the view at the moment a container
  * measured it, and keep one the frame then cropped away — and nothing to
  * `onReads`, which speaks only for what the frame shows. It still tells its
- * hold (`onValidity`): a layout decided by a measurement changes when it does.
+ * validity (`onValidity`): a layout decided by a measurement changes when it does.
  *
  * [LAW:single-enforcer] Every measurement starts here: `measure` asks with it.
  */

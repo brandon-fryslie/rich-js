@@ -43,7 +43,7 @@ const frames = (holds: readonly number[]): FrameSequence => new FrameSequence(ho
 const validUntilOf = (renderable: Renderable, options: Parameters<Renderable["render"]>[0] = OPTIONS): number => Segment.validUntil(renderable.render(options));
 const lit = (child: Renderable, effect: Effect, t: number): Renderable => inFrame(new Effected(child, effect, { key: "k" }), t);
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
-/** A loop that moves every frame: a continuous function of t, promising no hold. */
+/** A loop that moves every frame: a continuous function of t, promising no validity interval. */
 const drifting: Effect = () => Animation.continuous((t) => (colors) => ({ ...colors, fg: new ColorRgba(Math.floor(t * 50) % 256, 0, 0) }));
 
 describe("what a host reads off a frame: when it next changes", () => {
@@ -115,20 +115,20 @@ describe("what a host reads off a frame: when it next changes", () => {
     expect(validUntilOf(lit(label, signal, 1e6 + 0.1))).toBeCloseTo(1e6 + 0.4, 6);
   });
 
-  it("an effect that moves every frame, sampled on a beat, changes when the hold ends", () => {
+  it("an effect that moves every frame, sampled on a step sequence, changes when the step ends", () => {
     const held = sampleAndHold(drifting, stepSequence([1]));
     expect(validUntilOf(lit(label, held, 0.25))).toBe(1);
     expect(validUntilOf(lit(label, held, 3))).toBe(4);
   });
 
-  it("sampled on a beat, an effect changes at the first hold start it has moved by, and never once it is done", () => {
-    // Steps of 2.5 s sampled every second: the step at 2.5 shows from the hold at 3.
+  it("sampled on a step sequence, an effect changes at the first step start it has moved by, and never once it is done", () => {
+    // Steps of 2.5 s sampled every second: the step at 2.5 shows from the step at 3.
     const signal = steppedInk([{ color: new ColorRgba(255, 85, 85), seconds: 2.5 }, { color: new ColorRgba(80, 250, 123), seconds: 2.5 }]);
     const held = sampleAndHold(signal, stepSequence([1]));
     expect(validUntilOf(lit(label, held, 0.25))).toBe(3);
     expect(validUntilOf(lit(label, held, 2.5))).toBe(3);
     expect(validUntilOf(lit(label, held, 3.5))).toBe(5);
-    // A transition that is done draws one frame from then on, however often the beat samples it.
+    // A transition that is done draws one frame from then on, however often the step sequence samples it.
     const fade = EFFECT_CATALOGUE.transitions.fade({ z: 0 }, { seconds: 2, ease: EASES.linear, swing: 0 });
     expect(validUntilOf(lit(label, sampleAndHold(fade.effect, stepSequence([1])), 0.5))).toBe(1);
     expect(validUntilOf(lit(label, sampleAndHold(fade.effect, stepSequence([1])), 2.5))).toBe(Number.POSITIVE_INFINITY);

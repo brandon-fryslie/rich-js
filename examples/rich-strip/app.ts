@@ -1,5 +1,5 @@
 /**
- * rich-strip's body: every built-in joiner, each under its name, sized to
+ * rich-strip's body: every built-in separator, each under its name, sized to
  * fit the docs card's terminal.
  *
  * [LAW:one-source-of-truth] It takes its whole environment from
@@ -45,15 +45,15 @@ export function runDemo(host: TerminalHost): void {
     consoleOut.print(strip);
   };
 
-  // The table one joiner a row, its name the row's first item: a name has no
-  // ground, so each joiner meets it as it meets the strip's start.
+  // The table one separator a row, its name the row's first item: a name has no
+  // ground, so each separator meets it as it meets the strip's start.
   consoleOut.print(new RichText("SEPARATOR_STYLES", { style: "bold" }));
   const width = Math.max(...Object.keys(SEPARATOR_STYLES).map((name) => name.length));
   for (const name of Object.keys(SEPARATOR_STYLES)) {
     consoleOut.print(new Strip([new RichText(` ${name.padEnd(width)} `, { end: "", noWrap: true }), ...cells], separatorNamed(name)));
   }
   // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
-  // arrow in their shared color, so the joiner lifts the arrow's ink off it.
+  // arrow in their shared color, so the separator lifts the arrow's ink off it.
   const shared = ["one", "two", "three"].map(
     (t) => new RichText(` ${t} `, { style: Style.parse("white on #3a3f58"), end: "", noWrap: true }),
   );

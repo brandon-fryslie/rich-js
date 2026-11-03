@@ -30,9 +30,9 @@ describe("render", () => {
   };
 
   // The shape a `Progress` printed with no frame takes: it draws its table in
-  // a frame of its host's time. Held, the child is what that frame shows, not
+  // a frame of its host's time. Hidden, the child is what that frame shows, not
   // what the frame the container was handed shows.
-  it("reports what a held container holds under the options it hands each child", () => {
+  it("reports what a hidden container holds under the options it hands each child", () => {
     const a: Renderable = { render: () => [] };
     const b: Renderable = { render: () => [] };
     const child = Animation.map(stepSequence([1, 1]), (i) => (i === 0 ? a : b));
@@ -45,7 +45,7 @@ describe("render", () => {
     expect(shown(0)).toEqual([b]);
   });
 
-  it("reports held everything a held container draws, whatever width it hands it", () => {
+  it("reports hidden everything a hidden container draws, whatever width it hands it", () => {
     const widens: Renderable = { render: (options) => render(drawsAnyway, { ...options, maxWidth: 10 }) };
     expect(reports(widens, { maxWidth: 0 })).toEqual([
       [widens, "hidden"],
@@ -53,7 +53,7 @@ describe("render", () => {
     ]);
   });
 
-  it("draws a held renderable at no column, whatever width under one it was handed", () => {
+  it("draws a hidden renderable at no column, whatever width under one it was handed", () => {
     const handed: number[] = [];
     const records: Renderable = { render: (options) => (handed.push(options.maxWidth), []) };
     for (const maxWidth of [0, 0.5, -3, Number.NEGATIVE_INFINITY, Number.NaN]) [...render(records, { maxWidth })];
@@ -98,7 +98,7 @@ describe("afterPass", () => {
     expect(ran).toEqual(["eager"]);
   });
 
-  it("runs nothing for a pass that throws, one whose caller stops early, a measurement, or a renderable held", () => {
+  it("runs nothing for a pass that throws, one whose caller stops early, a measurement, or a renderable hidden", () => {
     const ran: string[] = [];
     const throws: Renderable = {
       *render(options) {
@@ -128,7 +128,7 @@ describe("afterPass", () => {
       },
     };
     [...render(frame, { maxWidth: 10 })];
-    // Nor does a renderable held: nothing it drew is on the frame.
+    // Nor does a renderable hidden: nothing it drew is on the frame.
     const holds: Renderable = { render: (options) => render(handing("hidden", ran), { ...options, maxWidth: 10 }) };
     [...render(holds, { maxWidth: 0 })];
     expect(ran).toEqual(["visible"]);

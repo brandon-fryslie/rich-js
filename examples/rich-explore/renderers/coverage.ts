@@ -258,7 +258,7 @@ export class CoverageRenderable implements Renderable {
     // on the host that draws it and a render reads no clock, so it is made
     // for a host standing still at 0 — any object with a `frameNow()` is one —
     // drawn once in that host's frame, for the terminal this frame is drawn
-    // for, and decoded back to text: a still, so no hold from that host's
+    // for, and decoded back to text: a still, so no validity interval from that host's
     // clock enters this app's frame.
     const still: FrameHost = { frameNow: () => ({ time: 0, host: still }) };
     const progress = new Progress(

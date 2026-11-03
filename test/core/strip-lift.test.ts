@@ -3,7 +3,7 @@
  * leaves alone.
  *
  * `strip-seams.golden.json` is the bytes 0.24.1 drew for strips in which every
- * seam cell's ink already stands off its ground, under every named joiner, at
+ * seam cell's ink already stands off its ground, under every named separator, at
  * three depths, in both forms. The lift moves no color that clears the floor,
  * so those bytes hold. It was written once from 0.24.1's code with
  *
@@ -96,7 +96,7 @@ describe("a join between grounds too close to tell apart", () => {
     }
   });
 
-  // Measured through the joiner itself: powerline's arrow between two cells of
+  // Measured through the separator itself: powerline's arrow between two cells of
   // one ground, drawn at each depth — truecolor and 256 by the color the
   // terminal shows, sixteen colors by its slot.
   it.each([

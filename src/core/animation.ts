@@ -11,14 +11,14 @@
  * skips a change. So an animation that cannot say answers `t`, as
  * `continuous` does. An answer that depends on what the frame drew, an
  * effect's, is told by that drawing (`Reads`). A value drawn as cells carries this answer on every
- * cell (`Style.hold`, both ends of the hold below), so a host holding
+ * cell (`Style.validity`, both ends of the validity interval below), so a host holding
  * the composed frame reads it there (`Segment.validUntil`); a value that is
  * not drawn — a number, a color — has `validUntil` as its only way to say
  * when to look again.
  *
- * `validFrom(t)` is the other end of the same hold: the last moment, never
+ * `validFrom(t)` is the other end of the same validity interval: the last moment, never
  * after `t`, at which the value may have become `at(t)` — `-Infinity` if it
- * always was, `t` while it moves. Together they bound the hold, `[validFrom(t),
+ * always was, `t` while it moves. Together they bound the validity interval, `[validFrom(t),
  * validUntil(t))`, and the answer may be narrower than the truth and never
  * wider. It is what a host running the animation backwards reads
  * (`./timeline.ts`): run down the timeline, the value next changes where it
@@ -38,7 +38,7 @@
  * which content shows is a fact about time that motion is not: a value with
  * no time could only show a scheduled exit as already gone.
  *
- * The instances already in the tree: a `StepSequence` is an animation of which hold
+ * The instances already in the tree: a `StepSequence` is an animation of which step
  * is in progress (`./easing.ts`), a `FrameSequence` of the frame shown and a
  * `Spinner` of the spinner drawn (`../renderables/`), and an `Effect` is, for
  * what an element draws in a frame, an animation of how its cells' colors
@@ -48,8 +48,8 @@
  * placed as the child of any container — a `Panel`, a `Table` cell, a
  * `Group`, a container a user wrote — it draws at the time of the frame it
  * is drawn in (`RenderOptions.frame`; 0, its own start, when printed) and
- * stamps its cells with its hold there, under whatever its value's cells
- * already say, so a frame's hold is the intersection of its cells' holds.
+ * stamps its cells with its validity there, under whatever its value's cells
+ * already say, so a frame's validity is the intersection of its cells' validity intervals.
  * [LAW:composability] No time is threaded through the code that places it,
  * and no container knows animations exist. An animation placed inside
  * another's value draws at the frame's time too: a combinator remaps the
@@ -81,7 +81,7 @@ import { Segment } from "./segment.js";
 import { intersection, NEVER_CHANGES, Style, type ValidityInterval } from "./style.js";
 
 /**
- * What a frame's drawing said of the hold the element named `key`, drawn at
+ * What a frame's drawing said of the validity interval the element named `key`, drawn at
  * `t`, is in, or nothing if the frame heard of no such drawing: handed to an
  * animation asked about a frame already drawn, so an answer only a drawing
  * knows goes up through the combinators that remapped the time. It reads by
@@ -90,7 +90,7 @@ import { intersection, NEVER_CHANGES, Style, type ValidityInterval } from "./sty
  * moments. Parts sharing both share the intersection of what was drawn:
  * narrower and never wider. A drawing a container hid, by not handing on its
  * options, reads as none and stays early, unless a part sharing its key and
- * `t` told. A measurement, which draws nothing, answers held for good for
+ * `t` told. A measurement, which draws nothing, answers never-changes for
  * every part (`UNLAID`). An animation that does not read it ignores it, and
  * one that forwards it to no part stays early. [LAW:one-source-of-truth] The
  * frame's one drawing says it, so the answer cannot disagree with what the
@@ -98,7 +98,7 @@ import { intersection, NEVER_CHANGES, Style, type ValidityInterval } from "./sty
  */
 export type Reads = (t: number, key: string) => ValidityInterval | undefined;
 
-/** A value of `T` at a time in seconds, and the hold it is in: what every animation answers, whatever its values. */
+/** A value of `T` at a time in seconds, and the validity interval it is in: what every animation answers, whatever its values. */
 export interface Behavior<T> {
   /** The value at `t` seconds. */
   at(t: number): T;
@@ -143,20 +143,20 @@ export function shownAt<T>(animation: Behavior<T>, t: number, motion: Motion): S
   return { value: drawn.at(t), drawn, reduced };
 }
 
-/** The hold `shown`, drawn at `t`, is in: its animation's two answers there, given what its drawing said. */
+/** The validity interval `shown`, drawn at `t`, is in: its animation's two answers there, given what its drawing said. */
 export function validityOf(shown: Shown<unknown>, t: number, moves?: Reads): ValidityInterval {
   return { validFrom: shown.drawn.validFrom(t, moves), validUntil: shown.drawn.validUntil(t, moves) };
 }
 
-/** The style saying a cell is in `hold`. */
+/** The style saying a cell is in `validity`. */
 export function stampValidity(validity: ValidityInterval): Style {
   return new Style({ validity });
 }
 
 /**
- * `segments`, every one carrying `hold` under whatever it already said: the
+ * `segments`, every one carrying `validity` under whatever it already said: the
  * later `validFrom` and the sooner `validUntil` win (`Style.add`), so a
- * frame's hold is the intersection of its cells', narrower than the truth
+ * frame's validity is the intersection of its cells', narrower than the truth
  * and never wider. [LAW:single-enforcer] The one way a time is put on drawn
  * cells, by whatever draws for a time it knows.
  */
@@ -185,20 +185,20 @@ function drawable(value: unknown): Renderable {
 /**
  * An animation placed in the frame `options` draws: its value at the frame's
  * time (`frameTimeOf`, `shownAt`), drawn whole by `draw` under the options it
- * is handed, every segment then stamped with its hold there under whatever
+ * is handed, every segment then stamped with its validity there under whatever
  * its own cells say. The frame is told (`RenderOptions.onValidity`) that
- * hold without an effect's frames (`UNLAID`): a frame of no cells, an element
+ * validity without an effect's frames (`UNLAID`): a frame of no cells, an element
  * not yet entered, must say when it will have some without a row to say it
  * in, and a switch cropped away may move the rows that show. An effect's
- * frame changes how cells look and never which exist, so its hold rides only
+ * frame changes how cells look and never which exist, so its validity rides only
  * on its cells, and a crop that drops them drops it. Drawn first,
- * because the hold is asked with what the drawing said (`Reads`); each report
+ * because the validity is asked with what the drawing said (`Reads`); each report
  * goes on outward too, since a value drawn inside a placement in this value
  * may be a part of an animation placed further out. [LAW:single-enforcer]
  * The one placement: an animation of renderables (`placedRender`), an effect
  * and a widget drawing one cell from an animation of its own (a caret's
  * blink) place through it, so how a time reaches an animation and how its
- * hold reaches the frame is written once.
+ * validity reaches the frame is written once.
  */
 export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw: (value: T, options: RenderOptions) => Iterable<Segment>): Iterable<Segment> {
   const t = frameTimeOf(options);
@@ -211,7 +211,7 @@ export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw:
     options.onReads?.(at, key, validity);
   };
   const segments = [...draw(shown.value, { ...options, onReads })];
-  // The cells carry the whole hold, so a crop takes it away with them. The frame is told the hold
+  // The cells carry the whole validity interval, so a crop takes it away with them. The frame is told the validity
   // without an effect's frames (`UNLAID`): a switch may move the rows that show even when it is
   // cropped away, and an effect's frame never does. Two walks: a drawing nothing read reads as none
   // and stays early, which is not `UNLAID`'s answer.
@@ -223,7 +223,7 @@ export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw:
  * An animation's face, `render`: `placed`, its value drawn as the renderable
  * it is. A container — the library's or a user's — that draws its children
  * through `render` draws an animation among them with no word about time:
- * the hold goes back the way the time came in. [LAW:composability]
+ * the validity goes back the way the time came in. [LAW:composability]
  */
 export function placedRender(animation: Behavior<unknown>, options: RenderOptions): Iterable<Segment> {
   return placed(animation, options, (value, drawing) => render(drawable(value), drawing));
@@ -231,7 +231,7 @@ export function placedRender(animation: Behavior<unknown>, options: RenderOption
 
 /**
  * An animation's face, `measure`: what it shows at the frame's time, measured,
- * and its hold there told (`RenderOptions.onValidity`), because a container lays
+ * and its validity there told (`RenderOptions.onValidity`), because a container lays
  * out from the measurement and must lay out again when it changes.
  */
 export function placedMeasure(animation: Behavior<unknown>, options: RenderOptions): { minimum: number; maximum: number } {
@@ -243,9 +243,9 @@ export function placedMeasure(animation: Behavior<unknown>, options: RenderOptio
 
 /**
  * What a measurement's drawing would say, and what `placed` tells the frame
- * past its cells: held for good. An effect changes
+ * past its cells: it never changes. An effect changes
  * how cells look and never which exist, so nothing it does can change a
- * layout; a combinator's own switches and a child's holds still reach the
+ * layout; a combinator's own switches and a child's validity intervals still reach the
  * measurement. [LAW:types-are-the-program]
  */
 const UNLAID: Reads = () => NEVER_CHANGES;
@@ -401,14 +401,14 @@ export const Animation = {
   },
 
   /**
-   * `animation` sampled once a hold of `beat`: within a hold, its value at
-   * the hold's start, and at each hold's start it moves on. It changes at the
-   * first hold's start the sampled animation has moved by: the end of this
-   * hold for one that moves every moment, the hold its next change falls in
+   * `animation` sampled once a step of `stepSequence`: within a step, its value at
+   * the step's start, and at each step's start it moves on. It changes at the
+   * first step's start the sampled animation has moved by: the end of this
+   * step for one that moves every moment, the step its next change falls in
    * for one that holds longer, and never for one that never changes again.
    * The answer is read off what the animation says, never a comparison of
-   * values, so one that is back on the same value by the next hold still
-   * turns the beat there, an early answer the contract allows.
+   * values, so one that is back on the same value by the next step still
+   * turns the step there, an early answer the contract allows.
    * [LAW:one-source-of-truth] The one stepping rule, for an effect's frames
    * and a transition's schedule alike.
    */
@@ -419,19 +419,19 @@ export const Animation = {
         const moved = animation.validUntil(stepSequence.validFrom(t), moves);
         if (moved === Number.POSITIVE_INFINITY) return moved;
         const end = stepSequence.validUntil(t);
-        // The hold boundaries after `t` are `end`, then each hold's end in turn;
+        // The step boundaries after `t` are `end`, then each step's end in turn;
         // the value turns at the first one the animation has moved by.
         return moved <= end ? end : stepSequence.validFrom(moved) === moved ? moved : stepSequence.validUntil(moved);
       },
-      // The value held now began at this hold's start at the latest: an early
+      // The value held now began at this step's start at the latest: an early
       // answer where the animation had not moved by it, which the contract
-      // allows. One that always was never turned on any beat.
+      // allows. One that always was never turned on any step.
       validFrom(t: number, moves?: Reads) {
         const began = stepSequence.validFrom(t);
         const moved = animation.validFrom(began, moves);
         return moved === Number.NEGATIVE_INFINITY ? moved : began;
       },
-      // Reduced, nothing moves between beats, so there is nothing to sample on them.
+      // Reduced, nothing moves between steps, so there is nothing to sample on them.
       reduced: () => animation.reduced(),
     });
   },
@@ -486,9 +486,9 @@ export const Animation = {
   repeat<T>(period: number, nth: (n: number) => Behavior<T>): Animation<T> {
     positiveSeconds("Animation.repeat period", period);
     // [LAW:single-enforcer] Which turn a time is in, and how far into it, is
-    // `passAt`, the wrap a `beat` and `WrapMode.loop` read time through, so a
+    // `passAt`, the wrap a step sequence and `WrapMode.loop` read time through, so a
     // repeat beside a loop of the same period turns on the same float; where
-    // a turn begins and the next begins are a one-hold beat's two ends.
+    // a turn begins and the next begins are a one-step sequence's two ends.
     const turns = stepSequence([period]);
     // The turn's moment `local`, on its own clock, carried onto this one: the
     // first float the wrap places at or past `local` in turn `n`, or in a

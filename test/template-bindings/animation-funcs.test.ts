@@ -155,7 +155,7 @@ const validUntilOf = (text: RichText): number => Segment.validUntil(text.render(
 
 /**
  * An engine drawing for `clock.t` on `clock.timeline` (the host's own clock
- * when unset), telling `clock.told` every hold the binding tells the frame,
+ * when unset), telling `clock.told` every validity interval the binding tells the frame,
  * with `color` and `ramp` over a real palette, sprig's maths and lists, and
  * `pulse`, a consumer's own marking function whose mark is not the binding's.
  */
@@ -350,18 +350,18 @@ describe("every function draws on the timeline the host hands in", () => {
   });
 });
 
-// rich-animation-27tq.0gd: a hold reaches the frame only through what the
+// rich-animation-27tq.0gd: a validity interval reaches the frame only through what the
 // output depends on. The engine carries each function's mark beside its value
 // into every variable, dot and function it passes through; `emitted` puts the
-// hold on the cells of an emission that read it, `decided` tells the frame of
+// validity interval on the cells of an emission that read it, `decided` tells the frame of
 // one an `if`/`with`/`range` read, and a value bound where nobody reads it
 // tells nothing. Early, never late.
-describe("a hold reaches the frame only through what is drawn or decided", () => {
+describe("a validity interval reaches the frame only through what is drawn or decided", () => {
   const NEVER: ValidityInterval = { validFrom: Number.NEGATIVE_INFINITY, validUntil: Number.POSITIVE_INFINITY };
   const STEPPED = `stepped 1 "#ff0000" 1 "#0000ff"`;
   const TWEEN = `tween 2 "linear" 0 0 1`;
 
-  /** `source` evaluated at `t`: the hold its emitted cells are in, and every hold told to the frame. */
+  /** `source` evaluated at `t`: the validity interval its emitted cells are in, and every validity interval told to the frame. */
   function heldAt(source: string, t: number, options: { reducedMotion?: boolean } = {}): { cells: ValidityInterval; told: ValidityInterval[] } {
     const clock = { t, told: [] as ValidityInterval[] };
     const segments = [...RichText.fromFragments(toolboxAt(clock, options).compile(source)({})).render({ maxWidth: 80 })];
@@ -406,7 +406,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
     expect(heldAt(`{{ loop 2 0 }}`, 0.7, { reducedMotion: true }).cells.validUntil).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("cells that read two animated values are in the intersection of their holds", () => {
+  it("cells that read two animated values are in the intersection of their validity intervals", () => {
     expect(heldAt(`{{ fg (${STEPPED}) (printf "%.1f" (${TWEEN})) }}`, 0.25).cells).toEqual({ validFrom: 0.25, validUntil: 0.25 });
   });
 
@@ -419,7 +419,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
       expect(heldAt(source, 0.25)).toEqual({ cells: NEVER, told: [{ validFrom: 0.25, validUntil: 0.25 }] });
     });
 
-    it("and the arm it takes carries the hold on its cells too", () => {
+    it("and the arm it takes carries the validity interval on its cells too", () => {
       expect(heldAt(`{{ if lt (loop 2 0) 0.5 }}on{{ end }}`, 0.25)).toEqual({ cells: { validFrom: 0.25, validUntil: 0.25 }, told: [{ validFrom: 0.25, validUntil: 0.25 }] });
     });
   });
@@ -431,7 +431,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
     expect(() => withAnimation(withAnimation(config, () => ({ time: 0 })), () => ({ time: 0 }))).toThrow(/frames, stepped, tween, loop, glyphs/);
   });
 
-  it("a consumer's own mark is not a hold, and passes through both hooks untouched", () => {
+  it("a consumer's own mark is not a validity interval, and passes through both hooks untouched", () => {
     expect(heldAt(`{{ if eq pulse "p" }}{{ pulse }}{{ end }}`, 0.25)).toEqual({ cells: NEVER, told: [] });
   });
 
@@ -463,7 +463,7 @@ describe("a hold reaches the frame only through what is drawn or decided", () =>
 });
 
 // A template evaluated inside a frame is drawn as that frame says: its time,
-// the holds it tells and the reader's preference all come from the frame, so
+// the validity intervals it tells and the reader's preference all come from the frame, so
 // a reduced-motion host never ticks for a template's loop.
 describe("a template drawn in a frame is drawn as the frame says", () => {
   let drawnIn: TemplateFrame = { time: 0 };
@@ -474,7 +474,7 @@ describe("a template drawn in a frame is drawn as the frame says", () => {
       return renderTemplate(engine, source, {}, options);
     },
   });
-  /** What `source` draws at `time` in a frame: its text, when its cells say they change, and every hold told to the frame. */
+  /** What `source` draws at `time` in a frame: its text, when its cells say they change, and every validity interval told to the frame. */
   const drawnAt = (source: string, time: number, reducedMotion: boolean): { text: string; validUntil: number; told: ValidityInterval[] } => {
     const told: ValidityInterval[] = [];
     const segments = [...render(templated(source), { maxWidth: 20, reducedMotion, frame: { time, host: {} }, onValidity: (validity) => told.push(validity) })];

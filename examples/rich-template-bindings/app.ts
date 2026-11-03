@@ -142,7 +142,7 @@ function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<Rich
 // `stepped`, `tween`, `loop` and `glyphs`, which draw for a moment and say
 // when what they drew changes — through the two engine hooks it installs
 // beside them: `emitted` stamps the cells that depend on an animated value
-// with its hold, and `decided` tells the frame of one a decision read but
+// with its validity, and `decided` tells the frame of one a decision read but
 // drew no cell for. The frame is the host's to hand in: a demo row notes
 // here the frame it is drawn in (`templateFrame`), the time and the reader's
 // preferences both, and every template it evaluates reads it — templates
@@ -616,7 +616,7 @@ const secColorValues = makeSection("Color values — compute · name · paint", 
   makeDemoRow("createRichTextEngine() — literals", NO_PALETTE_TMPL, themelessEngine),
 ]);
 
-// ─── §5 — Frames (content on a beat) ───────────────────────────────────────
+// ─── §5 — Frames (content on a step sequence) ──────────────────────────────
 //
 // `frames <seconds> <frame> …` draws the frame in progress at the moment the
 // template is evaluated, looping, every frame at the width of the widest so

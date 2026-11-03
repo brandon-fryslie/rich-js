@@ -70,14 +70,14 @@ describe("Timeline.stagger", () => {
     for (const t of [0, 0.25, 0.75, 1.6, 1e6, 1e6 + 0.7]) expect(pulse.at(t)).toEqual([0, 1, 2].map((i) => signal.at(t - i * 0.5)));
   });
 
-  it("changes when the soonest child does, carried from that child's clock: a beat-stepped arrival wakes on its own beats", () => {
+  it("changes when the soonest child does, carried from that child's clock: an arrival on a step sequence wakes on its own steps", () => {
     const delay = 0.6;
     const children = rows(1, 0.25);
     const staggered = Timeline.stagger(children, delay);
-    // At 0.8, row 0 turns at 1 and row 2 enters at 1.2, but row 1, 0.2 into its arrival, turns its first beat at 0.25 on its clock.
+    // At 0.8, row 0 turns at 1 and row 2 enters at 1.2, but row 1, 0.2 into its arrival, turns its first step at 0.25 on its clock.
     const next = staggered.validUntil(0.8);
     expect(next).toBeCloseTo(0.85, 12);
-    // Exact to the float: the frame before it is still row 1's frame of the last beat.
+    // Exact to the float: the frame before it is still row 1's frame of the last step.
     const before = (x: number) => bytes(staggered.at(x)[1]!);
     expect(before(next)).not.toBe(before(0.8));
     expect(before(nextDown(next))).toBe(before(0.8));

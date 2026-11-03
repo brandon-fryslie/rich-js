@@ -125,7 +125,7 @@ export class Segment {
 
   /**
    * When what `segments` show next changes, in seconds on the timeline of
-   * whoever drew them: the soonest `Style.hold` among them, read off
+   * whoever drew them: the soonest `Style.validity` among them, read off
    * the composed frame the way `anchorAt` reads an owner — `t` itself for a
    * frame something in moves every frame, `Infinity` for one that never
    * changes. What a host that drew the frame at `t` asks before drawing
@@ -140,8 +140,8 @@ export class Segment {
 
   /**
    * Since when what `segments` show has been what it is, on the same
-   * timeline: the latest `Style.hold` among them, the other end of the
-   * hold `validUntil` reads — `t` for a frame something in moves every
+   * timeline: the latest `Style.validity` among them, the other end of the
+   * validity interval `validUntil` reads — `t` for a frame something in moves every
    * frame, `-Infinity` for one that always was. What a host running its
    * timeline backwards asks before drawing again.
    */
@@ -270,7 +270,7 @@ export class Segment {
 
     // Crop to width: the cells past it go, and every piece of no cells stays —
     // a control, or an empty piece of text, writes nothing there, and may be
-    // all that says when its frame changes (`Style.hold`). Not the
+    // all that says when its frame changes (`Style.validity`). Not the
     // reference, which stops at the cut.
     const result: Segment[] = [];
     let remaining = width;

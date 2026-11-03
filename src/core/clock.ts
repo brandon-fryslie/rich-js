@@ -89,7 +89,7 @@ export function systemClock(): Clock {
       // `time` and not before. A host re-drawing at a frame's end would
       // otherwise draw the old frame again and wait again, every boundary.
       // A wait longer than a timer holds is the same re-arming, one longest
-      // timer at a time, so a hold a slowed timeline stretches to months is
+      // timer at a time, so a validity interval a slowed timeline stretches to months is
       // waited out rather than refused.
       let timer: ReturnType<typeof setTimeout>;
       const arm = (): void => {

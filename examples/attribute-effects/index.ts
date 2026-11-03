@@ -5,7 +5,7 @@
  * THIS IS A DEMO: the library's attribute effects
  * (`src/renderables/effects.ts`), for seeing them move. Each panel's content
  * is wrapped in an `Effected` placed in the view and drawn at the `Live`'s
- * time, so what it shows at a `t` is the same at any frame rate, and a beat
+ * time, so what it shows at a `t` is the same at any frame rate, and a step sequence
  * turns on the moment its cells say.
  */
 

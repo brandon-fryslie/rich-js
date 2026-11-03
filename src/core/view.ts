@@ -22,9 +22,9 @@
  * anything it draws. What the drawn frame says about when it changes is on
  * the timeline's clock, and `drawView` carries it back onto the host's by
  * running the frame through the same timeline: the frame is a sample held
- * for the intersection of its cells' holds (`Segment.validFrom`,
- * `Segment.validUntil`) and the holds it was told that no cell carries
- * (`RenderOptions.onValidity`), and `Timeline.run` is the one place a hold is
+ * for the intersection of its cells' validity intervals (`Segment.validFrom`,
+ * `Segment.validUntil`) and the validity intervals it was told that no cell carries
+ * (`RenderOptions.onValidity`), and `Timeline.run` is the one place a validity interval is
  * mapped onto host time, forwards, backwards or paused.
  *
  * What a host does with that is its own policy, and it reads it off the
@@ -33,7 +33,7 @@
  * auto-refresh, polls every frame.
  *
  * Tier 7 of `src/core/`: `./animation.ts`'s `Animation`, `./timeline.ts`,
- * `./segment.ts`, `./protocol.ts` and `./style.ts`'s holds, nothing else.
+ * `./segment.ts`, `./protocol.ts` and `./style.ts`'s validity intervals, nothing else.
  * [LAW:one-way-deps]
  */
 
@@ -120,14 +120,14 @@ export interface DrawnView extends FrameSays {
 /** What a frame not yet drawn at host time `t` says: nothing. */
 export const undrawn = (t: number): FrameSays => ({ t, validUntil: Number.POSITIVE_INFINITY });
 
-/** The hold of the frame `lines` draw, told `told` besides: the intersection of its cells' holds and it. */
+/** The validity interval of the frame `lines` draw, told `told` besides: the intersection of its cells' validity intervals and it. */
 const frameValidity = (lines: Segment[][], told: ValidityInterval): ValidityInterval =>
   lines.reduce((validity, row) => intersection(validity, { validFrom: Segment.validFrom(row), validUntil: Segment.validUntil(row) }), told);
 
 /**
  * `view` drawn by `drawnBy` at `time` under `options`, its lines shaped by
  * `draw` — the host's own render under those options, with its height and
- * overflow — and when the frame changes on the host's clock: the hold its
+ * overflow — and when the frame changes on the host's clock: the validity interval its
  * cells say, carried back through the timeline. [LAW:one-source-of-truth]
  * `options` is the one place the frame reads the reader's preference for
  * motion, handed on to `draw` with the frame (`frameNow`): the time it is
@@ -150,7 +150,7 @@ export function drawView(
   const lines = draw(view, { ...options, frame, onValidity });
   const validity = frameValidity(lines, told);
   // The frame as the sample of the view it is, on the timeline's clock; the
-  // timeline says when the host's clock leaves its hold.
+  // timeline says when the host's clock leaves its validity interval.
   const sample: Animation<Segment[][]> = { at: () => lines, validUntil: () => validity.validUntil, validFrom: () => validity.validFrom, reduced: () => sample };
   const validUntil = Timeline.run(timeline, sample).validUntil(host);
   return { t: host, lines, validUntil };

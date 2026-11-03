@@ -1,6 +1,6 @@
 /*
  * A strip's seams under an effect: every join cell is resolved again from the
- * item cells beside it as the effect left them, through the path the joiner
+ * item cells beside it as the effect left them, through the path the separator
  * drew it by, lift included — never painted by the effect itself.
  */
 import { describe, it, expect } from "vitest";
@@ -42,7 +42,7 @@ const hexes = (style: Style | undefined): [string, string] => {
   return [color!.getTruecolor(THEME, true).hex, bgcolor!.getTruecolor(THEME, false).hex];
 };
 
-/** The cells of `segments` a joiner drew between `left` and `right`: its seam, caps left out. */
+/** The cells of `segments` a separator drew between `left` and `right`: its seam, caps left out. */
 const seamOf = (segments: readonly Segment[], left: object, right: object): Segment[] =>
   segments.filter((s) => {
     const joined = joinedCell(s.style?.anchor);
