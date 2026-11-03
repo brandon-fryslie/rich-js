@@ -478,7 +478,7 @@ describe("stepSequence — steps in seconds, the step in progress out, no clock 
     expect(() => stepSequence([1]).validFrom(Number.NaN)).toThrow(/StepSequence.validFrom needs a finite t, got NaN/);
   });
 
-  // rich-animation-xi28.6rs: `validUntil` is when what is drawn on the beat at `t`
+  // rich-animation-xi28.6rs: `validUntil` is when what is drawn in the step at `t`
   // next changes — what a host asks before drawing again.
   it("validUntil is when the step in progress ends: the next step's start, into the next pass from the last, before zero too", () => {
     const b = stepSequence([1, 0.5, 2.5]);

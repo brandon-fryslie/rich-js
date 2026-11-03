@@ -291,7 +291,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   // back as it came — the engine calls this for every emission — and one a
   // validity interval reaches is a copy, since the engine may hand the one fragment a
   // scope holds to more than one emission.
-  const held = (fragment: RichText, marks: ReadonlySet<unknown>): RichText => {
+  const stamped = (fragment: RichText, marks: ReadonlySet<unknown>): RichText => {
     const marked = validityMarks(marks);
     if (marked.length === 0) return fragment;
     const result = fragment.copy();
@@ -308,7 +308,7 @@ export function withAnimation(config: EngineConfig<RichText>, frame: () => Templ
   return {
     ...config,
     funcs: { ...config.funcs, ...funcs },
-    emitted: (fragment, marks) => held(emitted(fragment, marks), marks),
+    emitted: (fragment, marks) => stamped(emitted(fragment, marks), marks),
     // `finally`: a consumer hook that throws still leaves the frame told its validity intervals.
     decided: (marks) => {
       try {

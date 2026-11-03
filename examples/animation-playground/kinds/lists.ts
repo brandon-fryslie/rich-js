@@ -108,12 +108,12 @@ const tabling = Animation.map(
     STEPS.map(() => stepSequence([0.5, 1.5])),
     0.5,
   ),
-  (holds) => {
+  (inProgress) => {
     const table = Table.grid({ padding: [0, 2] });
     table.addColumn();
     table.addColumn(undefined, { justify: "right" });
-    holds.forEach((hold, i) => {
-      const style = hold === 0 ? "bold #94e2d5" : MUTED;
+    inProgress.forEach((step, i) => {
+      const style = step === 0 ? "bold #94e2d5" : MUTED;
       table.addRow(new RichText(STEPS[i]![0]!, { style }), new RichText(STEPS[i]![1]!, { style }));
     });
     return table;

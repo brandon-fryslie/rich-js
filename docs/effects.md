@@ -76,10 +76,10 @@ The shares keep the words readable. `Effected` measures every ink and ground pai
 
 `drawn` is the same for every cell of a frame.
 
-- `all()` lists every cell the element draws, shown or not, each with its `row`, `col` and `anchor`, the columns its glyph takes (`width`), its ink and ground as the screen shows them (`pair`), and whether a strip's joiner drew it (`seam`), in the order the element draws them and listed before any cell is handed. A blank cell on the terminal's ground is in it: its ink, unseen, is the ink of the words beside it, so `wheel` reads a styled sentence as one run across its spaces. A strip's seam painted from the items beside it is listed but never handed its own look, since it follows them ([One element of many](#one-element-of-many)). Under `confined` it is only the cells the owners drew.
+- `all()` lists every cell the element draws, shown or not, each with its `row`, `col` and `anchor`, the columns its glyph takes (`width`), its ink and ground as the screen shows them (`pair`), and whether a strip's separator drew it (`seam`), in the order the element draws them and listed before any cell is handed. A blank cell on the terminal's ground is in it: its ink, unseen, is the ink of the words beside it, so `wheel` reads a styled sentence as one run across its spaces. A strip's seam painted from the items beside it is listed but never handed its own look, since it follows them ([One element of many](#one-element-of-many)). Under `confined` it is only the cells the owners drew.
 - `cells()` is those of `all()` the element shows something in, a glyph, a ground other than the terminal's or a line its style draws. A blank cell on the terminal's ground that draws no line is handed to the effect, but not in it. A transition uses it to spread its order over the cells that can be seen to move.
 
-The rest describes the cells the element draws words in: those whose glyph is not blank and that a strip's joiner did not draw, since a powerline seam's ink is the fill beside it, not words.
+The rest describes the cells the element draws words in: those whose glyph is not blank and that a strip's separator did not draw, since a powerline seam's ink is the fill beside it, not words.
 
 - `pairs` is every distinct ink and ground of those cells as the screen shows them, each with the `terminal` flags a cell carries and `reverse`, whether its style writes the ink in the ground's slot.
 - `colors` is the colors the element sets itself in those cells, by hex. `fills` is those of them that are a cell's ground.
@@ -91,7 +91,7 @@ The rest describes the cells the element draws words in: those whose glyph is no
 
 `confined(effect, ...owners)` applies `effect` only to the colors any of `owners` drew, and leaves every other color exactly as it was. It goes by who drew each cell, not by its color, so it can single out one of several items that share a fill. An owner is whatever stamps the cells it draws (`Segment.anchorLines`): every widget, every `Viewport`, and every item of a `Strip` or `FlexStrip`, however the strip wraps. Confined to anything that draws without stamping, such as the `Strip` itself, an effect moves nothing.
 
-A strip's seams follow its items. A cell a `CellSeparator` paints from the items beside it is no item's, so no effect is handed it; once the effect has painted the items, each such cell is drawn again from the item cells beside it, the way its joiner drew it. A cell painted from a style name alone, such as `plain`'s separator or `metro`'s rail, follows no item: an effect paints it as it paints any cell, and one confined to the items leaves it as drawn, since no item drew it. Where the frame does not show a neighbour, as when a narrower container cuts the strip short, the effect is handed that neighbour's edge at the seam's own cell, so an effect over the whole element moves it with everything else, and one confined to the items leaves it as drawn. A powerline arrow keeps the fill it points out of as its ink and the fill it points into as its ground, wherever the effect took them:
+A strip's seams follow its items. A cell a `CellSeparator` paints from the items beside it is no item's, so no effect is handed it; once the effect has painted the items, each such cell is drawn again from the item cells beside it, the way its separator drew it. A cell painted from a style name alone, such as `plain`'s seam or `metro`'s rail, follows no item: an effect paints it as it paints any cell, and one confined to the items leaves it as drawn, since no item drew it. Where the frame does not show a neighbour, as when a narrower container cuts the strip short, the effect is handed that neighbour's edge at the seam's own cell, so an effect over the whole element moves it with everything else, and one confined to the items leaves it as drawn. A powerline arrow keeps the fill it points out of as its ink and the fill it points into as its ground, wherever the effect took them:
 
 ```typescript
 import { EFFECT_CURVES, EFFECT_LIGHTS, Effected, SEPARATOR_STYLES, RichText, Strip, Style, confined, onColors, pulse } from "@promptctl/rich-js";
@@ -242,7 +242,7 @@ for (const t of [0, 0.69, 0.7, 0.99, 1]) {
 }
 ```
 
-No effect is handed a seam painted from the items beside it, so it keeps the attributes its joiner drew it with while the items either side of it blink: its ink is a neighbour's fill, which carries no attribute. A separator painted from a style name, such as `plain`'s, is painted as any cell and blinks with the element. To watch them blink, run `npm run attribute-effects` in a checkout of this repository.
+No effect is handed a seam painted from the items beside it, so it keeps the attributes its separator drew it with while the items either side of it blink: its ink is a neighbour's fill, which carries no attribute. A seam painted from a style name, such as `plain`'s, is painted as any cell and blinks with the element. To watch them blink, run `npm run attribute-effects` in a checkout of this repository.
 
 ## Writing an effect
 
