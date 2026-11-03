@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "04df1bf4d448c87a81554591e69f6ed0365a2243",
+      "timestamp": "2026-11-03T12:37:36.035Z",
+      "commits": [
+        {
+          "sha": "04df1bf4d448c87a81554591e69f6ed0365a2243",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T05:35:15-07:00",
+          "message": "The loop-jump and playground speed tests do their work once, not per fill or per 60 fps frame (rich-animation-42lg.xkk) (#543)\n\n* The loop-jump and playground speed tests do their work once, not per fill or per 60 fps frame (rich-animation-42lg.xkk)\n\nThe loop-jump check computed each frame's field once per fill, touched every\ncell anew though a frame holds few distinct shares, and converted each color\nto OKLCH at both its steps; it now does each once, the same values compared.\nThe playground's speed test reads only the readout, so it plays at 1 fps, as\nthe seek test beside it already does. Alone: 5.4/7.1/14.4s -> 0.3/2.1/3.6s\nand 6.8s -> 0.3s; full suite at load ~28: worst 9.0s against the 30s timeout.\n\n* Review: the playground speed test checks it reached 1 fps; the loop-jump comment says it measures the raw field, not the snapped one (rich-animation-42lg.xkk)\n\n* Review: one helper clicks the playground to 1 fps and checks it landed; the loop-jump comment says snapped loops exceed the bar (rich-animation-42lg.xkk)"
+        }
+      ]
+    },
+    {
       "version": "pr-544",
       "ref": "refs/pull/544/merge",
       "sha": "3e2a1943c2820558baa5be062ea4e6b83b6d9c86",
@@ -41,57 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-03T04:38:00-07:00",
           "message": "cyclic and marquee: a rotation through a list, and content of any width crossing a slot a cell a step (rich-animation-42lg.xoj)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-543",
-      "ref": "refs/pull/543/merge",
-      "sha": "3572ac420e87898a113f8627caaf7ad7288acf8a",
-      "timestamp": "2026-11-03T12:22:17.309Z",
-      "commits": [
-        {
-          "sha": "3572ac420e87898a113f8627caaf7ad7288acf8a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T12:20:39Z",
-          "message": "Merge d6d2ff6fd86518b07dc49abf63199217751d621d into c25a44a31e5c3f5a644af8160c30fbeca711497d\n"
-        },
-        {
-          "sha": "d6d2ff6fd86518b07dc49abf63199217751d621d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:20:28-07:00",
-          "message": "Review: one helper clicks the playground to 1 fps and checks it landed; the loop-jump comment says snapped loops exceed the bar (rich-animation-42lg.xkk)\n"
-        },
-        {
-          "sha": "bd0296a2bc1e0a330d04ae3054a29a7a8f3eb260",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:16:48-07:00",
-          "message": "Review: the playground speed test checks it reached 1 fps; the loop-jump comment says it measures the raw field, not the snapped one (rich-animation-42lg.xkk)\n"
-        },
-        {
-          "sha": "bcf2f41281f7d3417d2785a41185b07dfcbb74e2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:10:31-07:00",
-          "message": "The loop-jump and playground speed tests do their work once, not per fill or per 60 fps frame (rich-animation-42lg.xkk)\n\nThe loop-jump check computed each frame's field once per fill, touched every\ncell anew though a frame holds few distinct shares, and converted each color\nto OKLCH at both its steps; it now does each once, the same values compared.\nThe playground's speed test reads only the readout, so it plays at 1 fps, as\nthe seek test beside it already does. Alone: 5.4/7.1/14.4s -> 0.3/2.1/3.6s\nand 6.8s -> 0.3s; full suite at load ~28: worst 9.0s against the 30s timeout.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "c25a44a31e5c3f5a644af8160c30fbeca711497d",
-      "timestamp": "2026-11-03T12:03:19.771Z",
-      "commits": [
-        {
-          "sha": "c25a44a31e5c3f5a644af8160c30fbeca711497d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:01:42-07:00",
-          "message": "The e2e suite serves the site's xterm.js from disk, not jsDelivr (rich-unfiled-791c.5v4l) (#541)\n\n* The e2e suite serves the site's xterm.js from disk, not jsDelivr (rich-unfiled-791c.5v4l)\n\nA stalled CDN fetch left every live terminal at Run with no error, which\nread as a regression in the page. e2e/test.ts routes jsDelivr for every\nspec: XTERM's files come from the pinned @xterm/xterm devDependency (the\nbrowser's integrity check holds the two to one version), anything else\nthere is aborted.\n\n* The CDN route sits on every context and refuses loudly (review: rich-unfiled-791c.5v4l)\n\nPages a spec makes from browser were unrouted; aborted or missing-file\nrequests vanished; installed xterm could drift from XTERM's URL.\n\n* A seam test holds e2e pages to routed contexts; refusals say why (review: rich-unfiled-791c.5v4l)\n\nSpecs import test only from e2e/test.ts and route their own contexts\nthrough cdn; a refused request carries its reason; files read once per\nworker; xterm.ts names both version pins. Self-hosting for visitors is\nrich-unfiled-791c.abt1. Early failure on a refusal is not possible from\na route handler; teardown names the URL.\n\n* The refusal list is read after its contexts close; the version pin is a unit test (review: rich-unfiled-791c.5v4l)\n\nGate reads e2e/ recursively and across lines; served() returns a tagged\nunion. Rejected: serving .map files and URL decoding — nothing requests\neither."
         }
       ]
     }
