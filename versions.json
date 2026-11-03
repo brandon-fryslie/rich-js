@@ -4,15 +4,22 @@
     {
       "version": "pr-551",
       "ref": "refs/pull/551/merge",
-      "sha": "57a8403fc0ef7e6b30de3fe3da4240b372f49188",
-      "timestamp": "2026-11-03T17:17:58.454Z",
+      "sha": "ae551bd08ab18d9d17c465d8ac6945c3d4ca01e2",
+      "timestamp": "2026-11-03T17:25:26.810Z",
       "commits": [
         {
-          "sha": "57a8403fc0ef7e6b30de3fe3da4240b372f49188",
+          "sha": "ae551bd08ab18d9d17c465d8ac6945c3d4ca01e2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T10:13:41-07:00",
-          "message": "Merge 0b7ee4f1c356c36620902d8c5c9998e0447bae50 into a785d40816f3b3f98f60b9a64157eb0f5e1cb07c\n"
+          "timestamp": "2026-11-03T17:22:57Z",
+          "message": "Merge 00d483b4a897447e7bfe3a68bacc1cadaa2e5867 into a785d40816f3b3f98f60b9a64157eb0f5e1cb07c\n"
+        },
+        {
+          "sha": "00d483b4a897447e7bfe3a68bacc1cadaa2e5867",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T10:22:33-07:00",
+          "message": "Review: test titles, docs and locals finish the step/separator vocabulary; the step-resolution refusal is pinned (rich-unfiled-791c.gt81)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "0b7ee4f1c356c36620902d8c5c9998e0447bae50",
