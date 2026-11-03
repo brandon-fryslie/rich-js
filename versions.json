@@ -4,15 +4,22 @@
     {
       "version": "pr-544",
       "ref": "refs/pull/544/merge",
-      "sha": "164fcbeea9e3ce1165d97c89c0a110b6827d7760",
-      "timestamp": "2026-11-03T12:28:11.381Z",
+      "sha": "3e2a1943c2820558baa5be062ea4e6b83b6d9c86",
+      "timestamp": "2026-11-03T12:34:30.652Z",
       "commits": [
         {
-          "sha": "164fcbeea9e3ce1165d97c89c0a110b6827d7760",
+          "sha": "3e2a1943c2820558baa5be062ea4e6b83b6d9c86",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T12:25:50Z",
-          "message": "Merge a84b3c6117e050d3d488fa54123f7f887a673b64 into c25a44a31e5c3f5a644af8160c30fbeca711497d\n"
+          "timestamp": "2026-11-03T12:32:14Z",
+          "message": "Merge fb77bce920b7ea4909e8e5ee6fb9e87bc9792e02 into c25a44a31e5c3f5a644af8160c30fbeca711497d\n"
+        },
+        {
+          "sha": "fb77bce920b7ea4909e8e5ee6fb9e87bc9792e02",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T05:31:58-07:00",
+          "message": "Review: a scrub drag ends on a move with no button, the track keeps a cell, a marquee's refusal names marquee, hostDepth throws on a depth no step reproduces (rich-animation-42lg.xoj)\n"
         },
         {
           "sha": "a84b3c6117e050d3d488fa54123f7f887a673b64",
