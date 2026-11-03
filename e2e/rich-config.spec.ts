@@ -9,7 +9,7 @@
  * `NodeTerminalHost`, over streams it writes itself.
  */
 import { fileURLToPath } from "node:url";
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { cellLen } from "../src/core/cells.js";
 import { cardJson } from "../docs/.vitepress/demo-card.js";

@@ -16,10 +16,13 @@
  * through `BrowserTerminalHost`, the library's own host for an xterm terminal,
  * so a program's newlines reach the screen the way a tty delivers them.
  */
+// The site's stylesheet carries xterm's, so a terminal is styled the moment its chunk arrives.
+import type { ITheme } from "@xterm/xterm";
+import "@xterm/xterm/css/xterm.css";
+import "./xterm-measure.css";
 import type { Contrast } from "../example-card.js";
 import { BrowserTerminalHost, type XtermDisposable, type XtermTerminal } from "../../../src/host/index.js";
 import type { TerminalTheme } from "../../../src/index.js";
-import { XTERM } from "./xterm.js";
 import type { Version } from "../hot-runtime.js";
 import { sandbox, type Sandbox, type TerminalSpec, type ToWorker } from "./sandbox.js";
 
@@ -96,7 +99,7 @@ export const MINIMUM_CONTRAST: Readonly<Record<Contrast, number>> = { readable: 
  * [LAW:one-source-of-truth] The line height is not among them. xterm makes a
  * row its measured character height times its `lineHeight` option, rounded to
  * device pixels, so no factor handed in from here lands on the element's line
- * height. `loadXterm` and `openMeasuringInPage` instead have xterm measure its
+ * height. xterm-measure.css and `openMeasuringInPage` instead have xterm measure its
  * character at the line custom.css derives that line height from, and the
  * option stays 1: a row is then the element's line height.
  */
@@ -106,7 +109,7 @@ export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
 }
 
 /** xterm's color options, from the theme a program's output is drawn in everywhere else. */
-function xtermTheme(theme: TerminalTheme): Record<string, string> {
+function xtermTheme(theme: TerminalTheme): ITheme {
   const names = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
   const ansi = Object.fromEntries(
     [...names, ...names.map((n) => `bright${n[0]!.toUpperCase()}${n.slice(1)}`)].map((name, i) => [name, theme.ansiColors.get(i).hex]),
@@ -135,7 +138,7 @@ interface Xterm extends XtermTerminal {
   attachCustomWheelEventHandler(handler: (event: WheelEvent) => boolean): void;
   /** `"none"` while the program has asked for no pointer reports. */
   readonly modes: { readonly mouseTrackingMode: string };
-  options: { theme: Record<string, string>; fontFamily: string; fontSize: number };
+  options: { theme?: ITheme; fontFamily?: string; fontSize?: number };
 }
 
 /** Keys pressed only to change another: Shift between Escape and Tab still leaves. */
@@ -155,36 +158,30 @@ type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
 
 let xterm: Promise<XtermConstructor> | undefined;
 
-/** xterm.js, from the site's one pin, added to the page the first time a terminal is made. */
+/**
+ * xterm.js, the `@xterm/xterm` devDependency bundled into the site as its own
+ * chunk, loaded the first time a terminal is made.
+ */
 function loadXterm(): Promise<XtermConstructor> {
-  xterm ??= new Promise<XtermConstructor>((resolve, reject) => {
-    const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
-    // xterm makes a row the height it measures a character at, in whole CSS
-    // pixels rounded up to whole device pixels, and measures it in the page
-    // (`openMeasuringInPage`) at line-height: normal. Measured at the
-    // element's --rich-fragment-line, a whole CSS pixel, a row is the line
-    // height custom.css derives from it the same way (`elementFont`).
-    const measure = Object.assign(document.createElement("style"), {
-      textContent: ".xterm .xterm-char-measure-element { line-height: var(--rich-fragment-line, normal); }",
-    });
-    const script = Object.assign(document.createElement("script"), { crossOrigin: "anonymous", ...XTERM.script });
-    script.onload = () => resolve((globalThis as unknown as { Terminal: XtermConstructor }).Terminal);
-    script.onerror = () => {
-      // Forgotten, so the next terminal made tries again rather than reusing a failure.
+  // A failure is forgotten so the next terminal made imports again. Whether
+  // that fetches again is the browser's: one may keep the failure in its module
+  // map (whatwg/html#6768), and then only a reload recovers.
+  xterm ??= import("@xterm/xterm").then(
+    ({ Terminal }) => {
+      const constructor: XtermConstructor = Terminal;
+      return constructor;
+    },
+    (error: unknown) => {
       xterm = undefined;
-      link.remove();
-      measure.remove();
-      script.remove();
-      reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
-    };
-    document.head.append(link, measure, script);
-  });
+      throw error;
+    },
+  );
   return xterm;
 }
 
 /**
  * `screen` opened in `parent`, measuring its character in the page, where
- * the stylesheet `loadXterm` adds sets the measure's line height.
+ * xterm-measure.css sets the measure's line height.
  *
  * xterm 6 measures on an `OffscreenCanvas` when the page has one, as the
  * font's ascent plus its descent, which no stylesheet reaches; and a factor

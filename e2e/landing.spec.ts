@@ -6,9 +6,8 @@
  * reduced motion; it wears the site's color mode; and at phone width it fits
  * the page whole. What the terminal shows is read from xterm's rows.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 import { EXAMPLE_THEMES } from "../docs/.vitepress/example-terminal.js";
 import { pageErrors } from "./page-errors.js";
 
@@ -19,6 +18,25 @@ async function open(page: Page): Promise<string[]> {
 }
 
 const showcase = (page: Page) => page.locator(".rich-showcase");
+/**
+ * Holds the xterm.js chunk the site bundles, named for the package, so every
+ * terminal stays at its placeholder until `release`. `requested` settles once
+ * the chunk is asked for: a chunk renamed out of the glob then times a test out
+ * instead of holding nothing.
+ */
+async function holdXterm(page: Page): Promise<{ requested: Promise<void>; release: () => void }> {
+  let release!: () => void;
+  let requested!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  const asked = new Promise<void>((resolve) => (requested = resolve));
+  await page.route("**/assets/chunks/xterm.*.js", async (route) => {
+    requested();
+    await held;
+    await route.fallback();
+  });
+  return { requested: asked, release };
+}
+
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
 const rows = async (page: Page) => (await showcase(page).locator(".xterm-rows").innerText()).replaceAll("\u00a0", " ");
 const button = (page: Page) => showcase(page).locator(".rich-live-button");
@@ -26,13 +44,9 @@ const button = (page: Page) => showcase(page).locator(".rich-live-button");
 const rendering = async (page: Page) => /Rendering frames\s.*?(\d+)%/.exec(await rows(page))?.[1];
 
 test("the hero's text and buttons are on the page before its terminal has loaded", async ({ page }) => {
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(XTERM.script.src, async (route) => {
-    await held;
-    await route.fallback();
-  });
+  const { requested, release } = await holdXterm(page);
   const errors = await open(page);
+  await requested;
   await expect(page.locator(".VPHero .text")).toHaveText("Beautiful terminal output");
   await expect(page.locator(".VPHero .actions")).toContainText("Get Started");
   await expect(showcase(page)).toBeVisible();
@@ -108,15 +122,11 @@ for (const deviceScaleFactor of [1, 1.25, 1.5]) {
     for (const width of [1440, 390]) {
       test(`at ${width}px, the showcase's rows are the page's line height and its card keeps its height`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
-        let release!: () => void;
-        const held = new Promise<void>((resolve) => (release = resolve));
-        await page.route(XTERM.script.src, async (route) => {
-          await held;
-          await route.fallback();
-        });
+        const { requested, release } = await holdXterm(page);
         const errors = await open(page);
         const card = showcase(page).locator(".rich-example-card");
         await expect(card).toBeVisible();
+        await requested;
         await expect(showcase(page).locator(".xterm")).toHaveCount(0);
         const before = await card.evaluate((element) => element.getBoundingClientRect().height);
 

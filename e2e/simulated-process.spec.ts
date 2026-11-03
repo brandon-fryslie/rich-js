@@ -8,7 +8,7 @@
  * The docs pages' live terminals, which run it in a worker, have their own
  * proof in e2e/live-examples.spec.ts.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import stripAnsi from "strip-ansi";
 import { bundleExample } from "../docs/.vitepress/example-runner.js";

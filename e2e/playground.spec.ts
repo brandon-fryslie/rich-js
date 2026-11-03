@@ -9,7 +9,7 @@
  * and the page stays usable; reset puts the opened program back; at phone
  * width the card fits the screen; output wears the site's color mode.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { deflateSync } from "node:zlib";
 import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../src/themes/terminalThemes.js";
@@ -42,7 +42,7 @@ async function write(page: Page, source: string): Promise<void> {
 
 // The editor and the library load with the first card that runs.
 const OPENING = { timeout: 15_000 };
-// A live terminal brings xterm.js from its CDN.
+// A live terminal loads the xterm.js chunk.
 const LIVE = { timeout: 20_000 };
 
 const HELLO_AGAIN = ['import { Console } from "@promptctl/rich-js";', 'new Console().print("[bold]Hello again[/]");'].join("\n");
@@ -91,7 +91,7 @@ test("reset puts the opened program back", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("the program is the URL: a reload and a fresh browser both open it", async ({ page, browser, cdn }) => {
+test("the program is the URL: a reload and a fresh browser both open it", async ({ page, browser }) => {
   const errors = await open(page);
   await expect(editor(page)).toContainText("Hello", OPENING);
   await write(page, HELLO_AGAIN);
@@ -102,7 +102,7 @@ test("the program is the URL: a reload and a fresh browser both open it", async 
   await expect(editor(page)).toContainText("Hello again", OPENING);
   await expect.poll(() => drawn(page), OPENING).toContain("Hello again");
 
-  const fresh = await cdn(await browser.newContext());
+  const fresh = await browser.newContext();
   const other = await fresh.newPage();
   await other.goto(link);
   await expect(editor(other)).toContainText("Hello again", OPENING);

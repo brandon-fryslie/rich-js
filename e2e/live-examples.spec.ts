@@ -13,7 +13,7 @@
  * What the terminal shows is read from xterm's rows.
  */
 import { readFileSync, readdirSync } from "node:fs";
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { pageErrors } from "./page-errors.js";
 

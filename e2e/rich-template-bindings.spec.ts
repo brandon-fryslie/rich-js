@@ -4,7 +4,7 @@
  * beside it on the next frame, and PageDown moves to the next section. The
  * keys are xterm's own, produced from DOM events.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { card, cardRows } from "./card-screen.js";
 

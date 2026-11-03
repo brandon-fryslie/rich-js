@@ -16,7 +16,7 @@
  * even if the demo crashes before its first write. The row textContent is the
  * only DOM signal that survives that distinction.
  */
-import { test, expect } from "./test.js";
+import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -28,7 +28,7 @@ import { pageErrors } from "./page-errors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// The editor and the library load with the card; its terminal brings xterm.js from its CDN.
+// The editor and the library load with the card; its terminal loads the xterm.js chunk.
 const LOADED = { timeout: 20_000 };
 
 /** A demo's page, and every error the page raised. */
