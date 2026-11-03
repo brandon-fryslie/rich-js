@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-547",
-      "ref": "refs/pull/547/merge",
-      "sha": "dafce9292294dce4b2059911289098ba2a68e0cb",
-      "timestamp": "2026-11-03T14:27:32.885Z",
-      "commits": [
-        {
-          "sha": "dafce9292294dce4b2059911289098ba2a68e0cb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T14:24:58Z",
-          "message": "Merge a247cc102a39b7b6d28dc474d2e850a44e5d0c8c into 579e774d3f6078821f8d57e610dfe63585fd9db6\n"
-        },
-        {
-          "sha": "a247cc102a39b7b6d28dc474d2e850a44e5d0c8c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:24:48-07:00",
-          "message": "Medium review: name drawnSegments in spanFree's comment, document that append does not carry a row's direction (rich-unfiled-791c.8khi)\n"
-        },
-        {
-          "sha": "24cd7beec3e0ba57df5fdf96c73622ef0f1481fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:16:23-07:00",
-          "message": "Review fixes: visual order resolves the raw line, edges follow a stated direction, the cut trims spans as Rich does, wrap refuses visual at runtime, render draws drafts (rich-unfiled-791c.8khi)\n"
-        },
-        {
-          "sha": "5b1115d2f26c10452a3c14f55e1f231858e924de",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:04:47-07:00",
-          "message": "A text's wrapped rows are public as RichText, spans intact, and render draws them (rich-unfiled-791c.8khi)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "579e774d3f6078821f8d57e610dfe63585fd9db6",
-      "timestamp": "2026-11-03T14:22:18.207Z",
+      "sha": "86819f00c52ec1fa4bac59cb3daafe21664cedf2",
+      "timestamp": "2026-11-03T14:42:35.099Z",
       "commits": [
         {
-          "sha": "579e774d3f6078821f8d57e610dfe63585fd9db6",
+          "sha": "86819f00c52ec1fa4bac59cb3daafe21664cedf2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T07:20:37-07:00",
-          "message": "Loops stay under the 0.04 bar as drawn: one draw step, 96 levels, slower shimmer and sparkle (rich-animation-42lg.twz) (#546)\n\n* Pulse and shimmer stay under the 0.04 bar as drawn: the loops test measures the snapped field, and the two loops slow to 53 s and 127 s (rich-animation-42lg.twz)\n\n* The loops test measures through drawnAt, the renderer's own draw step, not a copy of it (rich-animation-42lg.twz)\n\n* The contrast settling checks through drawnAt too, and a share is always stated (rich-animation-42lg.twz)\n\n* A loop's drawn step is its unsnapped step plus one level: 96 levels, shimmer 149 s, sparkle 163 s keep every loop under 0.04 over the hour grid (rich-animation-42lg.twz)"
+          "timestamp": "2026-11-03T07:39:33-07:00",
+          "message": "A text's wrapped rows are public as RichText, spans intact (rich-unfiled-791c.8khi) (#547)\n\n* A text's wrapped rows are public as RichText, spans intact, and render draws them (rich-unfiled-791c.8khi)\n\n* Review fixes: visual order resolves the raw line, edges follow a stated direction, the cut trims spans as Rich does, wrap refuses visual at runtime, render draws drafts (rich-unfiled-791c.8khi)\n\n* Medium review: name drawnSegments in spanFree's comment, document that append does not carry a row's direction (rich-unfiled-791c.8khi)"
         }
       ]
     }
