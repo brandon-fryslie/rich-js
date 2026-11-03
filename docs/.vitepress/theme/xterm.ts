@@ -3,7 +3,9 @@
  * file taken from jsDelivr. The live terminal (live-terminal.ts) loads it from
  * here, and the landing e2e spec checks the page against it.
  *
- * [LAW:one-source-of-truth] A version bump is this file.
+ * [LAW:one-source-of-truth] A version bump is this file and the `@xterm/xterm`
+ * devDependency, which the e2e suite serves in place of jsDelivr; e2e/test.ts
+ * refuses to load when the two name different versions.
  */
 export const XTERM = {
   script: {

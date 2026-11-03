@@ -34,9 +34,19 @@ if (!PACKAGE_URL.endsWith(`@${installed}/`)) {
   throw new Error(`@xterm/xterm ${installed} is installed, but the site loads ${PACKAGE_URL}`);
 }
 
-async function served(url: string): Promise<Buffer | undefined> {
-  if (!url.startsWith(PACKAGE_URL)) return undefined;
-  return readFile(join(PACKAGE_DIR, url.slice(PACKAGE_URL.length))).catch(() => undefined);
+// The bytes are fixed for the run: one read per file per worker.
+const files = new Map<string, Promise<Buffer | string>>();
+
+/** The file a package URL names, or why it cannot be served. */
+function served(url: string): Promise<Buffer | string> {
+  if (!url.startsWith(PACKAGE_URL)) return Promise.resolve("not the pinned xterm package");
+  const path = join(PACKAGE_DIR, url.slice(PACKAGE_URL.length));
+  let file = files.get(path);
+  if (file === undefined) {
+    file = readFile(path).catch((error: NodeJS.ErrnoException) => `${error.code ?? error.message}: ${path}`);
+    files.set(path, file);
+  }
+  return file;
 }
 
 export const test = base.extend<{ cdn: (context: BrowserContext) => Promise<BrowserContext> }>({
@@ -46,9 +56,9 @@ export const test = base.extend<{ cdn: (context: BrowserContext) => Promise<Brow
       await context.route("https://cdn.jsdelivr.net/**", async (route) => {
         const url = route.request().url();
         const type = Object.entries(CONTENT_TYPES).find(([extension]) => url.endsWith(extension))?.[1];
-        const body = type === undefined ? undefined : await served(url);
-        if (body === undefined) {
-          refused.push(url);
+        const body = type === undefined ? "not a .js or .css file" : await served(url);
+        if (typeof body === "string") {
+          refused.push(`${url} (${body})`);
           return route.abort("blockedbyclient");
         }
         // jsDelivr sends this; without it a crossorigin load is refused.
