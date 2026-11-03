@@ -86,10 +86,12 @@ const LEGIBLE = 4.5;
  * The strengths a cell is drawn at: a field is snapped to one of these, and
  * a share is checked at every one, so every strength drawn was checked. A
  * 256-color cube color changes in jumps between strengths, and no check of
- * a continuous strength between two of them could see every jump. A step is
- * a 48th of a swing, well under a just-noticeable difference.
+ * a continuous strength between two of them could see every jump. Snapping
+ * adds up to one level to a frame's move, so a loop's drawn step is bounded
+ * by its unsnapped step plus one level: at 96 a level is under 0.008 dE_OK
+ * at full swing, the room `EFFECT_CURVES`' periods leave under a loop's bar.
  */
-const LEVELS = 48;
+const LEVELS = 96;
 const STRENGTHS: readonly number[] = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
 
 /** The strength a field's value is drawn at: the nearest of `LEVELS`, or 0. */
@@ -100,7 +102,7 @@ const strengthOf = (field: number): number => Math.round(clamp01(field) * LEVELS
  * `share` of the touch. [LAW:single-enforcer] The one draw step, which the
  * renderer draws through and a test measures through.
  */
-export function drawnAt(touch: ColorModifier, color: ColorRgba, field: number, share: number): ColorRgba {
+export function drawnColor(touch: ColorModifier, color: ColorRgba, field: number, share: number): ColorRgba {
   return touchedAt(touch, color, share * strengthOf(field));
 }
 
@@ -163,7 +165,7 @@ export function shares({ pairs, depth, terminal }: Drawn, colors: ReadonlySet<st
     const holds = (share: number): boolean =>
       facing.every(([pair, mine, theirs]) => {
         const floor = floorOf(pair, depth);
-        const at = (side: Side, w: number): ColorRgba => drawnAt(touch, pair[side], w, side === mine ? share : theirs);
+        const at = (side: Side, w: number): ColorRgba => drawnColor(touch, pair[side], w, side === mine ? share : theirs);
         return STRENGTHS.every((w) => {
           const shown = Effected.shows(pair, { fg: at("fg", w), bg: at("bg", w) }, depth, terminal);
           return contrastRatio(shown.fg, shown.bg) >= floor;
@@ -292,7 +294,7 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
       return (look, cell) => {
         const value = field(cell);
         // [LAW:one-source-of-truth] A share belongs to the color the element drew; the touch falls on what is there now.
-        const moved = (side: Side): ColorRgba => drawnAt(loop.touch, look[side], value, cell.pair.terminal[side] ? 0 : (shared.get(cell.pair[side].hex) ?? 0));
+        const moved = (side: Side): ColorRgba => drawnColor(loop.touch, look[side], value, cell.pair.terminal[side] ? 0 : (shared.get(cell.pair[side].hex) ?? 0));
         return { ...look, fg: moved("fg"), bg: moved("bg") };
       };
     });
@@ -377,9 +379,9 @@ export function requireZ(what: string, z: number): void {
  * moves by no more than a just-noticeable step from one frame to the next.
  */
 export const EFFECT_CURVES = {
-  shimmer: { seconds: 127, ease: EASES.linear, swing: 0.9 },
+  shimmer: { seconds: 149, ease: EASES.linear, swing: 0.9 },
   pulse: { seconds: 53, ease: EASES.linear, swing: 0.85 },
-  sparkle: { seconds: 139, ease: EASES.linear, swing: 0.95 },
+  sparkle: { seconds: 163, ease: EASES.linear, swing: 0.95 },
   wheel: { seconds: 907, ease: EASES.linear, swing: 1 },
   fade: { seconds: 20, ease: EASES["ease-in-out"], swing: 1 },
   dissolve: { seconds: 30, ease: EASES["ease-in-out"], swing: 1 },

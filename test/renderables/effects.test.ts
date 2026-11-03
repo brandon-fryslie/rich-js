@@ -62,7 +62,7 @@ import {
   shares,
   shimmer,
   sparkle,
-  drawnAt,
+  drawnColor,
   wheel,
   type AttributeLoopName,
   type Curve,
@@ -858,7 +858,7 @@ describe("the loops never jump", () => {
       const strip = Array.from({ length: 2 * columns }, (_, i) => (cellAt(i % 2, Math.floor(i / 2))));
       const move = loop(z);
       const element = listing(strip);
-      // Measured through `drawnAt`, the renderer's own draw step, which is
+      // Measured through `drawnColor`, the renderer's own draw step, which is
       // pure in (color, field value): a frame draws each fill once per value.
       const frame = (t: number): Oklch[][] => {
         const field = move.field(t, element);
@@ -867,7 +867,7 @@ describe("the loops never jump", () => {
           const drawn = new Map<number, Oklch>();
           return values.map((value) => {
             let at = drawn.get(value);
-            if (at === undefined) drawn.set(value, (at = Oklch.fromRgba(drawnAt(move.touch, color, value, 1))));
+            if (at === undefined) drawn.set(value, (at = Oklch.fromRgba(drawnColor(move.touch, color, value, 1))));
             return at;
           });
         });
