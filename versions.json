@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-550",
-      "ref": "refs/pull/550/merge",
-      "sha": "7a276963f27b727cef23195d154fe2786abd96f3",
-      "timestamp": "2026-11-03T16:57:15.489Z",
-      "commits": [
-        {
-          "sha": "7a276963f27b727cef23195d154fe2786abd96f3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T16:51:08Z",
-          "message": "Merge 1ca23d15e73c3ab3f46ce6c54fe64c73e096a034 into 3733ce2fadd8bf2376f151b3271d14642b9d40e3\n"
-        },
-        {
-          "sha": "1ca23d15e73c3ab3f46ce6c54fe64c73e096a034",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T09:50:53-07:00",
-          "message": "Visual rows are stated under the default end, and the padding claim is gone (rich-unfiled-791c.pe16)\n"
-        },
-        {
-          "sha": "53e821d02fa0f0374cd9564e31abc8fc11992bd4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T09:47:30-07:00",
-          "message": "Visual rows are stated as the render ends them: each followed by a break, one per logical row (rich-unfiled-791c.pe16)\n"
-        },
-        {
-          "sha": "816fe2c1b69d4bb20ecdfefbc1a8d98f9f123b73",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T09:41:37-07:00",
-          "message": "Visual rows are taken off the render, and a test holds them to it (rich-unfiled-791c.pe16)\n\nA visual row is ordered by levels resolved over its whole line, so wrap keeps\nrefusing it. Segment.splitLines of the render is each placed row; the test\npins that drawn one per line they equal the render in bytes, HTML and SVG,\nincluding the RTL hanging-whitespace and neutral/number-at-a-break cases.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "3733ce2fadd8bf2376f151b3271d14642b9d40e3",
-      "timestamp": "2026-11-03T16:32:57.179Z",
+      "sha": "a785d40816f3b3f98f60b9a64157eb0f5e1cb07c",
+      "timestamp": "2026-11-03T17:10:46.233Z",
       "commits": [
         {
-          "sha": "3733ce2fadd8bf2376f151b3271d14642b9d40e3",
+          "sha": "a785d40816f3b3f98f60b9a64157eb0f5e1cb07c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T09:29:49-07:00",
-          "message": "The docs site serves its own xterm.js instead of loading it from jsDelivr (rich-unfiled-791c.abt1) (#549)\n\n* The docs site serves its own xterm.js instead of loading it from jsDelivr (rich-unfiled-791c.abt1)\n\nxterm.js is the @xterm/xterm devDependency bundled as its own chunk, so a\nstalled CDN can no longer strand a live terminal at its Run button, and\npackage.json is the one version pin. The e2e CDN route (e2e/test.ts) and its\ngate (test/seam/e2e-cdn.test.ts) go with docs/.vitepress/theme/xterm.ts.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* xterm loads through a checked type, its measure rule is static CSS, and held-chunk tests wait for the request (rich-unfiled-791c.abt1)\n\n* A failed xterm import is forgotten again, and comments name where the measure rule lives and why it wins (rich-unfiled-791c.abt1)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-11-03T10:06:15-07:00",
+          "message": "Visual rows are taken off the render, and a test holds them to it (rich-unfiled-791c.pe16) (#550)\n\n* Visual rows are taken off the render, and a test holds them to it (rich-unfiled-791c.pe16)\n\nA visual row is ordered by levels resolved over its whole line, so wrap keeps\nrefusing it. Segment.splitLines of the render is each placed row; the test\npins that drawn one per line they equal the render in bytes, HTML and SVG,\nincluding the RTL hanging-whitespace and neutral/number-at-a-break cases.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Visual rows are stated as the render ends them: each followed by a break, one per logical row (rich-unfiled-791c.pe16)\n\n* Visual rows are stated under the default end, and the padding claim is gone (rich-unfiled-791c.pe16)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
