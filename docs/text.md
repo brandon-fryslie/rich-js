@@ -119,7 +119,7 @@ Draw the rows one per line with the same options and you get the text's own rend
 
 So a row rebuilt from its `plain`, `spans` and options draws the same row.
 
-Rows are refused under the `visual` [text order](./right-to-left.md). There, a row is laid out from levels resolved over its whole line, and no text cut from that line draws it alone.
+Rows are refused under the `visual` [text order](./right-to-left.md). There, a row is laid out from levels resolved over its whole line, and no text cut from that line draws it alone. Take [visual rows off the render](./right-to-left.md#visual-rows) instead.
 
 ## Wide characters
 

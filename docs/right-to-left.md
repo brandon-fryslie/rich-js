@@ -110,6 +110,20 @@ characters and spans, not its format. A bidi row appended after a prefix is
 ordered by the combined text's direction, so draw it as its own renderable, for
 example in a [`Strip`](./strip.md) beside the prefix.
 
+### Visual rows
+
+Under `visual`, a row is ordered by levels resolved over its whole line, so no
+`RichText` cut from it draws it alone. Take the placed rows off the render
+instead. Under the default `end`, the render ends each row in a line break, so
+`Segment.splitLines` returns each row as drawn and in visual order, one per row
+`wrap` would give under `logical`. Each followed by a line break, they are the
+render, in terminal bytes and in HTML and SVG export.
+
+```ts silent
+const line = new RichText("שלום עולם, hello world! 123 עוד מילים");
+const rows = Segment.splitLines(render(line, { maxWidth: 12, textOrder: "visual" }));
+```
+
 ## Known limits
 
 - **VTE at column 0.** VTE discards zero-width characters at the start of a row,
