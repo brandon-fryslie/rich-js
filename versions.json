@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-545",
+      "ref": "refs/pull/545/merge",
+      "sha": "2f32af94e1f5dfe7197634f3e35f3c56cde5731b",
+      "timestamp": "2026-11-03T12:45:44.086Z",
+      "commits": [
+        {
+          "sha": "2f32af94e1f5dfe7197634f3e35f3c56cde5731b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T05:43:31-07:00",
+          "message": "Merge 088ff3580474c1ef284e4b8fdfd8534750520784 into 04df1bf4d448c87a81554591e69f6ed0365a2243\n"
+        },
+        {
+          "sha": "088ff3580474c1ef284e4b8fdfd8534750520784",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T05:43:14-07:00",
+          "message": "CI installs the tarball beside each peer's newest in-range version and renders through it (rich-unfiled-791c.7kj7)\n\nThe node-floor action becomes .github/actions/consumer with an end input:\nfloor keeps the lowest Node and locked peers; ceiling names each optional\npeer by its peerDependencies range so npm resolves the newest, as a\nconsumer's install does. One planner, one probe reading the plan; the probe\nnow renders through each peer-backed subpath (a Checkbox toggled through a\nmobx action, a template through go-template-js), so the floor end exercises\nmobx too. ci.yml and publish.yml run it as one matrix job over both ends.\n\nVerified locally: ceiling resolved mobx 7.1.4 and passed; floor passed on a\nreal Node 20.0.0; a broken expectation fails the probe.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "04df1bf4d448c87a81554591e69f6ed0365a2243",
