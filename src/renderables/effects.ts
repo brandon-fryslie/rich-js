@@ -92,8 +92,17 @@ const LEGIBLE = 4.5;
 const LEVELS = 48;
 const STRENGTHS: readonly number[] = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
 
-/** The strength a field's value is drawn at: the nearest of `LEVELS`, or 0. [LAW:single-enforcer] The one snap, which the renderer draws through and a test measures through. */
-export const strengthOf = (field: number): number => Math.round(clamp01(field) * LEVELS) / LEVELS;
+/** The strength a field's value is drawn at: the nearest of `LEVELS`, or 0. */
+const strengthOf = (field: number): number => Math.round(clamp01(field) * LEVELS) / LEVELS;
+
+/**
+ * `color` as a loop draws it where its field reads `field` and the color holds
+ * `share` of the touch. [LAW:single-enforcer] The one draw step, which the
+ * renderer draws through and a test measures through.
+ */
+export function drawnAt(touch: ColorModifier, color: ColorRgba, field: number, share = 1): ColorRgba {
+  return touchedAt(touch, color, share * strengthOf(field));
+}
 
 /** What 8-bit rounding of an OKLCH round trip can cost a contrast ratio. */
 const ROUNDING = 0.01;
@@ -281,9 +290,9 @@ export function atShares(loop: Loop, share: (drawn: Drawn) => ReadonlyMap<string
     return Animation.continuous((t): EffectFrame => {
       const field = loop.field(t, drawn);
       return (look, cell) => {
-        const w = strengthOf(field(cell));
+        const value = field(cell);
         // [LAW:one-source-of-truth] A share belongs to the color the element drew; the touch falls on what is there now.
-        const moved = (side: Side): ColorRgba => touchedAt(loop.touch, look[side], (cell.pair.terminal[side] ? 0 : (shared.get(cell.pair[side].hex) ?? 0)) * w);
+        const moved = (side: Side): ColorRgba => drawnAt(loop.touch, look[side], value, cell.pair.terminal[side] ? 0 : (shared.get(cell.pair[side].hex) ?? 0));
         return { ...look, fg: moved("fg"), bg: moved("bg") };
       };
     });
