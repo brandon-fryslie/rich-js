@@ -9,7 +9,8 @@
  * with the library and the worker's script built from this checkout. The same
  * programs in Node are test/docs/playground-program.test.ts.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { resolve } from "node:path";
 import { bundleExample, bundleLiveRuntime, liveLibraryOnce } from "../docs/.vitepress/example-runner.js";
 import { REPO_ROOT } from "../scripts/repo-facts.js";

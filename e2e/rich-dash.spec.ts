@@ -2,7 +2,8 @@
  * The rich-dash demo in its card on the demo page: every panel draws from its
  * staging, the dashboard keeps repainting, and `q` ends it.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { card, cardRows } from "./card-screen.js";
 
 const screen = async (page: Page) => (await cardRows(page)).join("\n");

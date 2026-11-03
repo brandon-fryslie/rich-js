@@ -8,7 +8,8 @@
  * while the card says it was stopped. A silent or throws block is the same
  * card; a shape or node block is too, read-only.
  */
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Locator, Page } from "@playwright/test";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 import { pageErrors } from "./page-errors.js";
 

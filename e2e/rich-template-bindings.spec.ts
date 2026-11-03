@@ -4,7 +4,8 @@
  * beside it on the next frame, and PageDown moves to the next section. The
  * keys are xterm's own, produced from DOM events.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { card, cardRows } from "./card-screen.js";
 
 const screen = async (page: Page) => (await cardRows(page)).join("\n");

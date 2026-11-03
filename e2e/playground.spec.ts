@@ -9,7 +9,8 @@
  * and the page stays usable; reset puts the opened program back; at phone
  * width the card fits the screen; output wears the site's color mode.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { deflateSync } from "node:zlib";
 import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../src/themes/terminalThemes.js";
 import { NO_SETUP, oneFile } from "../docs/.vitepress/example-card.js";

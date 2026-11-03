@@ -2,7 +2,8 @@
  * The claude-sessions demo in its card on the demo page: the sidebar lists the
  * staged projects, a real session opens in the viewer, and `q` ends it.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { card, cardRows } from "./card-screen.js";
 
 const screen = async (page: Page) => (await cardRows(page)).join("\n");

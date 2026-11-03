@@ -5,7 +5,8 @@
  * leaves a visual row's cells where they stand, only a browser can show.
  * Measured by glyph position, so no font and no ligature enters the check.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 import { encodeHtmlFragment } from "../src/core/export-html.js";
 import { Segment } from "../src/core/segment.js";
@@ -62,8 +63,6 @@ test("raw unstamped text is the browser's to order", async ({ page }) => {
 // the browser, so the browser reorders it: why `detectTextOrder` lists neither
 // xterm.js nor VS Code as `visual`, where this would reverse twice.
 test("xterm.js's DOM renderer reorders a right-to-left row itself", async ({ page }) => {
-  // Fetched from the test's side: a browser here may not reach the CDN.
-  await page.route("https://cdn.jsdelivr.net/**", async (route) => route.fulfill({ body: await (await fetch(route.request().url())).text() }));
   await page.setContent(`<!doctype html><meta charset="utf-8"><div id="host"></div>`);
   await page.addStyleTag({ url: XTERM.stylesheet.href });
   await page.addScriptTag({ url: XTERM.script.src });
