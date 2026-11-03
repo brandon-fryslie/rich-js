@@ -18,8 +18,9 @@
  *
  * [LAW:one-source-of-truth] Which subpaths to load is read off the installed
  * manifest's `exports`; which Node and which peers this ought to be is
- * `install-plan.json`. Neither is listed here, and neither is a mode: a
- * subpath may fail to import only because the plan left its peer out.
+ * `install-plan.json`, and neither is a mode: a subpath may fail to import only
+ * because the plan left its peer out. The renders below are the one list here,
+ * and `test/seam/consumer-probe.test.ts` holds them to `PEER_PROVIDERS`.
  *
  * WHAT THIS CANNOT SEE. What executes is every loaded module's top level and
  * whatever the renders below reach; an API newer than the floor, or a peer
@@ -32,8 +33,8 @@ import path from "node:path";
 const PACKAGE = "@promptctl/rich-js";
 
 const plan = JSON.parse(readFileSync("install-plan.json", "utf8"));
-// A probe that ran on whatever Node was on PATH would prove nothing about the floor.
-if (plan.node !== null && process.version !== `v${plan.node}`) {
+// A probe that ran on whatever Node was on PATH would prove nothing about its end.
+if (process.version !== `v${plan.node}`) {
   throw new Error(`running on ${process.version}, but the plan's Node is v${plan.node}`);
 }
 
@@ -90,7 +91,7 @@ const renders = {
   "./widgets": ({ Checkbox, WidgetKeyEvent }) => {
     const box = new Checkbox({ label: "peer probe" });
     const before = renderToString(box, plain);
-    box.handleKey(new WidgetKeyEvent({ key: "space" }));
+    box.handleKey(new WidgetKeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0));
     const after = renderToString(box, plain);
     return [`${before}${after}`, ["[ ] peer probe", "[✓] peer probe"]];
   },

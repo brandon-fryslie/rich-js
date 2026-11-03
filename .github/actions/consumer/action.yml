@@ -66,18 +66,20 @@ runs:
 
     # `engine-strict` makes the consumer's npm refuse any package in the install
     # tree whose `engines` excludes this Node, which is the refusal a real
-    # consumer on it would meet. `PEERS` is unquoted on purpose: it is zero or
-    # more space-separated specs.
+    # consumer on it would meet. `PEERS` is zero or more specs, one per line.
     - name: Install the tarball and probe it
       shell: bash
       env:
         PEERS: ${{ steps.plan.outputs.peers }}
+        PLAN: ${{ steps.plan.outputs.plan }}
       run: |
         consumer="$RUNNER_TEMP/consumer"
         mkdir "$consumer"
-        cp "$GITHUB_ACTION_PATH/probe.mjs" "$RUNNER_TEMP/install-plan.json" "$consumer/"
+        cp "$GITHUB_ACTION_PATH/probe.mjs" "$consumer/"
+        cp "$PLAN" "$consumer/install-plan.json"
         cd "$consumer"
         npm init -y > /dev/null
         printf 'engine-strict=true\n' > .npmrc
-        npm install "$RUNNER_TEMP"/promptctl-rich-js-*.tgz $PEERS
+        mapfile -t peers < <(printf '%s' "$PEERS")
+        npm install "$RUNNER_TEMP"/promptctl-rich-js-*.tgz "${peers[@]}"
         node probe.mjs

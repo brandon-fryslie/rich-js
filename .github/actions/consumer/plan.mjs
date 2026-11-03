@@ -22,9 +22,12 @@
  * (`test/seam/peer-floor.ts`). So every optional peer is named by its
  * `peerDependencies` range and npm resolves it, as it does for a consumer. The
  * Node is the newest `engines.node` admits, which the caller's
- * `node-version-file` setup-node already resolved; the plan names none, so the
- * action does not switch it. Blind spot: this is the newest peer on the day CI
- * runs, not one published after it.
+ * `node-version-file` setup-node already resolved and this file runs on; the
+ * plan records it so the probe can check it ran there, and the action does not
+ * switch it. Blind spots: this is the newest peer on the day CI runs, not one
+ * published after it; and the pairing a fresh install on the floor Node gets —
+ * that Node beside the newest peer, whose `engines` may exclude it — is run by
+ * neither end.
  *
  * Which subpath may reach which peer is `test/seam/optional-peers.ts`'s rule,
  * not this file's.
@@ -61,7 +64,7 @@ function floorPlan() {
     const admitted = engines === undefined || semver.satisfies(node, engines);
     return { name, spec: `${name}@${locked.version}`, installed: admitted, engines };
   });
-  return { node, peers };
+  return { node, switchNode: true, peers };
 }
 
 function ceilingPlan() {
@@ -72,7 +75,7 @@ function ceilingPlan() {
     }
     return { name, spec: `${name}@${range}`, installed: true };
   });
-  return { node: null, peers };
+  return { node: process.versions.node, switchNode: false, peers };
 }
 
 const plans = { floor: floorPlan, ceiling: ceilingPlan };
@@ -85,4 +88,9 @@ writeFileSync(planPath, JSON.stringify(plan, null, 2));
 // [LAW:nothing-unseen] Which end, which Node, and why each peer is or is not installed.
 console.log(JSON.stringify({ event: "consumer-plan", ...plan }));
 const install = plan.peers.filter((p) => p.installed).map((p) => p.spec);
-appendFileSync(process.env.GITHUB_OUTPUT, `node=${plan.node ?? ""}\npeers=${install.join(" ")}\n`);
+// One spec per line: a range such as `>=7 <9` holds spaces, so the action reads
+// the lines into an array rather than word-splitting them.
+appendFileSync(
+  process.env.GITHUB_OUTPUT,
+  `plan=${planPath}\nnode=${plan.switchNode ? plan.node : ""}\npeers<<PEERS_EOF\n${install.join("\n")}\nPEERS_EOF\n`,
+);
