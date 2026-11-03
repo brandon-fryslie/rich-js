@@ -12,8 +12,8 @@
  * it through `cdn` first.
  *
  * [LAW:one-source-of-truth] The version is XTERM's, in the URLs it names; a
- * file's path is its URL with the package prefix taken off. The installed
- * `@xterm/xterm` must be that version, checked when this module loads.
+ * file's path is its URL with the package prefix taken off. The `@xterm/xterm`
+ * devDependency must pin that version: test/seam/e2e-cdn.test.ts.
  *
  * [LAW:no-silent-failure] Any other jsDelivr request, or one naming a file the
  * package lacks, is refused, and the test fails naming it.
@@ -25,25 +25,24 @@ import { test as base, expect, type BrowserContext } from "@playwright/test";
 import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 
 const PACKAGE_URL = XTERM.script.src.slice(0, XTERM.script.src.indexOf("/lib/") + 1);
-const PACKAGE_JSON = createRequire(import.meta.url).resolve("@xterm/xterm/package.json");
-const PACKAGE_DIR = dirname(PACKAGE_JSON);
+const PACKAGE_DIR = dirname(createRequire(import.meta.url).resolve("@xterm/xterm/package.json"));
 const CONTENT_TYPES = { ".js": "text/javascript", ".css": "text/css" } as const;
 
-const installed = (JSON.parse(await readFile(PACKAGE_JSON, "utf8")) as { version: string }).version;
-if (!PACKAGE_URL.endsWith(`@${installed}/`)) {
-  throw new Error(`@xterm/xterm ${installed} is installed, but the site loads ${PACKAGE_URL}`);
-}
+type Served = { body: Buffer } | { refused: string };
 
 // The bytes are fixed for the run: one read per file per worker.
-const files = new Map<string, Promise<Buffer | string>>();
+const files = new Map<string, Promise<Served>>();
 
 /** The file a package URL names, or why it cannot be served. */
-function served(url: string): Promise<Buffer | string> {
-  if (!url.startsWith(PACKAGE_URL)) return Promise.resolve("not the pinned xterm package");
+function served(url: string): Promise<Served> {
+  if (!url.startsWith(PACKAGE_URL)) return Promise.resolve({ refused: "not the pinned xterm package" });
   const path = join(PACKAGE_DIR, url.slice(PACKAGE_URL.length));
   let file = files.get(path);
   if (file === undefined) {
-    file = readFile(path).catch((error: NodeJS.ErrnoException) => `${error.code ?? error.message}: ${path}`);
+    file = readFile(path).then(
+      (body) => ({ body }),
+      (error: NodeJS.ErrnoException) => ({ refused: `${error.code ?? error.message}: ${path}` }),
+    );
     files.set(path, file);
   }
   return file;
@@ -52,20 +51,24 @@ function served(url: string): Promise<Buffer | string> {
 export const test = base.extend<{ cdn: (context: BrowserContext) => Promise<BrowserContext> }>({
   cdn: async ({}, use) => {
     const refused: string[] = [];
+    const routed: BrowserContext[] = [];
     await use(async (context) => {
+      routed.push(context);
       await context.route("https://cdn.jsdelivr.net/**", async (route) => {
         const url = route.request().url();
         const type = Object.entries(CONTENT_TYPES).find(([extension]) => url.endsWith(extension))?.[1];
-        const body = type === undefined ? "not a .js or .css file" : await served(url);
-        if (typeof body === "string") {
-          refused.push(`${url} (${body})`);
+        const file: Served = type === undefined ? { refused: "not a .js or .css file" } : await served(url);
+        if ("refused" in file) {
+          refused.push(`${url} (${file.refused})`);
           return route.abort("blockedbyclient");
         }
         // jsDelivr sends this; without it a crossorigin load is refused.
-        await route.fulfill({ body, contentType: type, headers: { "access-control-allow-origin": "*" } });
+        await route.fulfill({ body: file.body, contentType: type, headers: { "access-control-allow-origin": "*" } });
       });
       return context;
     });
+    // Closed first, so no request can be refused after the list is read.
+    await Promise.all(routed.map((context) => context.close()));
     expect(refused, "jsDelivr requests the suite does not serve from disk").toEqual([]);
   },
   context: async ({ context, cdn }, use) => {
