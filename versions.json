@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-546",
+      "ref": "refs/pull/546/merge",
+      "sha": "e73b018fc61dd60a04e5df7b652572e65e31dff3",
+      "timestamp": "2026-11-03T13:34:13.217Z",
+      "commits": [
+        {
+          "sha": "e73b018fc61dd60a04e5df7b652572e65e31dff3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T13:31:58Z",
+          "message": "Merge f8cd2f0aa510cb7a3b070a3ee12654f64c8a6051 into 57a1610baefa7b0c2df845782b91114c1f2e7998\n"
+        },
+        {
+          "sha": "f8cd2f0aa510cb7a3b070a3ee12654f64c8a6051",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T06:30:49-07:00",
+          "message": "The loops test measures through drawnAt, the renderer's own draw step, not a copy of it (rich-animation-42lg.twz)\n"
+        },
+        {
+          "sha": "d5a72397fa67f832191bdbe990e3ff66a0e270d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T06:13:56-07:00",
+          "message": "Pulse and shimmer stay under the 0.04 bar as drawn: the loops test measures the snapped field, and the two loops slow to 53 s and 127 s (rich-animation-42lg.twz)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "57a1610baefa7b0c2df845782b91114c1f2e7998",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-03T06:18:24-07:00",
           "message": "CI runs the newest peer version a consumer's install resolves (rich-unfiled-791c.7kj7) (#545)\n\n* CI installs the tarball beside each peer's newest in-range version and renders through it (rich-unfiled-791c.7kj7)\n\nThe node-floor action becomes .github/actions/consumer with an end input:\nfloor keeps the lowest Node and locked peers; ceiling names each optional\npeer by its peerDependencies range so npm resolves the newest, as a\nconsumer's install does. One planner, one probe reading the plan; the probe\nnow renders through each peer-backed subpath (a Checkbox toggled through a\nmobx action, a template through go-template-js), so the floor end exercises\nmobx too. ci.yml and publish.yml run it as one matrix job over both ends.\n\nVerified locally: ceiling resolved mobx 7.1.4 and passed; floor passed on a\nreal Node 20.0.0; a broken expectation fails the probe.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Consumer action: peer specs one per line, plan path as an output, ceiling Node checked, probe renders held to PEER_PROVIDERS (rich-unfiled-791c.7kj7)\n\n* Consumer ceiling: check-latest Node, template probe asserts styling, mobx comment states its reach (rich-unfiled-791c.7kj7)\n\n* check-latest at every setup-node, ceiling Node guard removed as tautological, resolved peers logged before assertions (rich-unfiled-791c.7kj7)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-546",
-      "ref": "refs/pull/546/merge",
-      "sha": "d05db8594e511d5e9e7304c3d93c2067e8f0fddc",
-      "timestamp": "2026-11-03T13:17:12.624Z",
-      "commits": [
-        {
-          "sha": "d05db8594e511d5e9e7304c3d93c2067e8f0fddc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T06:14:55-07:00",
-          "message": "Merge d5a72397fa67f832191bdbe990e3ff66a0e270d2 into c891ff7282f7b63c259c98e17faa626b8798c9f9\n"
-        },
-        {
-          "sha": "d5a72397fa67f832191bdbe990e3ff66a0e270d2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T06:13:56-07:00",
-          "message": "Pulse and shimmer stay under the 0.04 bar as drawn: the loops test measures the snapped field, and the two loops slow to 53 s and 127 s (rich-animation-42lg.twz)\n"
         }
       ]
     }
