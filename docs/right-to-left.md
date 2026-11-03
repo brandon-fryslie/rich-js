@@ -105,6 +105,19 @@ bidi line, because a row alone cannot find its line's direction again. The row
 also starts with the controls its line still had open at that point. It refuses
 `visual`, where a row is ordered by levels resolved over its whole line.
 
+### Visual rows
+
+Under `visual`, a row is ordered by levels resolved over its whole line, so no
+`RichText` cut from it draws it alone. Take the placed rows off the render
+instead: it puts one line break between rows, so `Segment.splitLines` returns
+each row as drawn, ordered and padded. Drawn one per line, they are the render,
+in terminal bytes and in HTML and SVG export.
+
+```ts silent
+const line = new RichText("שלום עולם, hello world! 123 עוד מילים", { end: "" });
+const rows = Segment.splitLines(render(line, { maxWidth: 12, textOrder: "visual" }));
+```
+
 The direction is the row's own format, and `append` carries a text's
 characters and spans, not its format. A bidi row appended after a prefix is
 ordered by the combined text's direction, so draw it as its own renderable, for
