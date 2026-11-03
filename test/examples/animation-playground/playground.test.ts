@@ -25,6 +25,8 @@ interface Playground {
   click(label: string): Promise<void>;
   /** A left click on cell `col`, `row` (from 0). */
   clickAt(col: number, row: number): Promise<void>;
+  /** The frame rate clicked to one frame a second, and the readout checked to say so. */
+  atOneFps(): Promise<void>;
   /** The clock moved on by `seconds`, and what that painted taken in. */
   advance(seconds: number): Promise<void>;
   /** The animation time the readout shows. */
@@ -71,6 +73,10 @@ async function playground(size = { cols: 120, rows: 40 }, env: Env = { TERM: "xt
       const row = rows.findIndex((line) => line.includes(label));
       expect(row, `"${label}" is not on the screen:\n${rows.join("\n")}`).toBeGreaterThanOrEqual(0);
       await clickAt(rows[row]!.indexOf(label) + Math.floor(label.length / 2), row);
+    },
+    async atOneFps() {
+      await shown.click("frame rate");
+      expect((await screen()).join("\n")).toContain("1 fps");
     },
     async advance(seconds) {
       clock.advance(seconds);
@@ -119,8 +125,7 @@ describe("animation playground", () => {
     // At one frame a second, so the half minute played below is a frame a
     // second and not 1,800 frames of the whole gallery the test never reads.
     // Sixty frames a second is pinned by the tests that read motion.
-    await p.click("frame rate");
-    expect((await p.screen()).join("\n")).toContain("1 fps");
+    await p.atOneFps();
     await p.advance(7.5);
     await titled();
     await p.click("seek 999 990 s");
@@ -149,6 +154,9 @@ describe("animation playground", () => {
 
   it("reverses, and plays at a quarter and four times the speed, through the one timeline", async () => {
     const p = await playground();
+    // At one frame a second: the readout is all this reads, and sixty frames a
+    // second of the whole gallery over nineteen seconds is what made it slow.
+    await p.atOneFps();
     await p.advance(10);
     await p.click("reverse");
     const from = await p.time();
@@ -269,7 +277,7 @@ describe("animation playground", () => {
   it("a press on the scrub bar seeks into the window the frame on screen showed, not the one the time has since moved to", async () => {
     const p = await playground();
     await p.click("4×");
-    await p.click("frame rate");
+    await p.atOneFps();
     await p.advance(7);
     expect(await p.time()).toBeLessThan(30);
     // Under a frame's interval: the timeline is past 30, the frame still shows the window from 0.
@@ -282,8 +290,7 @@ describe("animation playground", () => {
 
   it("paints at one frame a second when asked, and quits", async () => {
     const p = await playground();
-    await p.click("frame rate");
-    expect((await p.screen()).join("\n")).toContain("1 fps");
+    await p.atOneFps();
     await p.advance(3);
     expect(await p.time()).toBeCloseTo(3, 0);
     await p.click("quit");
