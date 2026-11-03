@@ -3,7 +3,8 @@
  * through the card's xterm.js: it browses part of this repository, a key moves the
  * selection and the preview follows, and `c` opens the coverage page.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { card, cardRows } from "./card-screen.js";
 
 const screen = async (page: Page) => (await cardRows(page)).join("\n");

@@ -8,7 +8,8 @@
  * So is the other: blink blinks, and holds still for a reader who asked for
  * reduced motion.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { encodeHtml, encodeHtmlFragment, HTML_FRAGMENT_CSS } from "../src/core/export-html.js";
 import { Segment } from "../src/core/segment.js";
 import { Style } from "../src/core/style.js";

@@ -13,7 +13,8 @@
  * What the terminal shows is read from xterm's rows.
  */
 import { readFileSync, readdirSync } from "node:fs";
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Locator, Page } from "@playwright/test";
 import { pageErrors } from "./page-errors.js";
 
 async function open(page: Page, path: string): Promise<string[]> {

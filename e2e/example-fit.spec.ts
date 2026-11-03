@@ -7,7 +7,8 @@
  * code size. A live terminal made at a wider window is refitted when the window
  * narrows. custom.css's `.rich-example-output` owns the rule.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 
 /** Every shown output on the page: its width, its drawn width, its font size; and the code blocks' font size. */
 async function measure(page: Page) {

@@ -11,7 +11,8 @@
  * (examples/effects-playground/kit.ts), so an edit runs in place: the frame
  * its heading counts carries on rather than starting again from 0.
  */
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Locator, Page } from "@playwright/test";
 import { EFFECTS } from "../examples/effects-feel/vocabulary.js";
 import { decodeProgram } from "../docs/.vitepress/playground-hash.js";
 import { pageErrors } from "./page-errors.js";

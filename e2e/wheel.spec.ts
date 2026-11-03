@@ -5,7 +5,8 @@
  * The window is short so every demo page has room to scroll past its card,
  * and a notch passed outward scrolls the page as far as it would anywhere else.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { card, cardRows } from "./card-screen.js";
 

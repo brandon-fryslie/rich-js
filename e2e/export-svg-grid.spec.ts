@@ -16,7 +16,7 @@
  * Chromium only: this config defines one project, so alignment in Firefox and
  * WebKit is unverified.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test.js";
 import { Console } from "../src/core/console.js";
 
 const CELL_WIDTH = 12.2;

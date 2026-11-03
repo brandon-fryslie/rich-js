@@ -6,7 +6,8 @@
  * reduced motion; it wears the site's color mode; and at phone width it fits
  * the page whole. What the terminal shows is read from xterm's rows.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./test.js";
+import type { Page } from "@playwright/test";
 import { XTERM } from "../docs/.vitepress/theme/xterm.js";
 import { EXAMPLE_THEMES } from "../docs/.vitepress/example-terminal.js";
 import { pageErrors } from "./page-errors.js";
@@ -29,7 +30,7 @@ test("the hero's text and buttons are on the page before its terminal has loaded
   const held = new Promise<void>((resolve) => (release = resolve));
   await page.route(XTERM.script.src, async (route) => {
     await held;
-    await route.continue();
+    await route.fallback();
   });
   const errors = await open(page);
   await expect(page.locator(".VPHero .text")).toHaveText("Beautiful terminal output");
@@ -111,7 +112,7 @@ for (const deviceScaleFactor of [1, 1.25, 1.5]) {
         const held = new Promise<void>((resolve) => (release = resolve));
         await page.route(XTERM.script.src, async (route) => {
           await held;
-          await route.continue();
+          await route.fallback();
         });
         const errors = await open(page);
         const card = showcase(page).locator(".rich-example-card");
