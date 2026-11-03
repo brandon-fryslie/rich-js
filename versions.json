@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "c891ff7282f7b63c259c98e17faa626b8798c9f9",
+      "timestamp": "2026-11-03T12:48:55.147Z",
+      "commits": [
+        {
+          "sha": "c891ff7282f7b63c259c98e17faa626b8798c9f9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-03T05:47:04-07:00",
+          "message": "The animation playground is a readable example of writing animations (rich-animation-42lg.xoj) (#544)\n\n* cyclic and marquee: a rotation through a list, and content of any width crossing a slot a cell a step (rich-animation-42lg.xoj)\n\n* The animation playground is a readable example: kinds a few to a file, a draggable scrub bar, four colour depths (rich-animation-42lg.xoj)\n\n* Review: the marquee crosses the slot it draws, cyclic copies and refuses a fractional turn, the scrub seeks on the left button, the depth reads writesToTerminal (rich-animation-42lg.xoj)\n\n* Review: a scrub drag ends on a move with no button, the track keeps a cell, a marquee's refusal names marquee, hostDepth throws on a depth no step reproduces (rich-animation-42lg.xoj)"
+        }
+      ]
+    },
+    {
       "version": "pr-545",
       "ref": "refs/pull/545/merge",
       "sha": "2f32af94e1f5dfe7197634f3e35f3c56cde5731b",
@@ -20,64 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-03T05:43:14-07:00",
           "message": "CI installs the tarball beside each peer's newest in-range version and renders through it (rich-unfiled-791c.7kj7)\n\nThe node-floor action becomes .github/actions/consumer with an end input:\nfloor keeps the lowest Node and locked peers; ceiling names each optional\npeer by its peerDependencies range so npm resolves the newest, as a\nconsumer's install does. One planner, one probe reading the plan; the probe\nnow renders through each peer-backed subpath (a Checkbox toggled through a\nmobx action, a template through go-template-js), so the floor end exercises\nmobx too. ci.yml and publish.yml run it as one matrix job over both ends.\n\nVerified locally: ceiling resolved mobx 7.1.4 and passed; floor passed on a\nreal Node 20.0.0; a broken expectation fails the probe.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "04df1bf4d448c87a81554591e69f6ed0365a2243",
-      "timestamp": "2026-11-03T12:37:36.035Z",
-      "commits": [
-        {
-          "sha": "04df1bf4d448c87a81554591e69f6ed0365a2243",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:35:15-07:00",
-          "message": "The loop-jump and playground speed tests do their work once, not per fill or per 60 fps frame (rich-animation-42lg.xkk) (#543)\n\n* The loop-jump and playground speed tests do their work once, not per fill or per 60 fps frame (rich-animation-42lg.xkk)\n\nThe loop-jump check computed each frame's field once per fill, touched every\ncell anew though a frame holds few distinct shares, and converted each color\nto OKLCH at both its steps; it now does each once, the same values compared.\nThe playground's speed test reads only the readout, so it plays at 1 fps, as\nthe seek test beside it already does. Alone: 5.4/7.1/14.4s -> 0.3/2.1/3.6s\nand 6.8s -> 0.3s; full suite at load ~28: worst 9.0s against the 30s timeout.\n\n* Review: the playground speed test checks it reached 1 fps; the loop-jump comment says it measures the raw field, not the snapped one (rich-animation-42lg.xkk)\n\n* Review: one helper clicks the playground to 1 fps and checks it landed; the loop-jump comment says snapped loops exceed the bar (rich-animation-42lg.xkk)"
-        }
-      ]
-    },
-    {
-      "version": "pr-544",
-      "ref": "refs/pull/544/merge",
-      "sha": "3e2a1943c2820558baa5be062ea4e6b83b6d9c86",
-      "timestamp": "2026-11-03T12:34:30.652Z",
-      "commits": [
-        {
-          "sha": "3e2a1943c2820558baa5be062ea4e6b83b6d9c86",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T12:32:14Z",
-          "message": "Merge fb77bce920b7ea4909e8e5ee6fb9e87bc9792e02 into c25a44a31e5c3f5a644af8160c30fbeca711497d\n"
-        },
-        {
-          "sha": "fb77bce920b7ea4909e8e5ee6fb9e87bc9792e02",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:31:58-07:00",
-          "message": "Review: a scrub drag ends on a move with no button, the track keeps a cell, a marquee's refusal names marquee, hostDepth throws on a depth no step reproduces (rich-animation-42lg.xoj)\n"
-        },
-        {
-          "sha": "a84b3c6117e050d3d488fa54123f7f887a673b64",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:25:39-07:00",
-          "message": "Review: the marquee crosses the slot it draws, cyclic copies and refuses a fractional turn, the scrub seeks on the left button, the depth reads writesToTerminal (rich-animation-42lg.xoj)\n"
-        },
-        {
-          "sha": "5706ea85187ebd9e4e635207a11a282996207457",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T05:10:45-07:00",
-          "message": "The animation playground is a readable example: kinds a few to a file, a draggable scrub bar, four colour depths (rich-animation-42lg.xoj)\n"
-        },
-        {
-          "sha": "7ab46840179d84b631ab8c7d41a80188581f0569",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T04:38:00-07:00",
-          "message": "cyclic and marquee: a rotation through a list, and content of any width crossing a slot a cell a step (rich-animation-42lg.xoj)\n"
         }
       ]
     }
