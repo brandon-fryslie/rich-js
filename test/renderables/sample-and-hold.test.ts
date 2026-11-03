@@ -1,5 +1,5 @@
 // sampleAndHold: any effect sampled and held on a step sequence — its time held at each
-// hold's start — at one redraw a second and at sixty.
+// step's start — at one redraw a second and at sixty.
 
 import { describe, expect, it } from "vitest";
 import { cellAttributes } from "../../src/renderables/effect.js";
@@ -24,7 +24,7 @@ import {
 const PLAIN = cellAttributes(Style.null());
 
 // [LAW:behavior-not-structure] What is asserted is the color a terminal is
-// sent at each handed time: held within a hold, moved at each hold's start.
+// sent at each handed time: held within a step, moved at each step's start.
 
 const label = new RichText(" rich-js ", { style: Style.parse("#1e1e2e on #89b4fa"), end: "", noWrap: true });
 /** A wheel turning the whole way round in six seconds: a sixth of a turn a second, far from the catalogue's drift. */
@@ -56,7 +56,7 @@ describe("sampleAndHold — an effect sampled and held on a step sequence", () =
     expect(turned(runs[1]!.hue, runs[2]!.hue)).toBeCloseTo(60, 0);
   });
 
-  it("draws the wheel's own frame at each hold's start, so sampled once a second the two agree", () => {
+  it("draws the wheel's own frame at each step's start, so sampled once a second the two agree", () => {
     for (const t of [0, 1, 2, 5, 1e6 + 3]) expect(fillAt(walk, t)).toBe(fillAt(quick, t));
   });
 

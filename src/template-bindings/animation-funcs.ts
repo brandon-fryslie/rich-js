@@ -151,11 +151,11 @@ const HOST_CLOCK = Timeline.play(0);
 /**
  * The `(seconds, value)` pairs a call spells, each value read through
  * `value`. The gate has typed every even slot as a float and every odd one
- * as `value`'s input; what it cannot see is the pairing, or that a hold is
+ * as `value`'s input; what it cannot see is the pairing, or that a step is
  * a positive number of seconds: both settled here, under the engine's
  * "error calling <function>" and nothing else, since a template author
- * knows neither `FrameSequence` nor `stepSequence`, which refuse the same hold in their
- * own names. [LAW:parse-dont-validate]
+ * knows neither `FrameSequence` nor `stepSequence`, which refuse the same
+ * step in their own names. [LAW:parse-dont-validate]
  */
 function pairs<V>(what: string, tail: readonly unknown[], value: (v: unknown) => V): { seconds: number; value: V }[] {
   if (tail.length % 2 !== 0) {

@@ -554,7 +554,7 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
  * for frames that look the same: when it next takes room is not a moment its
  * validity can name, and an early answer costs a frame where a late one hides the
  * element. An effect is not such a motion: it cannot give itself room, so
- * however it moves, a hidden one reports held for good, and whatever gives it
+ * however it moves, a hidden one reports it never changes, and whatever gives it
  * room wakes the host. It commits nothing, as a measurement commits nothing —
  * its effects (`afterPass`) are learned at a width nobody sees, so a
  * `Viewport` it shows content through keeps the scroll the last frame shown

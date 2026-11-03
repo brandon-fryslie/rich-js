@@ -504,8 +504,8 @@ export function pulse(curve: Curve, glow: ColorRgba, z: number): Loop {
     // Each beat's own depth, 70% to the whole of the swing; it changes where
     // the beat is at rest, so nothing jumps.
     const depth = 0.7 + 0.3 * smoothstep(-0.5, 0.5, noise(n * 0.37, 2.1, z));
-    const stepSequence = 0.5 - 0.5 * Math.cos(2 * Math.PI * (beats - n));
-    const level = curve.swing * curve.ease(depth * stepSequence);
+    const phase = 0.5 - 0.5 * Math.cos(2 * Math.PI * (beats - n));
+    const level = curve.swing * curve.ease(depth * phase);
     return () => level;
   };
   return { touch: light(glow), field };

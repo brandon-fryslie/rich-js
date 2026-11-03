@@ -62,7 +62,7 @@ Every built-in joiner is a `CellSeparator`, and what tells them apart is data, i
 - a `SeparatorSeam`, the middle: what is drawn between two neighbours;
 - a `EndCaps`, the ends: what is drawn where a run of color begins and ends.
 
-Any seam ends in any caps. `SEPARATORS` and `CAPS` are the bundled halves by name, and `new CellSeparator(seam, caps)` puts two of them together:
+Any seam ends in any caps. `SEPARATORS` and `END_CAPS` are the bundled halves by name, and `new CellSeparator(seam, caps)` puts two of them together:
 
 ```typescript
 import { END_CAPS, CellSeparator, SEPARATORS } from "@promptctl/rich-js";
@@ -152,7 +152,7 @@ A neighbour's background is read as drawn too, flattened onto the render substra
 
 ## Built-in joiners
 
-`SEPARATOR_STYLES` is the table of bundled joiners, by name, each a seam from `SEPARATORS` ended in caps from `CAPS`. Every seam in `SEPARATORS` has the name of the joiner it comes from, so `SEPARATORS.prism` is the middle of `SEPARATOR_STYLES.prism`.
+`SEPARATOR_STYLES` is the table of bundled joiners, by name, each a seam from `SEPARATORS` ended in caps from `END_CAPS`. Every seam in `SEPARATORS` has the name of the joiner it comes from, so `SEPARATORS.prism` is the middle of `SEPARATOR_STYLES.prism`.
 
 A joiner named in a consumer's config is read with `separatorNamed`. It takes a name from `SEPARATOR_STYLES`, or a seam and caps named apart, and throws on a name its table lacks:
 

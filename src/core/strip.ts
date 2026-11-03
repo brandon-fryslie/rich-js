@@ -762,7 +762,7 @@ const rail = (glyph: string): JoinCell => ({ glyph, fg: { role: "strip.rail" }, 
 /**
  * The bundled seams, by name: what a separator draws between two neighbours.
  * What each draws is `docs/strip.md`'s "Seams"; any of them ends in any of
- * `CAPS`.
+ * `END_CAPS`.
  */
 export const SEPARATORS = Object.freeze({
   powerline: parseSeam(arrowSeam(POWERLINE)),
@@ -819,7 +819,7 @@ export const END_CAPS = Object.freeze({
 
 /**
  * The bundled separators, by name: each a seam from `SEPARATORS` ended in caps from
- * `CAPS`. What each draws is `docs/strip.md`'s "Built-in joiners"; a name from
+ * `END_CAPS`. What each draws is `docs/strip.md`'s "Built-in joiners"; a name from
  * config is read with `separatorNamed`.
  */
 export const SEPARATOR_STYLES = Object.freeze({
@@ -841,7 +841,7 @@ export const SEPARATOR_STYLES = Object.freeze({
 
 /**
  * A separator as config names it: one of `SEPARATOR_STYLES`, or a seam from `SEPARATORS` ended
- * in caps from `CAPS`, each named apart.
+ * in caps from `END_CAPS`, each named apart.
  */
 export type SeparatorSpec = string | { readonly seam: string; readonly caps: string };
 

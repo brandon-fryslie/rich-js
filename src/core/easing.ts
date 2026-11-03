@@ -579,17 +579,17 @@ export function firstReaching(near: number, reached: (x: number) => boolean): nu
 /** `holds` as a `StepSequence`; a step sequence with no step, or a step that is not a positive number of seconds, throws. */
 export function stepSequence(holds: readonly number[]): StepSequence {
   if (holds.length === 0) throw new RangeError("a step sequence needs at least one step");
-  holds.forEach((validity, i) => positiveSeconds(`step ${i}`, validity));
-  const period = holds.reduce((sum, validity) => sum + validity, 0);
+  holds.forEach((seconds, i) => positiveSeconds(`step ${i}`, seconds));
+  const period = holds.reduce((sum, seconds) => sum + seconds, 0);
   // Where each step begins, in seconds into the period: the unit
   // `wrapSeconds` answers in, so the sum a boundary sits at is the number
   // the wrap of a `t` on that boundary produces, and the step that begins
   // there is the one in progress, at any rate the host samples.
   const starts: number[] = [];
   let elapsed = 0;
-  for (const validity of holds) {
+  for (const seconds of holds) {
     starts.push(elapsed);
-    elapsed += validity;
+    elapsed += seconds;
   }
   // A copy, and the one `at` walks: what `at` and `period` were built from
   // stays what `holds` says whatever the caller does to its array.

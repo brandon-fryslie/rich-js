@@ -350,7 +350,7 @@ describe("an animation is pure: sampled once a second or sixty times, it is the 
 });
 
 describe("the instances already in the tree", () => {
-  it("a step sequence is an animation of the hold in progress", () => {
+  it("a step sequence is an animation of the step in progress", () => {
     const b: Animation<number> = stepSequence([1, 0.5]) satisfies StepSequence;
     expect([0, 1, 1.5].map((t) => b.at(t))).toEqual([0, 1, 0]);
     expect([0, 1, 1.5].map((t) => b.validUntil(t))).toEqual([1, 1.5, 2.5]);

@@ -616,7 +616,7 @@ const secColorValues = makeSection("Color values — compute · name · paint", 
   makeDemoRow("createRichTextEngine() — literals", NO_PALETTE_TMPL, themelessEngine),
 ]);
 
-// ─── §5 — Frames (content on a step sequence) ──────────────────────────────────
+// ─── §5 — Frames (content on a step sequence) ──────────────────────────────
 //
 // `frames <seconds> <frame> …` draws the frame in progress at the moment the
 // template is evaluated, looping, every frame at the width of the widest so

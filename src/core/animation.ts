@@ -90,7 +90,7 @@ import { intersection, NEVER_CHANGES, Style, type ValidityInterval } from "./sty
  * moments. Parts sharing both share the intersection of what was drawn:
  * narrower and never wider. A drawing a container hid, by not handing on its
  * options, reads as none and stays early, unless a part sharing its key and
- * `t` told. A measurement, which draws nothing, answers held for good for
+ * `t` told. A measurement, which draws nothing, answers never-changes for
  * every part (`UNLAID`). An animation that does not read it ignores it, and
  * one that forwards it to no part stays early. [LAW:one-source-of-truth] The
  * frame's one drawing says it, so the answer cannot disagree with what the
@@ -243,7 +243,7 @@ export function placedMeasure(animation: Behavior<unknown>, options: RenderOptio
 
 /**
  * What a measurement's drawing would say, and what `placed` tells the frame
- * past its cells: held for good. An effect changes
+ * past its cells: it never changes. An effect changes
  * how cells look and never which exist, so nothing it does can change a
  * layout; a combinator's own switches and a child's validity intervals still reach the
  * measurement. [LAW:types-are-the-program]

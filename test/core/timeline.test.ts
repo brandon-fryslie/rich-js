@@ -12,7 +12,7 @@ import { inFrame } from "../renderables/in-frame.js";
 const NEVER = Number.POSITIVE_INFINITY;
 const ALWAYS = Number.NEGATIVE_INFINITY;
 
-/** A looping animation of three named holds and a one-shot that settles, the two shapes a timeline is run over. */
+/** A looping animation of three named steps and a one-shot that settles, the two shapes a timeline is run over. */
 const signal = Animation.map(stepSequence([1, 0.5, 2.5]), (i) => ["a", "b", "c"][i]!);
 const oneShot = Animation.sequence(Animation.map(stepSequence([0.5, 0.5]), (i) => `step ${i}`), 2, Animation.constant("done"));
 
@@ -123,11 +123,11 @@ describe("Timeline.run: an animation on host time", () => {
     }
   });
 
-  it("backwards, changes at the host moment the mapped time drops under where the value began: a reversed loop turns at its hold boundaries", () => {
+  it("backwards, changes at the host moment the mapped time drops under where the value began: a reversed loop turns at its step boundaries", () => {
     const timeline = Timeline.play(10, -1);
     const run = Timeline.run(timeline, signal);
-    // Host 10 is animation 0, the first instant of hold a; the next host
-    // instant is in hold c of the pass before, so the value is moving.
+    // Host 10 is animation 0, the first instant of step a; the next host
+    // instant is in step c of the pass before, so the value is moving.
     expect(run.at(10)).toBe("a");
     expect(run.validUntil(10)).toBe(10);
     expect(run.at(10.5)).toBe("c");
@@ -140,7 +140,7 @@ describe("Timeline.run: an animation on host time", () => {
   });
 
   it("backwards through a one-shot, the settled value changes at the switch and the first part's start is where it began, never before", () => {
-    // From host 0.3, so no hold boundary lands on host 0, where the float
+    // From host 0.3, so no step boundary lands on host 0, where the float
     // after it is subnormal and finer than a step sequence's wrap resolves.
     const run = Timeline.run(Timeline.play(0.3, -1), oneShot);
     // Animation time 1e6 (host 0.3 - 1e6): settled since the switch at 2, which the host reaches at -1.7.
@@ -240,7 +240,7 @@ describe("Timeline.run: an animation on host time", () => {
   it("a timeline over a timeline composes: the inner run is one more animation", () => {
     const inner = Timeline.run(Timeline.play(0, 2), signal);
     const outer = Timeline.run(Timeline.play(100, -1), inner);
-    // Host 100.25 → inner -0.25 → animation -0.5: the last hold, c.
+    // Host 100.25 → inner -0.25 → animation -0.5: the last step, c.
     expect(outer.at(100.25)).toBe("c");
     expect(holdsBetween(outer, 100.25)).toBe(true);
     expect(holdsBetween(outer, 101.6)).toBe(true);

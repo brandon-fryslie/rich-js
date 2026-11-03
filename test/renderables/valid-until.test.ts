@@ -115,14 +115,14 @@ describe("what a host reads off a frame: when it next changes", () => {
     expect(validUntilOf(lit(label, signal, 1e6 + 0.1))).toBeCloseTo(1e6 + 0.4, 6);
   });
 
-  it("an effect that moves every frame, sampled on a step sequence, changes when the hold ends", () => {
+  it("an effect that moves every frame, sampled on a step sequence, changes when the step ends", () => {
     const held = sampleAndHold(drifting, stepSequence([1]));
     expect(validUntilOf(lit(label, held, 0.25))).toBe(1);
     expect(validUntilOf(lit(label, held, 3))).toBe(4);
   });
 
-  it("sampled on a step sequence, an effect changes at the first hold start it has moved by, and never once it is done", () => {
-    // Steps of 2.5 s sampled every second: the step at 2.5 shows from the hold at 3.
+  it("sampled on a step sequence, an effect changes at the first step start it has moved by, and never once it is done", () => {
+    // Steps of 2.5 s sampled every second: the step at 2.5 shows from the step at 3.
     const signal = steppedInk([{ color: new ColorRgba(255, 85, 85), seconds: 2.5 }, { color: new ColorRgba(80, 250, 123), seconds: 2.5 }]);
     const held = sampleAndHold(signal, stepSequence([1]));
     expect(validUntilOf(lit(label, held, 0.25))).toBe(3);
