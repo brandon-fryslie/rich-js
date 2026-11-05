@@ -4,15 +4,22 @@
     {
       "version": "pr-564",
       "ref": "refs/pull/564/merge",
-      "sha": "9ad599cde2ff1a6f2f457f73c5752b95befd2d69",
-      "timestamp": "2026-11-05T22:31:06.426Z",
+      "sha": "4df4f96a42046b89dfd304cb822ccf84d72e4230",
+      "timestamp": "2026-11-05T22:46:05.737Z",
       "commits": [
         {
-          "sha": "9ad599cde2ff1a6f2f457f73c5752b95befd2d69",
+          "sha": "4df4f96a42046b89dfd304cb822ccf84d72e4230",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:29:14-07:00",
-          "message": "Merge 127a856f8ff6886aaf802d0a40e8a1e8781ab67c into 74ca7b0f891f4d1e398d9089ce06a4924d458150\n"
+          "timestamp": "2026-11-05T22:44:27Z",
+          "message": "Merge bea50ab644a0331acbaccbbf47f364a7614ce982 into 74ca7b0f891f4d1e398d9089ce06a4924d458150\n"
+        },
+        {
+          "sha": "bea50ab644a0331acbaccbbf47f364a7614ce982",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T15:44:16-07:00",
+          "message": "Every stop survives ordering: a lone mark is shown on the stand-in, a gap row's end is a stop, a placeholder takes its own direction, and a row is stamped only while its stops are read (rich-control-codes-xh4n.3f7)\n"
         },
         {
           "sha": "127a856f8ff6886aaf802d0a40e8a1e8781ab67c",
