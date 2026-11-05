@@ -130,6 +130,8 @@ are the glyph's 2.
 | Subdivision flag | 2 | 8 | 2 | 1 |
 | Kanji with a selector | 2 | 2 | 2 | 2 |
 
+The two bidi rows were measured on iTerm2 3.7.7; a — is a terminal not measured for them.
+
 `JSON` is data on show, so it writes whatever the wire would withhold as a JSON
 escape, and what it prints parses back to what it was given.
 
