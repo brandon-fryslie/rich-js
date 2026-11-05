@@ -4,15 +4,22 @@
     {
       "version": "pr-564",
       "ref": "refs/pull/564/merge",
-      "sha": "4df4f96a42046b89dfd304cb822ccf84d72e4230",
-      "timestamp": "2026-11-05T22:46:05.737Z",
+      "sha": "04016c40647bc25019ee1b2f87e917ec3084bee2",
+      "timestamp": "2026-11-05T23:02:04.992Z",
       "commits": [
         {
-          "sha": "4df4f96a42046b89dfd304cb822ccf84d72e4230",
+          "sha": "04016c40647bc25019ee1b2f87e917ec3084bee2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T22:44:27Z",
-          "message": "Merge bea50ab644a0331acbaccbbf47f364a7614ce982 into 74ca7b0f891f4d1e398d9089ce06a4924d458150\n"
+          "timestamp": "2026-11-05T23:00:18Z",
+          "message": "Merge f1d2ef7b80482641ea4f9d4b72bfeef299e8cca9 into 74ca7b0f891f4d1e398d9089ce06a4924d458150\n"
+        },
+        {
+          "sha": "f1d2ef7b80482641ea4f9d4b72bfeef299e8cca9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T16:00:07-07:00",
+          "message": "Every offset a row holds is one of its stops: a cursor in what a wrap dropped stands on the row's end and steps out to the next row, a glyph is closed against its stand-in by the segmenter, a press past a right-to-left row reaches its end, and a logical row is ordered as the isolate the wire writes (rich-control-codes-xh4n.3f7)\n"
         },
         {
           "sha": "bea50ab644a0331acbaccbbf47f364a7614ce982",
