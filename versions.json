@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-563",
-      "ref": "refs/pull/563/merge",
-      "sha": "d3bbf9aab92b4c6dc8b39e4672736c683efa569d",
-      "timestamp": "2026-11-05T22:14:52.348Z",
-      "commits": [
-        {
-          "sha": "d3bbf9aab92b4c6dc8b39e4672736c683efa569d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T22:12:29Z",
-          "message": "Merge 252de9e2d73a92543382edce03aff31d608ede8c into 66d95e277535fd7da1a06633cf44e9f2a7f90678\n"
-        },
-        {
-          "sha": "252de9e2d73a92543382edce03aff31d608ede8c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:12:19-07:00",
-          "message": "Fold the removed-control pin into the span-edge describe: one edged helper over the order, one options set, the vacuous Panel case and the non-removing logical order dropped (rich-control-codes-xh4n.5md)\n"
-        },
-        {
-          "sha": "21deff56360c1a394316580eea6f5121a7c28548",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:08:50-07:00",
-          "message": "Pin that a removable control between a glyph and its extender writes as wide as it measures under every order (rich-control-codes-xh4n.5md)\n\nRichText.measure has read orient's measured(text, order) since #534, so it\ndrops the controls the wire drops; the probe that filed this compared raw\ncellLen against a removing order's row. Every order and span edge agreed on\nmaster; this pins it, and fails if measure stops being order-aware.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "66d95e277535fd7da1a06633cf44e9f2a7f90678",
