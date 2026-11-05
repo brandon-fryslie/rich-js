@@ -66,7 +66,7 @@
 import { action, runInAction } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
-import { Style, type CaretShape } from "../core/style.js";
+import { Style, caretMark, type CaretMark, type CaretShape } from "../core/style.js";
 import type { PointerShape } from "../core/terminal-requests.js";
 import {
   cellLen,
@@ -91,7 +91,7 @@ import {
 import { afterPass, drawable, render, type RenderOptions } from "../core/protocol.js";
 import { paragraphLevelOf, reorder } from "../core/orient.js";
 import { shownWritten } from "../core/seal.js";
-import { isBidi } from "../core/bidi.js";
+import { isBidi, lineLevels, paragraph } from "../core/bidi.js";
 import type { ParagraphLevel, TextOrder } from "../core/text-order.js";
 import { State } from "../core/state.js";
 import { Viewport, type Lines } from "../renderables/viewport.js";
@@ -188,10 +188,28 @@ interface Seen {
   readonly cells: number;
 }
 
-/** The caret a row is drawn with: the cursor it stands for, and its cell drawn over a glyph. */
+/**
+ * The caret a row is drawn with: the cursor it stands for, and its cell drawn
+ * over a glyph, on the side of it the insertion point is on.
+ */
 interface Caret {
   readonly at: CodePoint;
-  readonly draw: (glyph: string) => Iterable<Segment>;
+  readonly draw: (glyph: string, side: CaretMark["side"]) => Iterable<Segment>;
+}
+
+/**
+ * The side of its cell the insertion point at `at` in `text`, a row at
+ * `level`, is on once `order` lays the row out: the leading edge of the glyph
+ * the next character goes before, which is its right edge in a right-to-left
+ * run. Read off the levels the row is ordered by, so the side and the order
+ * never disagree; the end past the row's last glyph is at the row's own level,
+ * as UAX #9 L1 sets the blank drawn there.
+ */
+function caretSide(text: string, level: ParagraphLevel, at: number, order: TextOrder): CaretMark["side"] {
+  if (order === "plain" || (level === 0 && !isBidi(text))) return "left";
+  const resolved = paragraph(text, level);
+  const shown = at < text.length ? lineLevels(text, resolved.levels, resolved.level)[at]! : resolved.level;
+  return shown % 2 === 1 ? "right" : "left";
 }
 
 /**
@@ -1155,7 +1173,7 @@ export class TextInput extends ThemedWidget {
     let at = 0;
     for (const glyph of graphemes(row.text)) {
       const shown = shownAs(glyph);
-      pieces.push({ at, segments: caretAt === at ? [...caret!.draw(shown)] : [new Segment(shown, contentStyle)] });
+      pieces.push({ at, segments: caretAt === at ? [...caret!.draw(shown, caretSide(row.text, row.level, at, drawn.textOrder))] : [new Segment(shown, contentStyle)] });
       at += glyph.length;
     }
     // The end the frame draws no cell for is ordered as the caret's blank, a
@@ -1163,7 +1181,7 @@ export class TextInput extends ThemedWidget {
     // end, as it places the blank, never a rule beside it.
     let probe: Segment | undefined;
     if (row.endSlot) {
-      const end: Segment[] = caretAt === at ? [...caret!.draw(" ")] : [];
+      const end: Segment[] = caretAt === at ? [...caret!.draw(" ", caretSide(row.text, row.level, at, drawn.textOrder))] : [];
       const pad = endCells - Segment.getLineLength(end);
       if (pad > 0) end.push(new Segment(" ".repeat(pad), contentStyle));
       if (end.length === 0) end.push(probe = new Segment(" ", contentStyle));
@@ -1444,7 +1462,7 @@ export class TextInput extends ThemedWidget {
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
 
     const caret = this.focused && !this.disabled
-      ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
+      ? { at: this.cursorPosition, draw: (glyph: string, side: CaretMark["side"]) => this._caret(glyph, side, cursorStyle, contentStyle, options) }
       : undefined;
     // [LAW:one-source-of-truth] The window is a row of the value drawn as every
     // row is, so the stops a press reads are the cells the frame holds; a
@@ -1472,10 +1490,11 @@ export class TextInput extends ThemedWidget {
     const [visible] = splitText(text, asCellCol(width));
     const display = setCellSize(visible, asCellCol(width));
     const first = display.slice(0, nextGrapheme(display, asCodePoint(0)));
+    const level = paragraphLevelOf(display, undefined);
     const content = caret === undefined
       ? [new Segment(display, contentStyle)]
-      : [...caret.draw(first || " "), ...(display.length > first.length ? [new Segment(display.slice(first.length), contentStyle)] : [])];
-    const segments = this._oriented(content, drawn.textOrder, paragraphLevelOf(display, undefined));
+      : [...caret.draw(first || " ", caretSide(display, level, 0, drawn.textOrder)), ...(display.length > first.length ? [new Segment(display.slice(first.length), contentStyle)] : [])];
+    const segments = this._oriented(content, drawn.textOrder, level);
     return { segments, screen: () => [{ at: 0, cells: Segment.getLineLength(segments) }] };
   }
 
@@ -1503,7 +1522,7 @@ export class TextInput extends ThemedWidget {
     const markerStyle = new Style({ ...ink(this.theme, "foreground", "background"), dim: true });
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
     const caret = this.focused && !this.disabled
-      ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
+      ? { at: this.cursorPosition, draw: (glyph: string, side: CaretMark["side"]) => this._caret(glyph, side, cursorStyle, contentStyle, options) }
       : undefined;
     // One visual row as drawn: its continuation marker, then its content, the
     // caret on the cursor's row, and its stops once what follows it on its
@@ -1613,8 +1632,8 @@ export class TextInput extends ThemedWidget {
   // terminal's cursor, the cell is the text's, marked for it: the terminal
   // blinks its own, and an IME's candidate window and a screen reader follow
   // it to the editing point.
-  private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(this.caretShape))];
+  private _caret(at: string, side: CaretMark["side"], cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
+    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape, side)))];
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 

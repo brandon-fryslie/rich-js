@@ -92,6 +92,28 @@ export const ATTRIBUTE_SHORT_ALIASES: Readonly<Record<string, AttributeName>> = 
  */
 export type CaretShape = "block" | "underline" | "bar";
 
+/**
+ * The terminal's cursor on a cell: its shape, and the side of the cell the
+ * insertion point is on — the right in a right-to-left run, where the glyph
+ * the next character goes before ends. One value per pair (`caretMark`), so
+ * two styles holding the same mark compare equal.
+ */
+export interface CaretMark {
+  readonly shape: CaretShape;
+  readonly side: "left" | "right";
+}
+
+const CARET_MARKS: Readonly<Record<CaretShape, Readonly<Record<CaretMark["side"], CaretMark>>>> = {
+  block: { left: Object.freeze({ shape: "block", side: "left" }), right: Object.freeze({ shape: "block", side: "right" }) },
+  underline: { left: Object.freeze({ shape: "underline", side: "left" }), right: Object.freeze({ shape: "underline", side: "right" }) },
+  bar: { left: Object.freeze({ shape: "bar", side: "left" }), right: Object.freeze({ shape: "bar", side: "right" }) },
+};
+
+/** The one `CaretMark` for `shape` on `side`. */
+export function caretMark(shape: CaretShape, side: CaretMark["side"]): CaretMark {
+  return CARET_MARKS[shape][side];
+}
+
 export interface StyleOptions {
   color?: string | ColorSpec;
   bgcolor?: string | ColorSpec;
@@ -113,7 +135,7 @@ export interface StyleOptions {
   anchor?: Anchor;
   boxFrame?: object;
   bidi?: BidiStamp;
-  caret?: CaretShape;
+  caret?: CaretMark;
   /**
    * The validity interval the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
@@ -191,13 +213,13 @@ export class Style {
    */
   readonly bidi: BidiStamp | undefined;
   /**
-   * These cells are where the terminal's own cursor stands, in this shape: a
+   * These cells are where the terminal's own cursor stands, as this marks it: a
    * painter that shows it (`Renderer.caret`, `./paint.ts`) puts it on the
    * first such cell of the frame. It draws nothing — the painter is what turns
    * it into bytes, as the encoder does a link — so a field drawn under a
    * painter that shows no cursor draws its caret itself.
    */
-  readonly caret: CaretShape | undefined;
+  readonly caret: CaretMark | undefined;
   /**
    * The validity interval this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`validFrom`), and
@@ -331,8 +353,8 @@ export class Style {
     return this.with({ bidi });
   }
 
-  /** The same look, the terminal's cursor standing on its cells in `caret`'s shape, or not. */
-  withCaret(caret: CaretShape | undefined): Style {
+  /** The same look, the terminal's cursor standing on its cells as `caret` marks it, or not. */
+  withCaret(caret: CaretMark | undefined): Style {
     return this.with({ caret });
   }
 

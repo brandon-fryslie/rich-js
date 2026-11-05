@@ -1,5 +1,5 @@
-import { RichText } from "@promptctl/rich-js";
-import type { Renderable } from "@promptctl/rich-js";
+import { RichText, Style, caretMark, render } from "@promptctl/rich-js";
+import type { Renderable, RenderOptions, Segment } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 
 /**
@@ -22,12 +22,23 @@ export function buildSearchBar(state: AppState): Renderable {
     case "typing-local":
     case "typing-global": {
       const [sigil, label] = scopePrefix(s.mode);
-      text.append(`${sigil} `, "bold yellow on black");
-      text.append(`${label}: `, "dim yellow on black");
-      text.append(s.query, "white on black");
-      text.append("█", "bold yellow on black");
-      text.append("    [⏎] search  [esc] cancel", "dim");
-      return text;
+      const query = s.query;
+      // The editing point is the terminal's own cursor where the painter shows
+      // one, so an IME and a screen reader follow it; elsewhere it is drawn.
+      // The line opens left to right, so the blank past the query is too and
+      // the insertion point is its left side.
+      return {
+        render(options: RenderOptions): Iterable<Segment> {
+          const line = new RichText("", { end: "" });
+          line.append(`${sigil} `, "bold yellow on black");
+          line.append(`${label}: `, "dim yellow on black");
+          line.append(query, "white on black");
+          if (options.caret === true) line.append(" ", Style.parse("on black").withCaret(caretMark("bar", "left")));
+          else line.append("█", "bold yellow on black");
+          line.append("    [⏎] search  [esc] cancel", "dim");
+          return render(line, options);
+        },
+      };
     }
     case "results-local": {
       const total = s.matches.length;

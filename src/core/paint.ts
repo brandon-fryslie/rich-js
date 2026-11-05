@@ -14,6 +14,7 @@
  * is handed back.
  */
 
+import { cellLen, graphemes } from "./cells.js";
 import type { OutputTarget } from "./color.js";
 import type { Height } from "./protocol.js";
 import { segmentsToString, shownOn } from "./render.js";
@@ -107,7 +108,12 @@ const DEFAULT_SHAPE = "\x1b[0 q";
 const up = (rows: number): string => (rows > 0 ? `\x1b[${rows}A` : "");
 const down = (rows: number): string => (rows > 0 ? `\x1b[${rows}B` : "");
 
-/** Where a frame asks for the terminal's cursor: its first cell with a `caret` style. */
+/**
+ * Where a frame asks for the terminal's cursor: its first cell with a `caret`
+ * style. A bar stands at the left edge of the column it is moved to, so one
+ * marked on its cell's right side is moved past the cell; a block or an
+ * underline covers the cell, whichever side the insertion point is on.
+ */
 interface Caret {
   readonly row: number;
   readonly col: number;
@@ -118,8 +124,11 @@ function caretIn(rows: readonly Segment[][]): Caret | undefined {
   for (const [row, line] of rows.entries()) {
     let col = 0;
     for (const segment of line) {
-      const shape = segment.style?.caret;
-      if (shape !== undefined && segment.text.length > 0) return { row, col, shape };
+      const mark = segment.style?.caret;
+      if (mark !== undefined && segment.text.length > 0) {
+        const past = mark.shape === "bar" && mark.side === "right" ? cellLen(graphemes(segment.text)[0]!) : 0;
+        return { row, col: col + past, shape: mark.shape };
+      }
       col += segment.cellLength;
     }
   }
