@@ -4,15 +4,22 @@
     {
       "version": "pr-558",
       "ref": "refs/pull/558/merge",
-      "sha": "35cc26aa2199f7752adc7737d25dc6fd8dc03012",
-      "timestamp": "2026-11-05T18:32:49.758Z",
+      "sha": "fd981574adc95147b5b8b83f3ebda14cd24dc59f",
+      "timestamp": "2026-11-05T18:39:33.909Z",
       "commits": [
         {
-          "sha": "35cc26aa2199f7752adc7737d25dc6fd8dc03012",
+          "sha": "fd981574adc95147b5b8b83f3ebda14cd24dc59f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:30:44-07:00",
-          "message": "Merge e6d7558ec5ae748e6019b039355fbf16e57d9e3f into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
+          "timestamp": "2026-11-05T18:37:11Z",
+          "message": "Merge 194d74f5ab80d531f97f1dfe97bfe1b25f192c7b into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
+        },
+        {
+          "sha": "194d74f5ab80d531f97f1dfe97bfe1b25f192c7b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T11:37:00-07:00",
+          "message": "Requests: one identity per console, the title left to multiplexers, kitty ids per notification, OSC 9 kept off ConEmu's shape, screen passthrough, one OSC text rule (rich-control-codes-xh4n.4w6)\n"
         },
         {
           "sha": "e6d7558ec5ae748e6019b039355fbf16e57d9e3f",
