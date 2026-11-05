@@ -1475,11 +1475,10 @@ export class TextInput extends ThemedWidget {
     const [visible] = splitText(text, asCellCol(width));
     const display = setCellSize(visible, asCellCol(width));
     const first = display.slice(0, nextGrapheme(display, asCodePoint(0)));
-    const level = paragraphLevelOf(display, undefined);
     const content = caret === undefined
       ? [new Segment(display, contentStyle)]
       : [...caret.draw(first || " "), ...(display.length > first.length ? [new Segment(display.slice(first.length), contentStyle)] : [])];
-    const segments = this._oriented(content, drawn.textOrder, level);
+    const segments = this._oriented(content, drawn.textOrder, paragraphLevelOf(display, undefined));
     return { segments, screen: () => [{ at: 0, cells: Segment.getLineLength(segments) }] };
   }
 
@@ -1618,7 +1617,7 @@ export class TextInput extends ThemedWidget {
   // blinks its own, and an IME's candidate window and a screen reader follow
   // it to the editing point.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape, "left")))];
+    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape)))];
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 

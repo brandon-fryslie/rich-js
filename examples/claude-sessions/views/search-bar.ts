@@ -1,4 +1,4 @@
-import { RichText, Style, caretMark, render } from "@promptctl/rich-js";
+import { Measurement, RichText, Style, caretMark, render } from "@promptctl/rich-js";
 import type { Measurable, Renderable, RenderOptions, Segment } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 
@@ -25,21 +25,21 @@ export function buildSearchBar(state: AppState): Renderable {
       const query = s.query;
       // The editing point is the terminal's own cursor where the painter shows
       // one, so an IME and a screen reader follow it; elsewhere it is drawn.
-      // The mark names the insertion point's logical side; ordering the line
-      // turns it to the glyph's right edge in a right-to-left query.
+      // The blank past the query is a neutral between it and the hint, so it is
+      // shown at the line's own level: the bar stands on its left edge.
       const line = (marked: boolean): RichText => {
         const out = new RichText("", { end: "" });
         out.append(`${sigil} `, "bold yellow on black");
         out.append(`${label}: `, "dim yellow on black");
         out.append(query, "white on black");
-        if (marked) out.append(" ", Style.parse("on black").withCaret(caretMark("bar", "left")));
+        if (marked) out.append(" ", Style.parse("on black").withCaret(caretMark("bar")));
         else out.append("█", "bold yellow on black");
         out.append("    [⏎] search  [esc] cancel", "dim");
         return out;
       };
       const bar: Renderable & Measurable = {
         render: (options: RenderOptions): Iterable<Segment> => render(line(options.caret === true), options),
-        measure: (options: RenderOptions) => line(options.caret === true).measure(options),
+        measure: (options: RenderOptions) => Measurement.get(options, line(options.caret === true)),
       };
       return bar;
     }

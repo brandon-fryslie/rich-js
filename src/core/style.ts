@@ -95,8 +95,11 @@ export type CaretShape = "block" | "underline" | "bar";
 /**
  * The terminal's cursor on a cell: its shape, and the side of the cell the
  * insertion point is on — the right in a right-to-left run, where the glyph
- * the next character goes before ends. One value per pair (`caretMark`), so
- * two styles holding the same mark compare equal.
+ * the next character goes before ends. A mark is made on the glyph's leading
+ * edge (`caretMark`) and only ordering a row turns it (`caretMarkOn`, from
+ * `orient`): the side is read off the level the glyph is shown at, so no caller
+ * states a physical edge for it to disagree with. A mark stands on one cell.
+ * One value per pair, so two styles holding the same mark compare equal.
  */
 export interface CaretMark {
   readonly shape: CaretShape;
@@ -116,8 +119,13 @@ const CARET_MARKS: Readonly<Record<CaretShape, Readonly<Record<CaretMark["side"]
   bar: { left: mark("bar", "left"), right: mark("bar", "right") },
 };
 
-/** The one `CaretMark` for `shape` on `side`. */
-export function caretMark(shape: CaretShape, side: CaretMark["side"]): CaretMark {
+/** The caret in `shape` on the glyph the next character goes before, at its leading edge once the row is ordered. */
+export function caretMark(shape: CaretShape): CaretMark {
+  return CARET_MARKS[shape].left;
+}
+
+/** The one `CaretMark` for `shape` on `side`: what ordering a row sets, at the level its glyph is shown at. */
+export function caretMarkOn(shape: CaretShape, side: CaretMark["side"]): CaretMark {
   return CARET_MARKS[shape][side];
 }
 
