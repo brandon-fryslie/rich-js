@@ -21,12 +21,12 @@ export type Env = Readonly<Record<string, string | undefined>>;
  * as Emacs' shell mode sets it. It takes no color and nothing that moves the
  * cursor.
  */
-/** Whether a person is at the destination: a TTY that is not a dumb terminal. */
-export function isAttended(isTTY: boolean, env: Env): boolean {
-  return isTTY && !isDumbTerminal(env);
-}
-
 export function isDumbTerminal(env: Env): boolean {
   const term = env["TERM"];
   return term === "dumb" || term === "unknown";
+}
+
+/** Whether a person is at the destination: a TTY that is not a dumb terminal. */
+export function isAttended(isTTY: boolean, env: Env): boolean {
+  return isTTY && !isDumbTerminal(env);
 }
