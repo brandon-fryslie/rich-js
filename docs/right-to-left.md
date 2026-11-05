@@ -29,9 +29,9 @@ const output = new Console({ textOrder: "logical" });
 output.print("שלום עולם");
 ```
 
-## The three text orders
+## The four text orders
 
-`textOrder` is one of three values, and it says what the destination does with
+`textOrder` is one of four values, and it says what the destination does with
 direction. `Console`, `App` and `renderToString` all take it.
 
 | Order | The destination | What rich-js writes |
@@ -39,6 +39,7 @@ direction. `Console`, `App` and `renderToString` all take it.
 | `plain` | Is not a display, or nothing is known about it | The characters in logical order, with no bidi control |
 | `logical` | Reorders text itself and takes the controls at zero width | Logical order, each row sealed in an isolate |
 | `visual` | Does not reorder | Rows already reversed, mirrored and shaped, with no controls |
+| `words` | Reverses right-to-left text inside each run between spaces, and nowhere else | Rows as under `visual`, each right-to-left word turned back so the display's reversal puts it right |
 
 Each order above `plain` is a claim about the terminal. Visual order on a
 terminal that also reorders reverses the text twice. Isolates on a terminal
