@@ -37,12 +37,26 @@ describe("the kitty protocol's keys", () => {
     // Caps Lock (64) and Num Lock (128) held change no name.
     ["\x1b[97;69u", "ctrl+a"],
     ["\x1b[97:65;5u", "ctrl+a"],
+    // Alt+Shift+G as legacy names it (`ESC G`).
+    ["\x1b[103;4u", "meta+G"],
+    // Keypad keys, sent in the Private Use Area, as what they type.
+    ["\x1b[57400u", "1"],
+    ["\x1b[57414u", "enter"],
+    ["\x1b[57413;5u", "ctrl++"],
   ])("reads %j as %s", (bytes, name) => {
     expect(keysOf(bytes)).toEqual([name]);
   });
 
   it("reads F1–F4 with a modifier, as xterm sends them too", () => {
-    expect(keysOf("\x1b[1;2P\x1b[1;5Q\x1b[1;3R\x1b[1;6S")).toEqual(["shift+f1", "ctrl+f2", "meta+f3", "ctrl+shift+f4"]);
+    expect(keysOf("\x1b[1;2P\x1b[1;5Q\x1b[13;3~\x1b[1;6S")).toEqual(["shift+f1", "ctrl+f2", "meta+f3", "ctrl+shift+f4"]);
+  });
+
+  it("reads nothing from a key no program can name: other Private Use keys, no code, a Super chord", () => {
+    expect(keysOf("\x1b[57376u\x1b[0u\x1b[u\x1b[99;9u")).toEqual([]);
+  });
+
+  it("does not read a cursor position report as F3", () => {
+    expect(keysOf("\x1b[12;40R")).toEqual([]);
   });
 
   it("still reads the terminal's answer to the query as a reply", () => {
@@ -75,6 +89,15 @@ describe("an app that asks for the kitty keyboard", () => {
     app.stop();
     await done;
     expect(host.output().indexOf(POP)).toBeGreaterThan(host.output().indexOf(PUSH));
+  });
+
+  it("pushes nothing when the app stops between the answer and acting on it", async () => {
+    const { host, done } = started("kitty");
+    await asked();
+    host.type(`\x1b[?0u${DA1_REPLY}\x03`);
+    await done;
+    await asked();
+    expect(host.output()).not.toContain(PUSH);
   });
 
   it("stays on legacy keys where the terminal answers DA1 alone", async () => {

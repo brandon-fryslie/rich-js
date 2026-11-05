@@ -146,15 +146,29 @@ const CSI_LETTER_KEYS: Readonly<Record<string, string>> = {
   H: "home",
   F: "end",
   Z: "tab", // shift+tab encodes as ESC[Z
-  // F1–F4 with a modifier, `ESC[1;5P`, from xterm and the kitty protocol.
+  // F1, F2 and F4 with a modifier, `ESC[1;5P`, from xterm and the kitty
+  // protocol. Not F3's `R`: `ESC[row;colR` is a cursor position report, and
+  // kitty sends F3 as `ESC[13~` for that reason.
   P: "f1",
   Q: "f2",
-  R: "f3",
   S: "f4",
 };
 
-// The kitty keyboard protocol's code points for keys legacy names by name.
-const KITTY_NAMED_CODES: Readonly<Record<number, string>> = { 27: "escape", 13: "enter", 9: "tab", 127: "backspace", 32: "space" };
+// The kitty protocol's keypad keys, sent under flag 1 as code points in the
+// Private Use Area: the key each types (`KP_0`… at 57399, `KP_ENTER` 57414).
+const KITTY_KEYPAD: Readonly<Record<number, string>> = Object.fromEntries([
+  ..."0123456789./*-+".split("").map((glyph, index) => [57399 + index, glyph]),
+  [57414, "\r"],
+  [57415, "="],
+]);
+
+// Kitty's functional keys past the keypad live in the Private Use Area; none
+// is a glyph anyone typed.
+const isPrivateUse = (point: number): boolean => point >= 0xe000 && point <= 0xf8ff;
+
+// Super, Hyper and Meta (kitty's 8, 16, 32): modifiers a `KeyEvent` does not
+// carry, so a chord holding one is no key the program can name.
+const UNCARRIED_MODIFIERS = 8 | 16 | 32;
 
 // `ESC[<n>~` numeric forms for navigation / function keys.
 const CSI_TILDE_KEYS: Readonly<Record<string, string>> = {
@@ -202,24 +216,17 @@ const NAMED_KEYS: ReadonlySet<string> = new Set([
   ...Object.values(SS3_KEYS),
 ]);
 
-// [LAW:one-source-of-truth] The glyphs a Ctrl chord is named by are what
-// `ctrlKey` makes of the control bytes no named key claims.
-const CTRL_GLYPHS: ReadonlySet<string> = new Set(
-  Array.from({ length: 0x20 }, (_, byte) => byte)
-    .filter((byte) => byte !== 0 && !(byte in SINGLE_BYTE_KEYS))
-    .map((byte) => ctrlKey(byte).key),
-);
-
 /**
  * `name`, if `keyName` can produce it: modifiers in its order, then a named
- * key or one glyph, with no `shift+` on a glyph and, after `ctrl+`, only a
- * glyph a control byte stands for.
+ * key or one glyph. On a glyph `shift+` is named only beside `ctrl+`, and the
+ * glyph after `ctrl+` is never upper-case: a Ctrl chord names its glyph lower
+ * and keeps its shift, as the kitty protocol reports one.
  * [LAW:parse-dont-validate] A name no key can produce throws here, at the
  * one place a program hands names in, rather than binding a key that never fires.
  */
 export function parseKeyName(name: string): string {
   const [, ctrl, , shift, base] = /^(ctrl\+)?(meta\+)?(shift\+)?(.*)$/u.exec(name)!;
-  const glyph = [...base!].length === 1 && !shift && (!ctrl || CTRL_GLYPHS.has(base!));
+  const glyph = [...base!].length === 1 && (!shift || ctrl !== undefined) && (ctrl === undefined || base === base!.toLowerCase());
   const producible = NAMED_KEYS.has(base!) || glyph;
   if (!producible) throw new Error(`no key is named ${JSON.stringify(name)}; see keyName`);
   return name;
@@ -821,7 +828,10 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
   const mod = parseInt(parts[1] ?? "", 10);
   const { shift, ctrl, meta } = decodeModifier(mod);
 
-  if (final === "u") return { kind: "key", bytes, event: kittyKey(first, mod) };
+  if (final === "u") {
+    const event = kittyKey(first, mod);
+    return event === undefined ? { kind: "skip", bytes } : { kind: "key", bytes, event };
+  }
 
   if (final === "~") {
     const name = CSI_TILDE_KEYS[first];
@@ -858,17 +868,27 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
 }
 
 // `CSI code[:alternates] ; mods[:event] u`, the kitty keyboard protocol's key,
-// named as the legacy form of the same key is: a named key by its name, a glyph
-// by the glyph, its case carrying shift as typed text's does; Ctrl or Alt on a
-// glyph leaves `character` empty, as their legacy chords do.
-function kittyKey(code: string, mod: number): KeyEvent {
-  const point = parseInt(code.split(":")[0] ?? "", 10);
+// named as the legacy form of the same key is: a named key by its name, a
+// keypad key as what it types, a glyph by the glyph. Shift on a glyph is its
+// case, as typed text's is, and Alt on one names the glyph as sent, as `ESC G`
+// does; only Ctrl, whose legacy byte has no case, keeps `shift+`. Undefined for
+// what no program can name: no code, kitty's other Private Use keys, and a
+// chord holding Super, Hyper or Meta.
+function kittyKey(code: string, mod: number): KeyEvent | undefined {
+  const sent = parseInt(code.split(":")[0] ?? "", 10);
+  if (!(sent > 0) || (Number.isFinite(mod) && ((mod - 1) & UNCARRIED_MODIFIERS) !== 0)) return undefined;
+  const keypad = KITTY_KEYPAD[sent];
+  const point = keypad === undefined ? sent : keypad.codePointAt(0)!;
+  if (keypad === undefined && isPrivateUse(point)) return undefined;
   const { shift, ctrl, meta } = decodeModifier(mod);
-  const named = KITTY_NAMED_CODES[point];
+  const named = SINGLE_BYTE_KEYS[point];
   if (named !== undefined) return { key: named, character: named === "space" && !ctrl && !meta ? " " : "", shift, ctrl, meta };
-  const glyph = Number.isInteger(point) && point > 0x20 ? String.fromCodePoint(point) : "";
-  const shown = shift && !ctrl && !meta ? glyph.toUpperCase() : glyph;
-  return { key: glyph.toLowerCase(), character: ctrl || meta ? "" : shown, shift: shift && (ctrl || meta || shown !== glyph), ctrl, meta };
+  if (point < 0x20) return undefined;
+  const glyph = String.fromCodePoint(point);
+  const cased = shift ? glyph.toUpperCase() : glyph;
+  if (ctrl) return { key: glyph.toLowerCase(), character: "", shift, ctrl, meta };
+  if (meta) return { key: cased, character: "", shift: false, ctrl: false, meta };
+  return { key: cased.toLowerCase(), character: cased, shift: cased !== cased.toLowerCase(), ctrl: false, meta: false };
 }
 
 function decodeModifier(mod: number): { shift: boolean; ctrl: boolean; meta: boolean } {

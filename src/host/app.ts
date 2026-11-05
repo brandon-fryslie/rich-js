@@ -225,6 +225,9 @@ export class App implements FrameHost {
   // Whether this take of the terminal pushed the kitty keyboard mode, so the
   // hand-back pops exactly what was pushed.
   private kittyKeys = false;
+  // Which take of the terminal this is: an ask's answer acts only on the take
+  // that asked, since `leave` can run between the answer and its handler.
+  private takes = 0;
   private readonly keyboard: "legacy" | "kitty";
   private _frame: readonly (readonly Segment[])[] = [];
   private readonly painter: SurfaceRenderer;
@@ -545,9 +548,10 @@ export class App implements FrameHost {
     this.host.setRawMode(true);
     this.painter.take();
     this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
+    const take = ++this.takes;
     if (this.keyboard === "kitty") void this.ask([KITTY_KEYBOARD.query]).then(({ ended, replies }) => {
-      // `leave` ends an ask in flight `left`, so an answer pushes only onto a
-      // terminal this app still holds.
+      // Pushed only onto the take that asked, while the app still holds it.
+      if (take !== this.takes || this._phase !== "running") return;
       if (ended !== "answered" || !replies.some(isKittyKeyboardReply)) return;
       this.host.write(KITTY_KEYBOARD.push);
       this.kittyKeys = true;
@@ -560,6 +564,7 @@ export class App implements FrameHost {
     this.owedDa1 = 0;
     this.host.write((this.kittyKeys ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
     this.kittyKeys = false;
+    this.takes++;
     this.painter.handBack();
     this.host.setRawMode(false);
   }
