@@ -183,11 +183,13 @@ function clusterLevels(clusters: readonly string[], finished: readonly number[],
  * L2 would move a trailing one to a row's first cell, where xterm.js advances
  * for it.
  */
+const shownRemovals = (text: string): string => withoutMarks(withoutExplicit(text));
+
 const REMOVALS: Readonly<Record<TextOrder, (text: string) => string>> = {
   plain: withoutExplicit,
   logical: (text) => text,
-  visual: (text) => withoutMarks(withoutExplicit(text)),
-  words: (text) => withoutMarks(withoutExplicit(text)),
+  visual: shownRemovals,
+  words: shownRemovals,
 };
 
 /** Whether `order` takes `character` out of a line ahead of wrapping, as `REMOVALS` does. */

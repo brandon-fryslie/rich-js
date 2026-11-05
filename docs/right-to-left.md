@@ -148,7 +148,10 @@ const rows = Segment.splitLines(render(line, { maxWidth: 12, textOrder: "visual"
 - **`TextInput`.** Up and Down keep a column counted through the text, not across the screen, so on a right-to-left row they land where the text's order puts that column.
 - **kitty.** A run kitty shapes also ends where the font changes, which no
   program can see: punctuation drawn from the main font beside an Arabic word
-  drawn from a fallback font lands on the wrong side of that word. With
+  drawn from a fallback font lands on the wrong side of that word. A run with
+  no space in it that starts with right-to-left script and ends with
+  left-to-right — two table cells drawn with no padding between them — has no
+  bytes kitty shows as laid out, and is written as it lies. With
   `force_ltr yes`, which the environment cannot show, kitty wants `visual`;
   state it.
 - **`RichText.plain`.** It holds the controls in every order, so a program writing

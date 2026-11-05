@@ -52,7 +52,7 @@ function texts(): RichText[] {
 const widths = [1, 3, 7, 12, 20, 80];
 const justifies = [undefined, "left", "center", "right", "full"] as const;
 const overflows: OverflowMethod[] = ["fold", "crop", "ellipsis", "ignore"];
-const orders: TextOrder[] = ["plain", "logical", "visual"];
+const orders: TextOrder[] = ["plain", "logical", "visual", "words"];
 
 describe("A text's placed rows, taken off its render, draw it one per line", () => {
   for (const textOrder of orders) {

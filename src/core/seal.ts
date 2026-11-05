@@ -118,65 +118,91 @@ const RIGHT_TO_LEFT_SCRIPT = pattern(
   ),
 );
 const UNSCRIPTED = pattern(/^[\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u);
-// What kitty draws in no font, so a run of shaped cells always ends at it.
-const RUN_BREAK = pattern(/^[  \n]$/);
+// The cells kitty draws in no shaped font (`font_for_cell`, kitty/fonts.c): a
+// blank, a tab, and what its box font draws — box drawing, blocks, braille,
+// powerline and legacy computing. A shaped run always ends at one.
+const RUN_BREAKS = String.raw`[\0\t \n ─-▟◉○●◖◗◜-◥⠀-⣿---\u{1fb00}-\u{1fbae}\u{1fbce}-\u{1fbef}\u{1cd00}-\u{1cde5}\u{1cc1b}-\u{1cc3f}\u{1ce16}-\u{1ce19}\u{1ce51}-\u{1ceaf}]`;
 
-interface Cell {
+interface Piece {
   readonly text: string;
   readonly style: Segment["style"];
 }
 
 /** Whether HarfBuzz, guessing, shapes `run` right to left. */
-function shapedRightToLeft(run: readonly Cell[]): boolean {
+function shapedRightToLeft(run: readonly Piece[]): boolean {
   for (const { text } of run) for (const character of text) if (!UNSCRIPTED.test(character)) return RIGHT_TO_LEFT_SCRIPT.test(character);
   return false;
 }
 
+/** The face kitty draws `style` in: bold and italic each choose a font, so a run ends where either changes. */
+const faceOf = (style: Segment["style"]): string => `${style?.bold === true}${style?.italic === true}`;
+
 /**
- * `segments` for a display that reverses each right-to-left run of non-space
- * cells (`words`): every such run laid out in visual order is written reversed,
- * each cluster mirrored, so the display's reversal and HarfBuzz's mirroring put
- * each cluster back in the cell visual order gave it. A cell never laid out in
- * visual order is left for the display to reverse as it would. A row is a
- * buffer's worth: what lies between line breaks and controls, which may move the
- * cursor.
+ * The bytes that make kitty show `run`, one of its shaped runs, as its cells lie.
+ * kitty draws a run it guesses right to left reversed and mirrored, so such a
+ * run is written reversed and mirrored. Where neither form shows the cells — the
+ * run starts with right-to-left script and ends with left-to-right — nothing can,
+ * and it is written as it lies.
+ */
+function shownAsLaid(run: readonly Piece[]): readonly Piece[] {
+  if (!shapedRightToLeft(run)) return run;
+  const turned = run.flatMap(({ text, style }) => graphemes(text).map((cluster) => ({ text: mirroredCluster(cluster), style }))).reverse();
+  return shapedRightToLeft(turned) ? turned : run;
+}
+
+/**
+ * `segments` for a display that reverses each run it shapes right to left
+ * (`words`): every run holding a cell laid out in visual order is written so
+ * the display's reversal and HarfBuzz's mirroring put each cluster back in the
+ * cell it was laid out in (`shownAsLaid`). A run with no such cell is left for
+ * the display to reverse as it would. Runs end where kitty's do, but for a font
+ * the user configured, which no program can see.
  */
 function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
-  let row: Cell[] = [];
-  const flush = function* (): Iterable<Segment> {
-    yield* joined(row);
-    row = [];
+  const breaks = new RegExp(`(${RUN_BREAKS})`, "u");
+  let run: Piece[] = [];
+  let laid = false;
+  let pending: Piece[] = [];
+  const flush = (): void => {
+    pending.push(...(laid ? shownAsLaid(run) : run));
+    run = [];
+    laid = false;
   };
   for (const segment of segments) {
     if (segment.isControl) {
-      yield* flush();
+      flush();
+      yield* joined(pending);
+      pending = [];
       yield segment;
       continue;
     }
     const visual = segment.style?.bidi?.order === "visual";
-    for (const cluster of graphemes(segment.text)) {
-      row.push({ text: cluster, style: segment.style });
-      if (!visual || RUN_BREAK.test(cluster)) yield* flush();
+    for (const [index, text] of segment.text.split(breaks).entries()) {
+      if (text === "") continue;
+      const isBreak = index % 2 === 1;
+      if (isBreak || (run.length > 0 && faceOf(run[0]!.style) !== faceOf(segment.style))) flush();
+      if (isBreak) pending.push({ text, style: segment.style });
+      else {
+        run.push({ text, style: segment.style });
+        laid ||= visual;
+      }
     }
   }
-  yield* flush();
+  flush();
+  yield* joined(pending);
 }
 
-/** `cells` as segments, a run of them first turned back when the display will reverse it. */
-function* joined(cells: Cell[]): Iterable<Segment> {
-  const last = cells.at(-1);
-  const breaks = last !== undefined && (RUN_BREAK.test(last.text) || last.style?.bidi?.order !== "visual");
-  const run = breaks ? cells.slice(0, -1) : cells;
-  const written = shapedRightToLeft(run) ? run.map(({ text, style }) => ({ text: mirroredCluster(text), style })).reverse() : run;
+/** `pieces` as segments, neighbours of one style written as one. */
+function* joined(pieces: readonly Piece[]): Iterable<Segment> {
   let text = "";
   let style: Segment["style"];
-  for (const cell of breaks ? [...written, last!] : written) {
-    if (text !== "" && cell.style !== style) {
+  for (const piece of pieces) {
+    if (text !== "" && piece.style !== style) {
       yield new Segment(text, style);
       text = "";
     }
-    text += cell.text;
-    style = cell.style;
+    text += piece.text;
+    style = piece.style;
   }
   if (text !== "") yield new Segment(text, style);
 }

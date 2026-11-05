@@ -67,7 +67,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     ["a thrown message in Pretty", () => new Pretty([{ get a(): number { throw new Error(`${RLO}abc`); } }, after])],
   ];
 
-  for (const order of ["plain", "logical", "visual"] as const) {
+  for (const order of ["plain", "logical", "visual", "words"] as const) {
     test.each(shapes)(`${order}: %s`, (_name, make) => {
       const bytes = plainBytes(make(), order);
       expect(holds(bytes, order === "logical" ? implicit : none)).toBe(true);
@@ -88,7 +88,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
   });
 
   test("a raw segment is contained, in every order", () => {
-    for (const textOrder of ["plain", "logical", "visual"] as const) {
+    for (const textOrder of ["plain", "logical", "visual", "words"] as const) {
       const destination = { ...resolveOutputTarget(null, { isTTY: false }), textOrder };
       expect(segmentsToString([new Segment(`${RLO}abc`)], destination)).toBe("abc");
       expect(segmentToString(new Segment(`${RLO}abc`), destination)).toBe("abc");
@@ -135,7 +135,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     const rle = "\u202b";
     const pdf = "\u202c";
     const hebrew = "\u05d0\u05d1\u05d2\u05d3";
-    for (const textOrder of ["plain", "logical", "visual"] as const) {
+    for (const textOrder of ["plain", "logical", "visual", "words"] as const) {
       const bytes = plainBytes(new RichText(`${rle}${hebrew} ${pdf}\u05d4\u05d5\u05d6\u05d7`, { end: "", overflow: "ellipsis" }), textOrder, 4);
       expect(bytes).not.toContain("\u2026");
     }
@@ -252,6 +252,21 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
     expect(onKitty(table).map(read)).toEqual(visually(table).map(read));
   });
 
+  test("writes styled text with nothing to turn back as it writes it in plain order", () => {
+    const styled = (textOrder: TextOrder): string => renderToString(renderMarkup("[bold red]hello world[/]"), { width: 40, textOrder });
+    expect(styled("words")).toBe(styled("plain"));
+  });
+
+  test("turns back each face of a word apart, as kitty shapes each face alone", () => {
+    const [row] = rows(renderToString(renderMarkup("[bold]של[/]ום עולם"), { width: 40, textOrder: "words", colorSystem: "none" }));
+    expect(row!.trimEnd()).toBe("עולם וםשל");
+  });
+
+  test("ends a run at a box-drawing cell, where kitty ends one", () => {
+    const [row] = rows(plainBytes(new RichText(`${HEBREW.split(" ")[0]}─${HEBREW.split(" ")[1]}`, { end: "" }), "words"));
+    expect(kitty(row!.replace(/─/g, " ")).replace(/ /g, "─")).toBe(rows(plainBytes(new RichText(`${HEBREW.split(" ")[0]}─${HEBREW.split(" ")[1]}`, { end: "" }), "visual"))[0]);
+  });
+
   test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {
     expect(segmentsToString([new Segment(HEBREW)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "words" })).toBe(HEBREW);
   });
@@ -304,7 +319,7 @@ describe("reading on a terminal that does not reorder", () => {
 
   test("a Text's edge is a cell it draws, never a control", () => {
     const options = (textOrder: TextOrder) => ({ maxWidth: 40, textOrder });
-    for (const order of ["plain", "logical", "visual"] as const) {
+    for (const order of ["plain", "logical", "visual", "words"] as const) {
       const held = new RichText("\u2067\u05d0\u05d1\u2069").stylize("on red", 1, 3);
       expect(held.edgeStyle("left", options(order)).bgcolor?.name).toBe("red");
       expect(held.edgeStyle("right", options(order)).bgcolor?.name).toBe("red");
@@ -343,7 +358,7 @@ describe("reading on a terminal that does not reorder", () => {
 
   test("a line's cells do not change with order, a joiner emoji included", () => {
     const widths = (text: string): number[] =>
-      (["plain", "logical", "visual"] as const).map((order) => cellLen(rows(plainBytes(new RichText(text, { end: "" }), order, 60)).join("")));
+      (["plain", "logical", "visual", "words"] as const).map((order) => cellLen(rows(plainBytes(new RichText(text, { end: "" }), order, 60)).join("")));
     for (const text of [ARABIC, HEBREW, "لا إله إلا الله", "مَرْحَبًا", "سلام 👨\u200d👩\u200d👧 عليكم"]) {
       expect(new Set(widths(text)).size).toBe(1);
     }
@@ -455,7 +470,7 @@ describe("views of data and code", () => {
   const key = `${RLO}name`;
 
   test("printJson's bytes stay JSON, in every order, and show the control", () => {
-    for (const textOrder of ["plain", "logical", "visual"] as const) {
+    for (const textOrder of ["plain", "logical", "visual", "words"] as const) {
       const written = plainBytes(JSONRenderable.fromData({ [key]: "value" }, { indent: 0 } as never), textOrder, 200);
       expect(JSON.parse(written)).toEqual({ [key]: "value" });
       expect(written).toContain("\\u202e");
