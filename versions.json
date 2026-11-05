@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-562",
-      "ref": "refs/pull/562/merge",
-      "sha": "1fccfb2856c98f37c3787b3dcb4053f44abcbfdd",
-      "timestamp": "2026-11-05T22:03:14.297Z",
-      "commits": [
-        {
-          "sha": "1fccfb2856c98f37c3787b3dcb4053f44abcbfdd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T22:00:45Z",
-          "message": "Merge d506065e4d8f2a352c10e4465de9ee80a9c5ac5e into b00624001284316cd6d5bb730f1564914df76f42\n"
-        },
-        {
-          "sha": "d506065e4d8f2a352c10e4465de9ee80a9c5ac5e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:00:36-07:00",
-          "message": "Drop the unmeasured logical advice for Terminal.app; say which build the bidi rows came from (rich-control-codes-xh4n.gp4)\n"
-        },
-        {
-          "sha": "07b208666373c46736e5b2430b4e17e44e9a0744",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:58:34-07:00",
-          "message": "Name the measured versions and PDF's cell, pin Terminal.app plain, and say it in the docs (rich-control-codes-xh4n.gp4)\n"
-        },
-        {
-          "sha": "0fc1ad1a967a21577a36de141394019ec2c99a0b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:51:11-07:00",
-          "message": "iTerm2 and Terminal.app measured and kept plain (rich-control-codes-xh4n.gp4)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b00624001284316cd6d5bb730f1564914df76f42",
-      "timestamp": "2026-11-05T21:49:29.900Z",
+      "sha": "66d95e277535fd7da1a06633cf44e9f2a7f90678",
+      "timestamp": "2026-11-05T22:05:41.724Z",
       "commits": [
         {
-          "sha": "b00624001284316cd6d5bb730f1564914df76f42",
+          "sha": "66d95e277535fd7da1a06633cf44e9f2a7f90678",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:47:08-07:00",
-          "message": "A focused TextInput is the terminal's own cursor, shaped by DECSCUSR; the pointer takes the hovered widget's shape by OSC 22 (rich-control-codes-xh4n.sk3) (#561)\n\n* A focused TextInput is the terminal's own cursor, shaped by DECSCUSR; the pointer takes the hovered widget's shape by OSC 22 (rich-control-codes-xh4n.sk3)\n\nThe painter hid the hardware cursor for the whole take, so DECSCUSR alone\nshowed nothing. A frame now names the cell where the terminal's cursor\nstands (Style.caret); SurfaceRenderer shows it there in that shape after\neach paint, hides it while painting, homes from the caret's row, and gives\nthe default shape back on hand-back. TextInput marks its caret instead of\ndrawing a blinking one wherever the painter shows the cursor\n(RenderOptions.caret), so an IME and a screen reader follow the editing\npoint. A logical-order terminal reorders glyphs off their frame columns, so\nthere the drawn caret stays.\n\nOSC 22 adopted: Console.setPointerShape, App.pointerShape, and\nWidgetBase/TextInput.pointerShape set from hover. OSC 133 rejected; the\nreason is on the ticket.\n\n* Review fixes: caret column skips control segments, shape written on change, pointer shape survives suspend (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review fixes: caret past the screen edge stays shown, pointer follows a drag and the wheel, a shape set while suspended shows on resume (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review fixes: pointer shape set before run shows on start and refused after stop, DECSCUSR 0 described as it is (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-11-05T15:03:22-07:00",
+          "message": "iTerm2 and Terminal.app measured and kept plain (rich-control-codes-xh4n.gp4) (#562)\n\n* iTerm2 and Terminal.app measured and kept plain (rich-control-codes-xh4n.gp4)\n\n* Name the measured versions and PDF's cell, pin Terminal.app plain, and say it in the docs (rich-control-codes-xh4n.gp4)\n\n* Drop the unmeasured logical advice for Terminal.app; say which build the bidi rows came from (rich-control-codes-xh4n.gp4)\n\n* Keep the bidi measurement in one place; name seal's closers and the unmeasured reordering (rich-control-codes-xh4n.gp4)"
         }
       ]
     }
