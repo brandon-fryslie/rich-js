@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { asCodeUnit } from "../../src/core/cells.js";
+import { asCodeUnit, graphemes } from "../../src/core/cells.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { render, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
@@ -182,3 +182,62 @@ describe("TextInput with right-to-left text", () => {
   });
 });
 
+
+// Values whose screen order is not their text's: overrides, isolates, marks,
+// combining marks, a joined sequence, numbers in right-to-left text.
+const BIDI_VALUES = ["אבג", "see אבג דהו now", "abc 123 אבג", "א‮abc‬ב", "⁧אב⁩cd", "א‏b‎c", "שָׁלוֹם x", "مرحبا 12 بالعالم", "a⁦שלום⁩b", "x؜אב 3.5", "👨‍👩‍👧 אב", "a‫ב‬c"];
+
+// Every cursor stop of `value`: each glyph boundary.
+function stops(value: string): number[] {
+  const at = [0];
+  for (const glyph of graphemes(value)) at.push(at.at(-1)! + glyph.length);
+  return at;
+}
+
+const pressOn = (frame: Segment[][], input: TextInput, x: number): WidgetMouseEvent =>
+  ({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+
+describe("a press reads the frame it lands on", () => {
+  it.each(["plain", "visual", "words"] as const)("puts the cursor on the stop whose caret the pressed cell drew, under %s, wherever the cursor went since", (order) => {
+    for (const multiline of [false, true]) {
+      for (const value of BIDI_VALUES) {
+        const input = new TextInput({ value, multiline });
+        input.cursorStyleOverride = Style.parse("bold reverse");
+        input.focus(0);
+        for (const stop of stops(value)) {
+          input.cursorPosition = asCodeUnit(stop);
+          const frame = Segment.splitLines(render(input, options(order)));
+          let column = 0;
+          for (const segment of frame[0]!) {
+            if (segment.style?.reverse === true) break;
+            column += segment.cellLength;
+          }
+          input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
+          input.handleMouse(pressOn(frame, input, column));
+          expect(input.cursorPosition, `${JSON.stringify(value)}, multiline ${multiline}`).toBe(stop);
+        }
+      }
+    }
+  });
+
+  it("maps a column under logical the same before and after the cursor moves", () => {
+    for (const multiline of [false, true]) {
+      for (const value of BIDI_VALUES) {
+        const input = new TextInput({ value, multiline });
+        input.focus(0);
+        for (const stop of stops(value)) {
+          input.cursorPosition = asCodeUnit(stop);
+          const frame = Segment.splitLines(render(input, options("logical")));
+          for (let x = 0; x < Segment.getLineLength(frame[0]!); x++) {
+            input.cursorPosition = asCodeUnit(stop);
+            input.handleMouse(pressOn(frame, input, x));
+            const unmoved = input.cursorPosition;
+            input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
+            input.handleMouse(pressOn(frame, input, x));
+            expect(input.cursorPosition, `${JSON.stringify(value)} at ${x}, multiline ${multiline}`).toBe(unmoved);
+          }
+        }
+      }
+    }
+  });
+});
