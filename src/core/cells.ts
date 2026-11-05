@@ -10,8 +10,10 @@ import { pattern } from "./pattern.js";
 const cellLenMemo = new Memo<number>();
 
 const ZWJ = 0x200d;
-const ZWJ_CHARACTER = String.fromCodePoint(ZWJ);
+export const ZWJ_CHARACTER = String.fromCodePoint(ZWJ);
 const VS16 = 0xfe0f;
+/** A code point that extends the glyph before it rather than starting one: a mark, a selector, a skin tone, a joiner. */
+export const EXTENDER = `[\\p{Grapheme_Extend}\\p{Emoji_Modifier}${ZWJ_CHARACTER}]`;
 const SEPARATOR_STYLES = pattern(/[\u200d\ufe0f]/);
 const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
 // Segmented afresh on every call: a cursor's step costs a few microseconds
@@ -63,7 +65,7 @@ function selectsAGlyph(text: string, index: number): boolean {
 export function replaceZeroWidth(text: string, replacement: (character: string) => string): string {
   if (text.match(WITHHELD) === null) return text;
   const gone = new Set<number>();
-  const extended = new RegExp(`[\\p{Grapheme_Extend}\\p{Emoji_Modifier}${ZWJ_CHARACTER}]*`, "uy");
+  const extended = new RegExp(`${EXTENDER}*`, "uy");
   // A run is scanned once, so a text that is one long run stays linear.
   let scanned = 0;
   const takeJoiners = (last: number): void => {
@@ -487,9 +489,26 @@ export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
  * `nextGrapheme` and `prevGrapheme` step between.
  */
 export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
-  const at = Math.min(cu, s.length);
-  const cluster = SEGMENTER.segment(s).containing(at);
-  return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
+  return graphemeBoundaries(s)(cu);
+}
+
+/** The start of the grapheme cluster holding the code unit at `cu`. */
+export function clusterStart(s: string, cu: CodeUnit): CodePoint {
+  const cluster = SEGMENTER.segment(s).containing(cu);
+  return asCodePoint(cluster === undefined ? cu : cluster.index);
+}
+
+/** `graphemeBoundary` over one text for many offsets, segmenting it once. */
+export function graphemeBoundaries(s: string): (cu: CodeUnit) => CodePoint {
+  // Printable ASCII is one cluster per character, so every whole offset is a boundary.
+  const ascii = PRINTABLE_ASCII.test(s);
+  const clusters = SEGMENTER.segment(s);
+  return (cu) => {
+    if (ascii && Number.isInteger(cu)) return asCodePoint(Math.min(cu, s.length));
+    const at = Math.min(cu, s.length);
+    const cluster = clusters.containing(at);
+    return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
+  };
 }
 
 declare const _tabSize: unique symbol;

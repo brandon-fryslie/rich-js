@@ -2,7 +2,7 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen, cellCount, cellFit, cellFitEnd, cellFitFrom, graphemes, asCellCol, asCodePoint, expandTabs, parseTabSize, type CellCol, type TabSize } from "./cells.js";
+import { cellLen, cellCount, cellFit, cellFitEnd, cellFitFrom, graphemes, graphemeBoundaries, clusterStart, asCellCol, asCodePoint, asCodeUnit, expandTabs, parseTabSize, type CellCol, type TabSize } from "./cells.js";
 import { closed, closing, isBidi, openersAlong } from "./bidi.js";
 import { controlClass, dispositionOf, pictureOf } from "./control-codes.js";
 import { reorder, drawnTail, edges, hangingCells, hangingWhitespace, measured, paragraphLevelOf, removes } from "./orient.js";
@@ -379,8 +379,10 @@ export class RichText implements Renderable, Measurable {
   edgeStyle(side: "left" | "right", options: RenderOptions): Style {
     const base = this.resolvedStyle(options);
     if (this._text.get().length === 0) return base;
-    const shown = edges(this._text.get(), options.textOrder ?? "plain", this._level());
-    const pos = side === "left" ? shown.left : shown.right;
+    const text = this._text.get();
+    const shown = edges(text, options.textOrder ?? "plain", this._level());
+    // A cluster is drawn in the styles covering its first code point (`clustered`).
+    const pos = clusterStart(text, asCodeUnit(side === "left" ? shown.left : shown.right));
     let result = base;
     for (const span of this._spans.get()) {
       if (span.start <= pos && pos < span.end) {
@@ -1442,8 +1444,11 @@ function filled(draft: Draft, maxWidth: number, base: Style, options: RenderOpti
   // character each side turns towards the gap. A word with no characters
   // turns none and answers with the row's style, which is what two adjacent
   // separators leave between them.
-  const styleAt = (at: number): Style =>
-    draft.spans.reduce((style, span) => (span.start <= at && at < span.end ? style.add(resolveStyle(options, span.style)) : style), base);
+  // A cluster is drawn in the styles covering its first code point (`clustered`).
+  const styleAt = (offset: number): Style => {
+    const at = clusterStart(draft.text, asCodeUnit(offset));
+    return draft.spans.reduce((style, span) => (span.start <= at && at < span.end ? style.add(resolveStyle(options, span.style)) : style), base);
+  };
   let result = spliced(draft, end, draft.text.length, "", INHERIT);
   for (let gap = gaps - 1; gap >= 0; gap -= 1) {
     const at = separators[gap]!;
@@ -1475,7 +1480,8 @@ function filled(draft: Draft, maxWidth: number, base: Style, options: RenderOpti
  * their styles in span order — which iterating the spans is, and which a
  * sweep ordered by position would have had to reconstruct.
  */
-function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptions): { segments: Segment[]; covered: boolean[] } {
+function drawnSegments(draft: Draft, base: Style, options: RenderOptions): { segments: Segment[]; covered: boolean[] } {
+  const { text, spans } = clustered(draft);
   // The text's own start and end are always the outer boundaries, even when
   // they are one offset: empty text is one empty piece, as Rich's
   // `Text.render` yields `Segment("")` for it. That piece writes no bytes,
@@ -1512,4 +1518,22 @@ function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptio
     (style, piece) => new Segment(text.slice(boundaries[piece]!, boundaries[piece + 1]!), style.isNull ? undefined : style),
   );
   return { segments, covered };
+}
+
+/**
+ * `draft` with each span edge that falls inside a grapheme cluster moved to the
+ * cluster's end. A cell holds one style, so a style cannot change inside a
+ * cluster: the cluster takes the styles covering its first code point, and a
+ * span covers any offset in it exactly when it covers that one. The segments
+ * are cut at these edges, so they never cut a cluster and measure apart what
+ * they draw together; a reader of one cell's style asks the unmoved spans at its
+ * cluster's start (`clusterStart`), which is the same answer.
+ */
+function clustered(draft: Draft): Draft {
+  const { text, spans } = draft;
+  if (spans.length === 0) return draft;
+  const boundary = graphemeBoundaries(text);
+  const edge = (offset: number): number => boundary(asCodeUnit(offset));
+  if (spans.every((span) => edge(span.start) === span.start && edge(span.end) === span.end)) return draft;
+  return { text, spans: spans.map((span) => new Span(edge(span.start), edge(span.end), span.style)) };
 }

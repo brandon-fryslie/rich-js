@@ -6,11 +6,15 @@
 
 import { describe, expect, it } from "vitest";
 import { cellLen, graphemes, wireText } from "../../src/core/cells.js";
+import { ColorDepth } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
+import { render } from "../../src/core/protocol.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { segmentsToString } from "../../src/core/render.js";
+import { Style } from "../../src/core/style.js";
 import { JSONRenderable } from "../../src/core/json.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Syntax } from "../../src/renderables/syntax.js";
@@ -455,5 +459,94 @@ describe("the edge of a text with a tab", () => {
     const options = new Console({ width: 80 }).options;
     const text = new RichText("ab\t").stylize("on red", 2, 3);
     expect(text.edgeStyle("right", options).toString()).toContain("red");
+  });
+});
+
+describe("a span edge inside a sequence", () => {
+  const TRUECOLOR = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false, textOrder: "plain" } as const;
+  const SGR = /\x1b\[[0-9;]*m/g;
+  // The first row the wire holds, its styling taken off: what the terminal lays out.
+  const drawn = (bytes: string): string => bytes.replace(SGR, "").split("\n")[0]!;
+  // `text` styled bold from the code unit `at` on, written at a width it fits.
+  const options = new Console({ width: 80 }).options;
+  const edged = (text: string, at: number): string => drawn(segmentsToString(render(new RichText(text).stylize("bold", at), options), TRUECOLOR));
+
+  it("reports the edge in the style the edge cell is drawn in", () => {
+    const right = (text: string, at: number): string => new RichText(text).stylize("on red", at).edgeStyle("right", options).toString();
+    expect(right(`x${WOMAN}${ZWJ}${LAPTOP}`, 4)).toBe(right("x", 1));
+    expect(right("x\u{1f1fa}\u{1f1f8}", 3)).toBe(right("x", 1));
+  });
+
+  it("lets no segment reshape the glyph in the one before it", () => {
+    const row = (...texts: string[]): string => drawn(segmentsToString(texts.map((text) => new Segment(text)), TRUECOLOR));
+    expect(row("a", VS1, VS1)).toBe("a");
+    expect(row(HEART, "︎")).toBe(HEART);
+    expect(row("e", `${COMBINING}x`)).toBe("ex");
+  });
+
+  it("judges an edge on what is written, after the order's controls are gone", () => {
+    const row = drawn(segmentsToString([new Segment(`${WOMAN}${ZWJ}‬`), new Segment(LAPTOP)], TRUECOLOR));
+    expect(cellLen(row)).toBe(4);
+  });
+
+  it("keeps an extender with no glyph before it on the row", () => {
+    expect(drawn(segmentsToString([new Segment(`${COMBINING}a`)], TRUECOLOR))).toBe(`${COMBINING}a`);
+    expect(segmentsToString([new Segment("a\n"), new Segment(`${COMBINING}b`)], TRUECOLOR).replace(/\x1b\[[0-9;]*m/g, "")).toBe(`a\n${COMBINING}b`);
+  });
+
+  it("keeps an extender that takes a cell of its own where it opens a segment", () => {
+    const row = drawn(segmentsToString([new Segment("|"), new Segment("ﾞ|")], TRUECOLOR));
+    expect(row).toBe("|ﾞ|");
+    expect(cellLen(row)).toBe(3);
+  });
+
+  it("keeps what a control segment's text may carry to the wire, and no more", () => {
+    const bytes = segmentsToString([new Segment("a"), new Segment(`\x1b]0;t\x07${ZWJ}`, undefined, [])], TRUECOLOR);
+    expect(bytes).not.toContain("\x07");
+  });
+
+  it.each([
+    ["a join with a soft hyphen in it", `${WOMAN}${ZWJ}${SHY}${LAPTOP}`, 3],
+    ["a join", `${WOMAN}${ZWJ}${LAPTOP}`, 3],
+    ["a selector past a soft hyphen", `${HEART}${SHY}${VS16}`, 2],
+    ["a selector", `${HEART}${VS16}`, 1],
+  ])("writes %s as wide as it measures", (_name, text, at) => {
+    expect(cellLen(edged(text, at))).toBe(cellLen(text));
+  });
+
+  it("keeps a flag's tags with its base", () => {
+    expect(edged(`a${ENGLAND}b`, 5)).toBe(`a${ENGLAND}b`);
+  });
+
+  it("keeps one selector on a glyph", () => {
+    expect(edged(`${HEART}${VS1}${VS1}`, 2)).toBe(`${HEART}${VS1}`);
+  });
+
+  // Every string of up to four code points the joins are made of, cut before every code point.
+  function* cuts(): Iterable<[string, number]> {
+    const parts = [HEART, WOMAN, ZWJ, SHY, COMBINING, VS16, VS1, "\u{e0068}", "\u{1f1fa}", "\u{1f3fd}", "a"];
+    let level = [""];
+    for (let length = 1; length <= 4; length++) {
+      level = level.flatMap((text) => parts.map((part) => text + part));
+      for (const text of level) {
+        let at = 0;
+        for (const character of [...text, ""]) {
+          yield [text, at];
+          at += character.length;
+        }
+      }
+    }
+  }
+
+  it("writes every text as wide as it measures, wherever a style changes", () => {
+    for (const [text, at] of cuts()) expect([text, at, cellLen(edged(text, at))]).toEqual([text, at, cellLen(text)]);
+  });
+
+  it("joins nothing across an edge between segments, which were measured apart", () => {
+    for (const [text, at] of cuts()) {
+      const [left, right] = [text.slice(0, at), text.slice(at)];
+      const row = drawn(segmentsToString([new Segment(left, Style.parse("bold")), new Segment(right)], TRUECOLOR));
+      expect([left, right, cellLen(row)]).toEqual([left, right, cellLen(left) + cellLen(right)]);
+    }
   });
 });

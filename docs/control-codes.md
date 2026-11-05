@@ -83,10 +83,16 @@ repairing it is the caller's to do before the text reaches `RichText`.
 | Tag characters | U+E0020–E007F | Emoji subdivision flags | Outside a flag they are text no reader can see, and are not written. |
 | Deprecated | U+206A–206F, U+E0001 | None | Deleted from content. Each of U+206A–206F holds state to the end of the text. |
 
-The wire judges a run of one style at a time, so a span edge inside a sequence ends
-what these rules can see. A flag cut by one loses its tags, a selector just past one
-is kept, and a join can form across one that the measure of the whole text did not
-count.
+A terminal cell holds one style, so a style cannot change inside a sequence: a span
+that starts or ends inside one is taken to the sequence's end, and the whole sequence
+is drawn in the styles covering its first character. A flag styled from its second
+character keeps its tags and is drawn as one flag.
+
+Segments that meet on a row were each measured alone. A combining mark, selector or
+joiner of no cells that opens a segment after a glyph on its row would extend that
+glyph, and a joiner that ends one would join the next, so neither is written. A
+spacing mark, a Hangul vowel, a prepended mark or a virama's conjunct still forms
+against its neighbour, at the width each was measured.
 
 ## Wrapping
 

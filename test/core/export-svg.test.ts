@@ -62,10 +62,10 @@ describe("encodeSvg positioning", () => {
   });
 
   it("gives a run that opens on a zero-cell grapheme a chunk with no textLength", () => {
-    const glyphs = texts(svg([new Segment("a"), new Segment("́b", Style.parse("bold"))]));
+    const glyphs = texts(svg([new Segment("a"), new Segment("\u1160b", Style.parse("bold"))]));
     expect(glyphs.map((g) => [g.text, g.x, g.textLength])).toEqual([
       ["a", 0, "12.2"],
-      ["́", 12.2, undefined],
+      ["\u1160", 12.2, undefined],
       ["b", 12.2, "12.2"],
     ]);
   });
