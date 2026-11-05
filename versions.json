@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-559",
-      "ref": "refs/pull/559/merge",
-      "sha": "290d3ab8d3d2cfb7ccc481b267d7123a15fd92ae",
-      "timestamp": "2026-11-05T19:32:39.423Z",
-      "commits": [
-        {
-          "sha": "290d3ab8d3d2cfb7ccc481b267d7123a15fd92ae",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T19:29:57Z",
-          "message": "Merge 371f090515a0dd19baf7578e04c7e0deb6622f56 into afebae76a734efb412abe0c0de72e1e9db7651a2\n"
-        },
-        {
-          "sha": "371f090515a0dd19baf7578e04c7e0deb6622f56",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:29:46-07:00",
-          "message": "Paste: an idle bound ends an unfinished paste as a paste, a split start marker is held, Dropdown filters by a paste, one-pass sanitizing (rich-control-codes-xh4n.rd8)\n"
-        },
-        {
-          "sha": "2dbb16923f9366066c4ab09177693aed1d6eb026",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:21:16-07:00",
-          "message": "Paste: the program hears it first and may claim it, a flush ends an open paste as one, a tab is a space, only a final line break is dropped (rich-control-codes-xh4n.rd8)\n"
-        },
-        {
-          "sha": "152fbcc8021c39e1df518f95a2922005b53acc2a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:16:02-07:00",
-          "message": "Paste: Escape ahead of a paste stays Escape, no control reaches a field, the field follows a paste, the end marker is sought once, WidgetApp hears pastes (rich-control-codes-xh4n.rd8)\n"
-        },
-        {
-          "sha": "3af242c0b4ad3ef499edd41afa086f9ff42c86d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:10:03-07:00",
-          "message": "App turns on bracketed paste, and a paste reaches a program as one event, never as the keys it holds (rich-control-codes-xh4n.rd8)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "afebae76a734efb412abe0c0de72e1e9db7651a2",
-      "timestamp": "2026-11-05T19:04:50.603Z",
+      "sha": "74263c66727225fa0cb5b832851e36f5c134dae8",
+      "timestamp": "2026-11-05T19:47:21.794Z",
       "commits": [
         {
-          "sha": "afebae76a734efb412abe0c0de72e1e9db7651a2",
+          "sha": "74263c66727225fa0cb5b832851e36f5c134dae8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:02:28-07:00",
-          "message": "Console sets the window title, the clipboard and a desktop notification (#558)\n\n* Console sets the window title, the clipboard and a desktop notification, through one identification of the terminal and of tmux (rich-control-codes-xh4n.4w6)\n\n* Requests: one identity per console, the title left to multiplexers, kitty ids per notification, OSC 9 kept off ConEmu's shape, screen passthrough, one OSC text rule (rich-control-codes-xh4n.4w6)\n\n* Requests: OSC 9 behind any intermediary, BEL inside screen's DCS, kitty ids unique past the console, ids taken only when written (rich-control-codes-xh4n.4w6)\n\n* Requests: multiplexers count beside their own TERM, screen gets nothing it would cut, random kitty ids, lazy encoding, one attended rule (rich-control-codes-xh4n.4w6)\n\n* Screen's buffer is measured in bytes (rich-control-codes-xh4n.4w6)\n\n* isAttended sits below the doc comment it does not own (rich-control-codes-xh4n.4w6)"
+          "timestamp": "2026-11-05T12:45:13-07:00",
+          "message": "App turns on bracketed paste; a paste is one event (#559)\n\n* App turns on bracketed paste, and a paste reaches a program as one event, never as the keys it holds (rich-control-codes-xh4n.rd8)\n\n* Paste: Escape ahead of a paste stays Escape, no control reaches a field, the field follows a paste, the end marker is sought once, WidgetApp hears pastes (rich-control-codes-xh4n.rd8)\n\n* Paste: the program hears it first and may claim it, a flush ends an open paste as one, a tab is a space, only a final line break is dropped (rich-control-codes-xh4n.rd8)\n\n* Paste: an idle bound ends an unfinished paste as a paste, a split start marker is held, Dropdown filters by a paste, one-pass sanitizing (rich-control-codes-xh4n.rd8)"
         }
       ]
     }
