@@ -241,9 +241,19 @@ describe("decodeAnsi", () => {
     expect(decodeAnsi("abcdefghij\r\tX").plain).toBe("abcdefghXj");
   });
 
-  it("reads overstrike on a wide character as mandoc writes it, one backspace", () => {
+  // mandoc -Tutf8 was sampled. groff's grotty writes the same bytes: in 1.22.4 and
+  // 1.24.2 alike, `make_underline` writes `_` BS and `make_bold` the glyph and BS,
+  // whatever the glyph's width, and underline goes before bold
+  // (src/devices/grotty/tty.cpp). One backspace, never one per cell.
+  it("reads overstrike on a wide character as mandoc and groff write it, one backspace", () => {
     expect(spans(decodeAnsi("字\x08字"))).toEqual(["0-1 bold"]);
     expect(spans(decodeAnsi("_\x08字"))).toEqual(["0-1 underline"]);
+    const both = decodeAnsi("_\x08字\x08字");
+    expect(both.plain).toBe("字");
+    expect(spans(both)).toEqual(["0-1 bold underline"]);
+    const line = decodeAnsi("_\x08名_\x08前 字\x08字\x08字a\x08a");
+    expect(line.plain).toBe("名前 字a");
+    expect(spans(line)).toEqual(["0-2 underline", "3-5 bold"]);
   });
 
   it("leaves a string escape whole when a line break sits in its payload", () => {
