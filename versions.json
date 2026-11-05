@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-556",
+      "ref": "refs/pull/556/merge",
+      "sha": "a8b96cbb56d600e37a2a709ced78b2e9e9f67e6c",
+      "timestamp": "2026-11-05T17:37:06.320Z",
+      "commits": [
+        {
+          "sha": "a8b96cbb56d600e37a2a709ced78b2e9e9f67e6c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T17:35:14Z",
+          "message": "Merge 6612ecf41087d7fb1a36270f3edadaef8b49e99d into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
+        },
+        {
+          "sha": "6612ecf41087d7fb1a36270f3edadaef8b49e99d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:35:04-07:00",
+          "message": "TextInput reads each row as drawn: glyphs kept whole, rows at their line's direction, word steps across the screen (rich-control-codes-xh4n.itm)\n"
+        },
+        {
+          "sha": "0b2eda65b6acee40d0787f9753871191b7a265f7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:13:33-07:00",
+          "message": "TextInput shows, hits and moves through right-to-left text in its destination's order (rich-control-codes-xh4n.itm)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-557",
       "ref": "refs/pull/557/merge",
       "sha": "611e217c06bf7c8b770819b6348eb0b321002c79",
@@ -34,28 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-05T10:05:20-07:00",
           "message": "kitty gets the words order: rows laid out visually, each right-to-left word written in the order kitty turns back (rich-control-codes-xh4n.6pi)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-556",
-      "ref": "refs/pull/556/merge",
-      "sha": "a39904d365049f8dee164730c3181d3ba7f07ff8",
-      "timestamp": "2026-11-05T17:15:35.335Z",
-      "commits": [
-        {
-          "sha": "a39904d365049f8dee164730c3181d3ba7f07ff8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:13:45-07:00",
-          "message": "Merge 0b2eda65b6acee40d0787f9753871191b7a265f7 into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
-        },
-        {
-          "sha": "0b2eda65b6acee40d0787f9753871191b7a265f7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:13:33-07:00",
-          "message": "TextInput shows, hits and moves through right-to-left text in its destination's order (rich-control-codes-xh4n.itm)\n"
         }
       ]
     },
