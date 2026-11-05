@@ -4,15 +4,22 @@
     {
       "version": "pr-554",
       "ref": "refs/pull/554/merge",
-      "sha": "2b5e388a13dd6c9800433404e83026c90da70f49",
-      "timestamp": "2026-11-05T16:29:25.257Z",
+      "sha": "c83b1364df5004327d6e058c28f45864fba01f48",
+      "timestamp": "2026-11-05T16:44:36.418Z",
       "commits": [
         {
-          "sha": "2b5e388a13dd6c9800433404e83026c90da70f49",
+          "sha": "c83b1364df5004327d6e058c28f45864fba01f48",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T09:27:37-07:00",
-          "message": "Merge 350c5a7b6c697b4a25cb0c10d9e62022bdc205c0 into c0aad9dbb7107a260bc54f07bbf82c0604ca77d0\n"
+          "timestamp": "2026-11-05T16:39:17Z",
+          "message": "Merge 4b458cf2811755971f712212f523116d712088d4 into c0aad9dbb7107a260bc54f07bbf82c0604ca77d0\n"
+        },
+        {
+          "sha": "4b458cf2811755971f712212f523116d712088d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:39:05-07:00",
+          "message": "Snapped spans are the one reader of a cell's style; an edge drops every opening extender (rich-control-codes-xh4n.s60)\n"
         },
         {
           "sha": "350c5a7b6c697b4a25cb0c10d9e62022bdc205c0",
