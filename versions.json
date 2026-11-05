@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-561",
-      "ref": "refs/pull/561/merge",
-      "sha": "68027b4a8e639d5dc943e1be508435bbfba714ae",
-      "timestamp": "2026-11-05T21:36:41.881Z",
-      "commits": [
-        {
-          "sha": "68027b4a8e639d5dc943e1be508435bbfba714ae",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T21:34:42Z",
-          "message": "Merge 5e4191cb13e2ce0048afb6f1e83544ad567a982d into 745a2a57cdae7930809b57710050951727b81ddc\n"
-        },
-        {
-          "sha": "5e4191cb13e2ce0048afb6f1e83544ad567a982d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:34:22-07:00",
-          "message": "Review fixes: pointer shape set before run shows on start and refused after stop, DECSCUSR 0 described as it is (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "cacf01115f009337aba2fcd2386131e0471519cd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:16:56-07:00",
-          "message": "Review fixes: caret past the screen edge stays shown, pointer follows a drag and the wheel, a shape set while suspended shows on resume (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "07a8069aba52fa6d01fe6889a9cbc4a42ebd3504",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:10:56-07:00",
-          "message": "Review fixes: caret column skips control segments, shape written on change, pointer shape survives suspend (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "358c8bac23012edd28b7b0aeb68a769149d455f4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:01:30-07:00",
-          "message": "A focused TextInput is the terminal's own cursor, shaped by DECSCUSR; the pointer takes the hovered widget's shape by OSC 22 (rich-control-codes-xh4n.sk3)\n\nThe painter hid the hardware cursor for the whole take, so DECSCUSR alone\nshowed nothing. A frame now names the cell where the terminal's cursor\nstands (Style.caret); SurfaceRenderer shows it there in that shape after\neach paint, hides it while painting, homes from the caret's row, and gives\nthe default shape back on hand-back. TextInput marks its caret instead of\ndrawing a blinking one wherever the painter shows the cursor\n(RenderOptions.caret), so an IME and a screen reader follow the editing\npoint. A logical-order terminal reorders glyphs off their frame columns, so\nthere the drawn caret stays.\n\nOSC 22 adopted: Console.setPointerShape, App.pointerShape, and\nWidgetBase/TextInput.pointerShape set from hover. OSC 133 rejected; the\nreason is on the ticket.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "745a2a57cdae7930809b57710050951727b81ddc",
-      "timestamp": "2026-11-05T20:51:10.253Z",
+      "sha": "b00624001284316cd6d5bb730f1564914df76f42",
+      "timestamp": "2026-11-05T21:49:29.900Z",
       "commits": [
         {
-          "sha": "745a2a57cdae7930809b57710050951727b81ddc",
+          "sha": "b00624001284316cd6d5bb730f1564914df76f42",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T13:49:32-07:00",
-          "message": "App asks for the kitty keyboard protocol; the parser reads its keys (#560)\n\n* App asks for the kitty keyboard protocol where a program wants it, pushes it where the terminal answers and pops it on hand-back; the parser reads its keys by their legacy names (rich-control-codes-xh4n.anf)\n\n* Kitty keys: an answer pushes only onto the take that asked, keypad keys type, Private Use and Super chords name nothing, Alt+Shift as legacy, no F3 from a cursor report, every reported name bindable (rich-control-codes-xh4n.anf)\n\n* Kitty keys: keypad navigation, the shifted key reported (flag 4), quit keys checked against the app's own keyboard, a failed ask fails the app, one record per take (rich-control-codes-xh4n.anf)\n\n* Kitty keys: shortcuts by base-layout key, one key-name set, push failure caught (rich-control-codes-xh4n.anf)\n\nAddresses the third high pass on #560: Ctrl/Alt chords take the base-layout\nsubfield; parseKeyName drops its protocol parameter since decodeCSI reads\nCSI u in every mode; .catch(fail) covers a throwing push write; typed()\nshared by byte and kitty keys; KeyboardProtocol exported from ./host;\ndocs name how Ctrl chords differ under the protocol.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-11-05T14:47:08-07:00",
+          "message": "A focused TextInput is the terminal's own cursor, shaped by DECSCUSR; the pointer takes the hovered widget's shape by OSC 22 (rich-control-codes-xh4n.sk3) (#561)\n\n* A focused TextInput is the terminal's own cursor, shaped by DECSCUSR; the pointer takes the hovered widget's shape by OSC 22 (rich-control-codes-xh4n.sk3)\n\nThe painter hid the hardware cursor for the whole take, so DECSCUSR alone\nshowed nothing. A frame now names the cell where the terminal's cursor\nstands (Style.caret); SurfaceRenderer shows it there in that shape after\neach paint, hides it while painting, homes from the caret's row, and gives\nthe default shape back on hand-back. TextInput marks its caret instead of\ndrawing a blinking one wherever the painter shows the cursor\n(RenderOptions.caret), so an IME and a screen reader follow the editing\npoint. A logical-order terminal reorders glyphs off their frame columns, so\nthere the drawn caret stays.\n\nOSC 22 adopted: Console.setPointerShape, App.pointerShape, and\nWidgetBase/TextInput.pointerShape set from hover. OSC 133 rejected; the\nreason is on the ticket.\n\n* Review fixes: caret column skips control segments, shape written on change, pointer shape survives suspend (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review fixes: caret past the screen edge stays shown, pointer follows a drag and the wheel, a shape set while suspended shows on resume (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review fixes: pointer shape set before run shows on start and refused after stop, DECSCUSR 0 described as it is (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
