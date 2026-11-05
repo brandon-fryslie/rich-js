@@ -243,15 +243,20 @@ describe("decodeAnsi", () => {
 
   // mandoc -Tutf8 was sampled. groff's are read off grotty's source, not a run
   // (src/devices/grotty/tty.cpp, 1.22.4 and 1.24.2): in its overstrike mode
-  // (`-c`, the default before 1.23, SGR since) it writes emphasis as one backspace
-  // whatever the glyph's width, underline before bold — mandoc's bytes. A glyph
-  // composed over a wide one (`\z`, `\o`) is written back a backspace per cell,
-  // which is a redraw, not emphasis.
+  // (`-c` or GROFF_NO_SGR, which distributions set for man; SGR otherwise) it
+  // writes emphasis as one backspace whatever the glyph's width, underline before
+  // bold — mandoc's bytes. A glyph composed over a wide one (`\z`, `\o`) is
+  // written back a backspace per cell, which is a redraw, not emphasis.
   it("reads emphasis on a wide character as mandoc and groff write it, one backspace", () => {
     const bold = decodeAnsi("字\x08字");
-    expect([bold.plain, spans(bold)]).toEqual(["字", ["0-1 bold"]]);
+    expect(bold.plain).toBe("字");
+    expect(spans(bold)).toEqual(["0-1 bold"]);
     const under = decodeAnsi("_\x08字");
-    expect([under.plain, spans(under)]).toEqual(["字", ["0-1 underline"]]);
+    expect(under.plain).toBe("字");
+    expect(spans(under)).toEqual(["0-1 underline"]);
+    const composed = decodeAnsi("字\x08\x08字");
+    expect(composed.plain).toBe("字");
+    expect(composed.spans).toEqual([]);
     const both = decodeAnsi("_\x08字\x08字");
     expect(both.plain).toBe("字");
     expect(spans(both)).toEqual(["0-1 bold underline"]);
