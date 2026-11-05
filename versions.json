@@ -4,15 +4,22 @@
     {
       "version": "pr-558",
       "ref": "refs/pull/558/merge",
-      "sha": "4a7739acf1c3138c6eb8fbba16f27d5fb400e9a0",
-      "timestamp": "2026-11-05T18:42:31.669Z",
+      "sha": "520c102cd1e4a93c53505f7996c814da19877598",
+      "timestamp": "2026-11-05T18:49:40.844Z",
       "commits": [
         {
-          "sha": "4a7739acf1c3138c6eb8fbba16f27d5fb400e9a0",
+          "sha": "520c102cd1e4a93c53505f7996c814da19877598",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:40:44Z",
-          "message": "Merge 54488100041b4b0c62c3ea31fb19ba2e3ee54388 into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
+          "timestamp": "2026-11-05T18:47:21Z",
+          "message": "Merge 8262889925913c6510dbc332a0852101190c4dd8 into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
+        },
+        {
+          "sha": "8262889925913c6510dbc332a0852101190c4dd8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T11:47:10-07:00",
+          "message": "Requests: multiplexers count beside their own TERM, screen gets nothing it would cut, random kitty ids, lazy encoding, one attended rule (rich-control-codes-xh4n.4w6)\n"
         },
         {
           "sha": "54488100041b4b0c62c3ea31fb19ba2e3ee54388",
