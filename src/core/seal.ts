@@ -9,9 +9,8 @@
  * text nothing cuts again, which is why a rule that reads neighbours can live here
  * and not in the sanitizer. A segment edge is therefore where that reading stops,
  * and where a glyph stops too: each segment was measured alone, so content in
- * one may not reshape the glyph in its neighbour. A ZWJ at an edge and a VS16
- * opening a segment are the reaches that would change a width (`edged`), and the
- * wire drops them. `RichText` puts no span edge inside a grapheme cluster, so a
+ * one may not reshape the glyph in its neighbour: the wire drops what would
+ * reach across (`edged`). `RichText` puts no span edge inside a grapheme cluster, so a
  * sequence its own styling cuts is never split here.
  *
  * This runs on the way out, below every cut, because a row is cut after it is
@@ -22,7 +21,7 @@
  */
 
 import { advance, closersOf, opened, withoutExplicit, type Open } from "./bidi.js";
-import { wireText } from "./cells.js";
+import { EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
@@ -32,23 +31,22 @@ const RLI = "\u2067";
 const PDI = "\u2069";
 
 /**
- * `text` without the reaches across a segment edge that change a width. What
- * opens a segment before its first glyph extends the glyph that ends the one
- * before it on the wire: a ZWJ there would join that glyph to this one's, and a
- * VS16 would widen it, so both go and its marks stay. A trailing ZWJ would join
- * this segment's last glyph to the next one's first, so it goes too. Each was
- * measured alone, where it joins nothing and widens nothing, so none takes a cell.
+ * `text` without what would reach across a segment edge into a neighbour's
+ * glyph. What opens a segment before its first glyph would extend the glyph
+ * that ends the one before it on the wire — a mark restyles it, a selector
+ * changes its presentation, a VS16 widens it, a ZWJ joins it to this one — and a
+ * trailing ZWJ would join this segment's last glyph to the next one's first.
+ * Alone, where each was measured, each extends nothing and takes no cell, so
+ * dropping it changes no width.
  */
 function edged(text: string): string {
-  const opening = text.match(OPENING_EXTENDERS)![0];
-  const marks = Array.from(opening, (character) => (character === ZWJ || character === VS16 ? "" : character)).join("");
-  return marks + text.slice(opening.length).replace(TRAILING_JOINERS, "");
+  const opening = OPENING_EXTENDERS.exec(text)![0].length;
+  if (opening === 0 && !text.endsWith(ZWJ_CHARACTER)) return text;
+  return text.slice(opening).replace(TRAILING_JOINERS, "");
 }
 
-const ZWJ = "‍";
-const VS16 = "️";
-const OPENING_EXTENDERS = pattern(/^[\p{Grapheme_Extend}\p{Emoji_Modifier}‍]*/u);
-const TRAILING_JOINERS = pattern(/‍+$/u);
+const OPENING_EXTENDERS = pattern(new RegExp(`^${EXTENDER}*`, "u"));
+const TRAILING_JOINERS = pattern(new RegExp(`${ZWJ_CHARACTER}+$`, "u"));
 
 /** `text` with closers that match nothing in `open` dropped, so content cannot end the isolate around it. */
 function balanced(text: string, open: Open): string {

@@ -2,7 +2,7 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen, cellCount, cellFit, cellFitEnd, cellFitFrom, graphemes, asCellCol, asCodePoint, expandTabs, parseTabSize, type CellCol, type TabSize } from "./cells.js";
+import { cellLen, cellCount, cellFit, cellFitEnd, cellFitFrom, graphemes, graphemeBoundary, asCellCol, asCodePoint, asCodeUnit, expandTabs, parseTabSize, type CellCol, type TabSize } from "./cells.js";
 import { closed, closing, isBidi, openersAlong } from "./bidi.js";
 import { controlClass, dispositionOf, pictureOf } from "./control-codes.js";
 import { reorder, drawnTail, edges, hangingCells, hangingWhitespace, measured, paragraphLevelOf, removes } from "./orient.js";
@@ -379,10 +379,11 @@ export class RichText implements Renderable, Measurable {
   edgeStyle(side: "left" | "right", options: RenderOptions): Style {
     const base = this.resolvedStyle(options);
     if (this._text.get().length === 0) return base;
-    const shown = edges(this._text.get(), options.textOrder ?? "plain", this._level());
+    const text = this._text.get();
+    const shown = edges(text, options.textOrder ?? "plain", this._level());
     const pos = side === "left" ? shown.left : shown.right;
     let result = base;
-    for (const span of this._spans.get()) {
+    for (const span of clustered({ text, spans: this._spans.get() }).spans) {
       if (span.start <= pos && pos < span.end) {
         result = result.add(resolveStyle(options, span.style));
       }
@@ -1442,8 +1443,9 @@ function filled(draft: Draft, maxWidth: number, base: Style, options: RenderOpti
   // character each side turns towards the gap. A word with no characters
   // turns none and answers with the row's style, which is what two adjacent
   // separators leave between them.
+  const { spans } = clustered(draft);
   const styleAt = (at: number): Style =>
-    draft.spans.reduce((style, span) => (span.start <= at && at < span.end ? style.add(resolveStyle(options, span.style)) : style), base);
+    spans.reduce((style, span) => (span.start <= at && at < span.end ? style.add(resolveStyle(options, span.style)) : style), base);
   let result = spliced(draft, end, draft.text.length, "", INHERIT);
   for (let gap = gaps - 1; gap >= 0; gap -= 1) {
     const at = separators[gap]!;
@@ -1475,21 +1477,17 @@ function filled(draft: Draft, maxWidth: number, base: Style, options: RenderOpti
  * their styles in span order — which iterating the spans is, and which a
  * sweep ordered by position would have had to reconstruct.
  */
-function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptions): { segments: Segment[]; covered: boolean[] } {
+function drawnSegments(draft: Draft, base: Style, options: RenderOptions): { segments: Segment[]; covered: boolean[] } {
+  const { text, spans } = clustered(draft);
   // The text's own start and end are always the outer boundaries, even when
   // they are one offset: empty text is one empty piece, as Rich's
   // `Text.render` yields `Segment("")` for it. That piece writes no bytes,
   // and it is what makes empty text one line to everything that splits a
   // render into lines — a panel's body, a table cell — where Rich draws one.
-  // A cell holds one style, so a style cannot change inside a grapheme
-  // cluster: an edge there moves to the cluster's end, and the cluster takes
-  // the styles covering its first code point. The pieces then never cut a
-  // cluster, so they measure apart what they draw together.
-  const edge = clusterEdge(text);
   const inner = new Set<number>();
   for (const span of spans) {
-    inner.add(edge(span.start));
-    inner.add(edge(span.end));
+    inner.add(span.start);
+    inner.add(span.end);
   }
   inner.delete(0);
   inner.delete(text.length);
@@ -1507,7 +1505,7 @@ function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptio
   const covered = styles.map(() => false);
   for (const span of spans) {
     const style = resolveStyle(options, span.style);
-    for (let piece = pieceAt.get(edge(span.start))!, end = edge(span.end); boundaries[piece]! < end; piece++) {
+    for (let piece = pieceAt.get(span.start)!; boundaries[piece]! < span.end; piece++) {
       styles[piece] = styles[piece]!.add(style);
       covered[piece] = true;
     }
@@ -1519,24 +1517,21 @@ function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptio
   return { segments, covered };
 }
 
-/** The first offset at or past each offset of `text` where one of its grapheme clusters starts, or its end. */
-function clusterEdge(text: string): (offset: number) => number {
-  const starts: number[] = [];
-  let at = 0;
-  for (const cluster of graphemes(text)) {
-    starts.push(at);
-    at += cluster.length;
-  }
-  if (starts.length === text.length) return (offset) => offset;
-  starts.push(text.length);
-  return (offset) => {
-    let low = 0;
-    let high = starts.length - 1;
-    while (low < high) {
-      const middle = (low + high) >> 1;
-      if (starts[middle]! < offset) low = middle + 1;
-      else high = middle;
-    }
-    return starts[low]!;
-  };
+/**
+ * `draft` with each span edge that falls inside a grapheme cluster moved to the
+ * cluster's end. A cell holds one style, so a style cannot change inside a
+ * cluster: the cluster takes the styles covering its first code point, and a
+ * span covers any offset in it exactly when it covers that one. Every reader of
+ * a cell's style reads these spans — the segments, so they never cut a cluster
+ * and measure apart what they draw together, and the styles an edge and a
+ * justified gap report beside them.
+ */
+const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
+
+function clustered(draft: Draft): Draft {
+  const { text, spans } = draft;
+  // Printable ASCII is one cluster per character, so no edge falls inside one.
+  if (spans.length === 0 || PRINTABLE_ASCII.test(text)) return draft;
+  const edge = (offset: number): number => graphemeBoundary(text, asCodeUnit(offset));
+  return { text, spans: spans.map((span) => new Span(edge(span.start), edge(span.end), span.style)) };
 }

@@ -468,8 +468,21 @@ describe("a span edge inside a sequence", () => {
   // The first row the wire holds, its styling taken off: what the terminal lays out.
   const drawn = (bytes: string): string => bytes.replace(SGR, "").split("\n")[0]!;
   // `text` styled bold from the code unit `at` on, written at a width it fits.
-  const edged = (text: string, at: number): string =>
-    drawn(segmentsToString(render(new RichText(text).stylize("bold", at), new Console({ width: 80 }).options), TRUECOLOR));
+  const options = new Console({ width: 80 }).options;
+  const edged = (text: string, at: number): string => drawn(segmentsToString(render(new RichText(text).stylize("bold", at), options), TRUECOLOR));
+
+  it("reports the edge in the style the edge cell is drawn in", () => {
+    const right = (text: string, at: number): string => new RichText(text).stylize("on red", at).edgeStyle("right", options).toString();
+    expect(right(`x${WOMAN}${ZWJ}${LAPTOP}`, 4)).toBe(right("x", 1));
+    expect(right("x\u{1f1fa}\u{1f1f8}", 3)).toBe(right("x", 1));
+  });
+
+  it("lets no segment reshape the glyph in the one before it", () => {
+    const row = (...texts: string[]): string => drawn(segmentsToString(texts.map((text) => new Segment(text)), TRUECOLOR));
+    expect(row("a", VS1, VS1)).toBe("a");
+    expect(row(HEART, "︎")).toBe(HEART);
+    expect(row("e", `${COMBINING}x`)).toBe("ex");
+  });
 
   it.each([
     ["a join with a soft hyphen in it", `${WOMAN}${ZWJ}${SHY}${LAPTOP}`, 3],
