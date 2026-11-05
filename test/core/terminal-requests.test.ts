@@ -38,8 +38,8 @@ describe("Console.setWindowTitle", () => {
 
   it("drops a control that could end the sequence or start another", () => {
     const { console, written } = terminal(ITERM);
-    console.setWindowTitle(`a${ESC}\\b\x07c\x9cd\ne`);
-    expect(written()).toBe(`${ESC}]2;a\\bcde${ST}`);
+    console.setWindowTitle(`a${ESC}\\b\x07c\x9cd\ne\u202ef\u2028g`);
+    expect(written()).toBe(`${ESC}]2;a\\bcdefg${ST}`);
   });
 });
 
@@ -68,9 +68,19 @@ describe("Console.notify", () => {
     const { console, written } = terminal(KITTY);
     console.notify("Done", "ok");
     expect(written()).toBe(`${ESC}]99;i=1:d=0;Done${ST}${ESC}]99;i=1:p=body;ok${ST}`);
-    const alone = terminal(KITTY);
-    alone.console.notify("Done");
-    expect(alone.written()).toBe(`${ESC}]99;;Done${ST}`);
+  });
+
+  it("gives each kitty notification its own id, so a second does not replace the first", () => {
+    const { console, written } = terminal(KITTY);
+    console.notify("A");
+    console.notify("B");
+    expect(written()).toBe(`${ESC}]99;i=1;A${ST}${ESC}]99;i=2;B${ST}`);
+  });
+
+  it("keeps an OSC 9 line off the shape of ConEmu's numbered sub-commands", () => {
+    const { console, written } = terminal(ITERM);
+    console.notify("4;2 hosts down");
+    expect(written()).toBe(`${ESC}]9; 4;2 hosts down${ST}`);
   });
 
   it("does not take a terminal borrowing kitty's TERM for kitty", () => {
@@ -81,15 +91,27 @@ describe("Console.notify", () => {
 });
 
 describe("inside tmux", () => {
-  const TMUX: Env = { ...ITERM, TMUX: "/tmp/tmux-501/default,1,0" };
+  // What tmux 3.2+ gives its panes: its own TERM and TERM_PROGRAM, whatever is outside.
+  const TMUX: Env = { TERM: "tmux-256color", TERM_PROGRAM: "tmux", TMUX: "/tmp/tmux-501/default,1,0" };
 
-  it("wraps each request in tmux's passthrough, every ESC inside doubled", () => {
+  it("wraps the clipboard and a notification in tmux's passthrough, every ESC inside doubled", () => {
     const { console, written } = terminal(TMUX);
-    console.setWindowTitle("t");
     console.copyToClipboard("x");
     console.notify("n");
     const wrap = (sequence: string): string => `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
-    expect(written()).toBe(wrap(`${ESC}]2;t${ST}`) + wrap(`${ESC}]52;c;eA==${ST}`) + wrap(`${ESC}]9;n${ST}`));
+    expect(written()).toBe(wrap(`${ESC}]52;c;eA==${ST}`) + wrap(`${ESC}]9;n${ST}`));
+  });
+
+  it("leaves the title to tmux, which takes OSC 2 as the pane's", () => {
+    const { console, written } = terminal(TMUX);
+    console.setWindowTitle("t");
+    expect(written()).toBe(`${ESC}]2;t${ST}`);
+  });
+
+  it("wraps a request inside screen in its bare passthrough", () => {
+    const { console, written } = terminal({ TERM: "screen", STY: "1.pts-0.host" });
+    console.copyToClipboard("x");
+    expect(written()).toBe(`${ESC}P${ESC}]52;c;eA==${ST}${ST}`);
   });
 
   it("leaves the bell to tmux, which handles it itself", () => {

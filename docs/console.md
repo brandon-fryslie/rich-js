@@ -686,7 +686,7 @@ never write a control ([Control Codes](./control-codes)), so each of these is a
 method, and each writes only for a person at a terminal: a pipe, a dumb terminal
 and a capture get nothing.
 
-```typescript live
+```typescript node
 const console = new Console();
 console.setWindowTitle("deploy — 3 of 4");  // OSC 2
 console.copyToClipboard("ssh deploy@10.0.0.4");  // OSC 52
@@ -695,10 +695,12 @@ console.bell();
 ```
 
 `notify` writes the protocol the terminal reads: kitty's OSC 99, OSC 777 for foot
-and Ghostty, and OSC 9 everywhere else, which iTerm2, WezTerm and Windows
-Terminal read. Inside tmux every request but the bell is wrapped in tmux's
-passthrough, which reaches the terminal only when tmux has `allow-passthrough`
-on. A terminal may refuse a clipboard write; most ask first or need it enabled.
+and Ghostty, and OSC 9 everywhere else, which iTerm2 and WezTerm read. Inside
+tmux the terminal outside cannot be seen, so a notification is OSC 9. tmux and
+screen take the title themselves, as the pane's; the clipboard and a
+notification are wrapped in their passthrough, which tmux forwards only with
+`allow-passthrough` on. A terminal may refuse a clipboard write; most ask first
+or need it enabled.
 
 ## Alternate screen
 

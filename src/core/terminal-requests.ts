@@ -7,24 +7,16 @@
  * `TerminalIdentity`, never off the environment.
  */
 
-import { pattern } from "./pattern.js";
+import { stripOscControls } from "./osc8.js";
 import type { TerminalIdentity } from "./terminal-identity.js";
 
 const ESC = "\x1b";
 const OSC = `${ESC}]`;
 const ST = `${ESC}\\`;
 
-// What could end the sequence early or start another inside it: C0, DEL, C1.
-const CONTROLS = pattern(/[\0-\x1f\x7f-\x9f]/u);
-
-/** `text` without a character that could end an OSC or begin another sequence. */
-function inert(text: string): string {
-  return Array.from(text, (character) => (CONTROLS.test(character) ? "" : character)).join("");
-}
-
 /** OSC 2: the window title. */
 export function titleSequence(title: string): string {
-  return `${OSC}2;${inert(title)}${ST}`;
+  return `${OSC}2;${stripOscControls(title)}${ST}`;
 }
 
 /** OSC 52: `text` put on the system clipboard, as base64 of its UTF-8 bytes. */
@@ -37,32 +29,47 @@ export function clipboardSequence(text: string): string {
 
 /**
  * A desktop notification in the protocol `identity`'s terminal reads: kitty's
- * OSC 99 (title, then body, joined by one id), OSC 777 for foot and Ghostty,
- * and iTerm2's OSC 9 elsewhere, which carries one line, so title and body are
- * joined there.
+ * OSC 99, title then body joined by `id`, which must differ per notification or
+ * kitty updates the earlier one in place; OSC 777 for foot and Ghostty; and
+ * iTerm2's OSC 9 elsewhere, which carries one line, so title and body are joined
+ * there. Behind tmux the outer terminal cannot be seen, so it is OSC 9, which
+ * kitty, Ghostty, iTerm2 and WezTerm all read.
  */
-export function notificationSequence(title: string, body: string | undefined, identity: TerminalIdentity): string {
-  const shownTitle = inert(title);
-  const shownBody = body === undefined ? undefined : inert(body);
+export function notificationSequence(title: string, body: string | undefined, identity: TerminalIdentity, id: number): string {
+  const shownTitle = stripOscControls(title);
+  const shownBody = body === undefined ? undefined : stripOscControls(body);
   switch (identity.terminal) {
     case "kitty":
       return shownBody === undefined
-        ? `${OSC}99;;${shownTitle}${ST}`
-        : `${OSC}99;i=1:d=0;${shownTitle}${ST}${OSC}99;i=1:p=body;${shownBody}${ST}`;
+        ? `${OSC}99;i=${id};${shownTitle}${ST}`
+        : `${OSC}99;i=${id}:d=0;${shownTitle}${ST}${OSC}99;i=${id}:p=body;${shownBody}${ST}`;
     case "foot":
     case "ghostty":
       // A `;` would end 777's title field.
       return `${OSC}777;notify;${shownTitle.replaceAll(";", ",")};${shownBody ?? ""}${ST}`;
-    default:
-      return `${OSC}9;${shownBody === undefined ? shownTitle : `${shownTitle}: ${shownBody}`}${ST}`;
+    default: {
+      const line = shownBody === undefined ? shownTitle : `${shownTitle}: ${shownBody}`;
+      // ConEmu's sub-commands (`9;4;` progress, `9;9;` directory) open with a
+      // number and a `;`, and WezTerm and Windows Terminal read them, so a line
+      // that would read as one is kept off that shape.
+      return `${OSC}9;${/^\d+;/.test(line) ? ` ${line}` : line}${ST}`;
+    }
   }
 }
 
 /**
  * `sequence` as it must be written to reach the terminal through `identity`'s
- * intermediary: inside tmux a DCS passthrough with every ESC doubled, which
- * tmux forwards when `allow-passthrough` is on; elsewhere unchanged.
+ * intermediary: inside tmux its DCS passthrough with every ESC doubled, which
+ * tmux forwards when `allow-passthrough` is on; inside screen its bare DCS;
+ * elsewhere unchanged. Zellij has no passthrough.
  */
 export function throughIntermediary(sequence: string, identity: TerminalIdentity): string {
-  return identity.intermediary === "tmux" ? `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}` : sequence;
+  switch (identity.intermediary) {
+    case "tmux":
+      return `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
+    case "screen":
+      return `${ESC}P${sequence}${ST}`;
+    default:
+      return sequence;
+  }
 }

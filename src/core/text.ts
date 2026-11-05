@@ -9,7 +9,7 @@ import { reorder, drawnTail, edges, hangingCells, hangingWhitespace, measured, p
 import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
-import { stripUrlControls } from "./osc8.js";
+import { stripOscControls } from "./osc8.js";
 import { betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
@@ -54,11 +54,11 @@ export function sanitized(text: string): string {
 // stored string resolves to is sanitized as it leaves for a render
 // (`resolveStyle`). Wire-byte safety is enforced separately by `osc8Open`
 // (core/osc8.ts), which every link producer calls and which applies the same
-// `stripUrlControls`.
+// `stripOscControls`.
 function sanitizeStyleLink(style: Style): Style {
   const link = style.link;
   if (!link) return style;
-  const cleaned = stripUrlControls(link);
+  const cleaned = stripOscControls(link);
   if (cleaned === link) return style;
   return style.withLink(cleaned);
 }
