@@ -94,7 +94,13 @@ describe("App's quit keys", () => {
     expect(keys).toEqual(["ctrl+c"]);
   });
 
-  it.each(["esc", "Ctrl+C", "shift+g", "ctrl+C", "ctrl+shift+c", "ctrl+m", "ctrl+i", "ctrl+[", "ctrl+1", ""])("refuses %s, which no key is named", (name) => {
+  // A kitty keyboard protocol key, which the parser decodes whoever asked for it,
+  // reaches Ctrl on every glyph and keeps a Ctrl chord's shift.
+  it.each(["ctrl+shift+c", "ctrl+m", "ctrl+i", "ctrl+[", "ctrl+1"])("takes %s, which a kitty protocol key is named", (name) => {
+    expect(() => started({ quitKeys: [name] })).not.toThrow();
+  });
+
+  it.each(["esc", "Ctrl+C", "shift+g", "ctrl+C", "ctrl+shift+C", "shift+ctrl+c", ""])("refuses %s, which no key is named", (name) => {
     expect(() => new App({ host: scriptedHost(), surface: "alternate", view: () => new RichText("x"), quitKeys: [name] })).toThrow(
       /no key is named/,
     );

@@ -17,4 +17,4 @@ export type { AppMouseEvent, AppOptions, AppPhase, Asked, AskOptions, WheelEvent
 export { terminalColors } from "./terminal-colors.js";
 export type { Surface } from "../core/paint.js";
 export { keyName } from "./input.js";
-export type { KeyEvent, TerminalMouseEvent, TerminalReply } from "./input.js";
+export type { KeyboardProtocol, KeyEvent, TerminalMouseEvent, TerminalReply } from "./input.js";
