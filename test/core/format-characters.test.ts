@@ -488,7 +488,7 @@ describe("a span edge inside a sequence", () => {
   });
 
   it("judges an edge on what is written, after the order's controls are gone", () => {
-    const row = drawn(segmentsToString([new Segment(`${WOMAN}${ZWJ}‬`), new Segment(LAPTOP)], TRUECOLOR));
+    const row = drawn(segmentsToString([new Segment(`${WOMAN}${ZWJ}${PDF}`), new Segment(LAPTOP)], TRUECOLOR));
     expect(cellLen(row)).toBe(4);
   });
 
@@ -518,12 +518,13 @@ describe("a span edge inside a sequence", () => {
   });
 
   // The PDF ends the heart's cluster, so the selector selects nothing in the text
-  // as given; every order that drops the PDF joins them on the wire.
-  it.each(["plain", "visual", "words"] as const)("writes a selector past a removed control as wide as it measures under %s", (textOrder) => {
+  // as given. Every order drops the PDF: logical drops the selector with it, the
+  // rest keep it, so it joins the heart and makes it wide.
+  it.each([["plain", 3], ["logical", 2], ["visual", 3], ["words", 3]] as const)("writes a selector past a removed control as wide as it measures under %s", (textOrder, width) => {
     const text = `${HEART}${PDF}${VS16}|`;
     for (let at = 0; at <= text.length; at += 1) {
       const measured = new RichText(text).stylize("bold", at).measure({ ...options, textOrder }).maximum;
-      expect([at, cellLen(edged(text, at, textOrder))]).toEqual([at, measured]);
+      expect([at, measured, cellLen(edged(text, at, textOrder))]).toEqual([at, width, width]);
     }
   });
 
