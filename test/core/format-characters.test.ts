@@ -15,6 +15,7 @@ import { render } from "../../src/core/protocol.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Style } from "../../src/core/style.js";
+import type { TextOrder } from "../../src/core/text-order.js";
 import { JSONRenderable } from "../../src/core/json.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Syntax } from "../../src/renderables/syntax.js";
@@ -37,6 +38,7 @@ const LAPTOP = "\u{1f4bb}";
 const ENGLAND = "\u{1f3f4}\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}";
 const HIDDEN = "\u{e0068}\u{e0069}";
 const COMBINING = "\u0301";
+const PDF = "\u202c";
 
 function wire(renderable: string | Renderable, width: number, colorSystem?: "truecolor"): string {
   const chunks: string[] = [];
@@ -469,7 +471,8 @@ describe("a span edge inside a sequence", () => {
   const drawn = (bytes: string): string => bytes.replace(SGR, "").split("\n")[0]!;
   // `text` styled bold from the code unit `at` on, written at a width it fits.
   const options = new Console({ width: 80 }).options;
-  const edged = (text: string, at: number): string => drawn(segmentsToString(render(new RichText(text).stylize("bold", at), options), TRUECOLOR));
+  const edged = (text: string, at: number, textOrder: TextOrder = "plain"): string =>
+    drawn(segmentsToString(render(new RichText(text).stylize("bold", at), { ...options, textOrder }), { ...TRUECOLOR, textOrder }));
 
   it("reports the edge in the style the edge cell is drawn in", () => {
     const right = (text: string, at: number): string => new RichText(text).stylize("on red", at).edgeStyle("right", options).toString();
@@ -485,7 +488,7 @@ describe("a span edge inside a sequence", () => {
   });
 
   it("judges an edge on what is written, after the order's controls are gone", () => {
-    const row = drawn(segmentsToString([new Segment(`${WOMAN}${ZWJ}‬`), new Segment(LAPTOP)], TRUECOLOR));
+    const row = drawn(segmentsToString([new Segment(`${WOMAN}${ZWJ}${PDF}`), new Segment(LAPTOP)], TRUECOLOR));
     expect(cellLen(row)).toBe(4);
   });
 
@@ -512,6 +515,17 @@ describe("a span edge inside a sequence", () => {
     ["a selector", `${HEART}${VS16}`, 1],
   ])("writes %s as wide as it measures", (_name, text, at) => {
     expect(cellLen(edged(text, at))).toBe(cellLen(text));
+  });
+
+  // The PDF ends the heart's cluster, so the selector selects nothing in the text
+  // as given. Every order drops the PDF: logical drops the selector with it, the
+  // rest keep it, so it joins the heart and makes it wide.
+  it.each([["plain", 3], ["logical", 2], ["visual", 3], ["words", 3]] as const)("writes a selector past a removed control as wide as it measures under %s", (textOrder, width) => {
+    const text = `${HEART}${PDF}${VS16}|`;
+    for (let at = 0; at <= text.length; at += 1) {
+      const measured = new RichText(text).stylize("bold", at).measure({ ...options, textOrder }).maximum;
+      expect([at, measured, cellLen(edged(text, at, textOrder))]).toEqual([at, width, width]);
+    }
   });
 
   it("keeps a flag's tags with its base", () => {
