@@ -4,15 +4,22 @@
     {
       "version": "pr-552",
       "ref": "refs/pull/552/merge",
-      "sha": "58243ab2799fe924aa929a1c4b346b474a0aa4e3",
-      "timestamp": "2026-11-05T12:10:29.633Z",
+      "sha": "42b3e87f38fa0e67ef5ce0067a15fa426ae94f49",
+      "timestamp": "2026-11-05T12:15:19.439Z",
       "commits": [
         {
-          "sha": "58243ab2799fe924aa929a1c4b346b474a0aa4e3",
+          "sha": "42b3e87f38fa0e67ef5ce0067a15fa426ae94f49",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T05:08:11-07:00",
-          "message": "Merge 2ebb2634cfd5ab09cd565d402787f98b9bf04c21 into c3ab55d91dddfd472d86768b43ff50788681d949\n"
+          "timestamp": "2026-11-05T12:12:57Z",
+          "message": "Merge 406f953b8331d70375a427d17f9dd0b1bfae69af into c3ab55d91dddfd472d86768b43ff50788681d949\n"
+        },
+        {
+          "sha": "406f953b8331d70375a427d17f9dd0b1bfae69af",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T05:12:46-07:00",
+          "message": "A reader's-pace keystroke test into an animating card holds typing, which the insertText edits no longer do (rich-unfiled-791c.m6cg)\n"
         },
         {
           "sha": "2ebb2634cfd5ab09cd565d402787f98b9bf04c21",
