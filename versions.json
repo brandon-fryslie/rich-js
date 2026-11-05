@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-558",
+      "ref": "refs/pull/558/merge",
+      "sha": "35cc26aa2199f7752adc7737d25dc6fd8dc03012",
+      "timestamp": "2026-11-05T18:32:49.758Z",
+      "commits": [
+        {
+          "sha": "35cc26aa2199f7752adc7737d25dc6fd8dc03012",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T11:30:44-07:00",
+          "message": "Merge e6d7558ec5ae748e6019b039355fbf16e57d9e3f into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
+        },
+        {
+          "sha": "e6d7558ec5ae748e6019b039355fbf16e57d9e3f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T11:30:33-07:00",
+          "message": "Console sets the window title, the clipboard and a desktop notification, through one identification of the terminal and of tmux (rich-control-codes-xh4n.4w6)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d0ad267f79ea68064e3f091ee655480f91cc8936",
