@@ -236,11 +236,12 @@ for (const [kind, edit, said] of [
 }
 
 // The other edits here go in as one insertion: Playwright's 2-3 ms between keys drops one now and then
-// under a busy card. A reader's pace is the claim, and every key of it lands, each a run that supersedes the last.
-test("keys typed at a reader's pace into an animating card all land, and the last edit is the one that runs", async ({ page }) => {
+// under a busy card. A reader's pace is the claim, and every key of it lands.
+test("keys typed at a reader's pace into an animating card all land", async ({ page }) => {
   const errors = await open(page, "progress.html");
   const live = liveUnder(page, 'progress.addTask("Rendering..."');
   await scrollTo(live);
+  await expect.poll(() => percent(live)).toBeLessThan(100);
   const card = await editAtEnd(page, 'progress.addTask("Rendering..."', "progress.stop();");
   const typed = 'setTimeout(() => { throw new RangeError("too far"); }, 10);';
   await page.keyboard.press("Enter");
