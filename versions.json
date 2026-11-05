@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-560",
-      "ref": "refs/pull/560/merge",
-      "sha": "db1743f92d5fbd552a435f10be3653b37b4f7fca",
-      "timestamp": "2026-11-05T20:19:51.825Z",
-      "commits": [
-        {
-          "sha": "db1743f92d5fbd552a435f10be3653b37b4f7fca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:18:13Z",
-          "message": "Merge 4b3c36b1a603a6048abf031eaea7946b0d565c84 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
-        },
-        {
-          "sha": "4b3c36b1a603a6048abf031eaea7946b0d565c84",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T13:18:03-07:00",
-          "message": "Kitty keys: shortcuts by base-layout key, one key-name set, push failure caught (rich-control-codes-xh4n.anf)\n\nAddresses the third high pass on #560: Ctrl/Alt chords take the base-layout\nsubfield; parseKeyName drops its protocol parameter since decodeCSI reads\nCSI u in every mode; .catch(fail) covers a throwing push write; typed()\nshared by byte and kitty keys; KeyboardProtocol exported from ./host;\ndocs name how Ctrl chords differ under the protocol.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "6fe8f9cd873f21c423b056ce95101f5a2660a855",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T13:06:03-07:00",
-          "message": "Kitty keys: keypad navigation, the shifted key reported (flag 4), quit keys checked against the app's own keyboard, a failed ask fails the app, one record per take (rich-control-codes-xh4n.anf)\n"
-        },
-        {
-          "sha": "fd460207d9710240195d91997890f599c0e9ec39",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:59:55-07:00",
-          "message": "Kitty keys: an answer pushes only onto the take that asked, keypad keys type, Private Use and Super chords name nothing, Alt+Shift as legacy, no F3 from a cursor report, every reported name bindable (rich-control-codes-xh4n.anf)\n"
-        },
-        {
-          "sha": "f080696607c5821a70a7f590226a6d989ce48207",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:53:16-07:00",
-          "message": "App asks for the kitty keyboard protocol where a program wants it, pushes it where the terminal answers and pops it on hand-back; the parser reads its keys by their legacy names (rich-control-codes-xh4n.anf)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "74263c66727225fa0cb5b832851e36f5c134dae8",
-      "timestamp": "2026-11-05T19:47:21.794Z",
+      "sha": "745a2a57cdae7930809b57710050951727b81ddc",
+      "timestamp": "2026-11-05T20:51:10.253Z",
       "commits": [
         {
-          "sha": "74263c66727225fa0cb5b832851e36f5c134dae8",
+          "sha": "745a2a57cdae7930809b57710050951727b81ddc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:45:13-07:00",
-          "message": "App turns on bracketed paste; a paste is one event (#559)\n\n* App turns on bracketed paste, and a paste reaches a program as one event, never as the keys it holds (rich-control-codes-xh4n.rd8)\n\n* Paste: Escape ahead of a paste stays Escape, no control reaches a field, the field follows a paste, the end marker is sought once, WidgetApp hears pastes (rich-control-codes-xh4n.rd8)\n\n* Paste: the program hears it first and may claim it, a flush ends an open paste as one, a tab is a space, only a final line break is dropped (rich-control-codes-xh4n.rd8)\n\n* Paste: an idle bound ends an unfinished paste as a paste, a split start marker is held, Dropdown filters by a paste, one-pass sanitizing (rich-control-codes-xh4n.rd8)"
+          "timestamp": "2026-11-05T13:49:32-07:00",
+          "message": "App asks for the kitty keyboard protocol; the parser reads its keys (#560)\n\n* App asks for the kitty keyboard protocol where a program wants it, pushes it where the terminal answers and pops it on hand-back; the parser reads its keys by their legacy names (rich-control-codes-xh4n.anf)\n\n* Kitty keys: an answer pushes only onto the take that asked, keypad keys type, Private Use and Super chords name nothing, Alt+Shift as legacy, no F3 from a cursor report, every reported name bindable (rich-control-codes-xh4n.anf)\n\n* Kitty keys: keypad navigation, the shifted key reported (flag 4), quit keys checked against the app's own keyboard, a failed ask fails the app, one record per take (rich-control-codes-xh4n.anf)\n\n* Kitty keys: shortcuts by base-layout key, one key-name set, push failure caught (rich-control-codes-xh4n.anf)\n\nAddresses the third high pass on #560: Ctrl/Alt chords take the base-layout\nsubfield; parseKeyName drops its protocol parameter since decodeCSI reads\nCSI u in every mode; .catch(fail) covers a throwing push write; typed()\nshared by byte and kitty keys; KeyboardProtocol exported from ./host;\ndocs name how Ctrl chords differ under the protocol.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
