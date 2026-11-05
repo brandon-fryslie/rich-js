@@ -106,7 +106,11 @@ export class WidgetApp implements FrameSource, FrameHost {
       this.pointAt();
     });
     this.app.onPaste((text) => this.router.paste(text));
-    this.app.onWheel((wheel) => this.router.wheel(wheel));
+    this.app.onWheel((wheel) => {
+      const moved = this.router.wheel(wheel);
+      this.pointAt();
+      return moved;
+    });
     this.app.onPaint(() => {
       this.focus.settle();
       this.router.framePainted();
@@ -234,10 +238,10 @@ export class WidgetApp implements FrameSource, FrameHost {
     return this.app.onWheel(handler);
   }
 
-  // [LAW:one-source-of-truth] The pointer's shape is the hovered widget's,
-  // read again whenever hover is.
+  // [LAW:one-source-of-truth] The pointer's shape is the shape of the widget
+  // it acts on — a drag's, else the hovered one's — read again whenever either moves.
   private pointAt(): void {
-    this.app.pointerShape = this.router.hovered?.pointerShape ?? "default";
+    this.app.pointerShape = this.router.pointing?.pointerShape ?? "default";
   }
 
   private compose(view: Renderable, options: RenderOptions): Segment[] {

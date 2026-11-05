@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest";
 
 import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { Button } from "../../src/widgets/button.js";
+import { Slider } from "../../src/widgets/slider.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { Group } from "../../src/renderables/group.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
@@ -91,5 +92,40 @@ describe("the pointer's shape over a widget app", () => {
     await done;
     expect(shapes(host)).toEqual(["crosshair", "default", "crosshair", "default"]);
     expect(app.pointerShape).toBe("default");
+  });
+
+  it("takes a shape set while the app is suspended when it resumes", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const app = new App({ host, surface: "alternate", view: () => new RichText("canvas") });
+    const done = app.run();
+    const suspended = app.suspend();
+    app.pointerShape = "wait";
+    expect(shapes(host)).toEqual([]);
+    host.resume();
+    await suspended;
+    expect(shapes(host)).toEqual(["wait"]);
+    app.stop();
+    await done;
+  });
+
+  it("stays the dragged widget's while a drag holds it, wherever the pointer goes", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const slider = new Slider({ value: 0, min: 0, max: 100, width: 10 });
+    const input = new TextInput({ value: "hello" });
+    const app = new WidgetApp({ host, surface: "alternate", clock: fakeClock(0), view: () => new Group(slider, input) });
+    const done = app.run();
+    host.type("\x1b[<0;2;1M");
+    await tick();
+    // Dragged down over the field, the button still held.
+    host.type("\x1b[<32;3;2M");
+    await tick();
+    expect(shapes(host)).toEqual(["pointer"]);
+    host.type("\x1b[<0;3;2m");
+    await tick();
+    host.type(moveTo(3, 2));
+    await tick();
+    expect(shapes(host)).toEqual(["pointer", "text"]);
+    app.stop();
+    await done;
   });
 });

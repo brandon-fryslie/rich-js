@@ -128,6 +128,18 @@ const fitRows = (frame: Segment[][], screen: Screen): Segment[][] =>
   frame.map((line) => Segment.adjustLineLength(line, screen.cols, undefined, false));
 
 /**
+ * `frame` fitted to the screen, and its caret where the terminal can show it.
+ * The caret is found before the fit, so one past the screen's edge — a row
+ * wider than the screen, cut — stands on the last column rather than going
+ * unshown.
+ */
+function fitted(frame: Segment[][], screen: Screen): { rows: Segment[][]; caret: Caret | undefined } {
+  const caret = caretIn(frame);
+  const rows = fitRows(frame, screen);
+  return { rows, caret: caret && { ...caret, col: Math.min(caret.col, Math.max(screen.cols - 1, 0)) } };
+}
+
+/**
  * A frame not yet drawn: the painter calls it when it is about to put the
  * frame on the output, so one that never shows a frame never pays to draw it.
  */
@@ -211,8 +223,9 @@ export class SurfaceRenderer implements Renderer {
    * (`shownOn`): under reduced motion, nothing in them blinks.
    */
   paint(frame: FrameSource, screen: Screen, destination: OutputTarget): Segment[][] {
-    const rows = fitRows(frame(), screen).map((row) => row.map((segment) => shownOn(segment, destination)));
-    this.write(SYNC_START + this.over(rows, screen, destination) + SYNC_END);
+    const { rows: fit, caret } = fitted(frame(), screen);
+    const rows = fit.map((row) => row.map((segment) => shownOn(segment, destination)));
+    this.write(SYNC_START + this.over(rows, caret, screen, destination) + SYNC_END);
     return rows;
   }
 
@@ -224,19 +237,19 @@ export class SurfaceRenderer implements Renderer {
   around(text: string, frame: FrameSource, screen: Screen, destination: OutputTarget): string {
     // Drawn before `over` moves the row count, so a frame that throws leaves
     // the painter matching the terminal it left untouched.
-    const rows = fitRows(frame(), screen);
-    const erase = this.over([], screen, destination);
+    const { rows, caret } = fitted(frame(), screen);
+    const erase = this.over([], undefined, screen, destination);
     const ended = text.endsWith("\n") ? text : `${text}\n`;
     // One synchronized block around all three, so the terminal is released
     // only once the frame is back.
-    return SYNC_START + erase + ended + this.over(rows, screen, destination) + SYNC_END;
+    return SYNC_START + erase + ended + this.over(rows, caret, screen, destination) + SYNC_END;
   }
 
   // The bytes that paint `rows` over the last frame. They go out in one
   // string, so whatever takes the last frame away arrives with the new one.
   // The cursor is hidden while they are written and shown again on the caret.
-  private over(rows: Segment[][], screen: Screen, destination: OutputTarget): string {
-    const caret = this.caret(destination) ? caretIn(rows) : undefined;
+  private over(rows: Segment[][], found: Caret | undefined, screen: Screen, destination: OutputTarget): string {
+    const caret = this.caret(destination) ? found : undefined;
     const painted = this.paintRows(rows, screen, destination);
     this.shown = caret !== undefined;
     if (caret === undefined) return painted;

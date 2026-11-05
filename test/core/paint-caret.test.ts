@@ -62,4 +62,11 @@ describe("the terminal's cursor on a painted frame", () => {
     expect(bytes).toContain("log line\n");
     expect(bytes).toContain(`\x1b[1A\r\x1b[2C${SHOW}`);
   });
+
+  it("stands on the last column when its cell is cut off past the screen's edge", () => {
+    const { renderer, out } = painter();
+    const wide = [[new Segment("x".repeat(20)), new Segment(" ", Style.null().withCaret("bar"))], [new Segment("status")]];
+    renderer.paint(() => wide, screen, target());
+    expect(out()).toContain(`\x1b[1A\r\x1b[19C${BAR}${SHOW}`);
+  });
 });
