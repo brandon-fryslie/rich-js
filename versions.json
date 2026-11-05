@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-560",
+      "ref": "refs/pull/560/merge",
+      "sha": "61c9a7e85b6a8f235588242022374e46478e9217",
+      "timestamp": "2026-11-05T19:57:39.592Z",
+      "commits": [
+        {
+          "sha": "61c9a7e85b6a8f235588242022374e46478e9217",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T12:54:29-07:00",
+          "message": "Merge f080696607c5821a70a7f590226a6d989ce48207 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
+        },
+        {
+          "sha": "f080696607c5821a70a7f590226a6d989ce48207",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T12:53:16-07:00",
+          "message": "App asks for the kitty keyboard protocol where a program wants it, pushes it where the terminal answers and pops it on hand-back; the parser reads its keys by their legacy names (rich-control-codes-xh4n.anf)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "74263c66727225fa0cb5b832851e36f5c134dae8",
