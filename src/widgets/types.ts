@@ -103,6 +103,8 @@ export interface InteractiveWidget extends Renderable, Measurable {
   // handler (including framework defaults like Tab → focus traversal) runs.
   handleKey(event: WidgetKeyEvent): void;
   handleMouse(event: WidgetMouseEvent): void;
+  /** A paste while focused: the text, each line break `\n`. */
+  handlePaste(text: string): void;
   handleFocus(event: WidgetFocusEvent): void;
 
   // Programmatic control. `time` is the focus event's (`WidgetFocusEvent`).

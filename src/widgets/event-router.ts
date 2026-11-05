@@ -122,6 +122,11 @@ export class EventRouter {
     this.dispatchKey(new WidgetKeyEvent(press, this.source.frameNow().time));
   }
 
+  /** Route a paste the app heard: to the focused widget, as text. */
+  paste(text: string): void {
+    this.source.focusManager.current?.handlePaste(text);
+  }
+
   /** Route a pointer event the app heard. */
   mouse(event: AppMouseEvent): void {
     this.dispatchMouse(event);

@@ -903,6 +903,16 @@ export class TextInput extends ThemedWidget {
     return asCodePoint(p);
   }
 
+  /**
+   * A paste goes in as text, never as the keys it holds: a line break in it
+   * submits nothing. On one line each line break is a space.
+   */
+  @action
+  override handlePaste(text: string): void {
+    if (this.disabled) return;
+    this._insertText(this._multiline ? text : text.replace(/\n/g, " "));
+  }
+
   @action
   private _insertText(text: string): void {
     let toInsert = text;

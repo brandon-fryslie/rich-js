@@ -118,6 +118,8 @@ app.onKey((event) => {
 });
 ```
 
+A paste does not use the chain either: it goes to the focused widget's `handlePaste` as text. A `TextInput` inserts it there, with each line break kept in a multiline field and made a space in a single-line one, so a paste never submits.
+
 Pointer events do not use the chain. Subscribe with `app.onMouse(handler)` and your handler runs *first*, in terminal cells — before the app finds the widget under the pointer, updates hover state, moves focus to it on a press, and delivers the event to it. That order makes `onMouse` the place to intercept: `widgetAt(app.frame, event.x, event.y)` says which widget drew the cell, and the widget still receives its own event afterwards. The vertical wheel is not a pointer event here: `app.onWheel(handler)` is offered each turn no viewport moved with, and returns whether it moved something.
 
 ## Layout

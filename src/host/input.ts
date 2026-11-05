@@ -39,6 +39,12 @@
  * on its key at once. A terminated one is a reply either way, and one cut off
  * by an ESC that is not ST was never a reply, and is Alt on its key, as with
  * none awaited.
+ *
+ * A bracketed paste, `ESC [ 200 ~` … `ESC [ 201 ~`, is one event whatever it
+ * holds: nothing inside is read as a key. Its end marker always comes, and a
+ * large paste over a slow link outlasts any delay, so an open paste is held
+ * until it does — on a split host past the escape delay, which does not run for
+ * it. A whole-keys chunk is whole, so a paste open at its end ends there.
  */
 
 import type { InputChunks } from "./terminal-host.js";
@@ -114,6 +120,8 @@ export interface InputSink {
   key(press: KeyEvent): void;
   mouse(event: TerminalMouseEvent): void;
   reply(reply: TerminalReply): void;
+  /** A bracketed paste: the text between its markers, each line break `\n`. */
+  paste(text: string): void;
 }
 
 // Single-byte → key name table for the trivial cases.
@@ -257,6 +265,7 @@ type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyEvent }
   | { kind: "mouse"; bytes: number; event: TerminalMouseEvent }
   | { kind: "reply"; bytes: number; event: TerminalReply }
+  | { kind: "paste"; bytes: number; text: string }
   | { kind: "reissued"; bytes: number; event: KeyEvent } // a sequence that opened no key, read by `reissue`
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
@@ -346,7 +355,7 @@ export class InputParser {
   // it afresh (`awaitReplies`), so what is held then gets the whole delay.
   private validity(): void {
     this.cancelEscape();
-    if (this.buffer[0] !== ESC) return;
+    if (this.buffer[0] !== ESC || opensPaste(this.buffer)) return;
     this.escTimer = setTimeout(() => {
       this.escTimer = setTimeout(() => {
         if (!this.replyMayArrive() || !opensString(this.buffer)) this.flush();
@@ -438,6 +447,7 @@ export class InputParser {
       if (result.kind === "key" || result.kind === "reissued") this.sink.key(result.event);
       else if (result.kind === "mouse") this.sink.mouse(result.event);
       else if (result.kind === "reply") this.sink.reply(result.event);
+      else if (result.kind === "paste") this.sink.paste(result.text);
       // skip → drop bytes silently
     }
   }
@@ -599,6 +609,15 @@ export class InputParser {
     };
   }
 
+  // A bracketed paste, its markers taken off. Open at a whole-keys chunk's end,
+  // it ends there; open on a split host, it is held for the rest.
+  private consumePaste(buf: Uint8Array): ConsumeResult {
+    const end = indexOfBytes(buf, PASTE_END, PASTE_START.length);
+    if (end >= 0) return { kind: "paste", bytes: end + PASTE_END.length, text: pastedText(buf.subarray(PASTE_START.length, end)) };
+    if (this.chunks === "split") return { kind: "incomplete" };
+    return { kind: "paste", bytes: buf.length, text: pastedText(buf.subarray(PASTE_START.length)) };
+  }
+
   private consumeCSI(buf: Uint8Array): ConsumeResult {
     // buf starts with ESC [
     const next = buf[2];
@@ -639,6 +658,8 @@ export class InputParser {
       return { kind: "incomplete" };
     }
 
+    if (opensPaste(buf)) return this.consumePaste(buf);
+
     // Generic CSI: collect parameter / intermediate bytes until a final byte
     // in the range 0x40–0x7e is found.
     let params = "";
@@ -656,6 +677,27 @@ export class InputParser {
 }
 
 // --- Helpers ---
+
+const PASTE_START: readonly number[] = [...UTF8_ENCODER.encode("\x1b[200~")];
+const PASTE_END: readonly number[] = [...UTF8_ENCODER.encode("\x1b[201~")];
+
+// Whether `buf` opens with a bracketed paste's start marker.
+function opensPaste(buf: Uint8Array): boolean {
+  return buf.length >= PASTE_START.length && PASTE_START.every((byte, index) => buf[index] === byte);
+}
+
+// Where `needle` first starts in `buf` at or past `from`, or -1.
+function indexOfBytes(buf: Uint8Array, needle: readonly number[], from: number): number {
+  for (let at = from; at + needle.length <= buf.length; at++) {
+    if (needle.every((byte, index) => buf[at + index] === byte)) return at;
+  }
+  return -1;
+}
+
+// A pasted line break is CR, as the Enter key sends it; the text holds `\n`.
+function pastedText(bytes: Uint8Array): string {
+  return UTF8_DECODER.decode(bytes).replace(/\r\n?/g, "\n");
+}
 
 // The wheel's button bits: vertical, then the horizontal wheel or tilt.
 const SCROLL = ["scroll_up", "scroll_down", "scroll_left", "scroll_right"] as const;
