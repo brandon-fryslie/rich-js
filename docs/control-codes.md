@@ -124,6 +124,8 @@ are the glyph's 2.
 | U+2028, U+2029 | 0 | 1 | 1 | 1 |
 | Annotation anchors | 0 | 1 | 1 | 0 |
 | ALM, U+180E | 0 | 1 | 0 | 1 |
+| RLE, RLO, PDF | — | 1 | 0 | — |
+| LRI, RLI, FSI, PDI | — | 0 | 0 | — |
 | Heart with VS16 | 2 | 1 | 2 | 1 |
 | Subdivision flag | 2 | 8 | 2 | 1 |
 | Kanji with a selector | 2 | 2 | 2 | 2 |

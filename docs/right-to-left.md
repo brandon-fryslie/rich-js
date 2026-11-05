@@ -63,6 +63,10 @@ variable it may have inherited from the program that started it.
 WezTerm is `plain` because its bidi is a setting the environment cannot show. If
 you have left it off, state `visual` yourself.
 
+iTerm2 reorders the whole line through the isolates, so they contain nothing
+there. Terminal.app holds its isolates at zero width but gives RLE, RLO and PDF a
+cell each. If your content carries none of those, you can state `logical` on it.
+
 `renderToString` never detects. It defaults to `plain`, so the same call gives
 the same bytes everywhere.
 
