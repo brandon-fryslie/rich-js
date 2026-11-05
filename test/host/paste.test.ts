@@ -10,6 +10,7 @@ import { ESCAPE_DELAY_MS, InputParser, keyName } from "../../src/host/input.js";
 import type { InputChunks } from "../../src/host/terminal-host.js";
 import { RichText } from "../../src/core/text.js";
 import { TextInput } from "../../src/widgets/text-input.js";
+import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { scriptedHost } from "./scripted-host.js";
 
 const START = "\x1b[200~";
@@ -72,6 +73,14 @@ describe("InputParser reads a bracketed paste", () => {
     vi.advanceTimersByTime(ESCAPE_DELAY_MS * 10);
     input.feed(`b${END}`);
     expect(heard).toEqual(["key:escape", "paste:a\nb"]);
+  });
+
+  it("ends an open paste where it is when flushed, as one paste", () => {
+    const { parser: input, heard } = parser("split");
+    input.feed(`${START}a\rb`);
+    input.flush();
+    input.feed(`${START}c${END}`);
+    expect(heard).toEqual(["paste:a\nb", "paste:c"]);
   });
 
   it("ends a paste open at a whole-keys chunk's end with the chunk", () => {
@@ -142,12 +151,47 @@ describe("TextInput and a paste", () => {
   it("keeps no control from a paste, only what typing could put in", () => {
     const input = new TextInput({ multiline: true });
     input.handlePaste("a\x03\x1b[Ab\tc\nd", 0);
-    expect(input.value).toBe("a[Abc\nd");
+    expect(input.value).toBe("a[Ab c\nd");
   });
 
   it("drops the final line break a copied line brings, on one line", () => {
     const input = new TextInput();
     input.handlePaste("npm test\n", 0);
     expect(input.value).toBe("npm test");
+    input.handlePaste(" and more ", 0);
+    expect(input.value).toBe("npm test and more ");
+  });
+});
+
+describe("WidgetApp and a paste", () => {
+  function focusedField(): { app: WidgetApp; host: ReturnType<typeof scriptedHost>; input: TextInput; done: Promise<void> } {
+    const host = scriptedHost({ cols: 20, rows: 3 });
+    const input = new TextInput();
+    const app = new WidgetApp({ host, surface: "alternate", view: () => input });
+    const done = app.run();
+    input.focus(0);
+    return { app, host, input, done };
+  }
+
+  it("lets the program hear a paste before the focused field takes it", async () => {
+    const { app, host, input, done } = focusedField();
+    const seen: string[] = [];
+    app.onPaste((text) => {
+      seen.push(`${text}|${input.value}`);
+    });
+    host.type(`${START}hi${END}`);
+    expect(seen).toEqual(["hi|"]);
+    expect(input.value).toBe("hi");
+    app.stop();
+    await done;
+  });
+
+  it("lets the program claim a paste, so no widget takes it", async () => {
+    const { app, host, input, done } = focusedField();
+    app.onPaste(() => true);
+    host.type(`${START}hi${END}`);
+    expect(input.value).toBe("");
+    app.stop();
+    await done;
   });
 });

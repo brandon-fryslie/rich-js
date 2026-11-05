@@ -302,6 +302,8 @@ export class InputParser {
   // How far into the open paste at the buffer head its end marker has been
   // looked for, so each read scans only what it added.
   private pasteScanned = 0;
+  // Set while `flush` settles the buffer: an open paste ends where it is.
+  private flushing = false;
   // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
   // across node and browser; `setImmediate` is node-only.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
@@ -423,7 +425,12 @@ export class InputParser {
   /** Settle a held escape sequence now, as the end of a whole-key chunk. */
   flush(): void {
     this.cancelEscape();
-    this.settleChunk();
+    this.flushing = true;
+    try {
+      this.settleChunk();
+    } finally {
+      this.flushing = false;
+    }
   }
 
   /** Drop what is buffered and any held escape sequence: the parser as constructed. */
@@ -617,10 +624,11 @@ export class InputParser {
   }
 
   // A bracketed paste, its markers taken off. Open at a whole-keys chunk's end,
-  // it ends there; open on a split host, it is held for the rest.
+  // or when `flush` settles the buffer, it ends there; open on a split host,
+  // it is held for the rest.
   private consumePaste(buf: Uint8Array): ConsumeResult {
     const end = indexOfBytes(buf, PASTE_END, Math.max(PASTE_START.length, this.pasteScanned - PASTE_END.length + 1));
-    if (end < 0 && this.chunks === "split") {
+    if (end < 0 && this.chunks === "split" && !this.flushing) {
       this.pasteScanned = buf.length;
       return { kind: "incomplete" };
     }

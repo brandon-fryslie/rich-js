@@ -909,15 +909,16 @@ export class TextInput extends ThemedWidget {
 
   /**
    * A paste goes in as text, never as the keys it holds: a line break in it
-   * submits nothing. What it keeps is what typing could put in — no control —
-   * and its line breaks: on one line each is a space, but a final one, which
-   * copying a line brings along, is dropped.
+   * submits nothing. What it keeps is what typing could put in — no control,
+   * a tab made a space — and its line breaks: on one line each is a space, but
+   * a final one, which copying a line brings along, is dropped.
    */
   @action
   handlePaste(text: string, time: number): void {
     if (this.disabled) return;
-    const lines = text.split("\n").map((line) => Array.from(line, (character) => (PRINTABLE.test(character) ? character : "")).join(""));
-    const kept = this._multiline ? lines.join("\n") : lines.join(" ").replace(/ $/, "");
+    const lines = text.split("\n").map((line) => Array.from(line.replaceAll("\t", " "), (character) => (PRINTABLE.test(character) ? character : "")).join(""));
+    if (!this._multiline && lines.length > 1 && lines.at(-1) === "") lines.pop();
+    const kept = lines.join(this._multiline ? "\n" : " ");
     if (kept === "") return;
     this._insertText(kept);
     this._edited(time);
