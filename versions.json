@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-562",
+      "ref": "refs/pull/562/merge",
+      "sha": "d6b68ba62dac32a5437e05d567d6d3e249c9a5f2",
+      "timestamp": "2026-11-05T21:53:35.975Z",
+      "commits": [
+        {
+          "sha": "d6b68ba62dac32a5437e05d567d6d3e249c9a5f2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:51:40-07:00",
+          "message": "Merge 0fc1ad1a967a21577a36de141394019ec2c99a0b into b00624001284316cd6d5bb730f1564914df76f42\n"
+        },
+        {
+          "sha": "0fc1ad1a967a21577a36de141394019ec2c99a0b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:51:11-07:00",
+          "message": "iTerm2 and Terminal.app measured and kept plain (rich-control-codes-xh4n.gp4)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b00624001284316cd6d5bb730f1564914df76f42",
