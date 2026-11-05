@@ -4,15 +4,22 @@
     {
       "version": "pr-561",
       "ref": "refs/pull/561/merge",
-      "sha": "eb847c286561f3cc6287c7d599f7851ec4a8643c",
-      "timestamp": "2026-11-05T21:19:32.521Z",
+      "sha": "68027b4a8e639d5dc943e1be508435bbfba714ae",
+      "timestamp": "2026-11-05T21:36:41.881Z",
       "commits": [
         {
-          "sha": "eb847c286561f3cc6287c7d599f7851ec4a8643c",
+          "sha": "68027b4a8e639d5dc943e1be508435bbfba714ae",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T21:17:06Z",
-          "message": "Merge cacf01115f009337aba2fcd2386131e0471519cd into 745a2a57cdae7930809b57710050951727b81ddc\n"
+          "timestamp": "2026-11-05T21:34:42Z",
+          "message": "Merge 5e4191cb13e2ce0048afb6f1e83544ad567a982d into 745a2a57cdae7930809b57710050951727b81ddc\n"
+        },
+        {
+          "sha": "5e4191cb13e2ce0048afb6f1e83544ad567a982d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:34:22-07:00",
+          "message": "Review fixes: pointer shape set before run shows on start and refused after stop, DECSCUSR 0 described as it is (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "cacf01115f009337aba2fcd2386131e0471519cd",
