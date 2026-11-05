@@ -128,4 +128,15 @@ describe("the pointer's shape over a widget app", () => {
     app.stop();
     await done;
   });
+
+  it("is shown when the app starts if it was set before, and refused once the app has stopped", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const app = new App({ host, surface: "alternate", view: () => new RichText("canvas") });
+    app.pointerShape = "wait";
+    const done = app.run();
+    expect(shapes(host)).toEqual(["wait"]);
+    app.stop();
+    await done;
+    expect(() => (app.pointerShape = "text")).toThrow(/stopped/);
+  });
 });

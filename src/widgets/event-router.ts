@@ -118,11 +118,6 @@ export class EventRouter {
     return () => this.mouseHandlers.delete(handler);
   }
 
-  /** The widget under the pointer on the frame on screen, if any. */
-  get hovered(): InteractiveWidget | null {
-    return this.hoveredWidget;
-  }
-
   /** The widget the pointer acts on: the one a drag captured while it holds, else the hovered one. */
   get pointing(): InteractiveWidget | null {
     return this.captured?.widget ?? this.hoveredWidget;

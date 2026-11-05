@@ -241,6 +241,9 @@ export class WidgetApp implements FrameSource, FrameHost {
   // [LAW:one-source-of-truth] The pointer's shape is the shape of the widget
   // it acts on — a drag's, else the hovered one's — read again whenever either moves.
   private pointAt(): void {
+    // A stopped app's terminal is someone else's: an event still in flight
+    // when it stopped has no pointer left to shape.
+    if (this.app.phase === "stopped") return;
     this.app.pointerShape = this.router.pointing?.pointerShape ?? "default";
   }
 

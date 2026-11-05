@@ -549,17 +549,19 @@ export class App implements FrameHost {
   /**
    * The mouse pointer's shape over the terminal (OSC 22), from now until it
    * is set again or the app stops. A suspend gives the terminal its default
-   * and the resume shows this shape, one set while suspended included. Set
-   * only between `run` and the stop; the same shape again writes nothing.
+   * and the resume shows this shape, one set while suspended included; one
+   * set before `run` is shown when it starts. The same shape again writes
+   * nothing, and a stopped app refuses one.
    */
   get pointerShape(): PointerShape {
     return this.pointer;
   }
 
   set pointerShape(shape: PointerShape) {
-    if (this._phase === "idle" || this._phase === "stopped" || shape === this.pointer) return;
+    if (this._phase === "stopped") throw new Error("App.pointerShape: a stopped app has handed its terminal back for good");
+    if (shape === this.pointer) return;
     this.pointer = shape;
-    // Suspended, the shape waits for the resume, which shows it.
+    // Before the run or while suspended, the shape waits for the take that shows it.
     if (this._phase === "running") this.console.setPointerShape(shape);
   }
 

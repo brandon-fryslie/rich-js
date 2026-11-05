@@ -96,7 +96,9 @@ const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 const RESET_STYLE = "\x1b[0m";
 // DECSCUSR: the cursor's shape, each blinking (odd) or steady (even); 0 is
-// the shape the terminal's own settings give it.
+// the terminal's default shape — its configured one on most, a
+// blinking block on xterm. No sequence restores the shape a program before
+// the take had set.
 const CARET_CODES: Record<CaretShape, number> = { block: 1, underline: 3, bar: 5 };
 const caretShape = (shape: CaretShape, destination: OutputTarget): string =>
   `\x1b[${CARET_CODES[shape] + (destination.reducedMotion ? 1 : 0)} q`;
@@ -272,7 +274,7 @@ export class SurfaceRenderer implements Renderer {
     // up to its last row, so the next frame and the program's next line start
     // from the frame's own height.
     const blanked = painted - Math.max(rows.length, 1);
-    const back = blanked > 0 ? `\x1b[${blanked}A` : "";
+    const back = up(blanked);
     const bytes = hide + this.geometry.home(this.at) + body + back;
     this.rows = rows.length;
     this.at = Math.max(rows.length - 1, 0);
