@@ -88,9 +88,11 @@ that starts or ends inside one is taken to the sequence's end, and the whole seq
 is drawn in the styles covering its first character. A flag styled from its second
 character keeps its tags and is drawn as one flag.
 
-Segments that meet on a row were each measured alone, so none reshapes the glyph in
-its neighbour. A mark, selector or joiner that opens a segment, and a joiner that ends
-one, are not written.
+Segments that meet on a row were each measured alone. A combining mark, selector or
+joiner of no cells that opens a segment would extend the glyph in the segment before
+it, and a joiner that ends one would join the next, so neither is written. A spacing
+mark or a Hangul vowel that opens a segment is still drawn against its neighbour, at
+the width each was measured.
 
 ## Wrapping
 

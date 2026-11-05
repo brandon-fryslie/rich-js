@@ -489,9 +489,19 @@ export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
  * `nextGrapheme` and `prevGrapheme` step between.
  */
 export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
-  const at = Math.min(cu, s.length);
-  const cluster = SEGMENTER.segment(s).containing(at);
-  return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
+  return graphemeBoundaries(s)(cu);
+}
+
+/** `graphemeBoundary` over one text for many offsets, segmenting it once. */
+export function graphemeBoundaries(s: string): (cu: CodeUnit) => CodePoint {
+  // Printable ASCII is one cluster per character, so every offset is a boundary.
+  if (PRINTABLE_ASCII.test(s)) return (cu) => asCodePoint(Math.min(cu, s.length));
+  const clusters = SEGMENTER.segment(s);
+  return (cu) => {
+    const at = Math.min(cu, s.length);
+    const cluster = clusters.containing(at);
+    return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
+  };
 }
 
 declare const _tabSize: unique symbol;

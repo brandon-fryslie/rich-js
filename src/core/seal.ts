@@ -21,7 +21,7 @@
  */
 
 import { advance, closersOf, opened, withoutExplicit, type Open } from "./bidi.js";
-import { EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
+import { cellLen, EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
@@ -32,21 +32,26 @@ const PDI = "\u2069";
 
 /**
  * `text` without what would reach across a segment edge into a neighbour's
- * glyph. What opens a segment before its first glyph would extend the glyph
+ * glyph. An extender of no cells that opens a segment would extend the glyph
  * that ends the one before it on the wire — a mark restyles it, a selector
  * changes its presentation, a VS16 widens it, a ZWJ joins it to this one — and a
  * trailing ZWJ would join this segment's last glyph to the next one's first.
- * Alone, where each was measured, each extends nothing and takes no cell, so
- * dropping it changes no width.
+ * Alone, where each was measured, each takes no cell, so dropping it changes no
+ * width. An extender that takes a cell alone (the halfwidth sound marks) was
+ * measured as one and stays.
  */
 function edged(text: string): string {
-  const opening = OPENING_EXTENDERS.exec(text)![0].length;
+  let opening = 0;
+  for (const character of text) {
+    if (!AN_EXTENDER.test(character) || cellLen(character) > 0) break;
+    opening += character.length;
+  }
   if (opening === 0 && !text.endsWith(ZWJ_CHARACTER)) return text;
   return text.slice(opening).replace(TRAILING_JOINERS, "");
 }
 
-const OPENING_EXTENDERS = pattern(new RegExp(`^${EXTENDER}*`, "u"));
-const TRAILING_JOINERS = pattern(new RegExp(`${ZWJ_CHARACTER}+$`, "u"));
+const AN_EXTENDER = pattern(new RegExp(`^${EXTENDER}$`, "u"));
+const TRAILING_JOINERS =pattern(new RegExp(`${ZWJ_CHARACTER}+$`, "u"));
 
 /** `text` with closers that match nothing in `open` dropped, so content cannot end the isolate around it. */
 function balanced(text: string, open: Open): string {
@@ -80,7 +85,8 @@ export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable
     stamp = undefined;
   };
   for (const raw of segments) {
-    const drawn = raw.isControl ? raw.text : edged(wireText(raw.text));
+    const wired = wireText(raw.text);
+    const drawn = raw.isControl ? wired : edged(wired);
     const segment = drawn === raw.text ? raw : new Segment(drawn, raw.style, raw.control);
     const own = order === "logical" && !segment.isControl ? segment.style?.bidi : undefined;
     if (own?.order === "logical") {

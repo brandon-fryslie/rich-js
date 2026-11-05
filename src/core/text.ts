@@ -2,7 +2,7 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen, cellCount, cellFit, cellFitEnd, cellFitFrom, graphemes, graphemeBoundary, asCellCol, asCodePoint, asCodeUnit, expandTabs, parseTabSize, type CellCol, type TabSize } from "./cells.js";
+import { cellLen, cellCount, cellFit, cellFitEnd, cellFitFrom, graphemes, graphemeBoundaries, asCellCol, asCodePoint, asCodeUnit, expandTabs, parseTabSize, type CellCol, type TabSize } from "./cells.js";
 import { closed, closing, isBidi, openersAlong } from "./bidi.js";
 import { controlClass, dispositionOf, pictureOf } from "./control-codes.js";
 import { reorder, drawnTail, edges, hangingCells, hangingWhitespace, measured, paragraphLevelOf, removes } from "./orient.js";
@@ -1526,12 +1526,10 @@ function drawnSegments(draft: Draft, base: Style, options: RenderOptions): { seg
  * and measure apart what they draw together, and the styles an edge and a
  * justified gap report beside them.
  */
-const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
-
 function clustered(draft: Draft): Draft {
   const { text, spans } = draft;
-  // Printable ASCII is one cluster per character, so no edge falls inside one.
-  if (spans.length === 0 || PRINTABLE_ASCII.test(text)) return draft;
-  const edge = (offset: number): number => graphemeBoundary(text, asCodeUnit(offset));
+  if (spans.length === 0) return draft;
+  const boundary = graphemeBoundaries(text);
+  const edge = (offset: number): number => boundary(asCodeUnit(offset));
   return { text, spans: spans.map((span) => new Span(edge(span.start), edge(span.end), span.style)) };
 }

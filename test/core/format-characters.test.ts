@@ -484,6 +484,17 @@ describe("a span edge inside a sequence", () => {
     expect(row("e", `${COMBINING}x`)).toBe("ex");
   });
 
+  it("keeps an extender that takes a cell of its own where it opens a segment", () => {
+    const row = drawn(segmentsToString([new Segment("|"), new Segment("ﾞ|")], TRUECOLOR));
+    expect(row).toBe("|ﾞ|");
+    expect(cellLen(row)).toBe(3);
+  });
+
+  it("keeps what a control segment's text may carry to the wire, and no more", () => {
+    const bytes = segmentsToString([new Segment("a"), new Segment(`\x1b]0;t\x07${ZWJ}`, undefined, [])], TRUECOLOR);
+    expect(bytes).not.toContain("\x07");
+  });
+
   it.each([
     ["a join with a soft hyphen in it", `${WOMAN}${ZWJ}${SHY}${LAPTOP}`, 3],
     ["a join", `${WOMAN}${ZWJ}${LAPTOP}`, 3],
