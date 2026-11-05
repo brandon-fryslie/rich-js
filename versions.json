@@ -2,74 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-558",
-      "ref": "refs/pull/558/merge",
-      "sha": "4706eb944bc45a2bd2b38d4be7731e4704f118c2",
-      "timestamp": "2026-11-05T18:53:35.636Z",
-      "commits": [
-        {
-          "sha": "4706eb944bc45a2bd2b38d4be7731e4704f118c2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:49:58Z",
-          "message": "Merge 6f13aebb667b8cefa7153c79cee82c63d7a7e10f into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
-        },
-        {
-          "sha": "6f13aebb667b8cefa7153c79cee82c63d7a7e10f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:49:46-07:00",
-          "message": "isAttended sits below the doc comment it does not own (rich-control-codes-xh4n.4w6)\n"
-        },
-        {
-          "sha": "0f47703e221f70b20a963694fe44b2c8969e1cb7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:49:18-07:00",
-          "message": "Screen's buffer is measured in bytes (rich-control-codes-xh4n.4w6)\n"
-        },
-        {
-          "sha": "8262889925913c6510dbc332a0852101190c4dd8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:47:10-07:00",
-          "message": "Requests: multiplexers count beside their own TERM, screen gets nothing it would cut, random kitty ids, lazy encoding, one attended rule (rich-control-codes-xh4n.4w6)\n"
-        },
-        {
-          "sha": "54488100041b4b0c62c3ea31fb19ba2e3ee54388",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:40:32-07:00",
-          "message": "Requests: OSC 9 behind any intermediary, BEL inside screen's DCS, kitty ids unique past the console, ids taken only when written (rich-control-codes-xh4n.4w6)\n"
-        },
-        {
-          "sha": "194d74f5ab80d531f97f1dfe97bfe1b25f192c7b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:37:00-07:00",
-          "message": "Requests: one identity per console, the title left to multiplexers, kitty ids per notification, OSC 9 kept off ConEmu's shape, screen passthrough, one OSC text rule (rich-control-codes-xh4n.4w6)\n"
-        },
-        {
-          "sha": "e6d7558ec5ae748e6019b039355fbf16e57d9e3f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:30:33-07:00",
-          "message": "Console sets the window title, the clipboard and a desktop notification, through one identification of the terminal and of tmux (rich-control-codes-xh4n.4w6)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d0ad267f79ea68064e3f091ee655480f91cc8936",
-      "timestamp": "2026-11-05T18:25:53.017Z",
+      "sha": "afebae76a734efb412abe0c0de72e1e9db7651a2",
+      "timestamp": "2026-11-05T19:04:50.603Z",
       "commits": [
         {
-          "sha": "d0ad267f79ea68064e3f091ee655480f91cc8936",
+          "sha": "afebae76a734efb412abe0c0de72e1e9db7651a2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T11:23:21-07:00",
-          "message": "kitty gets the words order (rich-control-codes-xh4n.6pi) (#557)\n\n* kitty gets the words order: rows laid out visually, each right-to-left word written in the order kitty turns back (rich-control-codes-xh4n.6pi)\n\n* The orders table names words (rich-control-codes-xh4n.6pi)\n\n* words follows kitty's runs: unstamped text passes whole, faces and box cells end a run, and a run is written in the form kitty shows as laid (rich-control-codes-xh4n.6pi)\n\n* words keeps segment edges, finds a run's clusters whole, sends kitty letters, and grants only kitty (rich-control-codes-xh4n.6pi)\n\n* words: styles stay on their cells, an emoji ends a run, rows stay shaped, edges judged as laid, and only kitty's own TERM counts (rich-control-codes-xh4n.6pi)"
+          "timestamp": "2026-11-05T12:02:28-07:00",
+          "message": "Console sets the window title, the clipboard and a desktop notification (#558)\n\n* Console sets the window title, the clipboard and a desktop notification, through one identification of the terminal and of tmux (rich-control-codes-xh4n.4w6)\n\n* Requests: one identity per console, the title left to multiplexers, kitty ids per notification, OSC 9 kept off ConEmu's shape, screen passthrough, one OSC text rule (rich-control-codes-xh4n.4w6)\n\n* Requests: OSC 9 behind any intermediary, BEL inside screen's DCS, kitty ids unique past the console, ids taken only when written (rich-control-codes-xh4n.4w6)\n\n* Requests: multiplexers count beside their own TERM, screen gets nothing it would cut, random kitty ids, lazy encoding, one attended rule (rich-control-codes-xh4n.4w6)\n\n* Screen's buffer is measured in bytes (rich-control-codes-xh4n.4w6)\n\n* isAttended sits below the doc comment it does not own (rich-control-codes-xh4n.4w6)"
         }
       ]
     }
