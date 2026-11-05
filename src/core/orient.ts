@@ -15,7 +15,7 @@ import { isBidi, lineLevels, mirroredCluster, openersAlong, paragraph, paragraph
 import { cellLen, graphemes } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
-import { NULL_STYLE, type Style } from "./style.js";
+import { caretMark, NULL_STYLE, type Style } from "./style.js";
 import type { BidiStamp, ParagraphLevel, TextOrder } from "./text-order.js";
 
 const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
@@ -125,6 +125,20 @@ interface Cluster {
   readonly level: number;
 }
 
+/**
+ * `style` with its caret, if it marks one, standing on the side of its cell the
+ * insertion point is on at `level`: the glyph's leading edge, its right in a
+ * right-to-left run. [LAW:one-source-of-truth] Set where the row's levels are
+ * finished, so the side is read off the levels the row is ordered by, from the
+ * text it shows, and never derived beside them.
+ */
+function sided(style: Style | undefined, level: number): Style | undefined {
+  const mark = style?.caret;
+  if (mark === undefined) return style;
+  const side = level & 1 ? "right" : "left";
+  return mark.side === side ? style : style!.withCaret(caretMark(mark.shape, side));
+}
+
 /** L1, L2 and L4 on a row: its grapheme clusters in display order, each carrying its style. */
 function displayed(shown: readonly Segment[], levels: readonly number[], paragraphLevel: ParagraphLevel): Segment[] {
   const text = Segment.plainOf(shown);
@@ -137,7 +151,7 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   const clusters: Cluster[] = [];
   let unit = 0;
   for (const [index, cluster] of glyphs.entries()) {
-    clusters.push({ text: cluster, style: styles[unit], level: levelOf[index]! });
+    clusters.push({ text: cluster, style: sided(styles[unit], levelOf[index]!), level: levelOf[index]! });
     unit += cluster.length;
   }
   const forms = shaped(clusters.map((cluster) => cluster.text));

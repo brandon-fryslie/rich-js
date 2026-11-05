@@ -101,12 +101,19 @@ export type CaretShape = "block" | "underline" | "bar";
 export interface CaretMark {
   readonly shape: CaretShape;
   readonly side: "left" | "right";
+  // [LAW:types-are-the-program] Only `caretMark` makes one, so a literal that
+  // would compare unequal to its twin does not type-check.
+  readonly [caretMarkBrand]: true;
 }
 
+declare const caretMarkBrand: unique symbol;
+
+const mark = (shape: CaretShape, side: CaretMark["side"]): CaretMark => Object.freeze({ shape, side }) as CaretMark;
+
 const CARET_MARKS: Readonly<Record<CaretShape, Readonly<Record<CaretMark["side"], CaretMark>>>> = {
-  block: { left: Object.freeze({ shape: "block", side: "left" }), right: Object.freeze({ shape: "block", side: "right" }) },
-  underline: { left: Object.freeze({ shape: "underline", side: "left" }), right: Object.freeze({ shape: "underline", side: "right" }) },
-  bar: { left: Object.freeze({ shape: "bar", side: "left" }), right: Object.freeze({ shape: "bar", side: "right" }) },
+  block: { left: mark("block", "left"), right: mark("block", "right") },
+  underline: { left: mark("underline", "left"), right: mark("underline", "right") },
+  bar: { left: mark("bar", "left"), right: mark("bar", "right") },
 };
 
 /** The one `CaretMark` for `shape` on `side`. */

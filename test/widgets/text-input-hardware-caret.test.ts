@@ -145,6 +145,29 @@ describe("TextInput on the terminal's own cursor", () => {
     });
   });
 
+  describe("where the row shows other glyphs than its value", () => {
+    // The side is read off the glyphs the row is ordered as, so a row shown
+    // left to right puts the bar where a left-to-right value would.
+    const caretOf = (options: Partial<TextInputOptions>, cursor: number): string => {
+      const host = scriptedHost({ cols: 20, rows: 2 });
+      const field = new TextInput({ caretShape: "bar", ...options });
+      field.focus(0);
+      field.cursorPosition = asCodeUnit(cursor);
+      const app = new WidgetApp({ host, surface: "alternate", clock: fakeClock(0), textOrder: "visual", view: () => field });
+      void app.run();
+      app.stop();
+      return /\r\x1b\[(\d+)C\x1b\[5 q\x1b\[\?25h(?![\s\S]*\x1b\[5 q)/.exec(host.output())![1]!;
+    };
+
+    it("stands a masked right-to-left value's bar as a left-to-right one's", () => {
+      expect(caretOf({ value: "אבג", password: true }, 1)).toBe(caretOf({ value: "abc", password: true }, 1));
+    });
+
+    it("stands the bar after a pictured override as after any glyph", () => {
+      expect(caretOf({ value: "\u202Eabc" }, 2)).toBe(caretOf({ value: "xabc" }, 2));
+    });
+  });
+
   it("goes home from the caret's row on an inline surface, and back to the frame's last row on hand-back", async () => {
     const { app, host, done } = start({ multiline: true, value: "ab\ncd", minRows: 2 }, { surface: "inline" });
     // A multiline field starts with the cursor at its start: the first row,
