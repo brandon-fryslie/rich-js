@@ -4,15 +4,22 @@
     {
       "version": "pr-560",
       "ref": "refs/pull/560/merge",
-      "sha": "db80b969709909480736b52c6be7bed1e9b69b64",
-      "timestamp": "2026-11-05T20:01:52.723Z",
+      "sha": "87ee3d4492ef336c394dda341f2db62980d5097f",
+      "timestamp": "2026-11-05T20:08:05.689Z",
       "commits": [
         {
-          "sha": "db80b969709909480736b52c6be7bed1e9b69b64",
+          "sha": "87ee3d4492ef336c394dda341f2db62980d5097f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:00:07Z",
-          "message": "Merge fd460207d9710240195d91997890f599c0e9ec39 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
+          "timestamp": "2026-11-05T20:06:18Z",
+          "message": "Merge 6fe8f9cd873f21c423b056ce95101f5a2660a855 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
+        },
+        {
+          "sha": "6fe8f9cd873f21c423b056ce95101f5a2660a855",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T13:06:03-07:00",
+          "message": "Kitty keys: keypad navigation, the shifted key reported (flag 4), quit keys checked against the app's own keyboard, a failed ask fails the app, one record per take (rich-control-codes-xh4n.anf)\n"
         },
         {
           "sha": "fd460207d9710240195d91997890f599c0e9ec39",
