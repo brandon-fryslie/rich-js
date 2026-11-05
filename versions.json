@@ -4,15 +4,22 @@
     {
       "version": "pr-552",
       "ref": "refs/pull/552/merge",
-      "sha": "42b3e87f38fa0e67ef5ce0067a15fa426ae94f49",
-      "timestamp": "2026-11-05T12:15:19.439Z",
+      "sha": "7e612e00d8f68b56aa2236344700cae47c387149",
+      "timestamp": "2026-11-05T12:17:55.390Z",
       "commits": [
         {
-          "sha": "42b3e87f38fa0e67ef5ce0067a15fa426ae94f49",
+          "sha": "7e612e00d8f68b56aa2236344700cae47c387149",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:12:57Z",
-          "message": "Merge 406f953b8331d70375a427d17f9dd0b1bfae69af into c3ab55d91dddfd472d86768b43ff50788681d949\n"
+          "timestamp": "2026-11-05T12:15:27Z",
+          "message": "Merge fd4f803c3b346909b78411b41ed808c02795cd6d into c3ab55d91dddfd472d86768b43ff50788681d949\n"
+        },
+        {
+          "sha": "fd4f803c3b346909b78411b41ed808c02795cd6d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T05:15:16-07:00",
+          "message": "The reader's-pace test waits for the card to animate and claims only that keys land (rich-unfiled-791c.m6cg)\n"
         },
         {
           "sha": "406f953b8331d70375a427d17f9dd0b1bfae69af",
