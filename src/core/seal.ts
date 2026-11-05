@@ -20,7 +20,7 @@
  * its stamp, and the controls are written around the survivors.
  */
 
-import { advance, closersOf, mirroredCluster, opened, withoutExplicit, type Open } from "./bidi.js";
+import { advance, closersOf, lineLevels, mirroredCluster, opened, paragraph, visualOrder, withoutExplicit, type Open } from "./bidi.js";
 import { cellLen, EXTENDER, graphemes, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
@@ -88,6 +88,37 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
 export function sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
   const edges = withEdges(contained(segments, order));
   return order === "words" ? turnedBack(edges) : edges;
+}
+
+/**
+ * The segments of `line`, one row of a frame, in the order a terminal that
+ * orders what it is written (`logical`) shows them left to right, each as its
+ * index. [LAW:one-source-of-truth] The row is ordered as `sealed` writes it,
+ * isolates and all, inside the terminal's left-to-right paragraph, so how a row
+ * is written has one answer. What `line` holds past a row is part of the line
+ * the terminal orders: where only whitespace follows a row, L1 sets the
+ * whitespace ending it at the terminal's level, so a caller passes what is
+ * drawn after the row it asks about.
+ */
+export function shownWritten(line: readonly Segment[]): number[] {
+  const owners = line.map(() => ({}));
+  const written = [...sealed(line.map((segment, index) => Segment.anchorLines([[segment]], owners[index]!)[0]![0]!), "logical")];
+  const indexOf = new Map(owners.map((owner, index) => [owner, index]));
+  const units: (number | undefined)[] = [];
+  for (const segment of written) {
+    let anchor = segment.style?.anchor;
+    while (anchor !== undefined && !indexOf.has(anchor.owner)) anchor = anchor.inner;
+    const index = anchor === undefined ? undefined : indexOf.get(anchor.owner);
+    for (let unit = 0; unit < segment.text.length; unit++) units.push(index);
+  }
+  const text = written.map((segment) => segment.text).join("");
+  const { level, levels } = paragraph(text, 0);
+  const shown = new Set<number>();
+  for (const unit of visualOrder(lineLevels(text, levels, level))) {
+    const index = units[unit];
+    if (index !== undefined) shown.add(index);
+  }
+  return [...shown];
 }
 
 /** `segments` with each one's edges judged on the text as laid out (`edged`). */

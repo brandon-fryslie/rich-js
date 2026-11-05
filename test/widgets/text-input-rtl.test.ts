@@ -375,6 +375,107 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
     expect(input.cursorPosition).toBe(HEBREW.length);
   });
 
+  it.each(["plain", "logical", "visual", "words"] as const)("steps onto the stop the screen shows beside the caret, under %s", (order) => {
+    const bytesOf = (input: TextInput, drawn: RenderOptions): string =>
+      segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: order });
+    for (const value of [...BIDI_VALUES, ...LONE_MARKS, "אבג\nabc", "abc אבג\nדהו"]) {
+      const input = new TextInput({ value, multiline: true });
+      input.cursorStyleOverride = Style.parse("bold reverse");
+      input.focus(0);
+      const drawn: RenderOptions = { maxWidth: 8, textOrder: order };
+      for (const stop of stops(value)) {
+        // In the frame that draws the caret at `stop`: where a terminal shows
+        // it, and the glyphs drawn beside it, read by pressing them.
+        input.cursorPosition = asCodeUnit(stop);
+        const frame = Segment.splitLines(render(input, drawn));
+        const at = caretIn(frame)!;
+        if (order === "logical") {
+          const bytes = bytesOf(input, drawn);
+          const { y, unit } = caretUnit(bytes);
+          at.x = screenColumn(rows(bytes)[y]!, unit);
+        }
+        const drawnTo = Math.max(...frame[at.y]!.flatMap((segment, index) =>
+          segment.text.trim() !== "" || segment.style?.reverse === true ? [Segment.getLineLength(frame[at.y]!.slice(0, index + 1))] : []));
+        const pressed = (x: number): number => {
+          input.handleMouse({ type: "mouse_down", x, y: at.y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, at.y), time: 0 });
+          return input.cursorPosition;
+        };
+        for (const [name, side] of [["left", -1], ["right", 1]] as const) {
+          let beside: number | undefined;
+          for (let x = at.x + side; beside === undefined && x >= 0 && x < drawnTo; x += side) {
+            const there = pressed(x);
+            if (there !== stop) beside = there;
+          }
+          if (beside === undefined) continue;
+          input.cursorPosition = asCodeUnit(stop);
+          render(input, drawn);
+          input.handleKey(key(name));
+          expect(input.cursorPosition, `${JSON.stringify(value)} from ${stop}, ${name}`).toBe(beside);
+        }
+      }
+    }
+  });
+
+  it("steps off the end of a right-to-left row a terminal shows its caret right of", () => {
+    // Logical: only whitespace follows the row, so the terminal shows the caret's blank at its right.
+    const input = new TextInput({ value: HEBREW, multiline: true });
+    input.focus(0);
+    const drawn: RenderOptions = { maxWidth: 20, textOrder: "logical" };
+    input.cursorPosition = asCodeUnit(3);
+    render(input, drawn);
+    input.handleKey(key("left"));
+    expect(input.cursorPosition).toBe(0);
+    input.cursorPosition = asCodeUnit(3);
+    render(input, drawn);
+    input.handleKey(key("right"));
+    expect(input.cursorPosition).toBe(3);
+  });
+
+  it("presses the stops of a row a scroll arrow follows where a terminal shows them", () => {
+    const value = "אבג\nדהו\nזחט";
+    const input = new TextInput({ value, multiline: true, maxRows: 2 });
+    input.cursorStyleOverride = Style.parse("bold reverse");
+    input.focus(0);
+    const drawn: RenderOptions = { maxWidth: 12, textOrder: "logical" };
+    for (const stop of [4, 5, 6, 7]) {
+      input.cursorPosition = asCodeUnit(stop);
+      const frame = Segment.splitLines(render(input, drawn));
+      const bytes = segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "logical" });
+      const { y, unit } = caretUnit(bytes);
+      expect(rows(bytes)[y]).toContain("▼");
+      const x = screenColumn(rows(bytes)[y]!, unit);
+      input.cursorPosition = asCodeUnit(0);
+      input.handleMouse({ type: "mouse_down", x, y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, y), time: 0 });
+      expect(input.cursorPosition, `at ${stop}`).toBe(stop);
+    }
+  });
+
+  it.each(["plain", "visual"] as const)("steps back out of a row onto the end of the row a wrap dropped a gap after, and types there, under %s", (order) => {
+    for (const value of ["abc   def", "אבג   דהו"]) {
+      const input = new TextInput({ value, multiline: true, wrap: () => [{ start: asCodePoint(0), end: asCodePoint(3) }, { start: asCodePoint(6), end: asCodePoint(9) }] });
+      input.focus(0);
+      const drawn: RenderOptions = { maxWidth: 3, textOrder: order };
+      const back = order === "plain" || value.startsWith("a") ? "left" : "right";
+      input.cursorPosition = asCodeUnit(6);
+      render(input, drawn);
+      input.handleKey(key(back));
+      expect(input.cursorPosition, value).toBe(3);
+      input.handleKey(key("x", "X"));
+      expect(input.value, value).toBe(`${value.slice(0, 3)}X${value.slice(3)}`);
+    }
+  });
+
+  it("moves Up onto the end of a row a wrap dropped a gap after, and Down back", () => {
+    const input = new TextInput({ value: "abc   def", multiline: true, wrap: () => [{ start: asCodePoint(0), end: asCodePoint(3) }, { start: asCodePoint(6), end: asCodePoint(9) }] });
+    input.focus(0);
+    render(input, { maxWidth: 3, textOrder: "plain" });
+    input.cursorPosition = asCodeUnit(9);
+    input.handleKey(key("up"));
+    expect(input.cursorPosition).toBe(3);
+    input.handleKey(key("down"));
+    expect(input.cursorPosition).toBe(9);
+  });
+
   it("orders a right-to-left placeholder at its own direction", () => {
     const input = new TextInput({ value: "", placeholder: "חפש..." });
     input.cursorStyleOverride = Style.parse("bold reverse");
