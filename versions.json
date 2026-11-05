@@ -4,15 +4,22 @@
     {
       "version": "pr-561",
       "ref": "refs/pull/561/merge",
-      "sha": "4a8632d6e6242a9abf48cf890adb488731809a1d",
-      "timestamp": "2026-11-05T21:04:09.790Z",
+      "sha": "356c2a501857f0493f7ee85dd744b009e83370f8",
+      "timestamp": "2026-11-05T21:13:27.696Z",
       "commits": [
         {
-          "sha": "4a8632d6e6242a9abf48cf890adb488731809a1d",
+          "sha": "356c2a501857f0493f7ee85dd744b009e83370f8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:01:47-07:00",
-          "message": "Merge 358c8bac23012edd28b7b0aeb68a769149d455f4 into 745a2a57cdae7930809b57710050951727b81ddc\n"
+          "timestamp": "2026-11-05T21:11:07Z",
+          "message": "Merge 07a8069aba52fa6d01fe6889a9cbc4a42ebd3504 into 745a2a57cdae7930809b57710050951727b81ddc\n"
+        },
+        {
+          "sha": "07a8069aba52fa6d01fe6889a9cbc4a42ebd3504",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:10:56-07:00",
+          "message": "Review fixes: caret column skips control segments, shape written on change, pointer shape survives suspend (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "358c8bac23012edd28b7b0aeb68a769149d455f4",
