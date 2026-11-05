@@ -74,9 +74,13 @@ const ORDER_OF: Readonly<Record<TerminalName, TextOrder>> = {
  * Not listed, each for a reason: xterm.js lays a row out through the browser and
  * advances for an isolate, and VS Code is xterm.js. kitty's `force_ltr yes`
  * would want `visual`, and is a setting the environment cannot show; `words` is
- * its default. WezTerm's bidi is a setting the environment cannot show. iTerm2,
- * Konsole, Terminal.app, mintty and mlterm are unmeasured. Any program may state
- * its order.
+ * its default. WezTerm's bidi is a setting the environment cannot show. iTerm2
+ * 3.7.7, at its default settings, reorders the whole line through its isolates,
+ * so they contain nothing. Terminal.app 2.15's isolates contain at zero width, but
+ * it advances a cell for each RLE, RLO and PDF (LRE and LRO unmeasured), and
+ * under `logical` those reach it from content and from the closers `sealed`
+ * writes; whether it reorders at all is unmeasured. Konsole, mintty and mlterm
+ * are unmeasured. Any program may state its order.
  */
 export function detectTextOrder(env: Env, isTTY: boolean): TextOrder {
   return textOrderOf(identifyTerminal(env), isAttended(isTTY, env));
