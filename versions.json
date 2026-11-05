@@ -4,15 +4,22 @@
     {
       "version": "pr-557",
       "ref": "refs/pull/557/merge",
-      "sha": "5c19ef185e61d43ac0cb4a41109c8df5b7fe0ac0",
-      "timestamp": "2026-11-05T17:19:10.560Z",
+      "sha": "611e217c06bf7c8b770819b6348eb0b321002c79",
+      "timestamp": "2026-11-05T17:28:45.262Z",
       "commits": [
         {
-          "sha": "5c19ef185e61d43ac0cb4a41109c8df5b7fe0ac0",
+          "sha": "611e217c06bf7c8b770819b6348eb0b321002c79",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:16:33-07:00",
-          "message": "Merge 2b162b21c3d052547189c1db836045e90e4d3307 into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
+          "timestamp": "2026-11-05T17:26:48Z",
+          "message": "Merge a114493ed98657e607bf18fce919117a31f7aa4a into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
+        },
+        {
+          "sha": "a114493ed98657e607bf18fce919117a31f7aa4a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:26:36-07:00",
+          "message": "words follows kitty's runs: unstamped text passes whole, faces and box cells end a run, and a run is written in the form kitty shows as laid (rich-control-codes-xh4n.6pi)\n"
         },
         {
           "sha": "2b162b21c3d052547189c1db836045e90e4d3307",
