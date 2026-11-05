@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { asCodeUnit, graphemes } from "../../src/core/cells.js";
+import { asCodePoint, asCodeUnit, graphemes } from "../../src/core/cells.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { render, type RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
@@ -239,5 +239,68 @@ describe("a press reads the frame it lands on", () => {
         }
       }
     }
+  });
+});
+
+// Where the caret is drawn in `frame`: its row and column, or nothing.
+function caretIn(frame: readonly Segment[][]): { x: number; y: number } | undefined {
+  for (const [y, row] of frame.entries()) {
+    let x = 0;
+    for (const segment of row) {
+      if (segment.style?.reverse === true) return { x, y };
+      x += segment.cellLength;
+    }
+  }
+  return undefined;
+}
+
+// A mark the value holds alone, after a control or a line break, beside right-to-left text.
+const LONE_MARKS = ["א​ﾞב", "א\nﾞב", "ﾞאב", "אב​́ג"];
+
+describe("every stop of every row is drawn, pressed and stepped from", () => {
+  const values = [...BIDI_VALUES, ...LONE_MARKS, "אבגדהוזחטיכלמנסעפצקרשת abc"];
+  it.each(["plain", "visual", "words"] as const)("under %s, one line scrolled and rows wrapped", (order) => {
+    for (const multiline of [false, true]) {
+      for (const value of values) {
+        const input = new TextInput({ value, multiline });
+        input.cursorStyleOverride = Style.parse("bold reverse");
+        input.focus(0);
+        const drawn: RenderOptions = { maxWidth: 8, textOrder: order };
+        for (const stop of stops(value)) {
+          const what = `${JSON.stringify(value)} at ${stop}, multiline ${multiline}`;
+          input.cursorPosition = asCodeUnit(stop);
+          const frame = Segment.splitLines(render(input, drawn));
+          const at = caretIn(frame);
+          expect(at, what).toBeDefined();
+          input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
+          input.handleMouse({ type: "mouse_down", x: at!.x, y: at!.y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, at!.x, at!.y), time: 0 });
+          expect(input.cursorPosition, what).toBe(stop);
+          for (const step of ["left", "right"]) {
+            input.cursorPosition = asCodeUnit(stop);
+            render(input, drawn);
+            expect(() => input.handleKey(key(step)), `${what}, ${step}`).not.toThrow();
+          }
+        }
+      }
+    }
+  });
+
+  it("draws the caret at the end of a row the wrap dropped a space after", () => {
+    const input = new TextInput({ value: "abc def", multiline: true, wrap: () => [{ start: asCodePoint(0), end: asCodePoint(3) }, { start: asCodePoint(4), end: asCodePoint(7) }] });
+    input.cursorStyleOverride = Style.parse("bold reverse");
+    input.focus(0);
+    input.cursorPosition = asCodeUnit(3);
+    const frame = Segment.splitLines(render(input, { maxWidth: 3, textOrder: "plain" }));
+    expect(caretIn(frame)).toEqual({ x: 3, y: 0 });
+    input.handleKey(key("right"));
+    expect(input.cursorPosition).toBe(4);
+  });
+
+  it("orders a right-to-left placeholder at its own direction", () => {
+    const input = new TextInput({ value: "", placeholder: "חפש..." });
+    input.cursorStyleOverride = Style.parse("bold reverse");
+    input.focus(0);
+    const [row] = Segment.splitLines(render(input, { maxWidth: 40, textOrder: "visual" }));
+    expect(row!.map((segment) => segment.text).join("")).toContain("...שפח");
   });
 });
