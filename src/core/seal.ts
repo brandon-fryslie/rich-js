@@ -20,8 +20,8 @@
  * its stamp, and the controls are written around the survivors.
  */
 
-import { advance, closersOf, opened, withoutExplicit, type Open } from "./bidi.js";
-import { cellLen, EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
+import { advance, closersOf, mirroredCluster, opened, withoutExplicit, type Open } from "./bidi.js";
+import { cellLen, EXTENDER, graphemes, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
@@ -85,9 +85,15 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
  * on the text as it is written, so a control the order removes cannot hide a
  * joiner from them.
  */
-export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
+export function sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
+  const edges = withEdges(contained(segments, order));
+  return order === "words" ? turnedBack(edges) : edges;
+}
+
+/** `segments` with each one's edges judged on the text as laid out (`edged`). */
+function* withEdges(segments: Iterable<Segment>): Iterable<Segment> {
   let reaches = false;
-  for (const segment of contained(segments, order)) {
+  for (const segment of segments) {
     if (segment.isControl) {
       yield segment;
       continue;
@@ -96,6 +102,147 @@ export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable
     if (text !== "") reaches = !ENDS_CLUSTER.test(text);
     yield text === segment.text ? segment : new Segment(text, segment.style, segment.control);
   }
+}
+
+// HarfBuzz's right-to-left scripts (`hb_script_get_horizontal_direction`), as
+// far as the engine's Unicode knows them: Garay and Sidetic are newer than
+// Node 20's. A run's direction is the first of its characters whose script is
+// not Common, Inherited or Unknown (`guess_segment_properties`).
+const RIGHT_TO_LEFT_SCRIPT = pattern(
+  new RegExp(
+    `^[${[
+      "Arabic", "Hebrew", "Syriac", "Thaana", "Cypriot", "Kharoshthi", "Phoenician", "Nko", "Lydian", "Avestan",
+      "Imperial_Aramaic", "Inscriptional_Pahlavi", "Inscriptional_Parthian", "Old_South_Arabian", "Old_Turkic",
+      "Samaritan", "Mandaic", "Meroitic_Cursive", "Meroitic_Hieroglyphs", "Manichaean", "Mende_Kikakui", "Nabataean",
+      "Old_North_Arabian", "Palmyrene", "Psalter_Pahlavi", "Hatran", "Adlam", "Hanifi_Rohingya", "Old_Sogdian",
+      "Sogdian", "Elymaic", "Chorasmian", "Yezidi", "Old_Uyghur",
+    ]
+      .map((script) => `\\p{Script=${script}}`)
+      .join("")}]`,
+    "u",
+  ),
+);
+const UNSCRIPTED = pattern(/^[\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u);
+// The cells kitty draws in no shaped font (`font_for_cell`, kitty/fonts.c): a
+// blank, a tab, and what its box font draws — box drawing, blocks, braille,
+// powerline and legacy computing — and an emoji, drawn from its own font. A
+// shaped run always ends at one.
+const RUN_BREAKS = String.raw`[\p{Emoji_Presentation}\0\t \n\u2002\u2500-\u259f\u25c9\u25cb\u25cf\u25d6\u25d7\u25dc-\u25e5\u2800-\u28ff\ue0b0-\ue0bf\ue0d6\ue0d7\uee00-\uee0b\uf5d0-\uf60d\u{1fb00}-\u{1fbae}\u{1fbce}-\u{1fbef}\u{1cd00}-\u{1cde5}\u{1cc1b}-\u{1cc3f}\u{1ce16}-\u{1ce19}\u{1ce51}-\u{1ceaf}]`;
+
+const SPLIT_AT_BREAKS = pattern(new RegExp(`(${RUN_BREAKS})`, "u"));
+
+interface Piece {
+  readonly text: string;
+  readonly style: Segment["style"];
+  /** The segment it came from: only pieces of one segment are written as one again. */
+  readonly source: Segment;
+}
+
+/** Whether HarfBuzz, guessing, shapes `run` right to left. */
+function shapedRightToLeft(run: readonly Piece[]): boolean {
+  for (const { text } of run) for (const character of text) if (!UNSCRIPTED.test(character)) return RIGHT_TO_LEFT_SCRIPT.test(character);
+  return false;
+}
+
+/** The face kitty draws `style` in: bold and italic each choose a font, so a run ends where either changes. */
+const faceOf = (style: Segment["style"]): string => `${style?.bold === true}${style?.italic === true}`;
+
+/**
+ * The bytes that make kitty show `run`, one of its shaped runs, as its cells lie.
+ * kitty draws a run it guesses right to left reversed and mirrored, so such a
+ * run is written reversed and mirrored. Where neither form shows the cells — the
+ * run starts with right-to-left script and ends with left-to-right — nothing can,
+ * and it is written as it lies.
+ */
+function shownAsLaid(run: readonly Piece[]): readonly Piece[] {
+  if (!shapedRightToLeft(run)) return run;
+  // Clusters are found in the whole run, because a style edge inside one is no
+  // place to cut it: reversed apart, a mark lands on another letter.
+  const owners = run.flatMap((piece) => new Array<Piece>(piece.text.length).fill(piece));
+  const clusters: string[] = [];
+  const cells: Piece[] = [];
+  let unit = 0;
+  for (const cluster of graphemes(run.map((piece) => piece.text).join(""))) {
+    clusters.push(cluster);
+    for (let cell = cellLen(cluster); cell > 0; cell--) cells.push(owners[unit]!);
+    unit += cluster.length;
+  }
+  // A style belongs to a cell, which the display does not move: each turned
+  // cluster takes the style of the cell it is written into.
+  const turned: Piece[] = [];
+  let cell = 0;
+  for (const cluster of clusters.reverse()) {
+    const { style, source } = cells[cell] ?? owners[owners.length - 1]!;
+    turned.push({ text: mirroredCluster(cluster), style, source });
+    cell += cellLen(cluster);
+  }
+  return shapedRightToLeft(turned) ? turned : run;
+}
+
+/**
+ * `segments` for a display that reverses each run it shapes right to left
+ * (`words`): every run holding a cell laid out in visual order is written so
+ * the display's reversal and HarfBuzz's mirroring put each cluster back in the
+ * cell it was laid out in (`shownAsLaid`). A run with no such cell is left for
+ * the display to reverse as it would. Runs end where kitty's do, but for a font
+ * the user configured, which no program can see.
+ */
+function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
+  let run: Piece[] = [];
+  let laid = false;
+  let pending: Piece[] = [];
+  const flush = (): void => {
+    pending.push(...(laid ? shownAsLaid(run) : run));
+    run = [];
+    laid = false;
+  };
+  for (const segment of segments) {
+    if (segment.isControl) {
+      flush();
+      yield* joined(pending);
+      pending = [];
+      yield segment;
+      continue;
+    }
+    const visual = segment.style?.bidi?.order === "visual";
+    for (const [index, text] of segment.text.split(SPLIT_AT_BREAKS).entries()) {
+      if (text === "") continue;
+      const isBreak = index % 2 === 1;
+      if (isBreak || (run.length > 0 && faceOf(run[0]!.style) !== faceOf(segment.style))) flush();
+      if (isBreak) {
+        pending.push({ text, style: segment.style, source: segment });
+        // A line ends every run, so what precedes it is final.
+        if (text === "\n") {
+          yield* joined(pending);
+          pending = [];
+        }
+      } else {
+        run.push({ text, style: segment.style, source: segment });
+        laid ||= visual;
+      }
+    }
+  }
+  flush();
+  yield* joined(pending);
+}
+
+/**
+ * `pieces` as segments, neighbours from one segment written as one again, so a
+ * segment edge stays where it was and the edges are judged as before.
+ */
+function* joined(pieces: readonly Piece[]): Iterable<Segment> {
+  let text = "";
+  let from: Piece | undefined;
+  const written = (piece: Piece): Segment => (text === piece.source.text && piece.style === piece.source.style ? piece.source : new Segment(text, piece.style));
+  for (const piece of pieces) {
+    if (from !== undefined && text !== "" && (piece.source !== from.source || piece.style !== from.style)) {
+      yield written(from);
+      text = "";
+    }
+    text += piece.text;
+    from = piece;
+  }
+  if (from !== undefined && text !== "") yield written(from);
 }
 
 /** `segments` with what the census withholds gone and the order's bidi controls written. */

@@ -9,7 +9,7 @@
  * VTE's `Terminal::insert_char` does. `none` shows characters as they arrive.
  */
 
-import { lineLevels, paragraph, visualOrder } from "../../src/core/bidi.js";
+import { lineLevels, mirrored, paragraph, visualOrder } from "../../src/core/bidi.js";
 import { codePointWidth } from "../../src/core/cell-widths.js";
 
 const ESCAPES = /\x1b\[[0-9;]*m|\x1b\]8;[^\x1b\x07]*(?:\x1b\\|\x07)/g;
@@ -40,6 +40,25 @@ export function atColumnZero(row: string): string {
 
 /** A row on VTE: `implicit`, after what column 0 discards. */
 export const implicitVte = (row: string): string => implicit(atColumnZero(row));
+
+/**
+ * A row on kitty with its default `force_ltr no` (`kitty/fonts.c`): split at
+ * every space and box-drawing, block or braille cell into runs shaped alone, a run whose first character of a script
+ * other than Common, Inherited and Unknown is Arabic or Hebrew reversed by cluster and
+ * mirrored, as HarfBuzz shapes it right to left. Modelled for one font and one
+ * face, so a run ends nowhere else.
+ */
+export function kitty(row: string): string {
+  return row
+    .split(/([ \u2002\u2500-\u259f\u2800-\u28ff])/u)
+    .map((run) => {
+      const scripted = Array.from(run).find((character) => !/[\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u.test(character));
+      if (scripted === undefined || !/[\p{Script=Arabic}\p{Script=Hebrew}]/u.test(scripted)) return run;
+      const clusters = Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(run), ({ segment }) => segment);
+      return clusters.map((cluster) => String.fromCodePoint(mirrored(cluster.codePointAt(0)!)) + Array.from(cluster).slice(1).join("")).reverse().join("");
+    })
+    .join("");
+}
 
 /** Whether every explicit control in `row` stands in a balanced nest, so nothing reaches past the row. */
 export function balancedControls(row: string): boolean {

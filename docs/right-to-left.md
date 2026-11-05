@@ -29,9 +29,9 @@ const output = new Console({ textOrder: "logical" });
 output.print("שלום עולם");
 ```
 
-## The three text orders
+## The four text orders
 
-`textOrder` is one of three values, and it says what the destination does with
+`textOrder` is one of four values, and it says what the destination does with
 direction. `Console`, `App` and `renderToString` all take it.
 
 | Order | The destination | What rich-js writes |
@@ -39,6 +39,7 @@ direction. `Console`, `App` and `renderToString` all take it.
 | `plain` | Is not a display, or nothing is known about it | The characters in logical order, with no bidi control |
 | `logical` | Reorders text itself and takes the controls at zero width | Logical order, each row sealed in an isolate |
 | `visual` | Does not reorder | Rows already reversed, mirrored and shaped, with no controls |
+| `words` | Reverses right-to-left text inside each run between spaces, and nowhere else | Rows as under `visual`, each right-to-left word turned back so the display's reversal puts it right |
 
 Each order above `plain` is a claim about the terminal. Visual order on a
 terminal that also reorders reverses the text twice. Isolates on a terminal
@@ -52,8 +53,11 @@ variable it may have inherited from the program that started it.
 
 - **`visual`:** Windows Terminal, Alacritty, foot and Ghostty.
 - **`logical`:** VTE terminals, such as GNOME Terminal.
+- **`words`:** kitty, which reverses right-to-left text inside each run between
+  spaces and runs no bidi across a line. Rows are laid out as under `visual`, and
+  each right-to-left word is written in the order kitty turns back.
 - **`plain`:** everything else, including pipes, files, tmux, screen, zellij,
-  Emacs, Vim and Neovim terminals, VS Code, xterm.js, kitty, iTerm2, Konsole and
+  Emacs, Vim and Neovim terminals, VS Code, xterm.js, iTerm2, Konsole and
   Terminal.app.
 
 WezTerm is `plain` because its bidi is a setting the environment cannot show. If
@@ -142,7 +146,14 @@ const rows = Segment.splitLines(render(line, { maxWidth: 12, textOrder: "visual"
   was open at its start, so a control in the middle of the row stops acting past
   the split.
 - **`TextInput`.** Up and Down keep a column counted through the text, not across the screen, so on a right-to-left row they land where the text's order puts that column.
-- **kitty.** It shows right-to-left lines with their words in left-to-right order.
+- **kitty.** A run kitty shapes also ends where the font changes, which no
+  program can see: punctuation drawn from the main font beside an Arabic word
+  drawn from a fallback font lands on the wrong side of that word. A run with
+  no space in it that starts with right-to-left script and ends with
+  left-to-right — two table cells drawn with no padding between them — has no
+  bytes kitty shows as laid out, and is written as it lies. With
+  `force_ltr yes`, which the environment cannot show, kitty wants `visual`;
+  state it.
 - **`RichText.plain`.** It holds the controls in every order, so a program writing
   `text.plain` itself gets no containment.
 - **Export.** `exportText` from a `visual` console holds visual text, as a copy off

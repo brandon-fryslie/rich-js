@@ -14,7 +14,7 @@ import { betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.
 import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
-import type { ParagraphLevel, TextOrder } from "./text-order.js";
+import { laidOutVisually, type ParagraphLevel, type TextOrder } from "./text-order.js";
 
 const STRIPPED = pattern(new RegExp(controlClass((disposition) => disposition === "strip"), "u"));
 const STOOD_IN_FOR = pattern(new RegExp(controlClass((disposition) => disposition === "line-break" || disposition === "pictured"), "u"));
@@ -895,7 +895,7 @@ export class RichText implements Renderable, Measurable {
   wrap(options: WrapOptions): RichText[] {
     // [LAW:single-enforcer] The type refuses `visual`; this refuses it to a
     // caller the type cannot reach — a cast `RenderOptions`, or JavaScript.
-    if (options.textOrder === ("visual" as TextOrder)) throw new RangeError("RichText.wrap: a visual row is laid out by its whole line, so no RichText draws it alone");
+    if (laidOutVisually(options.textOrder ?? "plain")) throw new RangeError("RichText.wrap: a visual row is laid out by its whole line, so no RichText draws it alone");
     const format = this._format.get();
     return this._layout(options).rows.map(({ draft, direction }) => {
       const piece = new RichText(draft.text, { ...format, end: "", noWrap: true, tabSize: this._tabSize, direction });
@@ -1018,7 +1018,7 @@ export class RichText implements Renderable, Measurable {
       // ordered by what it holds.
       // The levels are resolved over the raw line, its explicit controls and
       // marks still in it, and `reorder` takes them out as `without` did.
-      const ordered = order === "visual" && directed ? reorder(drawnSegments(raw, base, options).segments, order, stated) : undefined;
+      const ordered = laidOutVisually(order) && directed ? reorder(drawnSegments(raw, base, options).segments, order, stated) : undefined;
       // Under `logical` the paragraph level is what a row cannot find alone,
       // and the row states it.
       const level = order === "logical" && directed ? paragraphLevelOf(line.text, stated) : stated;

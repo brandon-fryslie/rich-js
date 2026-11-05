@@ -65,6 +65,12 @@ export function mirrored(codePoint: number): number {
   return MIRROR_OF.get(codePoint) ?? codePoint;
 }
 
+/** `cluster` with its base mirrored (L4), its marks kept. */
+export function mirroredCluster(cluster: string): string {
+  const base = cluster.codePointAt(0)!;
+  return String.fromCodePoint(mirrored(base)) + cluster.slice(base > 0xffff ? 2 : 1);
+}
+
 const hex = (codePoint: number): string => `\\u{${codePoint.toString(16)}}`;
 
 /**

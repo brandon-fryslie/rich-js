@@ -11,7 +11,7 @@
  * `plain` line passes through both.
  */
 
-import { isBidi, lineLevels, mirrored, openersAlong, paragraph, paragraphLevel, REMOVED, shaped, visualOrder, withoutExplicit, withoutMarks } from "./bidi.js";
+import { isBidi, lineLevels, mirroredCluster, openersAlong, paragraph, paragraphLevel, REMOVED, shaped, visualOrder, withoutExplicit, withoutMarks } from "./bidi.js";
 import { cellLen, graphemes } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
@@ -176,11 +176,6 @@ function clusterLevels(clusters: readonly string[], finished: readonly number[],
   return out;
 }
 
-function mirroredCluster(cluster: string): string {
-  const base = cluster.codePointAt(0)!;
-  return String.fromCodePoint(mirrored(base)) + cluster.slice(base > 0xffff ? 2 : 1);
-}
-
 /**
  * What `order` takes out of a line ahead of wrapping, and so out of its
  * measure: what will not reach the wire. Under `visual` that is X9's own step
@@ -188,10 +183,13 @@ function mirroredCluster(cluster: string): string {
  * L2 would move a trailing one to a row's first cell, where xterm.js advances
  * for it.
  */
+const shownRemovals = (text: string): string => withoutMarks(withoutExplicit(text));
+
 const REMOVALS: Readonly<Record<TextOrder, (text: string) => string>> = {
   plain: withoutExplicit,
   logical: (text) => text,
-  visual: (text) => withoutMarks(withoutExplicit(text)),
+  visual: shownRemovals,
+  words: shownRemovals,
 };
 
 /** Whether `order` takes `character` out of a line ahead of wrapping, as `REMOVALS` does. */
@@ -231,7 +229,7 @@ export function reorder(line: readonly Segment[], order: TextOrder, direction?: 
   }
 
   const { level, levels } = paragraph(text, direction);
-  const consumed = rewritten(line, REMOVALS.visual);
+  const consumed = rewritten(line, REMOVALS[order]);
   const kept = Segment.plainOf(consumed);
   const keptLevels: number[] = [];
   let at = 0;

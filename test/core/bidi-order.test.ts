@@ -9,8 +9,9 @@ import { Pretty } from "../../src/core/pretty.js";
 import { MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
 import { Console } from "../../src/core/console.js";
 import { renderToString, segmentToString, segmentsToString } from "../../src/core/render.js";
-import { resolveOutputTarget } from "../../src/core/color.js";
+import { ColorDepth, resolveOutputTarget } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
 import { Markdown } from "../../src/renderables/markdown.js";
@@ -21,7 +22,7 @@ import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Button } from "../../src/widgets/button.js";
-import { balancedControls, implicit, implicitVte, none, rows } from "./bidi-terminal.js";
+import { balancedControls, implicit, implicitVte, kitty, none, rows } from "./bidi-terminal.js";
 
 const RLO = "\u202e";
 const ARABIC = "مرحبا بالعالم";
@@ -67,7 +68,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     ["a thrown message in Pretty", () => new Pretty([{ get a(): number { throw new Error(`${RLO}abc`); } }, after])],
   ];
 
-  for (const order of ["plain", "logical", "visual"] as const) {
+  for (const order of ["plain", "logical", "visual", "words"] as const) {
     test.each(shapes)(`${order}: %s`, (_name, make) => {
       const bytes = plainBytes(make(), order);
       expect(holds(bytes, order === "logical" ? implicit : none)).toBe(true);
@@ -88,7 +89,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
   });
 
   test("a raw segment is contained, in every order", () => {
-    for (const textOrder of ["plain", "logical", "visual"] as const) {
+    for (const textOrder of ["plain", "logical", "visual", "words"] as const) {
       const destination = { ...resolveOutputTarget(null, { isTTY: false }), textOrder };
       expect(segmentsToString([new Segment(`${RLO}abc`)], destination)).toBe("abc");
       expect(segmentToString(new Segment(`${RLO}abc`), destination)).toBe("abc");
@@ -135,7 +136,7 @@ describe("containment: an unclosed override reverses nothing after its Text", ()
     const rle = "\u202b";
     const pdf = "\u202c";
     const hebrew = "\u05d0\u05d1\u05d2\u05d3";
-    for (const textOrder of ["plain", "logical", "visual"] as const) {
+    for (const textOrder of ["plain", "logical", "visual", "words"] as const) {
       const bytes = plainBytes(new RichText(`${rle}${hebrew} ${pdf}\u05d4\u05d5\u05d6\u05d7`, { end: "", overflow: "ellipsis" }), textOrder, 4);
       expect(bytes).not.toContain("\u2026");
     }
@@ -227,6 +228,72 @@ describe("reading on a terminal that reorders", () => {
   });
 });
 
+describe("reading on kitty, which reverses right-to-left words and not lines", () => {
+  const onKitty = (renderable: Parameters<typeof renderToString>[0], width = 40): string[] => rows(plainBytes(renderable, "words", width)).map(kitty);
+  const visually = (renderable: Parameters<typeof renderToString>[0], width = 40): string[] => rows(plainBytes(renderable, "visual", width));
+
+  test.each([
+    ["an Arabic sentence", ARABIC],
+    ["a Hebrew sentence", HEBREW],
+    ["brackets in a right-to-left word", "(שלום) [עולם]"],
+    ["a Latin word in a right-to-left line", `${HEBREW} abc ${HEBREW}`],
+    ["a right-to-left word in a left-to-right line", `abc ${HEBREW} def`],
+  ])("shows %s as visual order shows it", (_name, line) => {
+    expect(onKitty(new RichText(line, { end: "" })).map(read)).toEqual(visually(new RichText(line, { end: "" })).map(read));
+  });
+
+  test("writes each word's letters in the order kitty turns back", () => {
+    const [row] = rows(plainBytes(new RichText(HEBREW, { end: "" }), "words"));
+    expect(row).toBe("עולם שלום");
+  });
+
+  test("shows a wrapped table of right-to-left cells as visual order does", () => {
+    const table = new Table({ showHeader: false });
+    table.addRow(HEBREW, ARABIC);
+    expect(onKitty(table).map(read)).toEqual(visually(table).map(read));
+  });
+
+  test("writes styled text with nothing to turn back as it writes it in plain order", () => {
+    const styled = (textOrder: TextOrder): string => renderToString(renderMarkup("[bold red]hello world[/]"), { width: 40, textOrder });
+    expect(styled("words")).toBe(styled("plain"));
+  });
+
+  test("turns back each face of a word apart, as kitty shapes each face alone", () => {
+    const [row] = rows(renderToString(renderMarkup("[bold]של[/]ום עולם"), { width: 40, textOrder: "words", colorSystem: "none" }));
+    expect(row!.trimEnd()).toBe("עולם וםשל");
+  });
+
+  test("ends a run at a box-drawing cell, where kitty ends one", () => {
+    const line = new RichText(HEBREW.replace(" ", "─"), { end: "" });
+    expect(onKitty(line)).toEqual(visually(line));
+  });
+
+  test("keeps each segment's edges, so a joiner at one is judged as in every order", () => {
+    const style = Style.parse("bold");
+    const bytes = (textOrder: TextOrder): string =>
+      segmentsToString([new Segment("\u{1f468}‍", style), new Segment("\u{1f469}", style)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder });
+    expect(bytes("words")).toBe(bytes("plain"));
+  });
+
+  // Shaped forms show as written under any shaper, and stay shaped in an export.
+  test("sends kitty the joined forms a row is laid out in", () => {
+    expect(plainBytes(new RichText(ARABIC, { end: "" }), "words")).toMatch(/[ﭐ-﷿ﹰ-﻿]/);
+  });
+
+  test("keeps a style on the cell it was laid out in, which kitty does not move", () => {
+    const bytes = renderToString(renderMarkup("[red]א[/]ב"), { width: 10, textOrder: "words", colorSystem: "ansi" });
+    expect(bytes).toMatch(/^א\x1b\[31mב/);
+  });
+
+  test("ends a run at an emoji, which kitty draws from its own font", () => {
+    expect(plainBytes(new RichText("אב😀גד", { end: "" }), "words")).toBe("גד😀אב");
+  });
+
+  test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {
+    expect(segmentsToString([new Segment(HEBREW)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "words" })).toBe(HEBREW);
+  });
+});
+
 describe("reading on a terminal that does not reorder", () => {
   test("visual order is what a reordering terminal shows, and needs no controls", () => {
     const bytes = plainBytes(new RichText(ARABIC, { end: "" }), "visual");
@@ -274,7 +341,7 @@ describe("reading on a terminal that does not reorder", () => {
 
   test("a Text's edge is a cell it draws, never a control", () => {
     const options = (textOrder: TextOrder) => ({ maxWidth: 40, textOrder });
-    for (const order of ["plain", "logical", "visual"] as const) {
+    for (const order of ["plain", "logical", "visual", "words"] as const) {
       const held = new RichText("\u2067\u05d0\u05d1\u2069").stylize("on red", 1, 3);
       expect(held.edgeStyle("left", options(order)).bgcolor?.name).toBe("red");
       expect(held.edgeStyle("right", options(order)).bgcolor?.name).toBe("red");
@@ -313,7 +380,7 @@ describe("reading on a terminal that does not reorder", () => {
 
   test("a line's cells do not change with order, a joiner emoji included", () => {
     const widths = (text: string): number[] =>
-      (["plain", "logical", "visual"] as const).map((order) => cellLen(rows(plainBytes(new RichText(text, { end: "" }), order, 60)).join("")));
+      (["plain", "logical", "visual", "words"] as const).map((order) => cellLen(rows(plainBytes(new RichText(text, { end: "" }), order, 60)).join("")));
     for (const text of [ARABIC, HEBREW, "لا إله إلا الله", "مَرْحَبًا", "سلام 👨\u200d👩\u200d👧 عليكم"]) {
       expect(new Set(widths(text)).size).toBe(1);
     }
@@ -425,7 +492,7 @@ describe("views of data and code", () => {
   const key = `${RLO}name`;
 
   test("printJson's bytes stay JSON, in every order, and show the control", () => {
-    for (const textOrder of ["plain", "logical", "visual"] as const) {
+    for (const textOrder of ["plain", "logical", "visual", "words"] as const) {
       const written = plainBytes(JSONRenderable.fromData({ [key]: "value" }, { indent: 0 } as never), textOrder, 200);
       expect(JSON.parse(written)).toEqual({ [key]: "value" });
       expect(written).toContain("\\u202e");
