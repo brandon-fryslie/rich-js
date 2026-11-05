@@ -4,15 +4,22 @@
     {
       "version": "pr-562",
       "ref": "refs/pull/562/merge",
-      "sha": "d6b68ba62dac32a5437e05d567d6d3e249c9a5f2",
-      "timestamp": "2026-11-05T21:53:35.975Z",
+      "sha": "bb9e7957fc09bfe3a1abb0867c014bb970cd687f",
+      "timestamp": "2026-11-05T22:00:47.486Z",
       "commits": [
         {
-          "sha": "d6b68ba62dac32a5437e05d567d6d3e249c9a5f2",
+          "sha": "bb9e7957fc09bfe3a1abb0867c014bb970cd687f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T14:51:40-07:00",
-          "message": "Merge 0fc1ad1a967a21577a36de141394019ec2c99a0b into b00624001284316cd6d5bb730f1564914df76f42\n"
+          "timestamp": "2026-11-05T21:58:47Z",
+          "message": "Merge 07b208666373c46736e5b2430b4e17e44e9a0744 into b00624001284316cd6d5bb730f1564914df76f42\n"
+        },
+        {
+          "sha": "07b208666373c46736e5b2430b4e17e44e9a0744",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:58:34-07:00",
+          "message": "Name the measured versions and PDF's cell, pin Terminal.app plain, and say it in the docs (rich-control-codes-xh4n.gp4)\n"
         },
         {
           "sha": "0fc1ad1a967a21577a36de141394019ec2c99a0b",
