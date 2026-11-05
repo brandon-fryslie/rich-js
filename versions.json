@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-557",
+      "ref": "refs/pull/557/merge",
+      "sha": "3257b37231cb2447d743a518411467e147b5ba42",
+      "timestamp": "2026-11-05T17:40:53.226Z",
+      "commits": [
+        {
+          "sha": "3257b37231cb2447d743a518411467e147b5ba42",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T17:39:08Z",
+          "message": "Merge cb5a82fd8c7404b531de5f6781e22de41e862008 into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
+        },
+        {
+          "sha": "cb5a82fd8c7404b531de5f6781e22de41e862008",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:38:57-07:00",
+          "message": "words keeps segment edges, finds a run's clusters whole, sends kitty letters, and grants only kitty (rich-control-codes-xh4n.6pi)\n"
+        },
+        {
+          "sha": "a114493ed98657e607bf18fce919117a31f7aa4a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:26:36-07:00",
+          "message": "words follows kitty's runs: unstamped text passes whole, faces and box cells end a run, and a run is written in the form kitty shows as laid (rich-control-codes-xh4n.6pi)\n"
+        },
+        {
+          "sha": "2b162b21c3d052547189c1db836045e90e4d3307",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:16:22-07:00",
+          "message": "The orders table names words (rich-control-codes-xh4n.6pi)\n"
+        },
+        {
+          "sha": "59a79142f41ffee357ef75c8e8b8026adcfd90cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:05:20-07:00",
+          "message": "kitty gets the words order: rows laid out visually, each right-to-left word written in the order kitty turns back (rich-control-codes-xh4n.6pi)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-556",
       "ref": "refs/pull/556/merge",
       "sha": "a8b96cbb56d600e37a2a709ced78b2e9e9f67e6c",
@@ -27,42 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-05T10:13:33-07:00",
           "message": "TextInput shows, hits and moves through right-to-left text in its destination's order (rich-control-codes-xh4n.itm)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-557",
-      "ref": "refs/pull/557/merge",
-      "sha": "611e217c06bf7c8b770819b6348eb0b321002c79",
-      "timestamp": "2026-11-05T17:28:45.262Z",
-      "commits": [
-        {
-          "sha": "611e217c06bf7c8b770819b6348eb0b321002c79",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:26:48Z",
-          "message": "Merge a114493ed98657e607bf18fce919117a31f7aa4a into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
-        },
-        {
-          "sha": "a114493ed98657e607bf18fce919117a31f7aa4a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:26:36-07:00",
-          "message": "words follows kitty's runs: unstamped text passes whole, faces and box cells end a run, and a run is written in the form kitty shows as laid (rich-control-codes-xh4n.6pi)\n"
-        },
-        {
-          "sha": "2b162b21c3d052547189c1db836045e90e4d3307",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:16:22-07:00",
-          "message": "The orders table names words (rich-control-codes-xh4n.6pi)\n"
-        },
-        {
-          "sha": "59a79142f41ffee357ef75c8e8b8026adcfd90cf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:05:20-07:00",
-          "message": "kitty gets the words order: rows laid out visually, each right-to-left word written in the order kitty turns back (rich-control-codes-xh4n.6pi)\n"
         }
       ]
     },
