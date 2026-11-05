@@ -235,6 +235,21 @@ for (const [kind, edit, said] of [
   });
 }
 
+// The other edits here go in as one insertion: Playwright's 2-3 ms between keys drops one now and then
+// under a busy card. A reader's pace is the claim, and every key of it lands, each a run that supersedes the last.
+test("keys typed at a reader's pace into an animating card all land, and the last edit is the one that runs", async ({ page }) => {
+  const errors = await open(page, "progress.html");
+  const live = liveUnder(page, 'progress.addTask("Rendering..."');
+  await scrollTo(live);
+  const card = await editAtEnd(page, 'progress.addTask("Rendering..."', "progress.stop();");
+  const typed = 'setTimeout(() => { throw new RangeError("too far"); }, 10);';
+  await page.keyboard.press("Enter");
+  await page.keyboard.type(typed, { delay: 30 });
+  await expect(card.locator(".cm-content")).toContainText(typed);
+  await expect(card.locator(".rich-example-failure")).toContainText("Uncaught RangeError: too far", { timeout: 20_000 });
+  expect(errors).toEqual([]);
+});
+
 test("a run's failure stays said through an edit that does not parse, and goes once an edit runs", async ({ page }) => {
   const errors = await open(page, "progress.html");
   const live = liveUnder(page, 'progress.addTask("Rendering..."');

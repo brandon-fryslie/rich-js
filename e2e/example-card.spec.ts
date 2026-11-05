@@ -3,7 +3,7 @@
  * A static docs example is an editable card (docs/.vitepress/theme/RichExample.ts),
  * in the built site: at rest it is the page's highlighted code over the output
  * the build printed, and hydrating it moves nothing; clicking into the code
- * and typing re-renders the output from the edit; reset puts the page's code
+ * and editing it re-renders the output from the edit; reset puts the page's code
  * and output back; and a program that never ends leaves the page responsive
  * while the card says it was stopped. A silent or throws block is the same
  * card; a shape or node block is too, read-only.
