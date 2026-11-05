@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-552",
+      "ref": "refs/pull/552/merge",
+      "sha": "58243ab2799fe924aa929a1c4b346b474a0aa4e3",
+      "timestamp": "2026-11-05T12:10:29.633Z",
+      "commits": [
+        {
+          "sha": "58243ab2799fe924aa929a1c4b346b474a0aa4e3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T05:08:11-07:00",
+          "message": "Merge 2ebb2634cfd5ab09cd565d402787f98b9bf04c21 into c3ab55d91dddfd472d86768b43ff50788681d949\n"
+        },
+        {
+          "sha": "2ebb2634cfd5ab09cd565d402787f98b9bf04c21",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T05:07:59-07:00",
+          "message": "e2e edits a card's editor in one input, so a key can't drop under a busy page (rich-unfiled-791c.m6cg)\n\nThe flake this ticket saw was not a timeout under load. Playwright's\nkeyboard.type sends a key every 2-3 ms; with the card's example animating,\nCodeMirror lost one about 1 run in 40 (setTimeout became setTimout). Code put\ninto an editor now goes through keyboard.insertText, as the demos, try-it,\nplayground and effects-playground specs already do. Keystroke tests keep\nkeyboard.type.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c3ab55d91dddfd472d86768b43ff50788681d949",
