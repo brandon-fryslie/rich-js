@@ -4,15 +4,22 @@
     {
       "version": "pr-561",
       "ref": "refs/pull/561/merge",
-      "sha": "356c2a501857f0493f7ee85dd744b009e83370f8",
-      "timestamp": "2026-11-05T21:13:27.696Z",
+      "sha": "eb847c286561f3cc6287c7d599f7851ec4a8643c",
+      "timestamp": "2026-11-05T21:19:32.521Z",
       "commits": [
         {
-          "sha": "356c2a501857f0493f7ee85dd744b009e83370f8",
+          "sha": "eb847c286561f3cc6287c7d599f7851ec4a8643c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T21:11:07Z",
-          "message": "Merge 07a8069aba52fa6d01fe6889a9cbc4a42ebd3504 into 745a2a57cdae7930809b57710050951727b81ddc\n"
+          "timestamp": "2026-11-05T21:17:06Z",
+          "message": "Merge cacf01115f009337aba2fcd2386131e0471519cd into 745a2a57cdae7930809b57710050951727b81ddc\n"
+        },
+        {
+          "sha": "cacf01115f009337aba2fcd2386131e0471519cd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:16:56-07:00",
+          "message": "Review fixes: caret past the screen edge stays shown, pointer follows a drag and the wheel, a shape set while suspended shows on resume (rich-control-codes-xh4n.sk3)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "07a8069aba52fa6d01fe6889a9cbc4a42ebd3504",
