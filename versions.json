@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-555",
+      "ref": "refs/pull/555/merge",
+      "sha": "241b1cebc5b73538e585ae6a9964701faf6cc92f",
+      "timestamp": "2026-11-05T16:46:45.918Z",
+      "commits": [
+        {
+          "sha": "241b1cebc5b73538e585ae6a9964701faf6cc92f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:40:39-07:00",
+          "message": "Merge acdbc562c3ac16f16d5226776f103404643177ed into c0aad9dbb7107a260bc54f07bbf82c0604ca77d0\n"
+        },
+        {
+          "sha": "acdbc562c3ac16f16d5226776f103404643177ed",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:40:11-07:00",
+          "message": "groff writes a wide character's overstrike as mandoc does, and decodeAnsi is pinned on it (rich-control-codes-xh4n.u53)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-554",
       "ref": "refs/pull/554/merge",
       "sha": "c83b1364df5004327d6e058c28f45864fba01f48",
