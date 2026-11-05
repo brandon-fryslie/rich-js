@@ -95,11 +95,11 @@ describe("App's quit keys", () => {
   });
 
   // Under the kitty keyboard protocol Ctrl reaches every glyph, and a Ctrl chord keeps its shift.
-  it.each(["ctrl+shift+c", "ctrl+m", "ctrl+i", "ctrl+[", "ctrl+1"])("takes %s, which the kitty protocol reports", (name) => {
-    expect(() => started({ quitKeys: [name] })).not.toThrow();
+  it.each(["ctrl+shift+c", "ctrl+m", "ctrl+i", "ctrl+[", "ctrl+1"])("takes %s from an app on the kitty keyboard, which reports it", (name) => {
+    expect(() => started({ quitKeys: [name], keyboard: "kitty" })).not.toThrow();
   });
 
-  it.each(["esc", "Ctrl+C", "shift+g", "ctrl+C", ""])("refuses %s, which no key is named", (name) => {
+  it.each(["esc", "Ctrl+C", "shift+g", "ctrl+C", "ctrl+shift+c", "ctrl+m", "ctrl+i", "ctrl+[", "ctrl+1", ""])("refuses %s, which no key is named", (name) => {
     expect(() => new App({ host: scriptedHost(), surface: "alternate", view: () => new RichText("x"), quitKeys: [name] })).toThrow(
       /no key is named/,
     );

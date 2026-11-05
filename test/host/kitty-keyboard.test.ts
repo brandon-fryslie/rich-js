@@ -13,7 +13,7 @@ import { scriptedHost } from "./scripted-host.js";
 
 const DA1_REPLY = "\x1b[?62;22c";
 const QUERY = "\x1b[?u";
-const PUSH = "\x1b[>1u";
+const PUSH = "\x1b[>5u";
 const POP = "\x1b[<u";
 
 function keysOf(bytes: string): string[] {
@@ -43,6 +43,13 @@ describe("the kitty protocol's keys", () => {
     ["\x1b[57400u", "1"],
     ["\x1b[57414u", "enter"],
     ["\x1b[57413;5u", "ctrl++"],
+    ["\x1b[57417u", "left"],
+    ["\x1b[57421;5u", "ctrl+pageup"],
+    // Shift+1 as the terminal reports its shifted key (flag 4).
+    ["\x1b[49:33;4u", "meta+!"],
+    ["\x1b[49:33;2u", "!"],
+    // A case change that is no single glyph keeps the glyph.
+    ["\x1b[223;4u", "meta+ß"],
   ])("reads %j as %s", (bytes, name) => {
     expect(keysOf(bytes)).toEqual([name]);
   });

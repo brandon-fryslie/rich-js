@@ -41,7 +41,7 @@ import type { Unsubscribe } from "../core/subscription.js";
 import { Timeline } from "../core/timeline.js";
 import { drawView, frameNow, hostView, undrawn, type FrameSays, type HostTime, type View } from "../core/view.js";
 import { hostEnvironment } from "./host-environment.js";
-import { InputParser, keyName, parseKeyName, type KeyEvent, type TerminalMouseEvent, type TerminalReply } from "./input.js";
+import { InputParser, keyName, parseKeyName, type KeyboardProtocol, type KeyEvent, type TerminalMouseEvent, type TerminalReply } from "./input.js";
 import type { TerminalHost } from "./terminal-host.js";
 
 /**
@@ -111,7 +111,7 @@ export interface AppOptions extends DrawOptions {
    * trip a program's own asks wait behind, so it is the program's to ask for.
    * `"legacy"` unless given.
    */
-  readonly keyboard?: "legacy" | "kitty";
+  readonly keyboard?: KeyboardProtocol;
 }
 
 const DEFAULT_RATE = frameRate(30);
@@ -136,7 +136,9 @@ const BRACKETED_PASTE = { on: "\x1b[?2004h", off: "\x1b[?2004l" } as const;
 // terminal answers, at flag 1 — keys legacy encoding makes ambiguous (Escape,
 // Ctrl+I beside Tab, Alt chords) reported unambiguously, and nothing else
 // changed. Popped on hand-back. A terminal that does not answer keeps legacy keys.
-const KITTY_KEYBOARD = { query: "\x1b[?u", push: "\x1b[>1u", pop: "\x1b[<u" } as const;
+// Flag 1, disambiguate, and flag 4, which adds the shifted key to a key it
+// escapes, so Alt+Shift+1 is `meta+!` as legacy names it.
+const KITTY_KEYBOARD = { query: "\x1b[?u", push: "\x1b[>5u", pop: "\x1b[<u" } as const;
 const isKittyKeyboardReply = (reply: TerminalReply): boolean => reply.kind === "csi" && /^\?\d+u$/.test(reply.body);
 
 /**
@@ -224,11 +226,12 @@ export class App implements FrameHost {
   private _phase: AppPhase = "idle";
   // Whether this take of the terminal pushed the kitty keyboard mode, so the
   // hand-back pops exactly what was pushed.
-  private kittyKeys = false;
-  // Which take of the terminal this is: an ask's answer acts only on the take
-  // that asked, since `leave` can run between the answer and its handler.
-  private takes = 0;
-  private readonly keyboard: "legacy" | "kitty";
+  // [LAW:one-source-of-truth] This take of the terminal, while the app holds
+  // it, and whether it pushed the kitty keyboard: an ask's answer acts only on
+  // the take that asked, since `leave` can run between the answer and its
+  // handler, and the hand-back pops exactly what its take pushed.
+  private held: { pushed: boolean } | null = null;
+  private readonly keyboard: KeyboardProtocol;
   private _frame: readonly (readonly Segment[])[] = [];
   private readonly painter: SurfaceRenderer;
   private refreshQueued = false;
@@ -256,7 +259,7 @@ export class App implements FrameHost {
     this._timeline = options.timeline ?? Timeline.play(this._epoch);
     this._rate = options.rate ?? DEFAULT_RATE;
     this.keyboard = options.keyboard ?? "legacy";
-    this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
+    this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map((name) => parseKeyName(name, this.keyboard)));
     this.drawing = drawOptions(options);
     this.console = this.drawingConsole();
   }
@@ -548,23 +551,26 @@ export class App implements FrameHost {
     this.host.setRawMode(true);
     this.painter.take();
     this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
-    const take = ++this.takes;
-    if (this.keyboard === "kitty") void this.ask([KITTY_KEYBOARD.query]).then(({ ended, replies }) => {
-      // Pushed only onto the take that asked, while the app still holds it.
-      if (take !== this.takes || this._phase !== "running") return;
-      if (ended !== "answered" || !replies.some(isKittyKeyboardReply)) return;
-      this.host.write(KITTY_KEYBOARD.push);
-      this.kittyKeys = true;
-    });
+    const take = { pushed: false };
+    this.held = take;
+    if (this.keyboard !== "kitty") return;
+    this.ask([KITTY_KEYBOARD.query]).then(
+      ({ ended, replies }) => {
+        // Pushed only onto the take that asked, while the app still holds it.
+        if (this.held !== take || ended !== "answered" || !replies.some(isKittyKeyboardReply)) return;
+        this.host.write(KITTY_KEYBOARD.push);
+        take.pushed = true;
+      },
+      (error: unknown) => this.fail(error),
+    );
   }
 
   private leave(): void {
     this.asking?.finish("left");
     // Whatever answers the terminal sends from here reach whoever holds it next.
     this.owedDa1 = 0;
-    this.host.write((this.kittyKeys ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
-    this.kittyKeys = false;
-    this.takes++;
+    this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
+    this.held = null;
     this.painter.handBack();
     this.host.setRawMode(false);
   }
