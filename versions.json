@@ -4,15 +4,22 @@
     {
       "version": "pr-565",
       "ref": "refs/pull/565/merge",
-      "sha": "b4862fdc8611505c0f89f849f9acbbaf37d4828e",
-      "timestamp": "2026-11-05T23:42:12.972Z",
+      "sha": "35b43a8270c1bb0cfdf3fd748b8770925b19b177",
+      "timestamp": "2026-11-05T23:54:35.976Z",
       "commits": [
         {
-          "sha": "b4862fdc8611505c0f89f849f9acbbaf37d4828e",
+          "sha": "35b43a8270c1bb0cfdf3fd748b8770925b19b177",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T16:40:09-07:00",
-          "message": "Merge 3dba596c5c050a22e5e808a0a6205d0d5e086711 into 071d41c8dcc12133fe39fde3a8b6f812dd4df86a\n"
+          "timestamp": "2026-11-05T23:51:53Z",
+          "message": "Merge a6038b95b8b5954423c91d602adf411be30b46dc into 071d41c8dcc12133fe39fde3a8b6f812dd4df86a\n"
+        },
+        {
+          "sha": "a6038b95b8b5954423c91d602adf411be30b46dc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T16:51:43-07:00",
+          "message": "The caret's side is set where the row is ordered: orient's displayed turns a caret mark to the level its glyph is shown at, so a masked or pictured row puts the bar where its shown glyphs do; CaretMark is branded to caretMark (rich-control-codes-xh4n.e1h)\n\nBREAKING: Style.withCaret and StyleOptions.caret take a CaretMark (caretMark(shape, side)), not a CaretShape.\n\nReview (high): caretSide re-derived levels from the raw value; replaced. Search bar keeps measure. The paint clamp for a right-side bar in the last column stays: no column exists past the screen's edge.\n"
         },
         {
           "sha": "3dba596c5c050a22e5e808a0a6205d0d5e086711",
