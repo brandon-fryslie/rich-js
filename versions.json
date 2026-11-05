@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-564",
-      "ref": "refs/pull/564/merge",
-      "sha": "04016c40647bc25019ee1b2f87e917ec3084bee2",
-      "timestamp": "2026-11-05T23:02:04.992Z",
-      "commits": [
-        {
-          "sha": "04016c40647bc25019ee1b2f87e917ec3084bee2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T23:00:18Z",
-          "message": "Merge f1d2ef7b80482641ea4f9d4b72bfeef299e8cca9 into 74ca7b0f891f4d1e398d9089ce06a4924d458150\n"
-        },
-        {
-          "sha": "f1d2ef7b80482641ea4f9d4b72bfeef299e8cca9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T16:00:07-07:00",
-          "message": "Every offset a row holds is one of its stops: a cursor in what a wrap dropped stands on the row's end and steps out to the next row, a glyph is closed against its stand-in by the segmenter, a press past a right-to-left row reaches its end, and a logical row is ordered as the isolate the wire writes (rich-control-codes-xh4n.3f7)\n"
-        },
-        {
-          "sha": "bea50ab644a0331acbaccbbf47f364a7614ce982",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:44:16-07:00",
-          "message": "Every stop survives ordering: a lone mark is shown on the stand-in, a gap row's end is a stop, a placeholder takes its own direction, and a row is stamped only while its stops are read (rich-control-codes-xh4n.3f7)\n"
-        },
-        {
-          "sha": "127a856f8ff6886aaf802d0a40e8a1e8781ab67c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:29:00-07:00",
-          "message": "A press reads its glyph off the frame it lands on: every drawn cell carries its offset, and the screen order is read off the drawn row (rich-control-codes-xh4n.3f7)\n\nA multiline press judged whether the frame drew the end slot from the current\ncursor, so after the cursor moved, a press in a right-to-left row landed a glyph\noff. The row is now drawn once, each glyph stamped with a Slot, and the press and\nthe arrow keys read their stops from that drawn row; only under logical, where\nthe terminal orders the row, is shownOrder applied over it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "74ca7b0f891f4d1e398d9089ce06a4924d458150",
-      "timestamp": "2026-11-05T22:17:29.614Z",
+      "sha": "071d41c8dcc12133fe39fde3a8b6f812dd4df86a",
+      "timestamp": "2026-11-05T23:30:56.234Z",
       "commits": [
         {
-          "sha": "74ca7b0f891f4d1e398d9089ce06a4924d458150",
+          "sha": "071d41c8dcc12133fe39fde3a8b6f812dd4df86a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:15:00-07:00",
-          "message": "Pin: a removable control between a glyph and its extender writes as wide as it measures (rich-control-codes-xh4n.5md) (#563)\n\n* Pin that a removable control between a glyph and its extender writes as wide as it measures under every order (rich-control-codes-xh4n.5md)\n\nRichText.measure has read orient's measured(text, order) since #534, so it\ndrops the controls the wire drops; the probe that filed this compared raw\ncellLen against a removing order's row. Every order and span edge agreed on\nmaster; this pins it, and fails if measure stops being order-aware.\n\n* Fold the removed-control pin into the span-edge describe: one edged helper over the order, one options set, the vacuous Panel case and the non-removing logical order dropped (rich-control-codes-xh4n.5md)\n\n* Pin the removed-control width under logical too, and the width each order draws, not only that measure and wire agree (rich-control-codes-xh4n.5md)"
+          "timestamp": "2026-11-05T16:29:06-07:00",
+          "message": "TextInput reads glyph offsets off the frame's anchors (rich-control-codes-xh4n.3f7) (#564)\n\n* A press reads its glyph off the frame it lands on: every drawn cell carries its offset, and the screen order is read off the drawn row (rich-control-codes-xh4n.3f7)\n\nA multiline press judged whether the frame drew the end slot from the current\ncursor, so after the cursor moved, a press in a right-to-left row landed a glyph\noff. The row is now drawn once, each glyph stamped with a Slot, and the press and\nthe arrow keys read their stops from that drawn row; only under logical, where\nthe terminal orders the row, is shownOrder applied over it.\n\n* Every stop survives ordering: a lone mark is shown on the stand-in, a gap row's end is a stop, a placeholder takes its own direction, and a row is stamped only while its stops are read (rich-control-codes-xh4n.3f7)\n\n* Every offset a row holds is one of its stops: a cursor in what a wrap dropped stands on the row's end and steps out to the next row, a glyph is closed against its stand-in by the segmenter, a press past a right-to-left row reaches its end, and a logical row is ordered as the isolate the wire writes (rich-control-codes-xh4n.3f7)\n\n* A step reads the stops the painted frame recorded, an end drawn with no cell is ordered as the caret's blank, a logical row is ordered as sealed writes it with what follows it on its line, and a step back out of a row lands on the end a wrap dropped a gap after (rich-control-codes-xh4n.3f7)"
         }
       ]
     }
