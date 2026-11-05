@@ -132,12 +132,12 @@ const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = 
 const BRACKETED_PASTE = { on: "\x1b[?2004h", off: "\x1b[?2004l" } as const;
 
 // The kitty keyboard protocol, where a program asks for it (`keyboard`): asked
-// for (`CSI ? u`), and pushed only where the
-// terminal answers, at flag 1 — keys legacy encoding makes ambiguous (Escape,
-// Ctrl+I beside Tab, Alt chords) reported unambiguously, and nothing else
-// changed. Popped on hand-back. A terminal that does not answer keeps legacy keys.
-// Flag 1, disambiguate, and flag 4, which adds the shifted key to a key it
-// escapes, so Alt+Shift+1 is `meta+!` as legacy names it.
+// for (`CSI ? u`), pushed only where the terminal answers, popped on hand-back.
+// Flag 1 reports the keys legacy encoding makes ambiguous (Escape, Ctrl+I
+// beside Tab, Alt chords) unambiguously; flag 4 adds to each the shifted key,
+// so Alt+Shift+1 is `meta+!` as legacy names it, and the base-layout key, so a
+// shortcut is named the same on every layout. A terminal that does not answer
+// keeps legacy keys.
 const KITTY_KEYBOARD = { query: "\x1b[?u", push: "\x1b[>5u", pop: "\x1b[<u" } as const;
 const isKittyKeyboardReply = (reply: TerminalReply): boolean => reply.kind === "csi" && /^\?\d+u$/.test(reply.body);
 
@@ -224,8 +224,6 @@ export class App implements FrameHost {
   private owedDa1 = 0;
 
   private _phase: AppPhase = "idle";
-  // Whether this take of the terminal pushed the kitty keyboard mode, so the
-  // hand-back pops exactly what was pushed.
   // [LAW:one-source-of-truth] This take of the terminal, while the app holds
   // it, and whether it pushed the kitty keyboard: an ask's answer acts only on
   // the take that asked, since `leave` can run between the answer and its
@@ -259,7 +257,7 @@ export class App implements FrameHost {
     this._timeline = options.timeline ?? Timeline.play(this._epoch);
     this._rate = options.rate ?? DEFAULT_RATE;
     this.keyboard = options.keyboard ?? "legacy";
-    this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map((name) => parseKeyName(name, this.keyboard)));
+    this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.drawing = drawOptions(options);
     this.console = this.drawingConsole();
   }
@@ -554,15 +552,14 @@ export class App implements FrameHost {
     const take = { pushed: false };
     this.held = take;
     if (this.keyboard !== "kitty") return;
-    this.ask([KITTY_KEYBOARD.query]).then(
-      ({ ended, replies }) => {
+    this.ask([KITTY_KEYBOARD.query])
+      .then(({ ended, replies }) => {
         // Pushed only onto the take that asked, while the app still holds it.
         if (this.held !== take || ended !== "answered" || !replies.some(isKittyKeyboardReply)) return;
         this.host.write(KITTY_KEYBOARD.push);
         take.pushed = true;
-      },
-      (error: unknown) => this.fail(error),
-    );
+      })
+      .catch((error: unknown) => this.fail(error));
   }
 
   private leave(): void {

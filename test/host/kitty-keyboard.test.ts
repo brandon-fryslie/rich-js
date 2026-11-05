@@ -50,6 +50,12 @@ describe("the kitty protocol's keys", () => {
     ["\x1b[49:33;2u", "!"],
     // A case change that is no single glyph keeps the glyph.
     ["\x1b[223;4u", "meta+ß"],
+    // A shortcut on a Cyrillic layout, by its base-layout key (flag 4); typed text as typed.
+    ["\x1b[1089::99;5u", "ctrl+c"],
+    ["\x1b[1089::99;3u", "meta+c"],
+    ["\x1b[1089::99;4u", "meta+C"],
+    ["\x1b[1089::99u", "с"],
+    ["\x1b[1089:1057:99;2u", "С"],
   ])("reads %j as %s", (bytes, name) => {
     expect(keysOf(bytes)).toEqual([name]);
   });
@@ -142,6 +148,19 @@ describe("an app that asks for the kitty keyboard", () => {
     expect(host.output().slice(before)).toContain(QUERY);
     app.stop();
     await done;
+  });
+
+  it("fails the run when writing the push throws", async () => {
+    const { host, done } = started("kitty");
+    const error = new Error("write failed");
+    const write = host.write.bind(host);
+    host.write = (data) => {
+      if (data === PUSH) throw error;
+      write(data);
+    };
+    await asked();
+    host.type(`\x1b[?0u${DA1_REPLY}`);
+    await expect(done).rejects.toBe(error);
   });
 
   it("asks nothing unless the program asks for it", async () => {
