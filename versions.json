@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-564",
+      "ref": "refs/pull/564/merge",
+      "sha": "9ad599cde2ff1a6f2f457f73c5752b95befd2d69",
+      "timestamp": "2026-11-05T22:31:06.426Z",
+      "commits": [
+        {
+          "sha": "9ad599cde2ff1a6f2f457f73c5752b95befd2d69",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T15:29:14-07:00",
+          "message": "Merge 127a856f8ff6886aaf802d0a40e8a1e8781ab67c into 74ca7b0f891f4d1e398d9089ce06a4924d458150\n"
+        },
+        {
+          "sha": "127a856f8ff6886aaf802d0a40e8a1e8781ab67c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T15:29:00-07:00",
+          "message": "A press reads its glyph off the frame it lands on: every drawn cell carries its offset, and the screen order is read off the drawn row (rich-control-codes-xh4n.3f7)\n\nA multiline press judged whether the frame drew the end slot from the current\ncursor, so after the cursor moved, a press in a right-to-left row landed a glyph\noff. The row is now drawn once, each glyph stamped with a Slot, and the press and\nthe arrow keys read their stops from that drawn row; only under logical, where\nthe terminal orders the row, is shownOrder applied over it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "74ca7b0f891f4d1e398d9089ce06a4924d458150",
