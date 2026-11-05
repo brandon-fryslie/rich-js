@@ -5,8 +5,10 @@
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
 import { ColorDepth, resolveOutputTarget } from "./color.js";
-import { isDumbTerminal } from "./env.js";
-import type { TextOrder } from "./text-order.js";
+import { isAttended } from "./env.js";
+import { textOrderOf, type TextOrder } from "./text-order.js";
+import { identifyTerminal, type TerminalIdentity } from "./terminal-identity.js";
+import { clipboardSequence, notificationSequence, throughIntermediary, titleSequence } from "./terminal-requests.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -399,6 +401,7 @@ export class Console {
   private readonly _style: Style;
   private readonly _isTerminal: boolean;
   private readonly _attended: boolean;
+  private readonly _identity: TerminalIdentity;
   private readonly _interactive: boolean;
   private readonly _file: ConsoleSink | undefined;
   // [LAW:one-source-of-truth] The resolved output stream, not the `stderr`
@@ -428,12 +431,18 @@ export class Console {
     const stream = boundStream(environment, options?.stderr ?? false);
     this._stream = stream;
     this._isTerminal = effectiveIsTTY(options, stream);
+    // Rich's rule: a terminal is interactive unless it is a dumb one. Forcing that
+    // is animation policy, and says nothing of who is at the terminal.
+    this._attended = isAttended(this._isTerminal, environment.env);
+    // [LAW:one-source-of-truth] The one reading of which terminal this is: the
+    // text order below and every request to the terminal derive from it.
+    this._identity = identifyTerminal(environment.env);
     // [LAW:dataflow-not-control-flow] `isTTY` and `env` are forwarded
     // unconditionally, so detection stays inside the console's injected
     // environment rather than the ambient process's.
     const resolved = resolveOutputTarget(
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
-      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion, ...(options?.textOrder === undefined ? {} : { textOrder: options.textOrder }) },
+      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion, textOrder: options?.textOrder ?? textOrderOf(this._identity, this._attended) },
     );
     // [LAW:single-enforcer] The console's one override, an explicit
     // `hyperlinks`, is applied here and nowhere else; every write encodes for
@@ -448,9 +457,6 @@ export class Console {
     this._theme = options?.theme ?? DEFAULT_THEME;
     this._terminal = options?.terminal;
     this._style = this._theme.resolve(options?.style ?? NULL_STYLE);
-    // Rich's rule: a terminal is interactive unless it is a dumb one. Forcing that
-    // is animation policy, and says nothing of who is at the terminal.
-    this._attended = this._isTerminal && !isDumbTerminal(environment.env);
     this._interactive = options?.forceInteractive ?? this._attended;
     this._file = options?.file;
     this._record = options?.record ?? false;
@@ -749,8 +755,36 @@ export class Console {
    * because a bell moves no cursor, and a live region would repaint its frame.
    */
   bell(): void {
+    this._request(() => "\x07");
+  }
+
+  /**
+   * Sets the terminal window's title (OSC 2), Rich's `Console.set_window_title`.
+   * Never wrapped for a multiplexer: tmux and screen take OSC 2 themselves, as
+   * the pane's title, and pass it on as their own settings say.
+   */
+  setWindowTitle(title: string): void {
+    this._request(() => titleSequence(title));
+  }
+
+  /** Puts `text` on the system clipboard (OSC 52), where the terminal allows it. */
+  copyToClipboard(text: string): void {
+    this._request(() => throughIntermediary(clipboardSequence(text), this._identity));
+  }
+
+  /** Raises a desktop notification, in the protocol this console's terminal reads. */
+  notify(title: string, body?: string): void {
+    // Random, so no other console or run shares it: kitty updates in place a
+    // notification whose id it has seen.
+    this._request(() => throughIntermediary(notificationSequence(title, body, this._identity, Math.random().toString(36).slice(2, 12)), this._identity));
+  }
+
+  // [LAW:single-enforcer] Every request to the terminal goes through here: it
+  // reaches whoever is at the terminal and no one else, straight to the sink, because it moves no cursor and a live region
+  // would repaint its frame.
+  private _request(bytes: () => string): void {
     refuseRenderWrite(this._madeIn);
-    if (this._attended && this._capture.get() === null) this.file.write("\x07");
+    if (this._attended && this._capture.get() === null) this.file.write(bytes());
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

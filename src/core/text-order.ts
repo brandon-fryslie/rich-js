@@ -10,8 +10,8 @@
  * on evidence.
  */
 
-import { isDumbTerminal, type Env } from "./env.js";
-import { pattern } from "./pattern.js";
+import { isAttended, type Env } from "./env.js";
+import { identifyTerminal, type TerminalIdentity, type TerminalName } from "./terminal-identity.js";
 
 /**
  * - `plain`: nothing is known of the destination, or it is not a display: a
@@ -49,44 +49,40 @@ export interface VisualStamp {
 
 export type BidiStamp = LogicalStamp | VisualStamp;
 
-// Terminals that paint their own cells and do not reorder, by the `TERM` each
-// writes for its child. Ghostty forces the embedding level to 0
-// (font/shaper/coretext.zig); Alacritty (#663) and foot (#756) run no bidi.
-const VISUAL_TERM = pattern(/^(alacritty|foot|xterm-ghostty)/);
+// What each terminal does with direction. Ghostty forces the embedding level to
+// 0 (font/shaper/coretext.zig); Alacritty (#663) and foot (#756) run no bidi.
+// kitty shapes each run of equal-font cells alone, a space always ends one, and
+// HarfBuzz reverses a run whose first scripted character is right-to-left
+// (`kitty/fonts.c`, render_line and load_hb_buffer); it runs no line bidi. VTE
+// reorders, and takes the controls at zero width past column 0
+// (`src/unicode-width.hh`, `Terminal::insert_char`). Windows Terminal does
+// not reorder (microsoft/terminal#538).
+const ORDER_OF: Readonly<Record<TerminalName, TextOrder>> = {
+  alacritty: "visual",
+  foot: "visual",
+  ghostty: "visual",
+  "windows-terminal": "visual",
+  kitty: "words",
+  vte: "logical",
+  other: "plain",
+};
 
 /**
- * The order `env` gives evidence for.
- *
- * An environment is inherited: `code .` from Windows Terminal carries
- * `WT_SESSION` into VS Code's xterm.js terminal, and Alacritty clears nothing
- * from GNOME Terminal. `TERM` is the one variable every terminal writes for its
- * own child, so it is read first, and a variable a parent could have left counts
- * only beside the `TERM` its own terminal sets. The rows are in the order that
- * makes that true; a terminal naming itself off this list is `plain`.
+ * The order `env` gives evidence for: the identified terminal's
+ * (`identifyTerminal`), and `plain` behind anything that sits between.
  *
  * Not listed, each for a reason: xterm.js lays a row out through the browser and
  * advances for an isolate, and VS Code is xterm.js. kitty's `force_ltr yes`
  * would want `visual`, and is a setting the environment cannot show; `words` is
- * its default. WezTerm's bidi is a setting
- * the environment cannot show. iTerm2, Konsole, Terminal.app, mintty and mlterm
- * are unmeasured. Any program may state its order.
+ * its default. WezTerm's bidi is a setting the environment cannot show. iTerm2,
+ * Konsole, Terminal.app, mintty and mlterm are unmeasured. Any program may state
+ * its order.
  */
 export function detectTextOrder(env: Env, isTTY: boolean): TextOrder {
-  if (!isTTY || isDumbTerminal(env)) return "plain";
-  if (env["TMUX"] || env["STY"] || env["ZELLIJ"] || env["INSIDE_EMACS"] || env["NVIM"] || env["VIM_TERMINAL"]) return "plain";
-  if ((env["TERM"] ?? "").match(VISUAL_TERM) !== null) return "visual";
-  // kitty shapes each run of equal-font cells alone, a space always ends one, and
-  // HarfBuzz reverses a run whose first scripted character is right-to-left
-  // (`kitty/fonts.c`, render_line and load_hb_buffer); it runs no line bidi.
-  // kitty sets no TERM_PROGRAM. A terminal that borrows kitty's TERM (WezTerm
-  // can) names itself, and so does one started from kitty, whose KITTY_WINDOW_ID
-  // it inherits, so that variable proves nothing.
-  if (env["TERM"] === "xterm-kitty" && !env["TERM_PROGRAM"]) return "words";
-  if (env["TERM_PROGRAM"] || env["TERMINAL_EMULATOR"] || env["KONSOLE_VERSION"]) return "plain";
-  // VTE reorders, and takes the controls at zero width past column 0
-  // (`src/unicode-width.hh`, `Terminal::insert_char`).
-  if (env["VTE_VERSION"] && env["TERM"] === "xterm-256color") return "logical";
-  // Windows Terminal (microsoft/terminal#538): a console there has no `TERM`, WSL has this one.
-  if (env["WT_SESSION"] && (env["TERM"] === undefined || env["TERM"] === "xterm-256color")) return "visual";
-  return "plain";
+  return textOrderOf(identifyTerminal(env), isAttended(isTTY, env));
+}
+
+/** The order an identified terminal takes, for whoever is `attended` at it. */
+export function textOrderOf({ terminal, intermediary }: TerminalIdentity, attended: boolean): TextOrder {
+  return attended && intermediary === undefined ? ORDER_OF[terminal] : "plain";
 }

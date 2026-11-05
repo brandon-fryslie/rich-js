@@ -6,7 +6,7 @@
  * every link reaches the wire through) opens a link with `osc8Open` and closes
  * it with `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
  * test extracting URLs) matches them with `OSC8`; the data-model boundary
- * (RichText) cleans URLs with `stripUrlControls`. Producer and reader share the
+ * (RichText) cleans URLs with `stripOscControls`. Producer and reader share the
  * terminator set below, and the sanitizer removes all of it, so no URL it has
  * cleaned can end a wrap early.
  *
@@ -41,15 +41,17 @@ import { pattern } from "./pattern.js";
 const TERMINATORS = "\\x1b\\x07\\x9c";
 
 /**
- * `url` without a control, a line separator or a bidi control. RFC 3986 admits no
+ * `text` an OSC carries — a link's address, a title, a notification — without a
+ * control, a line separator or a bidi control. RFC 3986 admits no
  * control and RFC 3987 no bidi control: ESC, BEL and ST end the wrap, CAN and SUB
  * abort it, U+009B opens a sequence inside it, and U+202E would reorder the address
  * on hover. Not the whole census, because an address can hold the rest: ZWNJ is
  * part of a Persian word, and taking it would send the link somewhere else.
- * `sealed` reads a segment's text, so this is the one rule for a link.
+ * `sealed` reads a segment's text, so this is the one rule for a link, and
+ * `terminal-requests` reads it for every title and notification.
  */
-export function stripUrlControls(url: string): string {
-  return url.replace(/[\p{Cc}\p{Zl}\p{Zp}\p{Bidi_Control}]/gu, "");
+export function stripOscControls(text: string): string {
+  return text.replace(/[\p{Cc}\p{Zl}\p{Zp}\p{Bidi_Control}]/gu, "");
 }
 
 /**
@@ -61,7 +63,7 @@ export function stripUrlControls(url: string): string {
  * built directly with `new Style({ link })` reaches here unsanitized).
  */
 export function osc8Open(url: string): string {
-  const clean = stripUrlControls(url);
+  const clean = stripOscControls(url);
   // Hex digits are a legal `id=` value: no `:` or `;`.
   return `\x1b]8;id=${fnv1a(clean)};${clean}\x1b\\`;
 }

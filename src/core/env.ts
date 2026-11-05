@@ -25,3 +25,8 @@ export function isDumbTerminal(env: Env): boolean {
   const term = env["TERM"];
   return term === "dumb" || term === "unknown";
 }
+
+/** Whether a person is at the destination: a TTY that is not a dumb terminal. */
+export function isAttended(isTTY: boolean, env: Env): boolean {
+  return isTTY && !isDumbTerminal(env);
+}

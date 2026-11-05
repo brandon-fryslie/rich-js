@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { OSC8_CLOSE, osc8Open, osc8Sequences, stripUrlControls } from "../../src/core/osc8.js";
+import { OSC8_CLOSE, osc8Open, osc8Sequences, stripOscControls } from "../../src/core/osc8.js";
 
 // [LAW:behavior-not-structure] The wire grammar's contracts, read off bytes.
 // Expected ids are standard FNV-1a-32 over the URL's UTF-8 bytes, computed
@@ -41,20 +41,20 @@ describe("osc8Sequences", () => {
     }
   });
 
-  it("stops the uri only at bytes stripUrlControls removes", () => {
+  it("stops the uri only at bytes stripOscControls removes", () => {
     for (const t of ["\x1b", "\x07", "\x9c"]) {
-      expect(stripUrlControls(`a${t}b`)).toBe("ab");
+      expect(stripOscControls(`a${t}b`)).toBe("ab");
     }
   });
 
   it("removes what could break the wrap or reorder the address", () => {
     const refused = [0x09, 0x18, 0x7f, 0x9b, 0x200f, 0x2028, 0x2029, 0x202e, 0x2067].map((codePoint) => String.fromCodePoint(codePoint));
-    for (const c of refused) expect(stripUrlControls(`a${c}b`)).toBe("ab");
+    for (const c of refused) expect(stripOscControls(`a${c}b`)).toBe("ab");
   });
 
   it("leaves what an address needs, so a link goes where it says", () => {
     const joined = `https://fa.wikipedia.org/wiki/a${String.fromCodePoint(0x200c)}b`;
     const selected = `https://example.com/${String.fromCodePoint(0x2764, 0xfe0f)}`;
-    for (const url of [joined, selected, "https://例え.jp/a%20b?q=1#x"]) expect(stripUrlControls(url)).toBe(url);
+    for (const url of [joined, selected, "https://例え.jp/a%20b?q=1#x"]) expect(stripOscControls(url)).toBe(url);
   });
 });

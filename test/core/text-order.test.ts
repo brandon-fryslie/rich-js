@@ -19,7 +19,7 @@ describe("detectTextOrder", () => {
     ["xterm.js, stated by its env", { TERM: "xterm-256color", TERM_PROGRAM: "xterm.js" }, true, "plain"],
     ["iTerm2, unmeasured", { TERM: "xterm-256color", TERM_PROGRAM: "iTerm.app" }, true, "plain"],
     ["kitty", { TERM: "xterm-kitty" }, true, "words"],
-    ["kitty in tmux", { TERM: "xterm-kitty", TMUX: "/tmp/tmux" }, true, "plain"],
+    ["kitty in tmux", { TERM: "xterm-kitty", TERM_PROGRAM: "tmux", TMUX: "/tmp/tmux" }, true, "plain"],
     ["kitty's TERM beside another terminal's name", { TERM: "xterm-kitty", TERM_PROGRAM: "iTerm.app", KITTY_WINDOW_ID: "1" }, true, "plain"],
     ["WezTerm with kitty's TERM", { TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" }, true, "plain"],
     // An environment is inherited: each of these has a parent's variable in it.
@@ -29,7 +29,7 @@ describe("detectTextOrder", () => {
     ["Konsole from GNOME Terminal", { ...VTE, KONSOLE_VERSION: "240800" }, true, "plain"],
     ["kitty from GNOME Terminal", { ...VTE, TERM: "xterm-kitty" }, true, "words"],
     ["Alacritty from GNOME Terminal", { ...VTE, TERM: "alacritty" }, true, "visual"],
-    ["tmux in Windows Terminal", { ...WT, TMUX: "/tmp/tmux" }, true, "plain"],
+    ["tmux in Windows Terminal", { ...WT, TERM: "tmux-256color", TMUX: "/tmp/tmux" }, true, "plain"],
     ["screen in Alacritty", { TERM: "screen", STY: "1" }, true, "plain"],
     ["zellij in Alacritty", { TERM: "alacritty", ZELLIJ: "0" }, true, "plain"],
     ["a dumb pty under Emacs in Windows Terminal", { TERM: "dumb", WT_SESSION: "abc" }, true, "plain"],
