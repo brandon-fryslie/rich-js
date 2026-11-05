@@ -21,6 +21,22 @@ export function titleSequence(title: string): string {
   return `${OSC}2;${stripOscControls(title)}${ST}`;
 }
 
+/**
+ * The shapes a pointer takes over a cell, by their CSS `cursor` names, which
+ * OSC 22 reads in kitty, foot, Ghostty and WezTerm.
+ */
+export type PointerShape =
+  | "default" | "pointer" | "text" | "not-allowed" | "help" | "wait" | "crosshair"
+  | "move" | "grab" | "grabbing" | "ew-resize" | "ns-resize";
+
+/**
+ * OSC 22: the mouse pointer's shape over the terminal. A terminal without it
+ * ignores the sequence, as it does any OSC it does not know.
+ */
+export function pointerSequence(shape: PointerShape): string {
+  return `${OSC}22;${shape}${ST}`;
+}
+
 /** OSC 52: `text` put on the system clipboard, as base64 of its UTF-8 bytes. */
 export function clipboardSequence(text: string): string {
   const bytes = new TextEncoder().encode(text);

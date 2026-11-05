@@ -690,6 +690,7 @@ and a capture get nothing.
 const console = new Console();
 console.setWindowTitle("deploy — 3 of 4");  // OSC 2
 console.copyToClipboard("ssh deploy@10.0.0.4");  // OSC 52
+console.setPointerShape("pointer");  // OSC 22
 console.notify("Deploy finished", "4 of 4 hosts up");
 console.bell();
 ```

@@ -21,6 +21,7 @@ import type {
 } from "./types.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { State } from "../core/state.js";
+import type { PointerShape } from "../core/terminal-requests.js";
 
 export abstract class WidgetBase implements InteractiveWidget {
   abstract readonly id: string;
@@ -30,6 +31,11 @@ export abstract class WidgetBase implements InteractiveWidget {
   @observableRef accessor hovered: boolean = false;
   @observableRef accessor active: boolean = false;
   @observableRef accessor disabled: boolean = false;
+
+  /** The pointer's shape over this widget: a hand over one it can be used, the terminal's default otherwise. */
+  get pointerShape(): PointerShape {
+    return this.focusable && !this.disabled ? "pointer" : "default";
+  }
 
   // Subscribed and let go between frames; each set is replaced whole.
   private readonly changeHandlers = new State<ReadonlySet<(w: InteractiveWidget) => void>>(new Set());

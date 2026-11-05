@@ -101,12 +101,16 @@ export class WidgetApp implements FrameSource, FrameHost {
     // [LAW:single-enforcer] The app reads the terminal; the router routes
     // what it hears, after the app's quit keys.
     this.app.onKey((press) => this.router.key(press));
-    this.app.onMouse((event) => this.router.mouse(event));
+    this.app.onMouse((event) => {
+      this.router.mouse(event);
+      this.pointAt();
+    });
     this.app.onPaste((text) => this.router.paste(text));
     this.app.onWheel((wheel) => this.router.wheel(wheel));
     this.app.onPaint(() => {
       this.focus.settle();
       this.router.framePainted();
+      this.pointAt();
     });
     // [LAW:single-enforcer] `settle` judges every focus move, so every move
     // paints — including one onto a widget no frame has read yet.
@@ -228,6 +232,12 @@ export class WidgetApp implements FrameSource, FrameHost {
    */
   onWheel(handler: (wheel: WheelEvent) => boolean): Unsubscribe {
     return this.app.onWheel(handler);
+  }
+
+  // [LAW:one-source-of-truth] The pointer's shape is the hovered widget's,
+  // read again whenever hover is.
+  private pointAt(): void {
+    this.app.pointerShape = this.router.hovered?.pointerShape ?? "default";
   }
 
   private compose(view: Renderable, options: RenderOptions): Segment[] {

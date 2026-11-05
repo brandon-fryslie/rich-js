@@ -141,6 +141,14 @@ export interface RenderOptions {
    */
   reducedMotion?: boolean;
   /**
+   * The painter shows the terminal's own cursor where a cell asks for it
+   * (`Style.caret`), so a renderable with an editing point marks that cell
+   * rather than drawing a cursor of its own: drawn too, it would show twice.
+   * A painter says so (`Renderer.caret`, `./paint.ts`). Absent, nothing shows
+   * the terminal's cursor, and a caret is drawn.
+   */
+  caret?: boolean;
+  /**
    * The frame being drawn (`HostFrame`): how a renderable that lives across
    * frames — a widget, a `Progress` — draws for the time without being
    * rebuilt each frame with one, and without reading a clock. A host writes

@@ -118,6 +118,11 @@ export class EventRouter {
     return () => this.mouseHandlers.delete(handler);
   }
 
+  /** The widget under the pointer on the frame on screen, if any. */
+  get hovered(): InteractiveWidget | null {
+    return this.hoveredWidget;
+  }
+
   /** Route a key the app heard. */
   key(press: KeyEvent): void {
     this.dispatchKey(new WidgetKeyEvent(press, this.source.frameNow().time));

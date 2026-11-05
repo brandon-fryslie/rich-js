@@ -8,7 +8,7 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal, type TerminalIdentity } from "./terminal-identity.js";
-import { clipboardSequence, notificationSequence, throughIntermediary, titleSequence } from "./terminal-requests.js";
+import { clipboardSequence, notificationSequence, pointerSequence, throughIntermediary, titleSequence, type PointerShape } from "./terminal-requests.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -770,6 +770,14 @@ export class Console {
   /** Puts `text` on the system clipboard (OSC 52), where the terminal allows it. */
   copyToClipboard(text: string): void {
     this._request(() => throughIntermediary(clipboardSequence(text), this._identity));
+  }
+
+  /**
+   * Sets the mouse pointer's shape over the terminal (OSC 22). Wrapped for a
+   * multiplexer, which does not know the sequence and would drop it.
+   */
+  setPointerShape(shape: PointerShape): void {
+    this._request(() => throughIntermediary(pointerSequence(shape), this._identity));
   }
 
   /** Raises a desktop notification, in the protocol this console's terminal reads. */

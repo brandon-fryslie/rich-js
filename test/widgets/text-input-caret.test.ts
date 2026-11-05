@@ -4,6 +4,9 @@
  * (`WidgetKeyEvent.time`), and saying when it next flips so a host paints then and
  * not between.
  *
+ * The drawn caret is what a painter that cannot show the terminal's cursor
+ * gets (`text-input-hardware-caret.test.ts` is the one that can).
+ *
  * [LAW:behavior-not-structure] Driven through a `WidgetApp` on a scripted
  * host and a hand-moved clock: what is asserted is the caret cell on the
  * frame on screen, how many frames were painted, and what was left waiting.
@@ -41,7 +44,9 @@ function start(options: { reducedMotion?: boolean; focused?: boolean; view?: "fu
   const host = scriptedHost({ cols: 20, rows: 2 });
   const input = new TextInput({ value: "hello", cursorStyle: CARET });
   if (focused) input.focus(0);
-  const app = new WidgetApp({ host, surface: "alternate", clock, reducedMotion, view: view === "function" ? () => input : input });
+  // A terminal that reorders each line itself: the one an app draws its own
+  // caret on, since a cell's place in the frame is not its column there.
+  const app = new WidgetApp({ host, surface: "alternate", clock, reducedMotion, textOrder: "logical", view: view === "function" ? () => input : input });
   let paints = 0;
   // Every frame the app paints moves the cursor home first.
   const write = host.write.bind(host);
@@ -139,7 +144,7 @@ describe("TextInput caret blink", () => {
     const host = scriptedHost({ cols: 20, rows: 2 });
     const first = new TextInput({ value: "a", cursorStyle: CARET });
     const second = new TextInput({ value: "b", cursorStyle: CARET });
-    const app = new WidgetApp({ host, surface: "alternate", clock, view: () => new Group(first, second) });
+    const app = new WidgetApp({ host, surface: "alternate", clock, textOrder: "logical", view: () => new Group(first, second) });
     void app.run();
     const litIn = (row: number): boolean => app.frame[row]!.some((s) => s.style?.reverse === true);
     clock.advance(0.7);

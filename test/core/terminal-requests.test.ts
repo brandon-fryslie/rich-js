@@ -1,5 +1,5 @@
 /**
- * Requests a program sends the terminal itself — title, clipboard, notification
+ * Requests a program sends the terminal itself — title, clipboard, pointer shape, notification
  * — on their exact bytes, outside and inside tmux, and never to no one.
  */
 
@@ -48,6 +48,14 @@ describe("Console.copyToClipboard", () => {
     const { console, written } = terminal(ITERM);
     console.copyToClipboard("héllo ✓");
     expect(written()).toBe(`${ESC}]52;c;${Buffer.from("héllo ✓", "utf8").toString("base64")}${ST}`);
+  });
+});
+
+describe("Console.setPointerShape", () => {
+  it("writes OSC 22 with the shape's CSS name", () => {
+    const { console, written } = terminal(KITTY);
+    console.setPointerShape("text");
+    expect(written()).toBe(`${ESC}]22;text${ST}`);
   });
 });
 
@@ -105,6 +113,12 @@ describe("inside tmux", () => {
     console.notify("n");
     const wrap = (sequence: string): string => `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
     expect(written()).toBe(wrap(`${ESC}]52;c;eA==${ST}`) + wrap(`${ESC}]9;n${ST}`));
+  });
+
+  it("wraps the pointer's shape in tmux's passthrough, which does not know OSC 22", () => {
+    const { console, written } = terminal(TMUX);
+    console.setPointerShape("pointer");
+    expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]22;pointer${ESC}${ESC}\\${ST}`);
   });
 
   it("sends OSC 9 behind tmux whatever TERM tmux was told to set", () => {
