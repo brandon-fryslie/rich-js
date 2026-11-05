@@ -11,6 +11,7 @@ import { Console } from "../../src/core/console.js";
 import { renderToString, segmentToString, segmentsToString } from "../../src/core/render.js";
 import { ColorDepth, resolveOutputTarget } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
 import { Markdown } from "../../src/renderables/markdown.js";
@@ -263,8 +264,19 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
   });
 
   test("ends a run at a box-drawing cell, where kitty ends one", () => {
-    const [row] = rows(plainBytes(new RichText(`${HEBREW.split(" ")[0]}─${HEBREW.split(" ")[1]}`, { end: "" }), "words"));
-    expect(kitty(row!.replace(/─/g, " ")).replace(/ /g, "─")).toBe(rows(plainBytes(new RichText(`${HEBREW.split(" ")[0]}─${HEBREW.split(" ")[1]}`, { end: "" }), "visual"))[0]);
+    const line = new RichText(HEBREW.replace(" ", "─"), { end: "" });
+    expect(onKitty(line)).toEqual(visually(line));
+  });
+
+  test("keeps each segment's edges, so a joiner at one is judged as in every order", () => {
+    const style = Style.parse("bold");
+    const bytes = (textOrder: TextOrder): string =>
+      segmentsToString([new Segment("\u{1f468}‍", style), new Segment("\u{1f469}", style)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder });
+    expect(bytes("words")).toBe(bytes("plain"));
+  });
+
+  test("sends kitty the letters, for its own shaping", () => {
+    expect(plainBytes(new RichText(ARABIC, { end: "" }), "words")).not.toMatch(/[ﭐ-﷿ﹰ-﻿]/);
   });
 
   test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {

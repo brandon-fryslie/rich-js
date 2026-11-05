@@ -43,16 +43,16 @@ export const implicitVte = (row: string): string => implicit(atColumnZero(row));
 
 /**
  * A row on kitty with its default `force_ltr no` (`kitty/fonts.c`): split at
- * every space into runs shaped alone, a run whose first character of a script
- * other than Common and Inherited is Arabic or Hebrew reversed by cluster and
- * mirrored, as HarfBuzz shapes it right to left. Modelled for one font, so a run
- * ends nowhere else.
+ * every space and box-drawing, block or braille cell into runs shaped alone, a run whose first character of a script
+ * other than Common, Inherited and Unknown is Arabic or Hebrew reversed by cluster and
+ * mirrored, as HarfBuzz shapes it right to left. Modelled for one font and one
+ * face, so a run ends nowhere else.
  */
 export function kitty(row: string): string {
   return row
-    .split(/([  ])/)
+    .split(/([ \u2002\u2500-\u259f\u2800-\u28ff])/u)
     .map((run) => {
-      const scripted = Array.from(run).find((character) => !/[\p{Script=Common}\p{Script=Inherited}]/u.test(character));
+      const scripted = Array.from(run).find((character) => !/[\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u.test(character));
       if (scripted === undefined || !/[\p{Script=Arabic}\p{Script=Hebrew}]/u.test(scripted)) return run;
       const clusters = Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(run), ({ segment }) => segment);
       return clusters.map((cluster) => String.fromCodePoint(mirrored(cluster.codePointAt(0)!)) + Array.from(cluster).slice(1).join("")).reverse().join("");

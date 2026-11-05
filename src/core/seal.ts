@@ -121,11 +121,15 @@ const UNSCRIPTED = pattern(/^[\p{Script=Common}\p{Script=Inherited}\p{Script=Unk
 // The cells kitty draws in no shaped font (`font_for_cell`, kitty/fonts.c): a
 // blank, a tab, and what its box font draws — box drawing, blocks, braille,
 // powerline and legacy computing. A shaped run always ends at one.
-const RUN_BREAKS = String.raw`[\0\t \n ─-▟◉○●◖◗◜-◥⠀-⣿---\u{1fb00}-\u{1fbae}\u{1fbce}-\u{1fbef}\u{1cd00}-\u{1cde5}\u{1cc1b}-\u{1cc3f}\u{1ce16}-\u{1ce19}\u{1ce51}-\u{1ceaf}]`;
+const RUN_BREAKS = String.raw`[\0\t \n\u2002\u2500-\u259f\u25c9\u25cb\u25cf\u25d6\u25d7\u25dc-\u25e5\u2800-\u28ff\ue0b0-\ue0bf\ue0d6\ue0d7\uee00-\uee0b\uf5d0-\uf60d\u{1fb00}-\u{1fbae}\u{1fbce}-\u{1fbef}\u{1cd00}-\u{1cde5}\u{1cc1b}-\u{1cc3f}\u{1ce16}-\u{1ce19}\u{1ce51}-\u{1ceaf}]`;
+
+const SPLIT_AT_BREAKS = pattern(new RegExp(`(${RUN_BREAKS})`, "u"));
 
 interface Piece {
   readonly text: string;
   readonly style: Segment["style"];
+  /** The segment it came from: only pieces of one segment are written as one again. */
+  readonly source: Segment;
 }
 
 /** Whether HarfBuzz, guessing, shapes `run` right to left. */
@@ -146,7 +150,17 @@ const faceOf = (style: Segment["style"]): string => `${style?.bold === true}${st
  */
 function shownAsLaid(run: readonly Piece[]): readonly Piece[] {
   if (!shapedRightToLeft(run)) return run;
-  const turned = run.flatMap(({ text, style }) => graphemes(text).map((cluster) => ({ text: mirroredCluster(cluster), style }))).reverse();
+  // Clusters are found in the whole run, because a style edge inside one is no
+  // place to cut it: reversed apart, a mark lands on another letter.
+  const owners = run.flatMap((piece) => new Array<Piece>(piece.text.length).fill(piece));
+  const turned: Piece[] = [];
+  let unit = 0;
+  for (const cluster of graphemes(run.map((piece) => piece.text).join(""))) {
+    const { style, source } = owners[unit]!;
+    turned.push({ text: mirroredCluster(cluster), style, source });
+    unit += cluster.length;
+  }
+  turned.reverse();
   return shapedRightToLeft(turned) ? turned : run;
 }
 
@@ -159,7 +173,6 @@ function shownAsLaid(run: readonly Piece[]): readonly Piece[] {
  * the user configured, which no program can see.
  */
 function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
-  const breaks = new RegExp(`(${RUN_BREAKS})`, "u");
   let run: Piece[] = [];
   let laid = false;
   let pending: Piece[] = [];
@@ -177,13 +190,13 @@ function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
       continue;
     }
     const visual = segment.style?.bidi?.order === "visual";
-    for (const [index, text] of segment.text.split(breaks).entries()) {
+    for (const [index, text] of segment.text.split(SPLIT_AT_BREAKS).entries()) {
       if (text === "") continue;
       const isBreak = index % 2 === 1;
       if (isBreak || (run.length > 0 && faceOf(run[0]!.style) !== faceOf(segment.style))) flush();
-      if (isBreak) pending.push({ text, style: segment.style });
+      if (isBreak) pending.push({ text, style: segment.style, source: segment });
       else {
-        run.push({ text, style: segment.style });
+        run.push({ text, style: segment.style, source: segment });
         laid ||= visual;
       }
     }
@@ -192,19 +205,22 @@ function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
   yield* joined(pending);
 }
 
-/** `pieces` as segments, neighbours of one style written as one. */
+/**
+ * `pieces` as segments, neighbours from one segment written as one again, so a
+ * segment edge stays where it was and the edges are judged as before.
+ */
 function* joined(pieces: readonly Piece[]): Iterable<Segment> {
   let text = "";
-  let style: Segment["style"];
+  let from: Piece | undefined;
   for (const piece of pieces) {
-    if (text !== "" && piece.style !== style) {
-      yield new Segment(text, style);
+    if (from !== undefined && text !== "" && piece.source !== from.source) {
+      yield new Segment(text, from.style);
       text = "";
     }
     text += piece.text;
-    style = piece.style;
+    from = piece;
   }
-  if (text !== "") yield new Segment(text, style);
+  if (from !== undefined && text !== "") yield new Segment(text, from.style);
 }
 
 /** `segments` with what the census withholds gone and the order's bidi controls written. */
