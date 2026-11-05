@@ -275,8 +275,18 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
     expect(bytes("words")).toBe(bytes("plain"));
   });
 
-  test("sends kitty the letters, for its own shaping", () => {
-    expect(plainBytes(new RichText(ARABIC, { end: "" }), "words")).not.toMatch(/[ﭐ-﷿ﹰ-﻿]/);
+  // Shaped forms show as written under any shaper, and stay shaped in an export.
+  test("sends kitty the joined forms a row is laid out in", () => {
+    expect(plainBytes(new RichText(ARABIC, { end: "" }), "words")).toMatch(/[ﭐ-﷿ﹰ-﻿]/);
+  });
+
+  test("keeps a style on the cell it was laid out in, which kitty does not move", () => {
+    const bytes = renderToString(renderMarkup("[red]א[/]ב"), { width: 10, textOrder: "words", colorSystem: "ansi" });
+    expect(bytes).toMatch(/^א\x1b\[31mב/);
+  });
+
+  test("ends a run at an emoji, which kitty draws from its own font", () => {
+    expect(plainBytes(new RichText("אב😀גד", { end: "" }), "words")).toBe("גד😀אב");
   });
 
   test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {

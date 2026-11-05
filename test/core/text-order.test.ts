@@ -20,7 +20,7 @@ describe("detectTextOrder", () => {
     ["iTerm2, unmeasured", { TERM: "xterm-256color", TERM_PROGRAM: "iTerm.app" }, true, "plain"],
     ["kitty", { TERM: "xterm-kitty" }, true, "words"],
     ["kitty in tmux", { TERM: "xterm-kitty", TMUX: "/tmp/tmux" }, true, "plain"],
-    ["kitty from iTerm2", { TERM: "xterm-kitty", TERM_PROGRAM: "iTerm.app", KITTY_WINDOW_ID: "1" }, true, "words"],
+    ["kitty's TERM beside another terminal's name", { TERM: "xterm-kitty", TERM_PROGRAM: "iTerm.app", KITTY_WINDOW_ID: "1" }, true, "plain"],
     ["WezTerm with kitty's TERM", { TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" }, true, "plain"],
     // An environment is inherited: each of these has a parent's variable in it.
     ["VS Code from Windows Terminal", { ...WT, TERM_PROGRAM: "vscode" }, true, "plain"],

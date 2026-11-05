@@ -85,10 +85,15 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
  * on the text as it is written, so a control the order removes cannot hide a
  * joiner from them.
  */
-export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
+export function sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
+  const edges = withEdges(contained(segments, order));
+  return order === "words" ? turnedBack(edges) : edges;
+}
+
+/** `segments` with each one's edges judged on the text as laid out (`edged`). */
+function* withEdges(segments: Iterable<Segment>): Iterable<Segment> {
   let reaches = false;
-  const held = contained(segments, order);
-  for (const segment of order === "words" ? turnedBack(held) : held) {
+  for (const segment of segments) {
     if (segment.isControl) {
       yield segment;
       continue;
@@ -120,8 +125,9 @@ const RIGHT_TO_LEFT_SCRIPT = pattern(
 const UNSCRIPTED = pattern(/^[\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u);
 // The cells kitty draws in no shaped font (`font_for_cell`, kitty/fonts.c): a
 // blank, a tab, and what its box font draws — box drawing, blocks, braille,
-// powerline and legacy computing. A shaped run always ends at one.
-const RUN_BREAKS = String.raw`[\0\t \n\u2002\u2500-\u259f\u25c9\u25cb\u25cf\u25d6\u25d7\u25dc-\u25e5\u2800-\u28ff\ue0b0-\ue0bf\ue0d6\ue0d7\uee00-\uee0b\uf5d0-\uf60d\u{1fb00}-\u{1fbae}\u{1fbce}-\u{1fbef}\u{1cd00}-\u{1cde5}\u{1cc1b}-\u{1cc3f}\u{1ce16}-\u{1ce19}\u{1ce51}-\u{1ceaf}]`;
+// powerline and legacy computing — and an emoji, drawn from its own font. A
+// shaped run always ends at one.
+const RUN_BREAKS = String.raw`[\p{Emoji_Presentation}\0\t \n\u2002\u2500-\u259f\u25c9\u25cb\u25cf\u25d6\u25d7\u25dc-\u25e5\u2800-\u28ff\ue0b0-\ue0bf\ue0d6\ue0d7\uee00-\uee0b\uf5d0-\uf60d\u{1fb00}-\u{1fbae}\u{1fbce}-\u{1fbef}\u{1cd00}-\u{1cde5}\u{1cc1b}-\u{1cc3f}\u{1ce16}-\u{1ce19}\u{1ce51}-\u{1ceaf}]`;
 
 const SPLIT_AT_BREAKS = pattern(new RegExp(`(${RUN_BREAKS})`, "u"));
 
@@ -153,14 +159,23 @@ function shownAsLaid(run: readonly Piece[]): readonly Piece[] {
   // Clusters are found in the whole run, because a style edge inside one is no
   // place to cut it: reversed apart, a mark lands on another letter.
   const owners = run.flatMap((piece) => new Array<Piece>(piece.text.length).fill(piece));
-  const turned: Piece[] = [];
+  const clusters: string[] = [];
+  const cells: Piece[] = [];
   let unit = 0;
   for (const cluster of graphemes(run.map((piece) => piece.text).join(""))) {
-    const { style, source } = owners[unit]!;
-    turned.push({ text: mirroredCluster(cluster), style, source });
+    clusters.push(cluster);
+    for (let cell = cellLen(cluster); cell > 0; cell--) cells.push(owners[unit]!);
     unit += cluster.length;
   }
-  turned.reverse();
+  // A style belongs to a cell, which the display does not move: each turned
+  // cluster takes the style of the cell it is written into.
+  const turned: Piece[] = [];
+  let cell = 0;
+  for (const cluster of clusters.reverse()) {
+    const { style, source } = cells[cell] ?? owners[owners.length - 1]!;
+    turned.push({ text: mirroredCluster(cluster), style, source });
+    cell += cellLen(cluster);
+  }
   return shapedRightToLeft(turned) ? turned : run;
 }
 
@@ -194,8 +209,14 @@ function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
       if (text === "") continue;
       const isBreak = index % 2 === 1;
       if (isBreak || (run.length > 0 && faceOf(run[0]!.style) !== faceOf(segment.style))) flush();
-      if (isBreak) pending.push({ text, style: segment.style, source: segment });
-      else {
+      if (isBreak) {
+        pending.push({ text, style: segment.style, source: segment });
+        // A line ends every run, so what precedes it is final.
+        if (text === "\n") {
+          yield* joined(pending);
+          pending = [];
+        }
+      } else {
         run.push({ text, style: segment.style, source: segment });
         laid ||= visual;
       }
@@ -212,15 +233,16 @@ function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
 function* joined(pieces: readonly Piece[]): Iterable<Segment> {
   let text = "";
   let from: Piece | undefined;
+  const written = (piece: Piece): Segment => (text === piece.source.text && piece.style === piece.source.style ? piece.source : new Segment(text, piece.style));
   for (const piece of pieces) {
-    if (from !== undefined && text !== "" && piece.source !== from.source) {
-      yield new Segment(text, from.style);
+    if (from !== undefined && text !== "" && (piece.source !== from.source || piece.style !== from.style)) {
+      yield written(from);
       text = "";
     }
     text += piece.text;
     from = piece;
   }
-  if (from !== undefined && text !== "") yield new Segment(text, from.style);
+  if (from !== undefined && text !== "") yield written(from);
 }
 
 /** `segments` with what the census withholds gone and the order's bidi controls written. */

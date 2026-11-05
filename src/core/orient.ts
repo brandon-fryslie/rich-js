@@ -126,7 +126,7 @@ interface Cluster {
 }
 
 /** L1, L2 and L4 on a row: its grapheme clusters in display order, each carrying its style. */
-function displayed(shown: readonly Segment[], levels: readonly number[], paragraphLevel: ParagraphLevel, shapes: boolean): Segment[] {
+function displayed(shown: readonly Segment[], levels: readonly number[], paragraphLevel: ParagraphLevel): Segment[] {
   const text = Segment.plainOf(shown);
   const finished = lineLevels(text, levels, paragraphLevel);
   // Clusters are found in the whole row, because a span edge inside one is no
@@ -140,8 +140,7 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
     clusters.push({ text: cluster, style: styles[unit], level: levelOf[index]! });
     unit += cluster.length;
   }
-  // Under `words` the display shapes each run itself, from the letters, in the order the wire turns back to.
-  const forms = shapes ? shaped(clusters.map((cluster) => cluster.text)) : clusters.map((cluster) => cluster.text);
+  const forms = shaped(clusters.map((cluster) => cluster.text));
   const order = visualOrder(clusters.map((cluster) => cluster.level));
   const out: Segment[] = [];
   let run = "";
@@ -230,7 +229,7 @@ export function reorder(line: readonly Segment[], order: TextOrder, direction?: 
   }
 
   const { level, levels } = paragraph(text, direction);
-  const consumed = rewritten(line, REMOVALS.visual);
+  const consumed = rewritten(line, REMOVALS[order]);
   const kept = Segment.plainOf(consumed);
   const keptLevels: number[] = [];
   let at = 0;
@@ -246,7 +245,7 @@ export function reorder(line: readonly Segment[], order: TextOrder, direction?: 
     orient: (shown, start, source) => {
       const row = rowOf(shown, start + source.length === kept.length);
       const own = keptLevels.slice(start, start + source.length);
-      return withStamp(displayed(row, alignedLevels(Segment.plainOf(row), source, own, level), level, order === "visual"), VISUAL_STAMP);
+      return withStamp(displayed(row, alignedLevels(Segment.plainOf(row), source, own, level), level), VISUAL_STAMP);
     },
   };
 }

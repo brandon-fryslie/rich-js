@@ -78,9 +78,10 @@ export function detectTextOrder(env: Env, isTTY: boolean): TextOrder {
   // kitty shapes each run of equal-font cells alone, a space always ends one, and
   // HarfBuzz reverses a run whose first scripted character is right-to-left
   // (`kitty/fonts.c`, render_line and load_hb_buffer); it runs no line bidi.
-  // kitty sets no TERM_PROGRAM and gives each window's child KITTY_WINDOW_ID; a
-  // terminal that only borrows kitty's TERM (WezTerm can) names itself.
-  if (env["TERM"] === "xterm-kitty" && (env["KITTY_WINDOW_ID"] || !env["TERM_PROGRAM"])) return "words";
+  // kitty sets no TERM_PROGRAM. A terminal that borrows kitty's TERM (WezTerm
+  // can) names itself, and so does one started from kitty, whose KITTY_WINDOW_ID
+  // it inherits, so that variable proves nothing.
+  if (env["TERM"] === "xterm-kitty" && !env["TERM_PROGRAM"]) return "words";
   if (env["TERM_PROGRAM"] || env["TERMINAL_EMULATOR"] || env["KONSOLE_VERSION"]) return "plain";
   // VTE reorders, and takes the controls at zero width past column 0
   // (`src/unicode-width.hh`, `Terminal::insert_char`).
