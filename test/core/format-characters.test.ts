@@ -13,7 +13,7 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { render } from "../../src/core/protocol.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import { segmentsToString } from "../../src/core/render.js";
+import { renderToString, segmentsToString } from "../../src/core/render.js";
 import { Style } from "../../src/core/style.js";
 import { JSONRenderable } from "../../src/core/json.js";
 import { Panel } from "../../src/renderables/panel.js";
@@ -548,5 +548,27 @@ describe("a span edge inside a sequence", () => {
       const row = drawn(segmentsToString([new Segment(left, Style.parse("bold")), new Segment(right)], TRUECOLOR));
       expect([left, right, cellLen(row)]).toEqual([left, right, cellLen(left) + cellLen(right)]);
     }
+  });
+});
+
+describe("a removable control between a glyph and its extender", () => {
+  const SGR = /\x1b\[[0-9;]*m/g;
+  const ORDERS = ["plain", "logical", "visual", "words"] as const;
+  // The selector selects nothing in the text as given, since the PDF ends the
+  // cluster; under the orders that drop the PDF it joins the heart on the wire.
+  const TEXT = `${HEART}‬${VS16}|`;
+  const rows = (renderable: Renderable, textOrder: (typeof ORDERS)[number]): string[] =>
+    renderToString(renderable, { width: 20, textOrder, colorSystem: "truecolor" }).replace(SGR, "").split("\n").filter((row) => row !== "");
+
+  it.each(ORDERS)("writes as wide as it measures under %s, wherever a span edge falls", (textOrder) => {
+    const options = { ...new Console({ width: 20 }).options, textOrder };
+    for (let at = 0; at <= TEXT.length; at += 1) {
+      const text = new RichText(TEXT).stylize("bold", at);
+      expect([at, cellLen(rows(text, textOrder)[0]!)]).toEqual([at, text.measure(options).maximum]);
+    }
+  });
+
+  it.each(ORDERS)("keeps a frame around it square under %s", (textOrder) => {
+    expect(new Set(rows(Panel.fit(new RichText(TEXT)), textOrder).map(cellLen)).size).toBe(1);
   });
 });
