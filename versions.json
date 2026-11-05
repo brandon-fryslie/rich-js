@@ -2,45 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-556",
-      "ref": "refs/pull/556/merge",
-      "sha": "763e2385290f2825a8ebabd65bf0e455984a1da6",
-      "timestamp": "2026-11-05T17:57:08.586Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "d61c8fab44636974b20d7f74c5e1edbc1cda86f1",
+      "timestamp": "2026-11-05T18:09:16.336Z",
       "commits": [
         {
-          "sha": "763e2385290f2825a8ebabd65bf0e455984a1da6",
+          "sha": "d61c8fab44636974b20d7f74c5e1edbc1cda86f1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:54:36Z",
-          "message": "Merge 0a76d04e2bd39809ee234368c0bccb1ac404304d into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
-        },
-        {
-          "sha": "0a76d04e2bd39809ee234368c0bccb1ac404304d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:54:26-07:00",
-          "message": "TextInput steps a word to the nearest edge on the key's side, derives its window, and does no ordering under plain (rich-control-codes-xh4n.itm)\n"
-        },
-        {
-          "sha": "4ea5b7350d67f5492b190896bd2d879e3cdeb84f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:42:18-07:00",
-          "message": "TextInput maps a press through the cells the frame drew, steps the window it showed, and counts any script's letters as a word (rich-control-codes-xh4n.itm)\n"
-        },
-        {
-          "sha": "6612ecf41087d7fb1a36270f3edadaef8b49e99d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:35:04-07:00",
-          "message": "TextInput reads each row as drawn: glyphs kept whole, rows at their line's direction, word steps across the screen (rich-control-codes-xh4n.itm)\n"
-        },
-        {
-          "sha": "0b2eda65b6acee40d0787f9753871191b7a265f7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:13:33-07:00",
-          "message": "TextInput shows, hits and moves through right-to-left text in its destination's order (rich-control-codes-xh4n.itm)\n"
+          "timestamp": "2026-11-05T11:07:15-07:00",
+          "message": "TextInput edits right-to-left text (rich-control-codes-xh4n.itm) (#556)\n\n* TextInput shows, hits and moves through right-to-left text in its destination's order (rich-control-codes-xh4n.itm)\n\n* TextInput reads each row as drawn: glyphs kept whole, rows at their line's direction, word steps across the screen (rich-control-codes-xh4n.itm)\n\n* TextInput maps a press through the cells the frame drew, steps the window it showed, and counts any script's letters as a word (rich-control-codes-xh4n.itm)\n\n* TextInput steps a word to the nearest edge on the key's side, derives its window, and does no ordering under plain (rich-control-codes-xh4n.itm)"
         }
       ]
     },
@@ -84,21 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-05T10:05:20-07:00",
           "message": "kitty gets the words order: rows laid out visually, each right-to-left word written in the order kitty turns back (rich-control-codes-xh4n.6pi)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "a31f8cc33cafbdf0842373f7789d7fbe7793c0da",
-      "timestamp": "2026-11-05T17:12:11.402Z",
-      "commits": [
-        {
-          "sha": "a31f8cc33cafbdf0842373f7789d7fbe7793c0da",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T10:10:11-07:00",
-          "message": "A span edge inside a grapheme cluster stops mattering (rich-control-codes-xh4n.s60) (#554)\n\n* A span edge inside a grapheme cluster stops mattering, and nothing joins across a segment edge (rich-control-codes-xh4n.s60)\n\n* Snapped spans are the one reader of a cell's style; an edge drops every opening extender (rich-control-codes-xh4n.s60)\n\n* An edge drops only zero-cell extenders, control text is still sealed, and cluster edges are segmented once (rich-control-codes-xh4n.s60)\n\n* Edges are judged on the bytes written and only after a glyph; a cell's style reads its cluster's start (rich-control-codes-xh4n.s60)"
         }
       ]
     }
