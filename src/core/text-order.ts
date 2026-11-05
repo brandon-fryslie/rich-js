@@ -10,7 +10,7 @@
  * on evidence.
  */
 
-import { isDumbTerminal, type Env } from "./env.js";
+import { isAttended, type Env } from "./env.js";
 import { identifyTerminal, type TerminalIdentity, type TerminalName } from "./terminal-identity.js";
 
 /**
@@ -79,7 +79,7 @@ const ORDER_OF: Readonly<Record<TerminalName, TextOrder>> = {
  * its order.
  */
 export function detectTextOrder(env: Env, isTTY: boolean): TextOrder {
-  return textOrderOf(identifyTerminal(env), isTTY && !isDumbTerminal(env));
+  return textOrderOf(identifyTerminal(env), isAttended(isTTY, env));
 }
 
 /** The order an identified terminal takes, for whoever is `attended` at it. */

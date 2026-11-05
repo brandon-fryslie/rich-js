@@ -41,15 +41,17 @@ import { pattern } from "./pattern.js";
 const TERMINATORS = "\\x1b\\x07\\x9c";
 
 /**
- * `url` without a control, a line separator or a bidi control. RFC 3986 admits no
+ * `text` an OSC carries — a link's address, a title, a notification — without a
+ * control, a line separator or a bidi control. RFC 3986 admits no
  * control and RFC 3987 no bidi control: ESC, BEL and ST end the wrap, CAN and SUB
  * abort it, U+009B opens a sequence inside it, and U+202E would reorder the address
  * on hover. Not the whole census, because an address can hold the rest: ZWNJ is
  * part of a Persian word, and taking it would send the link somewhere else.
- * `sealed` reads a segment's text, so this is the one rule for a link.
+ * `sealed` reads a segment's text, so this is the one rule for a link, and
+ * `terminal-requests` reads it for every title and notification.
  */
-export function stripOscControls(url: string): string {
-  return url.replace(/[\p{Cc}\p{Zl}\p{Zp}\p{Bidi_Control}]/gu, "");
+export function stripOscControls(text: string): string {
+  return text.replace(/[\p{Cc}\p{Zl}\p{Zp}\p{Bidi_Control}]/gu, "");
 }
 
 /**

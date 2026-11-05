@@ -13,6 +13,8 @@ import type { TerminalIdentity } from "./terminal-identity.js";
 const ESC = "\x1b";
 const OSC = `${ESC}]`;
 const ST = `${ESC}\\`;
+// screen's string buffer (`MAXSTR`, ansi.c).
+const SCREEN_STRING_MAX = 768;
 
 /** OSC 2: the window title. */
 export function titleSequence(title: string): string {
@@ -61,17 +63,20 @@ export function notificationSequence(title: string, body: string | undefined, id
 /**
  * `sequence` as it must be written to reach the terminal through `identity`'s
  * intermediary: inside tmux its DCS passthrough with every ESC doubled, which
- * tmux forwards when `allow-passthrough` is on; inside screen its bare DCS, which
- * screen cuts at about 768 bytes;
- * elsewhere unchanged. Zellij has no passthrough.
+ * tmux forwards when `allow-passthrough` is on; inside screen its bare DCS, or
+ * nothing when it is longer than screen holds; elsewhere unchanged. Zellij has no passthrough.
  */
 export function throughIntermediary(sequence: string, identity: TerminalIdentity): string {
   switch (identity.intermediary) {
     case "tmux":
       return `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
-    case "screen":
-      // screen ends its DCS at the first ST, so the sequence inside ends in BEL.
-      return `${ESC}P${sequence.replaceAll(ST, "\x07")}${ST}`;
+    case "screen": {
+      // screen ends its DCS at the first ST, so the sequence inside ends in BEL,
+      // and cuts one past its buffer, leaving the terminal in an unended OSC that
+      // swallows what follows: a request that would not fit is not sent.
+      const inner = sequence.replaceAll(ST, "\x07");
+      return inner.length > SCREEN_STRING_MAX ? "" : `${ESC}P${inner}${ST}`;
+    }
     default:
       return sequence;
   }

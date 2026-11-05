@@ -2,8 +2,8 @@
  * Which terminal draws the cells, and what sits between it and the program:
  * the one reading of the environment every terminal-specific choice derives
  * from — the text order, the notification protocol, the wrapping a multiplexer
- * needs. A second reader of `TERM` would be a second answer to "which terminal
- * is this", and the two would drift.
+ * needs. `color.ts` reads `TERM` for a different question, how many colors, and
+ * partly from suffixes (`-256color`) that name no terminal.
  *
  * An environment is inherited: `code .` from Windows Terminal carries
  * `WT_SESSION` into VS Code's xterm.js terminal, and Alacritty clears nothing
@@ -36,9 +36,15 @@ const TERM_NAMES: readonly (readonly [Pattern, TerminalName])[] = [
   [pattern(/^xterm-ghostty/), "ghostty"],
 ];
 
+// tmux and screen set the TERM their panes see (tmux 3.2+ its TERM_PROGRAM too),
+// so their variable counts only beside it: a terminal started inside one
+// inherits the variable and sets its own TERM.
+const MULTIPLEXER_TERM = pattern(/^(screen|tmux)/);
+
 function intermediaryOf(env: Env): Intermediary | undefined {
-  if (env["TMUX"]) return "tmux";
-  if (env["STY"]) return "screen";
+  const own = (env["TERM"] ?? "").match(MULTIPLEXER_TERM) !== null;
+  if (env["TMUX"] && (own || env["TERM_PROGRAM"] === "tmux")) return "tmux";
+  if (env["STY"] && own) return "screen";
   if (env["ZELLIJ"]) return "zellij";
   if (env["INSIDE_EMACS"] || env["NVIM"] || env["VIM_TERMINAL"]) return "editor";
   return undefined;
@@ -54,7 +60,7 @@ function terminalOf(env: Env): TerminalName {
   if (env["TERM_PROGRAM"] || env["TERMINAL_EMULATOR"] || env["KONSOLE_VERSION"]) return "other";
   if (env["VTE_VERSION"] && term === "xterm-256color") return "vte";
   // Windows Terminal (microsoft/terminal#538): a console there has no `TERM`, WSL has this one.
-  if (env["WT_SESSION"] && (term === "" || term === "xterm-256color")) return "windows-terminal";
+  if (env["WT_SESSION"] && (env["TERM"] === undefined || term === "xterm-256color")) return "windows-terminal";
   return "other";
 }
 

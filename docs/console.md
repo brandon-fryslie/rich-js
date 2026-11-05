@@ -695,11 +695,13 @@ console.bell();
 ```
 
 `notify` writes the protocol the terminal reads: kitty's OSC 99, OSC 777 for foot
-and Ghostty, and OSC 9 everywhere else, which iTerm2 and WezTerm read. Inside
-tmux the terminal outside cannot be seen, so a notification is OSC 9. tmux and
-screen take the title themselves, as the pane's; the clipboard and a
-notification are wrapped in their passthrough, which tmux forwards only with
-`allow-passthrough` on. A terminal may refuse a clipboard write; most ask first
+and Ghostty, and OSC 9 everywhere else, which iTerm2 and WezTerm read. Behind tmux,
+screen, zellij or an editor's terminal, the terminal past it cannot be seen, so
+a notification is OSC 9. tmux and screen take the title themselves, as the
+pane's, and pass the clipboard and a notification on through their passthrough:
+tmux only with `allow-passthrough` on, screen only when the request fits its
+buffer, so a long clipboard write is not sent. zellij and an editor's terminal
+have no passthrough, and what they do with a request is theirs. A terminal may refuse a clipboard write; most ask first
 or need it enabled.
 
 ## Alternate screen
