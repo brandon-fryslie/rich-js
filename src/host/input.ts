@@ -146,7 +146,15 @@ const CSI_LETTER_KEYS: Readonly<Record<string, string>> = {
   H: "home",
   F: "end",
   Z: "tab", // shift+tab encodes as ESC[Z
+  // F1–F4 with a modifier, `ESC[1;5P`, from xterm and the kitty protocol.
+  P: "f1",
+  Q: "f2",
+  R: "f3",
+  S: "f4",
 };
+
+// The kitty keyboard protocol's code points for keys legacy names by name.
+const KITTY_NAMED_CODES: Readonly<Record<number, string>> = { 27: "escape", 13: "enter", 9: "tab", 127: "backspace", 32: "space" };
 
 // `ESC[<n>~` numeric forms for navigation / function keys.
 const CSI_TILDE_KEYS: Readonly<Record<string, string>> = {
@@ -813,6 +821,8 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
   const mod = parseInt(parts[1] ?? "", 10);
   const { shift, ctrl, meta } = decodeModifier(mod);
 
+  if (final === "u") return { kind: "key", bytes, event: kittyKey(first, mod) };
+
   if (final === "~") {
     const name = CSI_TILDE_KEYS[first];
     if (!name) return { kind: "skip", bytes };
@@ -845,6 +855,20 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
     bytes,
     event: ({ key: name, character: "", shift, ctrl, meta }),
   };
+}
+
+// `CSI code[:alternates] ; mods[:event] u`, the kitty keyboard protocol's key,
+// named as the legacy form of the same key is: a named key by its name, a glyph
+// by the glyph, its case carrying shift as typed text's does; Ctrl or Alt on a
+// glyph leaves `character` empty, as their legacy chords do.
+function kittyKey(code: string, mod: number): KeyEvent {
+  const point = parseInt(code.split(":")[0] ?? "", 10);
+  const { shift, ctrl, meta } = decodeModifier(mod);
+  const named = KITTY_NAMED_CODES[point];
+  if (named !== undefined) return { key: named, character: named === "space" && !ctrl && !meta ? " " : "", shift, ctrl, meta };
+  const glyph = Number.isInteger(point) && point > 0x20 ? String.fromCodePoint(point) : "";
+  const shown = shift && !ctrl && !meta ? glyph.toUpperCase() : glyph;
+  return { key: glyph.toLowerCase(), character: ctrl || meta ? "" : shown, shift: shift && (ctrl || meta || shown !== glyph), ctrl, meta };
 }
 
 function decodeModifier(mod: number): { shift: boolean; ctrl: boolean; meta: boolean } {
