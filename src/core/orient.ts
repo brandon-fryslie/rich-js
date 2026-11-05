@@ -281,10 +281,25 @@ export function edges(text: string, order: TextOrder, direction?: ParagraphLevel
  * screen maps back through. Directed exactly when `reorder` directs it, so under
  * `plain` it is the glyphs' own order. The glyphs are taken as given, so a caller
  * that draws each as a cell of its own keeps each.
+ *
+ * Under `logical` the terminal orders the row, and what it orders is the row as
+ * `sealed` writes it: isolated at its own level inside the terminal's
+ * left-to-right paragraph, `after` drawn past it on its line. So it is ordered
+ * as that, and where nothing but whitespace follows it, L1 sets the whitespace
+ * ending the isolate at the terminal's level, not the row's: a blank past the
+ * end of a right-to-left row at the end of its line is shown on its right.
  */
-export function shownOrder(glyphs: readonly string[], order: TextOrder, direction?: ParagraphLevel): number[] {
+export function shownOrder(glyphs: readonly string[], order: TextOrder, direction?: ParagraphLevel, after = ""): number[] {
   const text = glyphs.join("");
   if (order === "plain" || (direction === undefined && !isBidi(text))) return glyphs.map((_, index) => index);
+  if (order === "logical") {
+    const wrapped = [paragraphLevelOf(text, direction) === 1 ? "⁧" : "⁦", ...glyphs, "⁩", ...(after === "" ? [] : [after])];
+    const shown = wrapped.join("");
+    const { level, levels } = paragraph(shown, 0);
+    return visualOrder(clusterLevels(wrapped, lineLevels(shown, levels, level), level))
+      .filter((index) => index > 0 && index <= glyphs.length)
+      .map((index) => index - 1);
+  }
   const { level, levels } = paragraph(text, direction);
   return visualOrder(clusterLevels(glyphs, lineLevels(text, levels, level), level));
 }
