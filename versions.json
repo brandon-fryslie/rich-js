@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-561",
+      "ref": "refs/pull/561/merge",
+      "sha": "4a8632d6e6242a9abf48cf890adb488731809a1d",
+      "timestamp": "2026-11-05T21:04:09.790Z",
+      "commits": [
+        {
+          "sha": "4a8632d6e6242a9abf48cf890adb488731809a1d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:01:47-07:00",
+          "message": "Merge 358c8bac23012edd28b7b0aeb68a769149d455f4 into 745a2a57cdae7930809b57710050951727b81ddc\n"
+        },
+        {
+          "sha": "358c8bac23012edd28b7b0aeb68a769149d455f4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T14:01:30-07:00",
+          "message": "A focused TextInput is the terminal's own cursor, shaped by DECSCUSR; the pointer takes the hovered widget's shape by OSC 22 (rich-control-codes-xh4n.sk3)\n\nThe painter hid the hardware cursor for the whole take, so DECSCUSR alone\nshowed nothing. A frame now names the cell where the terminal's cursor\nstands (Style.caret); SurfaceRenderer shows it there in that shape after\neach paint, hides it while painting, homes from the caret's row, and gives\nthe default shape back on hand-back. TextInput marks its caret instead of\ndrawing a blinking one wherever the painter shows the cursor\n(RenderOptions.caret), so an IME and a screen reader follow the editing\npoint. A logical-order terminal reorders glyphs off their frame columns, so\nthere the drawn caret stays.\n\nOSC 22 adopted: Console.setPointerShape, App.pointerShape, and\nWidgetBase/TextInput.pointerShape set from hover. OSC 133 rejected; the\nreason is on the ticket.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "745a2a57cdae7930809b57710050951727b81ddc",
