@@ -41,10 +41,12 @@
  * none awaited.
  *
  * A bracketed paste, `ESC [ 200 ~` … `ESC [ 201 ~`, is one event whatever it
- * holds: nothing inside is read as a key. Its end marker always comes, and a
- * large paste over a slow link outlasts any delay, so an open paste is held
- * until it does — on a split host past the escape delay, which does not run for
- * it. A whole-keys chunk is whole, so a paste open at its end ends there.
+ * holds: nothing inside is read as a key. A large paste over a slow link
+ * outlasts the escape delay, so on a split host an open paste — from `ESC [ 200`,
+ * which no key shares — is held instead for `PASTE_IDLE_MS` of silence, and
+ * then ends where it is, still one paste: a lost end marker cuts the paste
+ * short, and never turns it into keys or leaves the parser deaf. A whole-keys
+ * chunk is whole, so a paste open at its end ends there.
  */
 
 import type { InputChunks } from "./terminal-host.js";
@@ -249,6 +251,13 @@ const ASCII_DECODER = new TextDecoder("ascii");
  */
 export const ESCAPE_DELAY_MS = 100;
 
+/**
+ * How long a split host's open paste waits for its next byte before it ends
+ * where it is: far past any gap inside a paste a terminal is still sending,
+ * short enough that a lost end marker gives the keyboard back.
+ */
+export const PASTE_IDLE_MS = 2000;
+
 // Concatenate two byte arrays into a fresh Uint8Array. Replaces
 // `Buffer.concat([...])` so the parser holds no node-specific globals.
 function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
@@ -302,7 +311,8 @@ export class InputParser {
   // How far into the open paste at the buffer head its end marker has been
   // looked for, so each read scans only what it added.
   private pasteScanned = 0;
-  // Set while `flush` settles the buffer: an open paste ends where it is.
+  // Set while `flush` settles the buffer — at a paste's idle bound among
+  // others: an open paste ends where it is.
   private flushing = false;
   // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
   // across node and browser; `setImmediate` is node-only.
@@ -360,7 +370,11 @@ export class InputParser {
   // it afresh (`awaitReplies`), so what is held then gets the whole delay.
   private validity(): void {
     this.cancelEscape();
-    if (this.buffer[0] !== ESC || opensPaste(this.buffer)) return;
+    if (this.buffer[0] !== ESC) return;
+    if (pasteAhead(this.buffer)) {
+      this.escTimer = setTimeout(() => this.flush(), PASTE_IDLE_MS);
+      return;
+    }
     this.escTimer = setTimeout(() => {
       this.escTimer = setTimeout(() => {
         if (!this.replyMayArrive() || !opensString(this.buffer)) this.flush();
@@ -541,12 +555,12 @@ export class InputParser {
       // The byte after `ESC ESC` decides what it opens, so a read that ends
       // between them leaves it unfinished, held like any other.
       if (buf.length === 2) return { kind: "incomplete" };
-      // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
-      // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`):
-      // the inner sequence, with meta held.
       // Escape typed just ahead of a paste: the Escape alone, so the paste
       // opens the buffer and is held as one.
       if (opensPaste(buf.subarray(1))) return { kind: "key", bytes: 1, event: ESCAPE };
+      // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
+      // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`):
+      // the inner sequence, with meta held.
       if (buf[2] === LBRACKET || buf[2] === O_BYTE) {
         const inner = this.consumeEscape(buf.subarray(1));
         if (inner.kind === "incomplete") return inner;
@@ -624,8 +638,8 @@ export class InputParser {
   }
 
   // A bracketed paste, its markers taken off. Open at a whole-keys chunk's end,
-  // or when `flush` settles the buffer, it ends there; open on a split host,
-  // it is held for the rest.
+  // or when `flush` settles the buffer (its idle bound), it ends there; open on
+  // a split host, it is held for the rest.
   private consumePaste(buf: Uint8Array): ConsumeResult {
     const end = indexOfBytes(buf, PASTE_END, Math.max(PASTE_START.length, this.pasteScanned - PASTE_END.length + 1));
     if (end < 0 && this.chunks === "split" && !this.flushing) {
@@ -705,10 +719,21 @@ function opensPaste(buf: Uint8Array): boolean {
   return buf.length >= PASTE_START.length && PASTE_START.every((byte, index) => buf[index] === byte);
 }
 
-// Where `needle` first starts in `buf` at or past `from`, or -1.
+// The shortest start of a paste's marker no key shares: `ESC [ 20 ~` is F9.
+const PASTE_PREFIX: readonly number[] = PASTE_START.slice(0, 5);
+
+// Whether `buf` opens a paste, or Escape and then one, as far as it has come.
+function pasteAhead(buf: Uint8Array): boolean {
+  const from = (at: number): boolean => buf.length - at >= PASTE_PREFIX.length && PASTE_PREFIX.every((byte, index) => buf[at + index] === byte);
+  return from(0) || (buf[1] === ESC && from(1));
+}
+
+// Where `needle`, which opens with ESC, first starts in `buf` at or past `from`, or -1.
 function indexOfBytes(buf: Uint8Array, needle: readonly number[], from: number): number {
-  for (let at = from; at + needle.length <= buf.length; at++) {
-    if (needle.every((byte, index) => buf[at + index] === byte)) return at;
+  for (let at = buf.indexOf(ESC, from); at >= 0 && at + needle.length <= buf.length; at = buf.indexOf(ESC, at + 1)) {
+    let index = 1;
+    while (index < needle.length && buf[at + index] === needle[index]) index++;
+    if (index === needle.length) return at;
   }
   return -1;
 }

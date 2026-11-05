@@ -357,6 +357,8 @@ const ASCII_ZERO_CELL_GLYPH = "?";
 // Text a key may insert: anything but the C0 controls, DEL and the C1
 // controls, which a terminal reads as escape sequences (U+009B is CSI).
 const PRINTABLE = pattern(/^[^\x00-\x1f\x7f-\x9f]+$/u);
+// What no key types into a field, a line break aside: PRINTABLE's complement.
+const UNTYPABLE = pattern(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/u);
 
 // What a word is made of, for Alt+B/F, Ctrl+Left/Right and Ctrl+W: readline's
 // alphanumerics and underscore, in any script, so a word of Arabic or Hebrew is
@@ -916,12 +918,11 @@ export class TextInput extends ThemedWidget {
   @action
   handlePaste(text: string, time: number): void {
     if (this.disabled) return;
-    const lines = text.split("\n").map((line) => Array.from(line.replaceAll("\t", " "), (character) => (PRINTABLE.test(character) ? character : "")).join(""));
+    const lines = text.replaceAll("\t", " ").replace(new RegExp(UNTYPABLE.source, "gu"), "").split("\n");
     if (!this._multiline && lines.length > 1 && lines.at(-1) === "") lines.pop();
-    const kept = lines.join(this._multiline ? "\n" : " ");
-    if (kept === "") return;
-    this._insertText(kept);
-    this._edited(time);
+    const before = this.value;
+    this._insertText(lines.join(this._multiline ? "\n" : " "));
+    if (this.value !== before) this._edited(time);
   }
 
   @action

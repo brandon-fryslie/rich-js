@@ -6,10 +6,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../src/host/app.js";
-import { ESCAPE_DELAY_MS, InputParser, keyName } from "../../src/host/input.js";
+import { ESCAPE_DELAY_MS, InputParser, PASTE_IDLE_MS, keyName } from "../../src/host/input.js";
 import type { InputChunks } from "../../src/host/terminal-host.js";
 import { RichText } from "../../src/core/text.js";
 import { TextInput } from "../../src/widgets/text-input.js";
+import { Dropdown } from "../../src/widgets/dropdown.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { scriptedHost } from "./scripted-host.js";
 
@@ -55,6 +56,35 @@ describe("InputParser reads a bracketed paste", () => {
     expect(heard).toEqual([]);
     input.feed(`second half${END}`);
     expect(heard).toEqual(["paste:first half second half"]);
+  });
+
+  it("ends a paste whose end marker never comes at its idle bound, as a paste, and hears keys again", () => {
+    vi.useFakeTimers();
+    const { parser: input, heard } = parser("split");
+    input.feed(`${START}lost\r`);
+    vi.advanceTimersByTime(PASTE_IDLE_MS - 1);
+    input.feed("more");
+    vi.advanceTimersByTime(PASTE_IDLE_MS - 1);
+    expect(heard).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(heard).toEqual(["paste:lost\nmore"]);
+    input.feed("\x03");
+    expect(heard).toEqual(["paste:lost\nmore", "key:ctrl+c"]);
+  });
+
+  it("holds a start marker a read split past the escape delay", () => {
+    vi.useFakeTimers();
+    const { parser: input, heard } = parser("split");
+    input.feed("\x1b[200");
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS * 10);
+    input.feed(`~a\rb${END}`);
+    expect(heard).toEqual(["paste:a\nb"]);
+  });
+
+  it("still reads F9, which shares the marker's first bytes", () => {
+    const { parser: input, heard } = parser("split");
+    input.feed("\x1b[20~");
+    expect(heard).toEqual(["key:f9"]);
   });
 
   it("joins a paste whose markers a read split, on a split host", () => {
@@ -160,6 +190,15 @@ describe("TextInput and a paste", () => {
     expect(input.value).toBe("npm test");
     input.handlePaste(" and more ", 0);
     expect(input.value).toBe("npm test and more ");
+  });
+});
+
+describe("Dropdown and a paste", () => {
+  it("filters by a paste, as typing it would", () => {
+    const dropdown = new Dropdown({ options: ["calendar", "clock", "camera"] });
+    dropdown.handlePaste("cal\n");
+    expect(dropdown.expanded).toBe(true);
+    expect(dropdown.filteredOptions.map((option) => option.label)).toEqual(["calendar"]);
   });
 });
 

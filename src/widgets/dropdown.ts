@@ -104,6 +104,17 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
 
   // --- Event handlers ---
 
+  /** A paste filters, as typing it would: on one line, without controls. */
+  @action
+  handlePaste(text: string): void {
+    if (this.disabled) return;
+    const typed = text.replace(/[\x00-\x1f\x7f-\x9f]+/gu, " ").trim();
+    if (typed === "") return;
+    this.expanded = true;
+    this.filter = this.filter + typed;
+    this.highlightedIndex = 0;
+  }
+
   @action
   handleKey(event: WidgetKeyEvent): void {
     if (this.disabled) return;
