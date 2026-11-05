@@ -13,7 +13,7 @@ import type { TerminalIdentity } from "./terminal-identity.js";
 const ESC = "\x1b";
 const OSC = `${ESC}]`;
 const ST = `${ESC}\\`;
-// screen's string buffer (`MAXSTR`, ansi.c).
+// screen's string buffer (`MAXSTR`, ansi.c), in bytes.
 const SCREEN_STRING_MAX = 768;
 
 /** OSC 2: the window title. */
@@ -75,7 +75,7 @@ export function throughIntermediary(sequence: string, identity: TerminalIdentity
       // and cuts one past its buffer, leaving the terminal in an unended OSC that
       // swallows what follows: a request that would not fit is not sent.
       const inner = sequence.replaceAll(ST, "\x07");
-      return inner.length > SCREEN_STRING_MAX ? "" : `${ESC}P${inner}${ST}`;
+      return new TextEncoder().encode(inner).length > SCREEN_STRING_MAX ? "" : `${ESC}P${inner}${ST}`;
     }
     default:
       return sequence;

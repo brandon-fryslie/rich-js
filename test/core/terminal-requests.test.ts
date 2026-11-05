@@ -121,6 +121,9 @@ describe("inside tmux", () => {
     const { console, written } = terminal({ TERM: "screen", STY: "1.pts-0.host" });
     console.copyToClipboard("x".repeat(600));
     expect(written()).toBe("");
+    // 300 characters, 900 bytes.
+    console.notify("✓".repeat(300));
+    expect(written()).toBe("");
   });
 
   it("leaves the title to tmux, which takes OSC 2 as the pane's", () => {
