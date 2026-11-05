@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "66d95e277535fd7da1a06633cf44e9f2a7f90678",
-      "timestamp": "2026-11-05T22:05:41.724Z",
+      "sha": "74ca7b0f891f4d1e398d9089ce06a4924d458150",
+      "timestamp": "2026-11-05T22:17:29.614Z",
       "commits": [
         {
-          "sha": "66d95e277535fd7da1a06633cf44e9f2a7f90678",
+          "sha": "74ca7b0f891f4d1e398d9089ce06a4924d458150",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T15:03:22-07:00",
-          "message": "iTerm2 and Terminal.app measured and kept plain (rich-control-codes-xh4n.gp4) (#562)\n\n* iTerm2 and Terminal.app measured and kept plain (rich-control-codes-xh4n.gp4)\n\n* Name the measured versions and PDF's cell, pin Terminal.app plain, and say it in the docs (rich-control-codes-xh4n.gp4)\n\n* Drop the unmeasured logical advice for Terminal.app; say which build the bidi rows came from (rich-control-codes-xh4n.gp4)\n\n* Keep the bidi measurement in one place; name seal's closers and the unmeasured reordering (rich-control-codes-xh4n.gp4)"
+          "timestamp": "2026-11-05T15:15:00-07:00",
+          "message": "Pin: a removable control between a glyph and its extender writes as wide as it measures (rich-control-codes-xh4n.5md) (#563)\n\n* Pin that a removable control between a glyph and its extender writes as wide as it measures under every order (rich-control-codes-xh4n.5md)\n\nRichText.measure has read orient's measured(text, order) since #534, so it\ndrops the controls the wire drops; the probe that filed this compared raw\ncellLen against a removing order's row. Every order and span edge agreed on\nmaster; this pins it, and fails if measure stops being order-aware.\n\n* Fold the removed-control pin into the span-edge describe: one edged helper over the order, one options set, the vacuous Panel case and the non-removing logical order dropped (rich-control-codes-xh4n.5md)\n\n* Pin the removed-control width under logical too, and the width each order draws, not only that measure and wire agree (rich-control-codes-xh4n.5md)"
         }
       ]
     }
