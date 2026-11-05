@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-553",
+      "ref": "refs/pull/553/merge",
+      "sha": "4e1e0c0ee2a8bd56ddd0181f57939f44e33e679a",
+      "timestamp": "2026-11-05T16:09:39.387Z",
+      "commits": [
+        {
+          "sha": "4e1e0c0ee2a8bd56ddd0181f57939f44e33e679a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:07:03-07:00",
+          "message": "Merge 6e7b96e02e71b8b229b4bd10237f3b11ce90700a into ea9e2953056e8d8103110062313d3a7f0c278066\n"
+        },
+        {
+          "sha": "6e7b96e02e71b8b229b4bd10237f3b11ce90700a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:05:41-07:00",
+          "message": "0.30.0: StepSequence.holds is StepSequence.steps (rich-unfiled-791c.tgkg)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ea9e2953056e8d8103110062313d3a7f0c278066",
