@@ -154,15 +154,22 @@ describe("TextInput with right-to-left text", () => {
     }
   });
 
-  it("stops a word step at the space between right-to-left words", () => {
+  it("steps right-to-left words edge by edge, the same edges each way", () => {
     const input = field("שלום עולם");
     render(input, options("visual"));
     input.cursorPosition = asCodeUnit(9);
     const ctrlKey = (name: string): WidgetKeyEvent => new WidgetKeyEvent({ key: name, character: "", shift: false, ctrl: true, meta: false }, 0);
-    input.handleKey(ctrlKey("right"));
-    expect(input.cursorPosition).toBe(4);
-    input.handleKey(ctrlKey("right"));
-    expect(input.cursorPosition).toBe(0);
+    const visited = (name: string): number[] => [0, 1, 2].map(() => (input.handleKey(ctrlKey(name)), input.cursorPosition));
+    expect(visited("right")).toEqual([5, 4, 0]);
+    expect(visited("left")).toEqual([4, 5, 9]);
+  });
+
+  it("steps left-to-right words as readline does", () => {
+    const input = field("see אבג now");
+    render(input, options("visual"));
+    input.cursorPosition = asCodeUnit(0);
+    input.handleKey(new WidgetKeyEvent({ key: "right", character: "", shift: false, ctrl: true, meta: false }, 0));
+    expect(input.cursorPosition).toBe(3);
   });
 
   it("keeps an override in its value from reaching past the field", () => {
