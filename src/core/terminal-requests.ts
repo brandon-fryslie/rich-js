@@ -32,13 +32,14 @@ export function clipboardSequence(text: string): string {
  * OSC 99, title then body joined by `id`, which must differ per notification or
  * kitty updates the earlier one in place; OSC 777 for foot and Ghostty; and
  * iTerm2's OSC 9 elsewhere, which carries one line, so title and body are joined
- * there. Behind tmux the outer terminal cannot be seen, so it is OSC 9, which
+ * there. Behind any intermediary the terminal cannot be seen, so it is OSC 9, which
  * kitty, Ghostty, iTerm2 and WezTerm all read.
  */
-export function notificationSequence(title: string, body: string | undefined, identity: TerminalIdentity, id: number): string {
+export function notificationSequence(title: string, body: string | undefined, identity: TerminalIdentity, id: string): string {
   const shownTitle = stripOscControls(title);
   const shownBody = body === undefined ? undefined : stripOscControls(body);
-  switch (identity.terminal) {
+  // Whatever sits between hides the terminal past it, whatever TERM says.
+  switch (identity.intermediary === undefined ? identity.terminal : "other") {
     case "kitty":
       return shownBody === undefined
         ? `${OSC}99;i=${id};${shownTitle}${ST}`
@@ -60,7 +61,8 @@ export function notificationSequence(title: string, body: string | undefined, id
 /**
  * `sequence` as it must be written to reach the terminal through `identity`'s
  * intermediary: inside tmux its DCS passthrough with every ESC doubled, which
- * tmux forwards when `allow-passthrough` is on; inside screen its bare DCS;
+ * tmux forwards when `allow-passthrough` is on; inside screen its bare DCS, which
+ * screen cuts at about 768 bytes;
  * elsewhere unchanged. Zellij has no passthrough.
  */
 export function throughIntermediary(sequence: string, identity: TerminalIdentity): string {
@@ -68,7 +70,8 @@ export function throughIntermediary(sequence: string, identity: TerminalIdentity
     case "tmux":
       return `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
     case "screen":
-      return `${ESC}P${sequence}${ST}`;
+      // screen ends its DCS at the first ST, so the sequence inside ends in BEL.
+      return `${ESC}P${sequence.replaceAll(ST, "\x07")}${ST}`;
     default:
       return sequence;
   }

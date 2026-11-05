@@ -19,6 +19,7 @@ function terminal(env: Env, options: ConstructorParameters<typeof Console>[0] = 
     forceTerminal: true,
     hyperlinks: false,
     environment: { env },
+    getDatetime: () => new Date(36 ** 3),
     file: { write: (chunk: string) => void chunks.push(chunk) },
     ...options,
   });
@@ -67,14 +68,14 @@ describe("Console.notify", () => {
   it("writes kitty's OSC 99, title then body under one id", () => {
     const { console, written } = terminal(KITTY);
     console.notify("Done", "ok");
-    expect(written()).toBe(`${ESC}]99;i=1:d=0;Done${ST}${ESC}]99;i=1:p=body;ok${ST}`);
+    expect(written()).toBe(`${ESC}]99;i=1000-1:d=0;Done${ST}${ESC}]99;i=1000-1:p=body;ok${ST}`);
   });
 
   it("gives each kitty notification its own id, so a second does not replace the first", () => {
     const { console, written } = terminal(KITTY);
     console.notify("A");
     console.notify("B");
-    expect(written()).toBe(`${ESC}]99;i=1;A${ST}${ESC}]99;i=2;B${ST}`);
+    expect(written()).toBe(`${ESC}]99;i=1000-1;A${ST}${ESC}]99;i=1000-2;B${ST}`);
   });
 
   it("keeps an OSC 9 line off the shape of ConEmu's numbered sub-commands", () => {
@@ -102,6 +103,12 @@ describe("inside tmux", () => {
     expect(written()).toBe(wrap(`${ESC}]52;c;eA==${ST}`) + wrap(`${ESC}]9;n${ST}`));
   });
 
+  it("sends OSC 9 behind tmux whatever TERM tmux was told to set", () => {
+    const { console, written } = terminal({ TERM: "xterm-ghostty", TMUX: "x" });
+    console.notify("n");
+    expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;n${ESC}${ESC}\\${ST}`);
+  });
+
   it("leaves the title to tmux, which takes OSC 2 as the pane's", () => {
     const { console, written } = terminal(TMUX);
     console.setWindowTitle("t");
@@ -111,7 +118,7 @@ describe("inside tmux", () => {
   it("wraps a request inside screen in its bare passthrough", () => {
     const { console, written } = terminal({ TERM: "screen", STY: "1.pts-0.host" });
     console.copyToClipboard("x");
-    expect(written()).toBe(`${ESC}P${ESC}]52;c;eA==${ST}${ST}`);
+    expect(written()).toBe(`${ESC}P${ESC}]52;c;eA==\x07${ST}`);
   });
 
   it("leaves the bell to tmux, which handles it itself", () => {

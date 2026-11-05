@@ -777,16 +777,20 @@ export class Console {
 
   /** Raises a desktop notification, in the protocol this console's terminal reads. */
   notify(title: string, body?: string): void {
-    this._notifications.set(this._notifications.get() + 1);
-    this._request(throughIntermediary(notificationSequence(title, body, this._identity, this._notifications.get()), this._identity));
+    this._request(() => {
+      this._notifications.set(this._notifications.get() + 1);
+      // Unique past this console and this run: kitty updates in place a notification whose id it has seen.
+      const id = `${this._getDatetime().getTime().toString(36)}-${this._notifications.get()}`;
+      return throughIntermediary(notificationSequence(title, body, this._identity, id), this._identity);
+    });
   }
 
   // [LAW:single-enforcer] Every request to the terminal goes through here: it
   // reaches whoever is at the terminal and no one else, straight to the sink, because it moves no cursor and a live region
   // would repaint its frame.
-  private _request(bytes: string): void {
+  private _request(bytes: string | (() => string)): void {
     refuseRenderWrite(this._madeIn);
-    if (this._attended && this._capture.get() === null) this.file.write(bytes);
+    if (this._attended && this._capture.get() === null) this.file.write(typeof bytes === "string" ? bytes : bytes());
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

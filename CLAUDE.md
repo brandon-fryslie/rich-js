@@ -83,8 +83,8 @@ Build order within `src/core/`. Each tier imports only from tiers above it, but 
 
 ```
 0   anchor · bidi-data · cell-widths · color · control-codes · easing · env · fnv1a · memo · noise · pattern · selection · subscription · terminal-identity · text-order
-1   cells · clock · oklch · osc8 · style · terminal-requests · wrap
-2   segment · bidi
+1   cells · clock · oklch · osc8 · style · wrap
+2   segment · bidi · terminal-requests
 3   box · protocol · seal · orient
 4   measure · emoji · text · strip · render · export-lines · state
 5   animation · markup · highlighter · ansi · place · paint · export-html · export-svg

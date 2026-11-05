@@ -54,7 +54,7 @@ function terminalOf(env: Env): TerminalName {
   if (env["TERM_PROGRAM"] || env["TERMINAL_EMULATOR"] || env["KONSOLE_VERSION"]) return "other";
   if (env["VTE_VERSION"] && term === "xterm-256color") return "vte";
   // Windows Terminal (microsoft/terminal#538): a console there has no `TERM`, WSL has this one.
-  if (env["WT_SESSION"] && (env["TERM"] === undefined || term === "xterm-256color")) return "windows-terminal";
+  if (env["WT_SESSION"] && (term === "" || term === "xterm-256color")) return "windows-terminal";
   return "other";
 }
 
