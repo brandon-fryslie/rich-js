@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-553",
-      "ref": "refs/pull/553/merge",
-      "sha": "4e1e0c0ee2a8bd56ddd0181f57939f44e33e679a",
-      "timestamp": "2026-11-05T16:09:39.387Z",
-      "commits": [
-        {
-          "sha": "4e1e0c0ee2a8bd56ddd0181f57939f44e33e679a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T09:07:03-07:00",
-          "message": "Merge 6e7b96e02e71b8b229b4bd10237f3b11ce90700a into ea9e2953056e8d8103110062313d3a7f0c278066\n"
-        },
-        {
-          "sha": "6e7b96e02e71b8b229b4bd10237f3b11ce90700a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T09:05:41-07:00",
-          "message": "0.30.0: StepSequence.holds is StepSequence.steps (rich-unfiled-791c.tgkg)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ea9e2953056e8d8103110062313d3a7f0c278066",
-      "timestamp": "2026-11-05T12:30:03.874Z",
+      "sha": "c0aad9dbb7107a260bc54f07bbf82c0604ca77d0",
+      "timestamp": "2026-11-05T16:19:17.235Z",
       "commits": [
         {
-          "sha": "ea9e2953056e8d8103110062313d3a7f0c278066",
+          "sha": "c0aad9dbb7107a260bc54f07bbf82c0604ca77d0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T05:27:39-07:00",
-          "message": "e2e edits a card's editor in one input, so a key can't drop under a busy page (rich-unfiled-791c.m6cg) (#552)\n\n* e2e edits a card's editor in one input, so a key can't drop under a busy page (rich-unfiled-791c.m6cg)\n\nThe flake this ticket saw was not a timeout under load. Playwright's\nkeyboard.type sends a key every 2-3 ms; with the card's example animating,\nCodeMirror lost one about 1 run in 40 (setTimeout became setTimout). Code put\ninto an editor now goes through keyboard.insertText, as the demos, try-it,\nplayground and effects-playground specs already do. Keystroke tests keep\nkeyboard.type.\n\n* A reader's-pace keystroke test into an animating card holds typing, which the insertText edits no longer do (rich-unfiled-791c.m6cg)\n\n* The reader's-pace test waits for the card to animate and claims only that keys land (rich-unfiled-791c.m6cg)"
+          "timestamp": "2026-11-05T09:17:09-07:00",
+          "message": "0.30.0: StepSequence.holds is StepSequence.steps (rich-unfiled-791c.tgkg) (#553)"
         }
       ]
     }
