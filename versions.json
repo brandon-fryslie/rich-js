@@ -4,15 +4,22 @@
     {
       "version": "pr-560",
       "ref": "refs/pull/560/merge",
-      "sha": "87ee3d4492ef336c394dda341f2db62980d5097f",
-      "timestamp": "2026-11-05T20:08:05.689Z",
+      "sha": "db1743f92d5fbd552a435f10be3653b37b4f7fca",
+      "timestamp": "2026-11-05T20:19:51.825Z",
       "commits": [
         {
-          "sha": "87ee3d4492ef336c394dda341f2db62980d5097f",
+          "sha": "db1743f92d5fbd552a435f10be3653b37b4f7fca",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:06:18Z",
-          "message": "Merge 6fe8f9cd873f21c423b056ce95101f5a2660a855 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
+          "timestamp": "2026-11-05T20:18:13Z",
+          "message": "Merge 4b3c36b1a603a6048abf031eaea7946b0d565c84 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
+        },
+        {
+          "sha": "4b3c36b1a603a6048abf031eaea7946b0d565c84",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T13:18:03-07:00",
+          "message": "Kitty keys: shortcuts by base-layout key, one key-name set, push failure caught (rich-control-codes-xh4n.anf)\n\nAddresses the third high pass on #560: Ctrl/Alt chords take the base-layout\nsubfield; parseKeyName drops its protocol parameter since decodeCSI reads\nCSI u in every mode; .catch(fail) covers a throwing push write; typed()\nshared by byte and kitty keys; KeyboardProtocol exported from ./host;\ndocs name how Ctrl chords differ under the protocol.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "6fe8f9cd873f21c423b056ce95101f5a2660a855",
