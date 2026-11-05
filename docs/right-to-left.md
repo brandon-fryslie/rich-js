@@ -141,7 +141,7 @@ const rows = Segment.splitLines(render(line, { maxWidth: 12, textOrder: "visual"
   different cells than the terminal shows. A row split by an overlay reopens what
   was open at its start, so a control in the middle of the row stops acting past
   the split.
-- **`TextInput`.** It draws no right-to-left order yet.
+- **`TextInput`.** Up and Down keep a column counted through the text, not across the screen, so on a right-to-left row they land where the text's order puts that column.
 - **kitty.** It shows right-to-left lines with their words in left-to-right order.
 - **`RichText.plain`.** It holds the controls in every order, so a program writing
   `text.plain` itself gets no containment.
