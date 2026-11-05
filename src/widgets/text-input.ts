@@ -357,6 +357,8 @@ const ASCII_ZERO_CELL_GLYPH = "?";
 // Text a key may insert: anything but the C0 controls, DEL and the C1
 // controls, which a terminal reads as escape sequences (U+009B is CSI).
 const PRINTABLE = pattern(/^[^\x00-\x1f\x7f-\x9f]+$/u);
+// What no key types into a field, a line break aside: PRINTABLE's complement.
+const UNTYPABLE = pattern(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/u);
 
 // What a word is made of, for Alt+B/F, Ctrl+Left/Right and Ctrl+W: readline's
 // alphanumerics and underscore, in any script, so a word of Arabic or Hebrew is
@@ -530,11 +532,15 @@ export class TextInput extends ThemedWidget {
   @action
   handleKey(event: WidgetKeyEvent): void {
     this._edit(event);
-    if (!event.stopped) return;
-    this._blink = caretBlink(event.time);
-    // An edit on the cursor's row moves no followed range, so the row is
-    // brought into view here too: typing after the wheel scrolled away scrolls
-    // back. The rows are the edited value's, at the width last drawn.
+    if (event.stopped) this._edited(event.time);
+  }
+
+  // After an edit at `time`: the blink restarts, and the cursor's row is
+  // brought into view, since an edit on it moves no followed range — typing
+  // after the wheel scrolled away scrolls back. The rows are the edited
+  // value's, at the width last drawn.
+  private _edited(time: number): void {
+    this._blink = caretBlink(time);
     if (this._multiline) {
       const row = cursorRowIn(this._rows(this._drawn.get()), this.cursorPosition);
       this._viewport.ensureVisible(row, row + 1);
@@ -901,6 +907,22 @@ export class TextInput extends ThemedWidget {
     let p: number = this.cursorPosition;
     while (p < this.value.length && this.value[p] !== "\n") p++;
     return asCodePoint(p);
+  }
+
+  /**
+   * A paste goes in as text, never as the keys it holds: a line break in it
+   * submits nothing. What it keeps is what typing could put in — no control,
+   * a tab made a space — and its line breaks: on one line each is a space, but
+   * a final one, which copying a line brings along, is dropped.
+   */
+  @action
+  handlePaste(text: string, time: number): void {
+    if (this.disabled) return;
+    const lines = text.replaceAll("\t", " ").replace(new RegExp(UNTYPABLE.source, "gu"), "").split("\n");
+    if (!this._multiline && lines.length > 1 && lines.at(-1) === "") lines.pop();
+    const before = this.value;
+    this._insertText(lines.join(this._multiline ? "\n" : " "));
+    if (this.value !== before) this._edited(time);
   }
 
   @action

@@ -119,6 +119,10 @@ const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = 
   inline: { on: "", off: "" },
 };
 
+// Bracketed paste: the terminal marks a paste, so it arrives as one event and
+// never as the keys it holds. Both surfaces, since a paste has no position.
+const BRACKETED_PASTE = { on: "\x1b[?2004h", off: "\x1b[?2004l" } as const;
+
 /**
  * A turn of the wheel, where the pointer was when it turned: `lines` is
  * positive towards the end of the content, a line a notch.
@@ -208,6 +212,7 @@ export class App implements FrameHost {
   private subscriptions: Unsubscribe[] = [];
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
   private readonly keyHandlers = new Set<(press: KeyEvent) => void>();
+  private readonly pasteHandlers = new Set<(text: string) => void>();
   private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
   private readonly wheelHandlers = new Set<(wheel: WheelEvent) => boolean>();
   private readonly quitKeys: ReadonlySet<string>;
@@ -217,7 +222,7 @@ export class App implements FrameHost {
   constructor(options: AppOptions) {
     this.host = options.host;
     this.input = new InputParser(
-      { key: (press) => this.key(press), mouse: (event) => this.mouse(event), reply: (reply) => this.reply(reply) },
+      { key: (press) => this.key(press), mouse: (event) => this.mouse(event), reply: (reply) => this.reply(reply), paste: (text) => this.hear(this.pasteHandlers, text) },
       options.host.inputChunks,
     );
     this.surface = options.surface;
@@ -466,6 +471,16 @@ export class App implements FrameHost {
   }
 
   /**
+   * Hear every paste, as the text pasted, each line break `\n`: one event, not
+   * the keys it holds, so a pasted line break submits nothing and a pasted
+   * quit key quits nothing. A handler that throws fails the app.
+   */
+  onPaste(handler: (text: string) => void): Unsubscribe {
+    this.pasteHandlers.add(handler);
+    return () => this.pasteHandlers.delete(handler);
+  }
+
+  /**
    * Hear every pointer event but the vertical wheel, which is `onWheel`'s,
    * in terminal cells. Only the alternate surface reports the pointer. A
    * handler that throws fails the app.
@@ -508,14 +523,14 @@ export class App implements FrameHost {
   private enter(): void {
     this.host.setRawMode(true);
     this.painter.take();
-    this.host.write(POINTER[this.surface].on);
+    this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
   }
 
   private leave(): void {
     this.asking?.finish("left");
     // Whatever answers the terminal sends from here reach whoever holds it next.
     this.owedDa1 = 0;
-    this.host.write(POINTER[this.surface].off);
+    this.host.write(BRACKETED_PASTE.off + POINTER[this.surface].off);
     this.painter.handBack();
     this.host.setRawMode(false);
   }

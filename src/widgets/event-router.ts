@@ -60,6 +60,7 @@ export class EventRouter {
   // `event.stop()`. Insertion order is preserved within each tier.
   private readonly keyChain: RegisteredKeyHandler[] = [];
   private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
+  private readonly pasteHandlers = new Set<(text: string) => boolean | void>();
 
   constructor(options: EventRouterOptions) {
     this.source = options.source;
@@ -120,6 +121,18 @@ export class EventRouter {
   /** Route a key the app heard. */
   key(press: KeyEvent): void {
     this.dispatchKey(new WidgetKeyEvent(press, this.source.frameNow().time));
+  }
+
+  /** Hear a paste first; return `true` to claim it from the focused widget. */
+  onPaste(handler: (text: string) => boolean | void): Unsubscribe {
+    this.pasteHandlers.add(handler);
+    return () => this.pasteHandlers.delete(handler);
+  }
+
+  /** Route a paste the app heard: to the program's handlers, then, unclaimed, the focused widget. */
+  paste(text: string): void {
+    for (const handler of [...this.pasteHandlers]) if (handler(text) === true) return;
+    this.source.focusManager.current?.handlePaste?.(text, this.source.frameNow().time);
   }
 
   /** Route a pointer event the app heard. */

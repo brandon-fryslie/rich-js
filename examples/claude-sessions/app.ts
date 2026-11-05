@@ -156,5 +156,13 @@ export function run(host: TerminalHost, fs: FileSystem): Running {
     app.refresh();
   });
 
+  // A paste types into the query, on one line, as typing it would.
+  app.onPaste((text) => {
+    const next = searchType(state, text.replace(/\r?\n$/, "").replace(/[\x00-\x1f\x7f-\x9f]+/g, " "));
+    if (next === state) return;
+    state = next;
+    app.refresh();
+  });
+
   return { done: app.run(), stop: () => app.stop() };
 }
