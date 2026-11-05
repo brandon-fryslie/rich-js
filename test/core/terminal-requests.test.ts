@@ -1,0 +1,138 @@
+/**
+ * Requests a program sends the terminal itself — title, clipboard, notification
+ * — on their exact bytes, outside and inside tmux, and never to no one.
+ */
+
+import { describe, expect, it } from "vitest";
+import { Console } from "../../src/core/console.js";
+import type { Env } from "../../src/core/env.js";
+import { identifyTerminal } from "../../src/core/terminal-identity.js";
+
+const ESC = "\x1b";
+const ST = `${ESC}\\`;
+
+function terminal(env: Env, options: ConstructorParameters<typeof Console>[0] = {}): { console: Console; written: () => string } {
+  const chunks: string[] = [];
+  const console = new Console({
+    width: 20,
+    colorSystem: null,
+    forceTerminal: true,
+    hyperlinks: false,
+    environment: { env },
+    file: { write: (chunk: string) => void chunks.push(chunk) },
+    ...options,
+  });
+  return { console, written: () => chunks.join("") };
+}
+
+const KITTY: Env = { TERM: "xterm-kitty" };
+const FOOT: Env = { TERM: "foot" };
+const ITERM: Env = { TERM: "xterm-256color", TERM_PROGRAM: "iTerm.app" };
+
+describe("Console.setWindowTitle", () => {
+  it("writes OSC 2 with the title", () => {
+    const { console, written } = terminal(ITERM);
+    console.setWindowTitle("build — 3/4");
+    expect(written()).toBe(`${ESC}]2;build — 3/4${ST}`);
+  });
+
+  it("drops a control that could end the sequence or start another", () => {
+    const { console, written } = terminal(ITERM);
+    console.setWindowTitle(`a${ESC}\\b\x07c\x9cd\ne`);
+    expect(written()).toBe(`${ESC}]2;a\\bcde${ST}`);
+  });
+});
+
+describe("Console.copyToClipboard", () => {
+  it("writes OSC 52 with the text's UTF-8 bytes in base64", () => {
+    const { console, written } = terminal(ITERM);
+    console.copyToClipboard("héllo ✓");
+    expect(written()).toBe(`${ESC}]52;c;${Buffer.from("héllo ✓", "utf8").toString("base64")}${ST}`);
+  });
+});
+
+describe("Console.notify", () => {
+  it("writes OSC 9 where nothing better is known, title and body on its one line", () => {
+    const { console, written } = terminal(ITERM);
+    console.notify("Done", "3 tests failed");
+    expect(written()).toBe(`${ESC}]9;Done: 3 tests failed${ST}`);
+  });
+
+  it("writes OSC 777 for foot, with a ; in the title kept out of the separator", () => {
+    const { console, written } = terminal(FOOT);
+    console.notify("a;b", "c;d");
+    expect(written()).toBe(`${ESC}]777;notify;a,b;c;d${ST}`);
+  });
+
+  it("writes kitty's OSC 99, title then body under one id", () => {
+    const { console, written } = terminal(KITTY);
+    console.notify("Done", "ok");
+    expect(written()).toBe(`${ESC}]99;i=1:d=0;Done${ST}${ESC}]99;i=1:p=body;ok${ST}`);
+    const alone = terminal(KITTY);
+    alone.console.notify("Done");
+    expect(alone.written()).toBe(`${ESC}]99;;Done${ST}`);
+  });
+
+  it("does not take a terminal borrowing kitty's TERM for kitty", () => {
+    const { console, written } = terminal({ TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" });
+    console.notify("Done");
+    expect(written()).toBe(`${ESC}]9;Done${ST}`);
+  });
+});
+
+describe("inside tmux", () => {
+  const TMUX: Env = { ...ITERM, TMUX: "/tmp/tmux-501/default,1,0" };
+
+  it("wraps each request in tmux's passthrough, every ESC inside doubled", () => {
+    const { console, written } = terminal(TMUX);
+    console.setWindowTitle("t");
+    console.copyToClipboard("x");
+    console.notify("n");
+    const wrap = (sequence: string): string => `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
+    expect(written()).toBe(wrap(`${ESC}]2;t${ST}`) + wrap(`${ESC}]52;c;eA==${ST}`) + wrap(`${ESC}]9;n${ST}`));
+  });
+
+  it("leaves the bell to tmux, which handles it itself", () => {
+    const { console, written } = terminal(TMUX);
+    console.bell();
+    expect(written()).toBe("\x07");
+  });
+});
+
+describe("no one at a terminal", () => {
+  it.each([
+    ["a pipe", ITERM, { forceTerminal: false }],
+    ["a dumb terminal", { TERM: "dumb" }, {}],
+  ] as const)("writes nothing to %s", (_name, env, options) => {
+    const { console, written } = terminal(env, options);
+    console.setWindowTitle("t");
+    console.copyToClipboard("x");
+    console.notify("n", "b");
+    expect(written()).toBe("");
+  });
+
+  it("writes nothing into a capture", () => {
+    const { console, written } = terminal(ITERM);
+    console.beginCapture();
+    console.setWindowTitle("t");
+    console.notify("n");
+    expect(console.endCapture()).toBe("");
+    expect(written()).toBe("");
+  });
+});
+
+describe("identifyTerminal", () => {
+  it.each([
+    [{ TERM: "xterm-kitty" }, "kitty", undefined],
+    [{ TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" }, "other", undefined],
+    [{ TERM: "xterm-ghostty", TERM_PROGRAM: "ghostty" }, "ghostty", undefined],
+    [{ TERM: "foot-extra" }, "foot", undefined],
+    [{ TERM: "xterm-256color", VTE_VERSION: "7600" }, "vte", undefined],
+    [{ WT_SESSION: "x" }, "windows-terminal", undefined],
+    [{ TERM: "screen-256color", TMUX: "x" }, "other", "tmux"],
+    [{ TERM: "xterm-256color", STY: "x" }, "other", "screen"],
+    [{ TERM: "xterm-kitty", NVIM: "x" }, "kitty", "editor"],
+  ] as const)("%j is %s behind %s", (env, terminal, intermediary) => {
+    expect(identifyTerminal(env)).toEqual({ terminal, intermediary });
+  });
+});

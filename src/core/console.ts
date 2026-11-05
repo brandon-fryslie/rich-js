@@ -7,6 +7,8 @@ import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
 import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isDumbTerminal } from "./env.js";
 import type { TextOrder } from "./text-order.js";
+import { identifyTerminal, type TerminalIdentity } from "./terminal-identity.js";
+import { clipboardSequence, notificationSequence, throughIntermediary, titleSequence } from "./terminal-requests.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -399,6 +401,7 @@ export class Console {
   private readonly _style: Style;
   private readonly _isTerminal: boolean;
   private readonly _attended: boolean;
+  private readonly _identity: TerminalIdentity;
   private readonly _interactive: boolean;
   private readonly _file: ConsoleSink | undefined;
   // [LAW:one-source-of-truth] The resolved output stream, not the `stderr`
@@ -451,6 +454,7 @@ export class Console {
     // Rich's rule: a terminal is interactive unless it is a dumb one. Forcing that
     // is animation policy, and says nothing of who is at the terminal.
     this._attended = this._isTerminal && !isDumbTerminal(environment.env);
+    this._identity = identifyTerminal(environment.env);
     this._interactive = options?.forceInteractive ?? this._attended;
     this._file = options?.file;
     this._record = options?.record ?? false;
@@ -749,8 +753,30 @@ export class Console {
    * because a bell moves no cursor, and a live region would repaint its frame.
    */
   bell(): void {
+    this._request("\x07");
+  }
+
+  /** Sets the terminal window's title (OSC 2), Rich's `Console.set_window_title`. */
+  setWindowTitle(title: string): void {
+    this._request(throughIntermediary(titleSequence(title), this._identity));
+  }
+
+  /** Puts `text` on the system clipboard (OSC 52), where the terminal allows it. */
+  copyToClipboard(text: string): void {
+    this._request(throughIntermediary(clipboardSequence(text), this._identity));
+  }
+
+  /** Raises a desktop notification, in the protocol this console's terminal reads. */
+  notify(title: string, body?: string): void {
+    this._request(throughIntermediary(notificationSequence(title, body, this._identity), this._identity));
+  }
+
+  // [LAW:single-enforcer] Every request to the terminal goes through here: it
+  // reaches whoever is at the terminal and no one else, straight to the sink, because it moves no cursor and a live region
+  // would repaint its frame.
+  private _request(bytes: string): void {
     refuseRenderWrite(this._madeIn);
-    if (this._attended && this._capture.get() === null) this.file.write("\x07");
+    if (this._attended && this._capture.get() === null) this.file.write(bytes);
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

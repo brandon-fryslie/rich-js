@@ -679,6 +679,27 @@ console.print({ buf });
 The bold is gone: a sink that is not a terminal gets no escape codes (see
 [Terminal detection](#terminal-detection)).
 
+## Requests to the terminal
+
+Some sequences ask the terminal to do something rather than draw it. Content can
+never write a control ([Control Codes](./control-codes)), so each of these is a
+method, and each writes only for a person at a terminal: a pipe, a dumb terminal
+and a capture get nothing.
+
+```typescript live
+const console = new Console();
+console.setWindowTitle("deploy — 3 of 4");  // OSC 2
+console.copyToClipboard("ssh deploy@10.0.0.4");  // OSC 52
+console.notify("Deploy finished", "4 of 4 hosts up");
+console.bell();
+```
+
+`notify` writes the protocol the terminal reads: kitty's OSC 99, OSC 777 for foot
+and Ghostty, and OSC 9 everywhere else, which iTerm2, WezTerm and Windows
+Terminal read. Inside tmux every request but the bell is wrapped in tmux's
+passthrough, which reaches the terminal only when tmux has `allow-passthrough`
+on. A terminal may refuse a clipboard write; most ask first or need it enabled.
+
 ## Alternate screen
 
 `Console` has no fullscreen mode of its own. Entering the alternate screen

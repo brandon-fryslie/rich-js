@@ -83,8 +83,8 @@ Build order within `src/core/`. Each tier imports only from tiers above it, but 
 
 ```
 0   anchor · bidi-data · cell-widths · color · control-codes · easing · env · fnv1a · memo · noise · pattern · selection · subscription · text-order
-1   cells · clock · oklch · osc8 · style · wrap
-2   segment · bidi
+1   cells · clock · oklch · osc8 · style · terminal-identity · wrap
+2   segment · bidi · terminal-requests
 3   box · protocol · seal · orient
 4   measure · emoji · text · strip · render · export-lines · state
 5   animation · markup · highlighter · ansi · place · paint · export-html · export-svg
@@ -130,6 +130,8 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **bidi** — UAX #9 in-house over the generated `bidi-data`: `paragraph` resolves a logical line's levels, `lineLevels` and `visualOrder` finish a row (L1, L2), `mirrored` is L4, `shaped` is Arabic joining. Proved by `test/core/bidi.test.ts` on the UCD's own `BidiCharacterTest.txt`; regenerate with `scripts/bidi-data.py`, at the Unicode version `scripts/cell-widths.py` pins.
 - **orient** — where a drawn line meets its `TextOrder`: `directed` runs ahead of wrapping, and each row's `orient` after it, so cuts fall on logical offsets in every order. `labeled` is that for a label set in a frame with no `RichText`.
 - **seal** — `sealed`, the one total enforcer of what the wire holds: an explicit bidi control reaches the bytes only inside an isolate that accounts for it, nothing `wireText` withholds reaches them at all, and under `words` each run kitty will reverse is written turned back. It runs in `segmentsToString`, below every cut, and reads `Style.bidi`, so `Segment` never holds a control the library wrote and no crop can unbalance one.
+- **terminal-identity** — `identifyTerminal`: which terminal draws the cells and what sits between (tmux, screen, zellij, an editor), the one reading of `TERM` and its neighbours that every terminal-specific choice derives from — `detectTextOrder`, the notification protocol, tmux passthrough. Its module header owns why `TERM` is read first.
+- **terminal-requests** — encoders for what a program asks the terminal itself to do: the title (OSC 2), the clipboard (OSC 52), a notification (OSC 99/777/9 by terminal), and tmux passthrough. `Console.setWindowTitle`, `copyToClipboard` and `notify` write them, `bell()`'s way: only for a person at a terminal.
 - **memo** — `Memo`: a string-keyed memo holding at most `MEMO_MAX` entries. Every library cache keyed by strings a long-running host derives without end — `cellLen`, `ColorTable`'s matches, `ColorSpec.parse`, `Style.parse` — is one, so the bound has one definition. `WeakMemo` is the same contract for an object key (a `TerminalTheme`), held as long as the key is; these two are the only caches a render may fill (`test/seam/render-purity.ts`).
 - **fnv1a** — `fnv1a`: FNV-1a over a string's UTF-8 bytes, as hex. The one hash behind every identifier the library derives from what it names — an OSC 8 link id, an SVG export's class prefix.
 - **noise** — Perlin's improved gradient noise (`noise`, `fbm`) plus `hash` and `smoothstep`: the smooth texture the effect catalogue (`renderables/effects.ts`) is drawn from. Not exported from the package; the effects playground carries its source into each program instead (`examples/effects-playground/programs.ts`).
