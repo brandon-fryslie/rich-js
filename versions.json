@@ -4,15 +4,22 @@
     {
       "version": "pr-558",
       "ref": "refs/pull/558/merge",
-      "sha": "fd981574adc95147b5b8b83f3ebda14cd24dc59f",
-      "timestamp": "2026-11-05T18:39:33.909Z",
+      "sha": "4a7739acf1c3138c6eb8fbba16f27d5fb400e9a0",
+      "timestamp": "2026-11-05T18:42:31.669Z",
       "commits": [
         {
-          "sha": "fd981574adc95147b5b8b83f3ebda14cd24dc59f",
+          "sha": "4a7739acf1c3138c6eb8fbba16f27d5fb400e9a0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:37:11Z",
-          "message": "Merge 194d74f5ab80d531f97f1dfe97bfe1b25f192c7b into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
+          "timestamp": "2026-11-05T18:40:44Z",
+          "message": "Merge 54488100041b4b0c62c3ea31fb19ba2e3ee54388 into d0ad267f79ea68064e3f091ee655480f91cc8936\n"
+        },
+        {
+          "sha": "54488100041b4b0c62c3ea31fb19ba2e3ee54388",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T11:40:32-07:00",
+          "message": "Requests: OSC 9 behind any intermediary, BEL inside screen's DCS, kitty ids unique past the console, ids taken only when written (rich-control-codes-xh4n.4w6)\n"
         },
         {
           "sha": "194d74f5ab80d531f97f1dfe97bfe1b25f192c7b",
