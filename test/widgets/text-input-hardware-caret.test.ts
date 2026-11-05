@@ -80,7 +80,7 @@ describe("TextInput on the terminal's own cursor", () => {
     const { app, host } = start();
     host.type("\x1b[D");
     await tick();
-    expect(host.output().endsWith(`\r\x1b[5C\x1b[5 q${SHOW}\x1b[?2026l`)).toBe(true);
+    expect(host.output().endsWith(`\r\x1b[5C${SHOW}\x1b[?2026l`)).toBe(true);
     app.stop();
   });
 

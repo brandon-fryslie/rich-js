@@ -460,11 +460,11 @@ export class TextInput extends ThemedWidget {
   }
   get cursorPosition(): CodePoint { return this._cursor; }
 
+  set cursorPosition(p: CodeUnit) { this._cursor = graphemeBoundary(this._value, p); }
   /** An I-beam over a field that can be edited. */
   override get pointerShape(): PointerShape {
     return this.disabled ? "default" : "text";
   }
-  set cursorPosition(p: CodeUnit) { this._cursor = graphemeBoundary(this._value, p); }
   @observableRef accessor placeholder: string;
 
   private readonly _maxLength: number | undefined;

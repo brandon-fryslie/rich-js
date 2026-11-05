@@ -548,9 +548,9 @@ export class App implements FrameHost {
 
   /**
    * The mouse pointer's shape over the terminal (OSC 22), from now until it
-   * is set again or the app hands the terminal back, which gives the terminal
-   * its default again. Set only while the app holds the terminal; the same
-   * shape again writes nothing.
+   * is set again or the app stops. A suspend gives the terminal its default
+   * and the resume shows this shape again. Set only while the app holds the
+   * terminal; the same shape again writes nothing.
    */
   get pointerShape(): PointerShape {
     return this.pointer;
@@ -568,6 +568,7 @@ export class App implements FrameHost {
     this.host.setRawMode(true);
     this.painter.take();
     this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
+    if (this.pointer !== "default") this.console.setPointerShape(this.pointer);
     const take = { pushed: false };
     this.held = take;
     if (this.keyboard !== "kitty") return;
@@ -588,7 +589,6 @@ export class App implements FrameHost {
     this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
     this.held = null;
     if (this.pointer !== "default") this.console.setPointerShape("default");
-    this.pointer = "default";
     this.painter.handBack();
     this.host.setRawMode(false);
   }
@@ -608,6 +608,7 @@ export class App implements FrameHost {
     this.input.reset();
     // A suspended app handed the terminal back when it suspended.
     if (phase === "running") this.leave();
+    this.pointer = "default";
     this.host.stop();
     this.settle(outcome);
   }

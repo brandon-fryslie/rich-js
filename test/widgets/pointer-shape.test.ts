@@ -16,6 +16,8 @@ import { TextInput } from "../../src/widgets/text-input.js";
 import { Group } from "../../src/renderables/group.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
 import { fakeClock } from "../core/fake-clock.js";
+import { App } from "../../src/host/app.js";
+import { RichText } from "../../src/core/text.js";
 
 // The pointer moved with no button held, at a 1-based column and row.
 const moveTo = (col: number, row: number): string => `\x1b[<35;${col};${row}M`;
@@ -74,5 +76,20 @@ describe("the pointer's shape over a widget app", () => {
     app.stop();
     await done;
     expect(shapes(host)).toEqual(["text", "default"]);
+  });
+
+  it("is shown again when an app resumes, after the default while it is suspended", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const app = new App({ host, surface: "alternate", view: () => new RichText("canvas") });
+    const done = app.run();
+    app.pointerShape = "crosshair";
+    const suspended = app.suspend();
+    host.resume();
+    await suspended;
+    expect(app.pointerShape).toBe("crosshair");
+    app.stop();
+    await done;
+    expect(shapes(host)).toEqual(["crosshair", "default", "crosshair", "default"]);
+    expect(app.pointerShape).toBe("default");
   });
 });

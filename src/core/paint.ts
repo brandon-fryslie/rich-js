@@ -14,7 +14,6 @@
  * is handed back.
  */
 
-import { cellLen } from "./cells.js";
 import type { OutputTarget } from "./color.js";
 import type { Height } from "./protocol.js";
 import { segmentsToString, shownOn } from "./render.js";
@@ -119,7 +118,7 @@ function caretIn(rows: readonly Segment[][]): Caret | undefined {
     for (const segment of line) {
       const shape = segment.style?.caret;
       if (shape !== undefined && segment.text.length > 0) return { row, col, shape };
-      col += cellLen(segment.text);
+      col += segment.cellLength;
     }
   }
   return undefined;
@@ -174,8 +173,9 @@ export class SurfaceRenderer implements Renderer {
   private at = 0;
   // Whether the cursor is shown, on the last frame's caret.
   private shown = false;
-  // Whether a frame has set the cursor's shape since the take.
-  private shaped = false;
+  // The shape a frame last gave the cursor since the take: written again only
+  // when it changes, since a terminal restarts its blink on every DECSCUSR.
+  private shaped: CaretShape | undefined;
 
   constructor(
     surface: Surface,
@@ -241,10 +241,11 @@ export class SurfaceRenderer implements Renderer {
     this.shown = caret !== undefined;
     if (caret === undefined) return painted;
     this.at = caret.row;
-    this.shaped = true;
+    const shape = caret.shape === this.shaped ? "" : caretShape(caret.shape, destination);
+    this.shaped = caret.shape;
     // From the frame's last row: up to the caret's, then to its cell.
     const to = up(rows.length - 1 - caret.row) + "\r" + (caret.col > 0 ? `\x1b[${caret.col}C` : "");
-    return painted + to + caretShape(caret.shape, destination) + SHOW_CURSOR;
+    return painted + to + shape + SHOW_CURSOR;
   }
 
   private paintRows(rows: Segment[][], screen: Screen, destination: OutputTarget): string {
@@ -271,12 +272,12 @@ export class SurfaceRenderer implements Renderer {
    */
   handBack(): void {
     const last = down(this.rows - 1 - this.at);
-    const shape = this.shaped ? DEFAULT_SHAPE : "";
+    const shape = this.shaped === undefined ? "" : DEFAULT_SHAPE;
     this.write(RESET_STYLE + last + shape + SHOW_CURSOR + this.geometry.below(this.rows) + this.geometry.leave);
     this.rows = 0;
     this.at = 0;
     this.shown = false;
-    this.shaped = false;
+    this.shaped = undefined;
   }
 }
 
