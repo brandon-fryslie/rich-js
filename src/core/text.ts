@@ -1481,10 +1481,15 @@ function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptio
   // `Text.render` yields `Segment("")` for it. That piece writes no bytes,
   // and it is what makes empty text one line to everything that splits a
   // render into lines — a panel's body, a table cell — where Rich draws one.
+  // A cell holds one style, so a style cannot change inside a grapheme
+  // cluster: an edge there moves to the cluster's end, and the cluster takes
+  // the styles covering its first code point. The pieces then never cut a
+  // cluster, so they measure apart what they draw together.
+  const edge = clusterEdge(text);
   const inner = new Set<number>();
   for (const span of spans) {
-    inner.add(span.start);
-    inner.add(span.end);
+    inner.add(edge(span.start));
+    inner.add(edge(span.end));
   }
   inner.delete(0);
   inner.delete(text.length);
@@ -1502,7 +1507,7 @@ function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptio
   const covered = styles.map(() => false);
   for (const span of spans) {
     const style = resolveStyle(options, span.style);
-    for (let piece = pieceAt.get(span.start)!; boundaries[piece]! < span.end; piece++) {
+    for (let piece = pieceAt.get(edge(span.start))!, end = edge(span.end); boundaries[piece]! < end; piece++) {
       styles[piece] = styles[piece]!.add(style);
       covered[piece] = true;
     }
@@ -1512,4 +1517,26 @@ function drawnSegments({ text, spans }: Draft, base: Style, options: RenderOptio
     (style, piece) => new Segment(text.slice(boundaries[piece]!, boundaries[piece + 1]!), style.isNull ? undefined : style),
   );
   return { segments, covered };
+}
+
+/** The first offset at or past each offset of `text` where one of its grapheme clusters starts, or its end. */
+function clusterEdge(text: string): (offset: number) => number {
+  const starts: number[] = [];
+  let at = 0;
+  for (const cluster of graphemes(text)) {
+    starts.push(at);
+    at += cluster.length;
+  }
+  if (starts.length === text.length) return (offset) => offset;
+  starts.push(text.length);
+  return (offset) => {
+    let low = 0;
+    let high = starts.length - 1;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (starts[middle]! < offset) low = middle + 1;
+      else high = middle;
+    }
+    return starts[low]!;
+  };
 }
