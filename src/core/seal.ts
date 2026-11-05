@@ -20,8 +20,8 @@
  * its stamp, and the controls are written around the survivors.
  */
 
-import { advance, closersOf, opened, withoutExplicit, type Open } from "./bidi.js";
-import { cellLen, EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
+import { advance, closersOf, mirroredCluster, opened, withoutExplicit, type Open } from "./bidi.js";
+import { cellLen, EXTENDER, graphemes, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
@@ -87,7 +87,8 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
  */
 export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
   let reaches = false;
-  for (const segment of contained(segments, order)) {
+  const held = contained(segments, order);
+  for (const segment of order === "words" ? turnedBack(held) : held) {
     if (segment.isControl) {
       yield segment;
       continue;
@@ -96,6 +97,88 @@ export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable
     if (text !== "") reaches = !ENDS_CLUSTER.test(text);
     yield text === segment.text ? segment : new Segment(text, segment.style, segment.control);
   }
+}
+
+// HarfBuzz's right-to-left scripts (`hb_script_get_horizontal_direction`), as
+// far as the engine's Unicode knows them: Garay and Sidetic are newer than
+// Node 20's. A run's direction is the first of its characters whose script is
+// not Common, Inherited or Unknown (`guess_segment_properties`).
+const RIGHT_TO_LEFT_SCRIPT = pattern(
+  new RegExp(
+    `^[${[
+      "Arabic", "Hebrew", "Syriac", "Thaana", "Cypriot", "Kharoshthi", "Phoenician", "Nko", "Lydian", "Avestan",
+      "Imperial_Aramaic", "Inscriptional_Pahlavi", "Inscriptional_Parthian", "Old_South_Arabian", "Old_Turkic",
+      "Samaritan", "Mandaic", "Meroitic_Cursive", "Meroitic_Hieroglyphs", "Manichaean", "Mende_Kikakui", "Nabataean",
+      "Old_North_Arabian", "Palmyrene", "Psalter_Pahlavi", "Hatran", "Adlam", "Hanifi_Rohingya", "Old_Sogdian",
+      "Sogdian", "Elymaic", "Chorasmian", "Yezidi", "Old_Uyghur",
+    ]
+      .map((script) => `\\p{Script=${script}}`)
+      .join("")}]`,
+    "u",
+  ),
+);
+const UNSCRIPTED = pattern(/^[\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u);
+// What kitty draws in no font, so a run of shaped cells always ends at it.
+const RUN_BREAK = pattern(/^[  \n]$/);
+
+interface Cell {
+  readonly text: string;
+  readonly style: Segment["style"];
+}
+
+/** Whether HarfBuzz, guessing, shapes `run` right to left. */
+function shapedRightToLeft(run: readonly Cell[]): boolean {
+  for (const { text } of run) for (const character of text) if (!UNSCRIPTED.test(character)) return RIGHT_TO_LEFT_SCRIPT.test(character);
+  return false;
+}
+
+/**
+ * `segments` for a display that reverses each right-to-left run of non-space
+ * cells (`words`): every such run laid out in visual order is written reversed,
+ * each cluster mirrored, so the display's reversal and HarfBuzz's mirroring put
+ * each cluster back in the cell visual order gave it. A cell never laid out in
+ * visual order is left for the display to reverse as it would. A row is a
+ * buffer's worth: what lies between line breaks and controls, which may move the
+ * cursor.
+ */
+function* turnedBack(segments: Iterable<Segment>): Iterable<Segment> {
+  let row: Cell[] = [];
+  const flush = function* (): Iterable<Segment> {
+    yield* joined(row);
+    row = [];
+  };
+  for (const segment of segments) {
+    if (segment.isControl) {
+      yield* flush();
+      yield segment;
+      continue;
+    }
+    const visual = segment.style?.bidi?.order === "visual";
+    for (const cluster of graphemes(segment.text)) {
+      row.push({ text: cluster, style: segment.style });
+      if (!visual || RUN_BREAK.test(cluster)) yield* flush();
+    }
+  }
+  yield* flush();
+}
+
+/** `cells` as segments, a run of them first turned back when the display will reverse it. */
+function* joined(cells: Cell[]): Iterable<Segment> {
+  const last = cells.at(-1);
+  const breaks = last !== undefined && (RUN_BREAK.test(last.text) || last.style?.bidi?.order !== "visual");
+  const run = breaks ? cells.slice(0, -1) : cells;
+  const written = shapedRightToLeft(run) ? run.map(({ text, style }) => ({ text: mirroredCluster(text), style })).reverse() : run;
+  let text = "";
+  let style: Segment["style"];
+  for (const cell of breaks ? [...written, last!] : written) {
+    if (text !== "" && cell.style !== style) {
+      yield new Segment(text, style);
+      text = "";
+    }
+    text += cell.text;
+    style = cell.style;
+  }
+  if (text !== "") yield new Segment(text, style);
 }
 
 /** `segments` with what the census withholds gone and the order's bidi controls written. */

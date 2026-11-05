@@ -9,7 +9,7 @@ import { Pretty } from "../../src/core/pretty.js";
 import { MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
 import { Console } from "../../src/core/console.js";
 import { renderToString, segmentToString, segmentsToString } from "../../src/core/render.js";
-import { resolveOutputTarget } from "../../src/core/color.js";
+import { ColorDepth, resolveOutputTarget } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
@@ -21,7 +21,7 @@ import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Button } from "../../src/widgets/button.js";
-import { balancedControls, implicit, implicitVte, none, rows } from "./bidi-terminal.js";
+import { balancedControls, implicit, implicitVte, kitty, none, rows } from "./bidi-terminal.js";
 
 const RLO = "\u202e";
 const ARABIC = "مرحبا بالعالم";
@@ -224,6 +224,36 @@ describe("reading on a terminal that reorders", () => {
     const logical = rows(plainBytes(new RichText(line, { end: "" }), "logical", 7)).map(implicit);
     const visual = rows(plainBytes(new RichText(line, { end: "" }), "visual", 7)).map((row) => read(row));
     expect(logical[1]).not.toBe(visual[1]);
+  });
+});
+
+describe("reading on kitty, which reverses right-to-left words and not lines", () => {
+  const onKitty = (renderable: Parameters<typeof renderToString>[0], width = 40): string[] => rows(plainBytes(renderable, "words", width)).map(kitty);
+  const visually = (renderable: Parameters<typeof renderToString>[0], width = 40): string[] => rows(plainBytes(renderable, "visual", width));
+
+  test.each([
+    ["an Arabic sentence", ARABIC],
+    ["a Hebrew sentence", HEBREW],
+    ["brackets in a right-to-left word", "(שלום) [עולם]"],
+    ["a Latin word in a right-to-left line", `${HEBREW} abc ${HEBREW}`],
+    ["a right-to-left word in a left-to-right line", `abc ${HEBREW} def`],
+  ])("shows %s as visual order shows it", (_name, line) => {
+    expect(onKitty(new RichText(line, { end: "" })).map(read)).toEqual(visually(new RichText(line, { end: "" })).map(read));
+  });
+
+  test("writes each word's letters in the order kitty turns back", () => {
+    const [row] = rows(plainBytes(new RichText(HEBREW, { end: "" }), "words"));
+    expect(row).toBe("עולם שלום");
+  });
+
+  test("shows a wrapped table of right-to-left cells as visual order does", () => {
+    const table = new Table({ showHeader: false });
+    table.addRow(HEBREW, ARABIC);
+    expect(onKitty(table).map(read)).toEqual(visually(table).map(read));
+  });
+
+  test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {
+    expect(segmentsToString([new Segment(HEBREW)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "words" })).toBe(HEBREW);
   });
 });
 
