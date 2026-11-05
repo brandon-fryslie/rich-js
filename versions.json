@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-552",
-      "ref": "refs/pull/552/merge",
-      "sha": "7e612e00d8f68b56aa2236344700cae47c387149",
-      "timestamp": "2026-11-05T12:17:55.390Z",
-      "commits": [
-        {
-          "sha": "7e612e00d8f68b56aa2236344700cae47c387149",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:15:27Z",
-          "message": "Merge fd4f803c3b346909b78411b41ed808c02795cd6d into c3ab55d91dddfd472d86768b43ff50788681d949\n"
-        },
-        {
-          "sha": "fd4f803c3b346909b78411b41ed808c02795cd6d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T05:15:16-07:00",
-          "message": "The reader's-pace test waits for the card to animate and claims only that keys land (rich-unfiled-791c.m6cg)\n"
-        },
-        {
-          "sha": "406f953b8331d70375a427d17f9dd0b1bfae69af",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T05:12:46-07:00",
-          "message": "A reader's-pace keystroke test into an animating card holds typing, which the insertText edits no longer do (rich-unfiled-791c.m6cg)\n"
-        },
-        {
-          "sha": "2ebb2634cfd5ab09cd565d402787f98b9bf04c21",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T05:07:59-07:00",
-          "message": "e2e edits a card's editor in one input, so a key can't drop under a busy page (rich-unfiled-791c.m6cg)\n\nThe flake this ticket saw was not a timeout under load. Playwright's\nkeyboard.type sends a key every 2-3 ms; with the card's example animating,\nCodeMirror lost one about 1 run in 40 (setTimeout became setTimout). Code put\ninto an editor now goes through keyboard.insertText, as the demos, try-it,\nplayground and effects-playground specs already do. Keystroke tests keep\nkeyboard.type.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c3ab55d91dddfd472d86768b43ff50788681d949",
-      "timestamp": "2026-11-03T17:55:11.842Z",
+      "sha": "ea9e2953056e8d8103110062313d3a7f0c278066",
+      "timestamp": "2026-11-05T12:30:03.874Z",
       "commits": [
         {
-          "sha": "c3ab55d91dddfd472d86768b43ff50788681d949",
+          "sha": "ea9e2953056e8d8103110062313d3a7f0c278066",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-03T10:52:44-07:00",
-          "message": "Step sequences say steps, a hidden render is hiding, and the strip's separators are called that (rich-unfiled-791c.gt81) (#551)\n\n* Step sequences say steps, a hidden render is hiding, and the strip's separators are called that (rich-unfiled-791c.gt81)\n\nStepSequence.holds is StepSequence.steps, and stepSequence's parameter and\nerrors say step. Kept as English: sample-and-hold (the signal term the API\nis named for) and the pulse's beat.\n\n* Review: test titles, docs and locals finish the step/separator vocabulary; the step-resolution refusal is pinned (rich-unfiled-791c.gt81)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review: effects docs, demo, tests and the stepSequence parameter finish the rename (rich-unfiled-791c.gt81)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-11-05T05:27:39-07:00",
+          "message": "e2e edits a card's editor in one input, so a key can't drop under a busy page (rich-unfiled-791c.m6cg) (#552)\n\n* e2e edits a card's editor in one input, so a key can't drop under a busy page (rich-unfiled-791c.m6cg)\n\nThe flake this ticket saw was not a timeout under load. Playwright's\nkeyboard.type sends a key every 2-3 ms; with the card's example animating,\nCodeMirror lost one about 1 run in 40 (setTimeout became setTimout). Code put\ninto an editor now goes through keyboard.insertText, as the demos, try-it,\nplayground and effects-playground specs already do. Keystroke tests keep\nkeyboard.type.\n\n* A reader's-pace keystroke test into an animating card holds typing, which the insertText edits no longer do (rich-unfiled-791c.m6cg)\n\n* The reader's-pace test waits for the card to animate and claims only that keys land (rich-unfiled-791c.m6cg)"
         }
       ]
     }
