@@ -89,10 +89,10 @@ is drawn in the styles covering its first character. A flag styled from its seco
 character keeps its tags and is drawn as one flag.
 
 Segments that meet on a row were each measured alone. A combining mark, selector or
-joiner of no cells that opens a segment would extend the glyph in the segment before
-it, and a joiner that ends one would join the next, so neither is written. A spacing
-mark or a Hangul vowel that opens a segment is still drawn against its neighbour, at
-the width each was measured.
+joiner of no cells that opens a segment after a glyph on its row would extend that
+glyph, and a joiner that ends one would join the next, so neither is written. A
+spacing mark, a Hangul vowel, a prepended mark or a virama's conjunct still forms
+against its neighbour, at the width each was measured.
 
 ## Wrapping
 

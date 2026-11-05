@@ -30,28 +30,33 @@ const LRI = "\u2066";
 const RLI = "\u2067";
 const PDI = "\u2069";
 
+const STARTS_EXTENDED = pattern(new RegExp(`^${EXTENDER}`, "u"));
+const AN_EXTENDER = pattern(new RegExp(`^${EXTENDER}$`, "u"));
+const TRAILING_JOINERS = pattern(new RegExp(`${ZWJ_CHARACTER}+$`, "u"));
+// What ends a cluster for whatever follows it (UAX #29 GB4): a control, a line
+// or paragraph separator, a format character — a bidi control included.
+const ENDS_CLUSTER = pattern(/[\p{Cc}\p{Zl}\p{Zp}\p{Cf}]$/u);
+
 /**
- * `text` without what would reach across a segment edge into a neighbour's
- * glyph. An extender of no cells that opens a segment would extend the glyph
- * that ends the one before it on the wire — a mark restyles it, a selector
- * changes its presentation, a VS16 widens it, a ZWJ joins it to this one — and a
- * trailing ZWJ would join this segment's last glyph to the next one's first.
- * Alone, where each was measured, each takes no cell, so dropping it changes no
- * width. An extender that takes a cell alone (the halfwidth sound marks) was
- * measured as one and stays.
+ * `text`, written after a glyph it could reach when `reaches`, without what
+ * would reach across its edges into a neighbour's glyph. An extender of no cells
+ * that opens it would extend that glyph — a mark restyles it, a selector changes
+ * its presentation, a VS16 widens it, a ZWJ joins it to this one — and a
+ * trailing ZWJ would join its last glyph to the next one's first. Alone, where
+ * each was measured, each takes no cell, so dropping it changes no width. An
+ * extender that takes a cell alone (the halfwidth sound marks) was measured as
+ * one and stays, and so does one with no glyph before it on the row.
  */
-function edged(text: string): string {
+function edged(text: string, reaches: boolean): string {
+  const opens = reaches && STARTS_EXTENDED.test(text);
+  if (!opens && !text.endsWith(ZWJ_CHARACTER)) return text;
   let opening = 0;
-  for (const character of text) {
+  for (const character of opens ? text : "") {
     if (!AN_EXTENDER.test(character) || cellLen(character) > 0) break;
     opening += character.length;
   }
-  if (opening === 0 && !text.endsWith(ZWJ_CHARACTER)) return text;
   return text.slice(opening).replace(TRAILING_JOINERS, "");
 }
-
-const AN_EXTENDER = pattern(new RegExp(`^${EXTENDER}$`, "u"));
-const TRAILING_JOINERS =pattern(new RegExp(`${ZWJ_CHARACTER}+$`, "u"));
 
 /** `text` with closers that match nothing in `open` dropped, so content cannot end the isolate around it. */
 function balanced(text: string, open: Open): string {
@@ -75,8 +80,26 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
   yield new Segment(closersOf(open.stack.join("")) + PDI);
 }
 
-/** `segments` as the wire may hold them for `order`. */
+/**
+ * `segments` as the wire may hold them for `order`. The edges are judged last,
+ * on the text as it is written, so a control the order removes cannot hide a
+ * joiner from them.
+ */
 export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
+  let reaches = false;
+  for (const segment of contained(segments, order)) {
+    if (segment.isControl) {
+      yield segment;
+      continue;
+    }
+    const text = edged(segment.text, reaches);
+    if (text !== "") reaches = !ENDS_CLUSTER.test(text);
+    yield text === segment.text ? segment : new Segment(text, segment.style, segment.control);
+  }
+}
+
+/** `segments` with what the census withholds gone and the order's bidi controls written. */
+function* contained(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
   let run: Segment[] = [];
   let stamp: LogicalStamp | undefined;
   const flush = function* (): Iterable<Segment> {
@@ -85,8 +108,7 @@ export function* sealed(segments: Iterable<Segment>, order: TextOrder): Iterable
     stamp = undefined;
   };
   for (const raw of segments) {
-    const wired = wireText(raw.text);
-    const drawn = raw.isControl ? wired : edged(wired);
+    const drawn = wireText(raw.text);
     const segment = drawn === raw.text ? raw : new Segment(drawn, raw.style, raw.control);
     const own = order === "logical" && !segment.isControl ? segment.style?.bidi : undefined;
     if (own?.order === "logical") {

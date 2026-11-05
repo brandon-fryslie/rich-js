@@ -484,6 +484,16 @@ describe("a span edge inside a sequence", () => {
     expect(row("e", `${COMBINING}x`)).toBe("ex");
   });
 
+  it("judges an edge on what is written, after the order's controls are gone", () => {
+    const row = drawn(segmentsToString([new Segment(`${WOMAN}${ZWJ}‬`), new Segment(LAPTOP)], TRUECOLOR));
+    expect(cellLen(row)).toBe(4);
+  });
+
+  it("keeps an extender with no glyph before it on the row", () => {
+    expect(drawn(segmentsToString([new Segment(`${COMBINING}a`)], TRUECOLOR))).toBe(`${COMBINING}a`);
+    expect(segmentsToString([new Segment("a\n"), new Segment(`${COMBINING}b`)], TRUECOLOR).replace(/\x1b\[[0-9;]*m/g, "")).toBe(`a\n${COMBINING}b`);
+  });
+
   it("keeps an extender that takes a cell of its own where it opens a segment", () => {
     const row = drawn(segmentsToString([new Segment("|"), new Segment("ﾞ|")], TRUECOLOR));
     expect(row).toBe("|ﾞ|");

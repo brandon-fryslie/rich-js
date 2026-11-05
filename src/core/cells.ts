@@ -492,12 +492,19 @@ export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
   return graphemeBoundaries(s)(cu);
 }
 
+/** The start of the grapheme cluster holding the code unit at `cu`. */
+export function clusterStart(s: string, cu: CodeUnit): CodePoint {
+  const cluster = SEGMENTER.segment(s).containing(cu);
+  return asCodePoint(cluster === undefined ? cu : cluster.index);
+}
+
 /** `graphemeBoundary` over one text for many offsets, segmenting it once. */
 export function graphemeBoundaries(s: string): (cu: CodeUnit) => CodePoint {
-  // Printable ASCII is one cluster per character, so every offset is a boundary.
-  if (PRINTABLE_ASCII.test(s)) return (cu) => asCodePoint(Math.min(cu, s.length));
+  // Printable ASCII is one cluster per character, so every whole offset is a boundary.
+  const ascii = PRINTABLE_ASCII.test(s);
   const clusters = SEGMENTER.segment(s);
   return (cu) => {
+    if (ascii && Number.isInteger(cu)) return asCodePoint(Math.min(cu, s.length));
     const at = Math.min(cu, s.length);
     const cluster = clusters.containing(at);
     return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
