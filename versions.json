@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-554",
+      "ref": "refs/pull/554/merge",
+      "sha": "2b5e388a13dd6c9800433404e83026c90da70f49",
+      "timestamp": "2026-11-05T16:29:25.257Z",
+      "commits": [
+        {
+          "sha": "2b5e388a13dd6c9800433404e83026c90da70f49",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:27:37-07:00",
+          "message": "Merge 350c5a7b6c697b4a25cb0c10d9e62022bdc205c0 into c0aad9dbb7107a260bc54f07bbf82c0604ca77d0\n"
+        },
+        {
+          "sha": "350c5a7b6c697b4a25cb0c10d9e62022bdc205c0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:27:17-07:00",
+          "message": "A span edge inside a grapheme cluster stops mattering, and nothing joins across a segment edge (rich-control-codes-xh4n.s60)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c0aad9dbb7107a260bc54f07bbf82c0604ca77d0",
