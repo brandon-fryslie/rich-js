@@ -262,6 +262,25 @@ export function edges(text: string, order: TextOrder, direction?: ParagraphLevel
   return { left: drawn[0] ?? 0, right: drawn.at(-1) ?? 0 };
 }
 
+/**
+ * The grapheme clusters of `text`, one row, in the order `order` shows them left
+ * to right, each as its offset in `text`: what a column on the screen maps back
+ * through. Directed exactly when `reorder` directs it, so under `plain` it is
+ * the text's own order.
+ */
+export function shownClusters(text: string, order: TextOrder): number[] {
+  const starts: number[] = [];
+  let at = 0;
+  for (const cluster of graphemes(text)) {
+    starts.push(at);
+    at += cluster.length;
+  }
+  if (order === "plain" || !isBidi(text)) return starts;
+  const { level, levels } = paragraph(text);
+  const finished = lineLevels(text, levels, level);
+  return visualOrder(starts.map((start) => finished[start]!)).map((index) => starts[index]!);
+}
+
 function ordered(text: string, direction: ParagraphLevel | undefined): number[] {
   const { level, levels } = paragraph(text, direction);
   return visualOrder(lineLevels(text, levels, level));
