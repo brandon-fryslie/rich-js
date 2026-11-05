@@ -138,6 +138,33 @@ describe("TextInput with right-to-left text", () => {
     expect(caret(input, "visual").column).toBeLessThan(before);
   });
 
+  it.each([
+    ["one line wider than the field's least width", "אבגדהוזחטיכל", false],
+    ["a row of a multiline field", HEBREW, true],
+  ])("lands a press on %s on the glyph under it", (_name, value, multiline) => {
+    const input = new TextInput({ value, multiline });
+    input.cursorStyleOverride = Style.parse("bold reverse");
+    input.focus(0);
+    for (let at = 0; at < value.length; at++) {
+      input.cursorPosition = asCodeUnit(at);
+      const column = caret(input, "visual").column;
+      input.cursorPosition = asCodeUnit(at === 0 ? 1 : 0);
+      input.handleMouse(press(input, column, "visual"));
+      expect([at, input.cursorPosition]).toEqual([at, at]);
+    }
+  });
+
+  it("stops a word step at the space between right-to-left words", () => {
+    const input = field("שלום עולם");
+    render(input, options("visual"));
+    input.cursorPosition = asCodeUnit(9);
+    const ctrlKey = (name: string): WidgetKeyEvent => new WidgetKeyEvent({ key: name, character: "", shift: false, ctrl: true, meta: false }, 0);
+    input.handleKey(ctrlKey("right"));
+    expect(input.cursorPosition).toBe(4);
+    input.handleKey(ctrlKey("right"));
+    expect(input.cursorPosition).toBe(0);
+  });
+
   it("keeps an override in its value from reaching past the field", () => {
     const input = field("‮abc");
     for (const order of ["plain", "logical", "visual"] as const) {
