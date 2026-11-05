@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-559",
+      "ref": "refs/pull/559/merge",
+      "sha": "71d2cdcffccdea630381307449ee8a4c8fdb01a6",
+      "timestamp": "2026-11-05T19:12:40.112Z",
+      "commits": [
+        {
+          "sha": "71d2cdcffccdea630381307449ee8a4c8fdb01a6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T12:10:16-07:00",
+          "message": "Merge 3af242c0b4ad3ef499edd41afa086f9ff42c86d8 into afebae76a734efb412abe0c0de72e1e9db7651a2\n"
+        },
+        {
+          "sha": "3af242c0b4ad3ef499edd41afa086f9ff42c86d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T12:10:03-07:00",
+          "message": "App turns on bracketed paste, and a paste reaches a program as one event, never as the keys it holds (rich-control-codes-xh4n.rd8)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "afebae76a734efb412abe0c0de72e1e9db7651a2",
