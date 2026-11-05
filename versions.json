@@ -2,32 +2,31 @@
   "schema": 2,
   "versions": [
     {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "c2f40429f56bc6d6d34612a7cb81711306304046",
-      "timestamp": "2026-11-05T16:59:05.435Z",
-      "commits": [
-        {
-          "sha": "c2f40429f56bc6d6d34612a7cb81711306304046",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T09:53:04-07:00",
-          "message": "groff's overstrike on a wide character decodes, pinned on its bytes (rich-control-codes-xh4n.u53) (#555)\n\n* groff writes a wide character's overstrike as mandoc does, and decodeAnsi is pinned on it (rich-control-codes-xh4n.u53)\n\n* The groff note says what it read and where it stops (rich-control-codes-xh4n.u53)\n\n* The groff note names the switch that selects overstrike, and pins the redraw it describes (rich-control-codes-xh4n.u53)"
-        }
-      ]
-    },
-    {
       "version": "pr-554",
       "ref": "refs/pull/554/merge",
-      "sha": "c83b1364df5004327d6e058c28f45864fba01f48",
-      "timestamp": "2026-11-05T16:44:36.418Z",
+      "sha": "8f376c70a49b9b10494e4dec39e4c1ab674ca226",
+      "timestamp": "2026-11-05T17:02:44.979Z",
       "commits": [
         {
-          "sha": "c83b1364df5004327d6e058c28f45864fba01f48",
+          "sha": "8f376c70a49b9b10494e4dec39e4c1ab674ca226",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T16:39:17Z",
-          "message": "Merge 4b458cf2811755971f712212f523116d712088d4 into c0aad9dbb7107a260bc54f07bbf82c0604ca77d0\n"
+          "timestamp": "2026-11-05T17:00:21Z",
+          "message": "Merge ec604176b99a43fce2416d316ac15a238895b186 into c2f40429f56bc6d6d34612a7cb81711306304046\n"
+        },
+        {
+          "sha": "ec604176b99a43fce2416d316ac15a238895b186",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:00:08-07:00",
+          "message": "Edges are judged on the bytes written and only after a glyph; a cell's style reads its cluster's start (rich-control-codes-xh4n.s60)\n"
+        },
+        {
+          "sha": "509be1f8bf7d48390f8653663d794dd9f8779a88",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:50:52-07:00",
+          "message": "An edge drops only zero-cell extenders, control text is still sealed, and cluster edges are segmented once (rich-control-codes-xh4n.s60)\n"
         },
         {
           "sha": "4b458cf2811755971f712212f523116d712088d4",
@@ -42,6 +41,21 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-05T09:27:17-07:00",
           "message": "A span edge inside a grapheme cluster stops mattering, and nothing joins across a segment edge (rich-control-codes-xh4n.s60)\n"
+        }
+      ]
+    },
+    {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "c2f40429f56bc6d6d34612a7cb81711306304046",
+      "timestamp": "2026-11-05T16:59:05.435Z",
+      "commits": [
+        {
+          "sha": "c2f40429f56bc6d6d34612a7cb81711306304046",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T09:53:04-07:00",
+          "message": "groff's overstrike on a wide character decodes, pinned on its bytes (rich-control-codes-xh4n.u53) (#555)\n\n* groff writes a wide character's overstrike as mandoc does, and decodeAnsi is pinned on it (rich-control-codes-xh4n.u53)\n\n* The groff note says what it read and where it stops (rich-control-codes-xh4n.u53)\n\n* The groff note names the switch that selects overstrike, and pins the redraw it describes (rich-control-codes-xh4n.u53)"
         }
       ]
     }
