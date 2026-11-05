@@ -4,15 +4,22 @@
     {
       "version": "pr-560",
       "ref": "refs/pull/560/merge",
-      "sha": "61c9a7e85b6a8f235588242022374e46478e9217",
-      "timestamp": "2026-11-05T19:57:39.592Z",
+      "sha": "db80b969709909480736b52c6be7bed1e9b69b64",
+      "timestamp": "2026-11-05T20:01:52.723Z",
       "commits": [
         {
-          "sha": "61c9a7e85b6a8f235588242022374e46478e9217",
+          "sha": "db80b969709909480736b52c6be7bed1e9b69b64",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T12:54:29-07:00",
-          "message": "Merge f080696607c5821a70a7f590226a6d989ce48207 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
+          "timestamp": "2026-11-05T20:00:07Z",
+          "message": "Merge fd460207d9710240195d91997890f599c0e9ec39 into 74263c66727225fa0cb5b832851e36f5c134dae8\n"
+        },
+        {
+          "sha": "fd460207d9710240195d91997890f599c0e9ec39",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T12:59:55-07:00",
+          "message": "Kitty keys: an answer pushes only onto the take that asked, keypad keys type, Private Use and Super chords name nothing, Alt+Shift as legacy, no F3 from a cursor report, every reported name bindable (rich-control-codes-xh4n.anf)\n"
         },
         {
           "sha": "f080696607c5821a70a7f590226a6d989ce48207",
