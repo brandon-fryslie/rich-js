@@ -65,6 +65,15 @@ describe("InputParser reads a bracketed paste", () => {
     expect(heard).toEqual(["paste:é"]);
   });
 
+  it("reads Escape typed just ahead of a paste as Escape, and holds the paste whole", () => {
+    vi.useFakeTimers();
+    const { parser: input, heard } = parser("split");
+    input.feed(`\x1b${START}a\r`);
+    vi.advanceTimersByTime(ESCAPE_DELAY_MS * 10);
+    input.feed(`b${END}`);
+    expect(heard).toEqual(["key:escape", "paste:a\nb"]);
+  });
+
   it("ends a paste open at a whole-keys chunk's end with the chunk", () => {
     const { parser: input, heard } = parser("whole-keys");
     input.feed(`${START}cut`);
@@ -117,7 +126,7 @@ describe("App and a paste", () => {
 describe("TextInput and a paste", () => {
   it("takes a paste as lines in a multiline field", () => {
     const input = new TextInput({ multiline: true });
-    input.handlePaste("one\ntwo");
+    input.handlePaste("one\ntwo", 0);
     expect(input.value).toBe("one\ntwo");
   });
 
@@ -125,8 +134,20 @@ describe("TextInput and a paste", () => {
     const input = new TextInput();
     const submitted = vi.fn();
     input.onSubmit(submitted);
-    input.handlePaste("one\ntwo");
+    input.handlePaste("one\ntwo", 0);
     expect(input.value).toBe("one two");
     expect(submitted).not.toHaveBeenCalled();
+  });
+
+  it("keeps no control from a paste, only what typing could put in", () => {
+    const input = new TextInput({ multiline: true });
+    input.handlePaste("a\x03\x1b[Ab\tc\nd", 0);
+    expect(input.value).toBe("a[Abc\nd");
+  });
+
+  it("drops the final line break a copied line brings, on one line", () => {
+    const input = new TextInput();
+    input.handlePaste("npm test\n", 0);
+    expect(input.value).toBe("npm test");
   });
 });

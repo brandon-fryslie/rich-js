@@ -299,6 +299,9 @@ export class InputParser {
   // process.stdin satisfy this type, while a browser host can emit native
   // Uint8Array without depending on a Buffer global polyfill.
   private buffer: Uint8Array = new Uint8Array(0);
+  // How far into the open paste at the buffer head its end marker has been
+  // looked for, so each read scans only what it added.
+  private pasteScanned = 0;
   // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
   // across node and browser; `setImmediate` is node-only.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
@@ -427,6 +430,7 @@ export class InputParser {
   reset(): void {
     this.cancelEscape();
     this.buffer = new Uint8Array(0);
+    this.pasteScanned = 0;
   }
 
   /** A lone ESC, the one hold a next chunk can settle before its bytes are read. */
@@ -533,6 +537,9 @@ export class InputParser {
       // ESC ESC [ … / ESC ESC O … → Alt on a key the terminal sends as a
       // sequence (macOS Terminal and iTerm send Option+Up as `ESC ESC [ A`):
       // the inner sequence, with meta held.
+      // Escape typed just ahead of a paste: the Escape alone, so the paste
+      // opens the buffer and is held as one.
+      if (opensPaste(buf.subarray(1))) return { kind: "key", bytes: 1, event: ESCAPE };
       if (buf[2] === LBRACKET || buf[2] === O_BYTE) {
         const inner = this.consumeEscape(buf.subarray(1));
         if (inner.kind === "incomplete") return inner;
@@ -612,10 +619,14 @@ export class InputParser {
   // A bracketed paste, its markers taken off. Open at a whole-keys chunk's end,
   // it ends there; open on a split host, it is held for the rest.
   private consumePaste(buf: Uint8Array): ConsumeResult {
-    const end = indexOfBytes(buf, PASTE_END, PASTE_START.length);
-    if (end >= 0) return { kind: "paste", bytes: end + PASTE_END.length, text: pastedText(buf.subarray(PASTE_START.length, end)) };
-    if (this.chunks === "split") return { kind: "incomplete" };
-    return { kind: "paste", bytes: buf.length, text: pastedText(buf.subarray(PASTE_START.length)) };
+    const end = indexOfBytes(buf, PASTE_END, Math.max(PASTE_START.length, this.pasteScanned - PASTE_END.length + 1));
+    if (end < 0 && this.chunks === "split") {
+      this.pasteScanned = buf.length;
+      return { kind: "incomplete" };
+    }
+    this.pasteScanned = 0;
+    const stop = end < 0 ? buf.length : end;
+    return { kind: "paste", bytes: end < 0 ? buf.length : end + PASTE_END.length, text: pastedText(buf.subarray(PASTE_START.length, stop)) };
   }
 
   private consumeCSI(buf: Uint8Array): ConsumeResult {

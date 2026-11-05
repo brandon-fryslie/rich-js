@@ -530,11 +530,15 @@ export class TextInput extends ThemedWidget {
   @action
   handleKey(event: WidgetKeyEvent): void {
     this._edit(event);
-    if (!event.stopped) return;
-    this._blink = caretBlink(event.time);
-    // An edit on the cursor's row moves no followed range, so the row is
-    // brought into view here too: typing after the wheel scrolled away scrolls
-    // back. The rows are the edited value's, at the width last drawn.
+    if (event.stopped) this._edited(event.time);
+  }
+
+  // After an edit at `time`: the blink restarts, and the cursor's row is
+  // brought into view, since an edit on it moves no followed range — typing
+  // after the wheel scrolled away scrolls back. The rows are the edited
+  // value's, at the width last drawn.
+  private _edited(time: number): void {
+    this._blink = caretBlink(time);
     if (this._multiline) {
       const row = cursorRowIn(this._rows(this._drawn.get()), this.cursorPosition);
       this._viewport.ensureVisible(row, row + 1);
@@ -905,12 +909,18 @@ export class TextInput extends ThemedWidget {
 
   /**
    * A paste goes in as text, never as the keys it holds: a line break in it
-   * submits nothing. On one line each line break is a space.
+   * submits nothing. What it keeps is what typing could put in — no control —
+   * and its line breaks: on one line each is a space, but a final one, which
+   * copying a line brings along, is dropped.
    */
   @action
-  override handlePaste(text: string): void {
+  handlePaste(text: string, time: number): void {
     if (this.disabled) return;
-    this._insertText(this._multiline ? text : text.replace(/\n/g, " "));
+    const lines = text.split("\n").map((line) => Array.from(line, (character) => (PRINTABLE.test(character) ? character : "")).join(""));
+    const kept = this._multiline ? lines.join("\n") : lines.join(" ").replace(/ $/, "");
+    if (kept === "") return;
+    this._insertText(kept);
+    this._edited(time);
   }
 
   @action

@@ -208,6 +208,11 @@ export class WidgetApp implements FrameSource, FrameHost {
     return this.router.onKey(handler, options);
   }
 
+  /** Hear every paste, as `App.onPaste` does, before the focused widget takes it. */
+  onPaste(handler: (text: string) => void): Unsubscribe {
+    return this.app.onPaste(handler);
+  }
+
   /** Hear every pointer event but the vertical wheel, in terminal cells, before any widget does. */
   onMouse(handler: (event: AppMouseEvent) => void): Unsubscribe {
     return this.router.onMouse(handler);

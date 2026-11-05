@@ -41,8 +41,6 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   handleMouse(_event: WidgetMouseEvent): void {}
 
-  handlePaste(_text: string): void {}
-
   @action
   handleFocus(event: WidgetFocusEvent): void {
     this.focused = event.type === "focus";
