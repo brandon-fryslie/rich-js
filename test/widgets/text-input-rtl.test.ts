@@ -91,7 +91,7 @@ describe("TextInput with right-to-left text", () => {
   it("moves Left across the screen, so from the start of a right-to-left line it moves on through it", () => {
     const input = field(HEBREW);
     input.cursorPosition = asCodeUnit(0);
-    input["_drawn"].set({ maxWidth: 40, asciiOnly: false, textOrder: "visual" });
+    render(input, options("visual"));
     input.handleKey(key("left"));
     expect(input.cursorPosition).toBe(1);
     input.handleKey(key("right"));
@@ -103,6 +103,39 @@ describe("TextInput with right-to-left text", () => {
     input.cursorPosition = asCodeUnit(1);
     input.handleKey(key("left"));
     expect(input.cursorPosition).toBe(0);
+  });
+
+  it("orders a wrapped row at its line's direction, not its own", () => {
+    const input = new TextInput({ value: "שלום hello עולם", multiline: true });
+    const drawn = Segment.splitLines(render(input, { maxWidth: 11, textOrder: "visual" })).map((row) => row.map((segment) => segment.text).join(""));
+    expect(drawn.some((row) => row.includes("םלוע hello"))).toBe(true);
+  });
+
+  it("moves across a line break shown on one row as the row shows it", () => {
+    const input = field("abc\nאבג");
+    render(input, options("visual"));
+    input.cursorPosition = asCodeUnit(4);
+    input.handleKey(key("right"));
+    expect(input.cursorPosition).toBe(7);
+  });
+
+  it("keeps the slot past the end beside a prepended mark", () => {
+    const input = field("xyzൎ");
+    render(input, options("visual"));
+    input.cursorPosition = asCodeUnit(4);
+    input.handleKey(key("right"));
+    expect(input.cursorPosition).toBe(4);
+    input.handleKey(key("left"));
+    expect(input.cursorPosition).toBe(3);
+  });
+
+  it("steps a word the way the screen runs beside the caret", () => {
+    const input = field("see אבג דהו now");
+    render(input, options("visual"));
+    input.cursorPosition = asCodeUnit(9);
+    const before = caret(input, "visual").column;
+    input.handleKey(new WidgetKeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }, 0));
+    expect(caret(input, "visual").column).toBeLessThan(before);
   });
 
   it("keeps an override in its value from reaching past the field", () => {

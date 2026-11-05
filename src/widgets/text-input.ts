@@ -88,8 +88,9 @@ import {
   type CodeUnit,
 } from "../core/cells.js";
 import { afterPass, drawable, render, type RenderOptions } from "../core/protocol.js";
-import { reorder, shownClusters } from "../core/orient.js";
-import type { TextOrder } from "../core/text-order.js";
+import { paragraphLevelOf, reorder, shownOrder } from "../core/orient.js";
+import { isBidi } from "../core/bidi.js";
+import type { ParagraphLevel, TextOrder } from "../core/text-order.js";
 import { State } from "../core/state.js";
 import { Viewport, type Lines } from "../renderables/viewport.js";
 import { Animation } from "../core/animation.js";
@@ -155,6 +156,14 @@ interface VisualRow {
 }
 
 /** What a frame drew a field under: the width offered, whether only ASCII could be drawn, and the order its rows are shown in. */
+/** One row as the screen shows it: where it starts in `value`, what it holds, its line's direction, and whether it ends that line. */
+interface ScreenRow {
+  readonly start: CodePoint;
+  readonly text: string;
+  readonly level: ParagraphLevel;
+  readonly endSlot: boolean;
+}
+
 interface Drawn {
   readonly maxWidth: number;
   readonly asciiOnly: boolean;
@@ -182,11 +191,12 @@ function shownRow(shown: readonly (readonly Segment[])[], owner: object): number
 }
 
 /**
- * Where one frame laid a field's value out: on one line, the cell its window
- * starts at; on rows, the visual rows and the first of them it shows.
+ * Where one frame laid a field's value out: on one line, the stretch of the value
+ * its window showed, how wide, and the value's direction; on rows, the visual
+ * rows and the first of them it shows.
  */
 type Layout = { readonly drawn: Drawn } & (
-  | { readonly kind: "line"; readonly value: string; readonly startCell: CellCol; readonly windowStart: CodePoint; readonly windowText: string; readonly contentWidth: CellCol }
+  | { readonly kind: "line"; readonly windowStart: CodePoint; readonly windowText: string; readonly contentWidth: CellCol; readonly level: ParagraphLevel }
   | { readonly kind: "rows"; readonly rows: readonly VisualRow[]; readonly offset: number }
 );
 
@@ -637,12 +647,13 @@ export class TextInput extends ThemedWidget {
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
-      this.cursorPosition = asCodeUnit(row.valueStart + this._offsetAtScreenCell(row.content, relX, layout.drawn));
+      this.cursorPosition = asCodeUnit(row.valueStart + this._offsetAtScreenCell(this._screenRowAt(layout.rows, rawRowIdx, layout.drawn), relX, layout.drawn));
     } else {
       // [LAW:types-are-the-program] relX is a screen column of the window the
       // clicked frame showed, past the bracket; the window maps it to the value.
       const relX = asCellCol(Math.max(0, event.x - 1));
-      this.cursorPosition = asCodeUnit(layout.windowStart + this._offsetAtScreenCell(layout.windowText, relX, layout.drawn, layout.contentWidth));
+      const window: ScreenRow = { start: layout.windowStart, text: layout.windowText, level: layout.level, endSlot: true };
+      this.cursorPosition = asCodeUnit(layout.windowStart + this._offsetAtScreenCell(window, relX, layout.drawn, layout.contentWidth));
     }
     this._preferredColumn.set(null);
   }
@@ -732,13 +743,11 @@ export class TextInput extends ThemedWidget {
   }
 
   @action moveWordLeft(): void {
-    if (this._lineShownRightToLeft()) this._wordForward();
-    else this._wordBack();
+    this._wordStep(-1);
   }
 
   @action moveWordRight(): void {
-    if (this._lineShownRightToLeft()) this._wordBack();
-    else this._wordForward();
+    this._wordStep(1);
   }
 
   private _wordBack(): void {
@@ -941,69 +950,125 @@ export class TextInput extends ThemedWidget {
   }
 
   /**
-   * The glyphs of `text`, one row of the value as `drawn` shows it, left to
-   * right on the screen: each glyph's offset into `text`, its shown cells, and
-   * last the slot past its end, where the caret stands at the end of the text,
-   * as wide as what pads the row out to `width`. [LAW:one-source-of-truth] The
-   * order the row is drawn in (`shownClusters`), read by the press and the
-   * arrow keys alike.
+   * The glyphs of `row` as `drawn` shows them, left to right on the screen: each
+   * glyph's offset into the row's text and its shown cells, and — on a row that
+   * ends its line — the slot past its end, where the caret stands there, as wide
+   * as what pads the row out to `width`. [LAW:one-source-of-truth] The order the
+   * row is drawn in (`shownOrder`, at its line's direction), read by the press
+   * and the arrow keys alike.
    */
-  private _onScreen(text: string, drawn: Drawn, width = 0): { readonly at: number; readonly cells: number }[] {
+  private _onScreen(row: ScreenRow, drawn: Drawn, width = 0): { readonly at: number; readonly cells: number }[] {
     const shownAs = this._shownAs(drawn);
     const glyphs: { at: number; shown: string }[] = [];
     let at = 0;
-    for (const glyph of graphemes(text)) {
+    for (const glyph of graphemes(row.text)) {
       glyphs.push({ at, shown: shownAs(glyph) });
       at += glyph.length;
     }
-    glyphs.push({ at, shown: " " });
-    const byShown = new Map<number, { at: number; shown: string }>();
-    let shownAt = 0;
-    for (const glyph of glyphs) {
-      byShown.set(shownAt, glyph);
-      shownAt += glyph.shown.length;
-    }
-    const shownText = glyphs.map((glyph) => glyph.shown).join("");
-    const pad = Math.max(1, width - cellLen(shownText) + 1);
-    return shownClusters(shownText, drawn.textOrder).flatMap((start) => {
-      const glyph = byShown.get(start);
-      return glyph === undefined ? [] : [{ at: glyph.at, cells: glyph.at === text.length ? pad : cellLen(glyph.shown) }];
+    const pad = Math.max(1, width - glyphs.reduce((cells, glyph) => cells + cellLen(glyph.shown), 0));
+    if (row.endSlot) glyphs.push({ at, shown: " " });
+    return shownOrder(glyphs.map((glyph) => glyph.shown), drawn.textOrder, row.level).map((index) => {
+      const glyph = glyphs[index]!;
+      return { at: glyph.at, cells: glyph.at === row.text.length ? pad : cellLen(glyph.shown) };
     });
   }
 
-  // The offset into `text`, a row as `drawn` shows it, of the glyph under screen
-  // column `col` of the row: the rightmost on screen when the column is past it.
-  private _offsetAtScreenCell(text: string, col: CellCol, drawn: Drawn, width = 0): CodePoint {
+  // The offset into `row` of the glyph under screen column `col` of it: the
+  // rightmost on screen when the column is past it.
+  private _offsetAtScreenCell(row: ScreenRow, col: CellCol, drawn: Drawn, width = 0): CodePoint {
     let cells = 0;
-    const screen = this._onScreen(text, drawn, width);
+    const screen = this._onScreen(row, drawn, width);
     for (const glyph of screen) {
       cells += glyph.cells;
       if (cells > col) return asCodePoint(glyph.at);
     }
-    return asCodePoint(screen.at(-1)!.at);
+    return asCodePoint(screen.at(-1)?.at ?? 0);
   }
 
-  // The caret one glyph `step` across the screen within its line, or out of the
-  // line's end the screen shows on that side when there is none.
+  // The row the caret is drawn in, under `drawn`: on one line the whole value.
+  private _screenRow(drawn: Drawn): ScreenRow {
+    if (!this._multiline) return { start: asCodePoint(0), text: this.value, level: this._levelOf(this.value, drawn), endSlot: true };
+    const rows = this._rows(drawn);
+    return this._screenRowAt(rows, cursorRowIn(rows, this.cursorPosition), drawn);
+  }
+
+  // Row `index` of `rows`, at the direction of the line it is a row of.
+  private _screenRowAt(rows: readonly VisualRow[], index: number, drawn: Drawn, levelOf = this._rowLevels(rows, drawn)): ScreenRow {
+    const row = rows[index]!;
+    const endSlot = index + 1 === rows.length || !rows[index + 1]!.isContinuation;
+    return { start: row.valueStart, text: row.content, level: levelOf(index), endSlot };
+  }
+
+  // The direction of each of `rows`, its line's: each line's read once, however
+  // many rows it wraps to, so a render pays for its rows and not their square.
+  private _rowLevels(rows: readonly VisualRow[], drawn: Drawn): (index: number) => ParagraphLevel {
+    const first: number[] = [];
+    rows.forEach((row, index) => first.push(row.isContinuation && index > 0 ? first[index - 1]! : index));
+    const levels = new Map<number, ParagraphLevel>();
+    return (index) => {
+      const start = first[index]!;
+      let level = levels.get(start);
+      if (level === undefined) {
+        let end = start + 1;
+        while (end < rows.length && rows[end]!.isContinuation) end++;
+        level = this._levelOf(rows.slice(start, end).map((row) => row.content).join(""), drawn);
+        levels.set(start, level);
+      }
+      return level;
+    };
+  }
+
+  // The direction of a line of the value, read off what `drawn` shows of it.
+  private _levelOf(line: string, drawn: Drawn): ParagraphLevel {
+    return paragraphLevelOf(this._shown(line, drawn), undefined);
+  }
+
+  // Where the caret is after one glyph `step` across the screen: within its row,
+  // or out of the side of the row the step leaves by.
   private _screenStep(step: -1 | 1): CodePoint {
-    const start = this._lineStart();
-    const line = this.value.slice(start, this._lineEnd());
-    const screen = this._onScreen(line, this._drawn.get());
-    const next = screen[screen.findIndex((glyph) => glyph.at === this.cursorPosition - start) + step];
-    if (next !== undefined) return asCodePoint(start + next.at);
-    // Off the line: the side the screen shows its end on leads into the next line.
-    return (step === 1) !== this._endOnLeft(screen, line) ? nextGrapheme(this.value, asCodePoint(start + line.length)) : prevGrapheme(this.value, start);
+    const drawn = this._drawn.get();
+    const row = this._screenRow(drawn);
+    if (drawn.textOrder === "plain" || (row.level === 0 && !isBidi(row.text))) {
+      return step === 1 ? nextGrapheme(this.value, this.cursorPosition) : prevGrapheme(this.value, this.cursorPosition);
+    }
+    const screen = this._onScreen(row, drawn);
+    const here = screen.findIndex((glyph) => row.start + glyph.at === this.cursorPosition);
+    const next = here < 0 ? undefined : screen[here + step];
+    if (next !== undefined) return asCodePoint(row.start + next.at);
+    // Off the row: its end leads on into what follows it, its start back into what precedes it.
+    const end = asCodePoint(row.start + row.text.length);
+    if ((step === 1) === (row.level === 0)) return row.endSlot ? nextGrapheme(this.value, end) : end;
+    return prevGrapheme(this.value, row.start);
   }
 
-  // Whether the screen shows `line`'s end at its left: a line shown right to left.
-  private _endOnLeft(screen: readonly { readonly at: number }[], line: string): boolean {
-    return line.length > 0 && screen[0]!.at === line.length;
-  }
-
-  // Whether the cursor's line is shown right to left, so a word step across the screen runs back through the text.
-  private _lineShownRightToLeft(): boolean {
-    const line = this.value.slice(this._lineStart(), this._lineEnd());
-    return this._endOnLeft(this._onScreen(line, this._drawn.get()), line);
+  // A word step across the screen, readline's taken left to right: Left to the
+  // leftmost glyph of the word on its left, Right past the word on its right.
+  // In left-to-right text that is readline's back and forward a word; past the
+  // row's side it is the glyph step that leaves it.
+  private _wordStep(step: -1 | 1): void {
+    const drawn = this._drawn.get();
+    const row = this._screenRow(drawn);
+    if (drawn.textOrder === "plain" || (row.level === 0 && !isBidi(row.text))) {
+      if (step === 1) this._wordForward();
+      else this._wordBack();
+      return;
+    }
+    const screen = this._onScreen(row, drawn);
+    const isWord = (index: number): boolean => {
+      const glyph = screen[index];
+      return glyph !== undefined && glyph.at < row.text.length && isWordChar(row.text.slice(glyph.at, nextGrapheme(row.text, asCodePoint(glyph.at))));
+    };
+    let at = screen.findIndex((glyph) => row.start + glyph.at === this.cursorPosition);
+    const from = at;
+    if (step === -1) {
+      while (at > 0 && !isWord(at - 1)) at--;
+      while (at > 0 && isWord(at - 1)) at--;
+    } else {
+      while (at < screen.length - 1 && !isWord(at)) at++;
+      while (at < screen.length - 1 && isWord(at)) at++;
+    }
+    this.cursorPosition = at === from || at < 0 ? this._screenStep(step) : asCodePoint(row.start + screen[at]!.at);
+    this._preferredColumn.set(null);
   }
 
   private _shown(text: string, options: { readonly asciiOnly?: boolean }): string {
@@ -1091,14 +1156,19 @@ export class TextInput extends ThemedWidget {
     // The value's stretch the window shows: a press reads the screen through it.
     const windowStart = this._offsetAtShownCell(this.value, startCell, drawn);
     const windowText = this.value.slice(windowStart, this._offsetAtShownCell(this.value, asCellCol(startCell + contentWidth), drawn));
-    const segments = [new Segment("[", bracketStyle), ...this._oriented(content, drawn.textOrder), new Segment("]", bracketStyle)];
-    return { lines: [segments], layout: { drawn, kind: "line", value: this.value, startCell, windowStart, windowText, contentWidth } };
+    const level = this._levelOf(this.value, drawn);
+    const segments = [new Segment("[", bracketStyle), ...this._oriented(content, drawn.textOrder, level), new Segment("]", bracketStyle)];
+    return { lines: [segments], layout: { drawn, kind: "line", windowStart, windowText, contentWidth, level } };
   }
 
   // A row's content in the order the frame shows it, as a button's label is
   // (`labeled`): the caret is a styled cell, so it goes where its glyph goes.
-  private _oriented(content: readonly Segment[], order: TextOrder): Segment[] {
-    const { line, oriented, orient } = reorder(content, order);
+  // A row of a wrapped line or a scrolled window is ordered at its line's
+  // direction, which it is stated only where its own text would guess otherwise,
+  // so a row with nothing bidi in it stays as it was.
+  private _oriented(content: readonly Segment[], order: TextOrder, level: ParagraphLevel): Segment[] {
+    const own = paragraphLevelOf(Segment.plainOf(content), undefined);
+    const { line, oriented, orient } = reorder(content, order, own === level ? undefined : level);
     return oriented ? orient(line, 0, Segment.plainOf(line)) : [...line];
   }
 
@@ -1108,6 +1178,7 @@ export class TextInput extends ThemedWidget {
     const visualRows = this._rows(drawn);
     const total = visualRows.length;
     const cursorRow = cursorRowIn(visualRows, this.cursorPosition);
+    const levelOf = this._rowLevels(visualRows, drawn);
     const arrows = this._drawsArrows(total);
     const contentStyle = this.ground;
     const markerStyle = new Style({ ...ink(this.theme, "foreground", "background"), dim: true });
@@ -1125,7 +1196,7 @@ export class TextInput extends ThemedWidget {
         // An ASCII stand-in as wide as the marker, so the rows keep their geometry.
         line.push(new Segment(drawable(options, this._continuationMarker, ">".padEnd(this._markerWidth)), markerStyle));
       }
-      this._emitRowContent(line, options, row, rowIdx === cursorRow && showCursor, contentStyle, cursorStyle);
+      this._emitRowContent(line, options, row, levelOf(rowIdx), rowIdx === cursorRow && showCursor, contentStyle, cursorStyle);
       return line;
     };
     // The window is drawn at the width offered, or wider where the cursor's
@@ -1212,6 +1283,7 @@ export class TextInput extends ThemedWidget {
     out: Segment[],
     options: RenderOptions,
     row: VisualRow,
+    level: ParagraphLevel,
     cursorOnRow: boolean,
     contentStyle: Style,
     cursorStyle: Style,
@@ -1233,7 +1305,7 @@ export class TextInput extends ThemedWidget {
     } else if (display.length > 0) {
       content.push(new Segment(display, contentStyle));
     }
-    out.push(...this._oriented(content, options.textOrder ?? "plain"));
+    out.push(...this._oriented(content, options.textOrder ?? "plain", level));
   }
 
   // The visual rows `value` lays out into at `drawn`. A width that bounds

@@ -132,14 +132,12 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   // Clusters are found in the whole row, because a span edge inside one is no
   // place to cut it: reversed apart, a mark lands on another letter.
   const styles = shown.flatMap((segment) => new Array<Style | undefined>(segment.text.length).fill(segment.style));
+  const glyphs = graphemes(text);
+  const levelOf = clusterLevels(glyphs, finished, paragraphLevel);
   const clusters: Cluster[] = [];
   let unit = 0;
-  let previous: number = paragraphLevel;
-  for (const cluster of graphemes(text)) {
-    // A cluster of what X9 removes holds no level of its own, and stays where the text put it.
-    const level = finished[unit] === REMOVED ? previous : finished[unit]!;
-    previous = level;
-    clusters.push({ text: cluster, style: styles[unit], level });
+  for (const [index, cluster] of glyphs.entries()) {
+    clusters.push({ text: cluster, style: styles[unit], level: levelOf[index]! });
     unit += cluster.length;
   }
   const forms = shaped(clusters.map((cluster) => cluster.text));
@@ -158,6 +156,23 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
     run += cluster.level & 1 ? mirroredCluster(forms[index]!) : forms[index]!;
   }
   flush();
+  return out;
+}
+
+/**
+ * The level each of `clusters` is shown at, given its text's finished levels: its
+ * first unit's. A cluster of what X9 removes holds no level of its own, and stays
+ * where the text put it, at the level before it.
+ */
+function clusterLevels(clusters: readonly string[], finished: readonly number[], paragraphLevel: ParagraphLevel): number[] {
+  const out: number[] = [];
+  let unit = 0;
+  let previous: number = paragraphLevel;
+  for (const cluster of clusters) {
+    previous = finished[unit] === REMOVED ? previous : finished[unit]!;
+    out.push(previous);
+    unit += cluster.length;
+  }
   return out;
 }
 
@@ -263,22 +278,17 @@ export function edges(text: string, order: TextOrder, direction?: ParagraphLevel
 }
 
 /**
- * The grapheme clusters of `text`, one row, in the order `order` shows them left
- * to right, each as its offset in `text`: what a column on the screen maps back
- * through. Directed exactly when `reorder` directs it, so under `plain` it is
- * the text's own order.
+ * `glyphs`, one row whose paragraph is `direction` when one is stated, in the
+ * order `order` shows them left to right, each as its index: what a column on the
+ * screen maps back through. Directed exactly when `reorder` directs it, so under
+ * `plain` it is the glyphs' own order. The glyphs are taken as given, so a caller
+ * that draws each as a cell of its own keeps each.
  */
-export function shownClusters(text: string, order: TextOrder): number[] {
-  const starts: number[] = [];
-  let at = 0;
-  for (const cluster of graphemes(text)) {
-    starts.push(at);
-    at += cluster.length;
-  }
-  if (order === "plain" || !isBidi(text)) return starts;
-  const { level, levels } = paragraph(text);
-  const finished = lineLevels(text, levels, level);
-  return visualOrder(starts.map((start) => finished[start]!)).map((index) => starts[index]!);
+export function shownOrder(glyphs: readonly string[], order: TextOrder, direction?: ParagraphLevel): number[] {
+  const text = glyphs.join("");
+  if (order === "plain" || (direction === undefined && !isBidi(text))) return glyphs.map((_, index) => index);
+  const { level, levels } = paragraph(text, direction);
+  return visualOrder(clusterLevels(glyphs, lineLevels(text, levels, level), level));
 }
 
 function ordered(text: string, direction: ParagraphLevel | undefined): number[] {
