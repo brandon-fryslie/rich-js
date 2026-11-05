@@ -118,6 +118,11 @@ export class EventRouter {
     return () => this.mouseHandlers.delete(handler);
   }
 
+  /** The widget the pointer acts on: the one a drag captured while it holds, else the hovered one. */
+  get pointing(): InteractiveWidget | null {
+    return this.captured?.widget ?? this.hoveredWidget;
+  }
+
   /** Route a key the app heard. */
   key(press: KeyEvent): void {
     this.dispatchKey(new WidgetKeyEvent(press, this.source.frameNow().time));

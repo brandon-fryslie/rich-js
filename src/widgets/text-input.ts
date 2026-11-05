@@ -66,7 +66,8 @@
 import { action, runInAction } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
+import { Style, type CaretShape } from "../core/style.js";
+import type { PointerShape } from "../core/terminal-requests.js";
 import {
   cellLen,
   setCellSize,
@@ -329,6 +330,13 @@ export interface TextInputOptions {
    */
   cursorStyle?: Style;
   /**
+   * The shape of the terminal's own cursor on the focused field, where the
+   * painter shows it (`RenderOptions.caret`) — there it stands in for the
+   * drawn cursor cell, which is drawn only where it cannot. Defaults to
+   * `"bar"`, an insertion point between two cells.
+   */
+  caretShape?: CaretShape;
+  /**
    * Style override for the rendered content text. Defaults to the
    * theme's `foreground` palette color.
    */
@@ -452,6 +460,11 @@ export class TextInput extends ThemedWidget {
   }
   get cursorPosition(): CodePoint { return this._cursor; }
   set cursorPosition(p: CodeUnit) { this._cursor = graphemeBoundary(this._value, p); }
+
+  /** An I-beam over a field that can be edited. */
+  override get pointerShape(): PointerShape {
+    return this.disabled ? "default" : "text";
+  }
   @observableRef accessor placeholder: string;
 
   private readonly _maxLength: number | undefined;
@@ -465,6 +478,7 @@ export class TextInput extends ThemedWidget {
   private readonly _scrollIndicator: "arrows" | "indices" | "none";
   @observableRef accessor indicatorStyleOverride: Style | undefined;
   @observableRef accessor cursorStyleOverride: Style | undefined;
+  @observableRef accessor caretShape: CaretShape;
   @observableRef accessor contentStyleOverride: Style | undefined;
 
   // [LAW:types-are-the-program] `_preferredColumn` is a cell column (not a
@@ -520,6 +534,7 @@ export class TextInput extends ThemedWidget {
     this._scrollIndicator = options.scrollIndicator ?? "arrows";
     this.indicatorStyleOverride = options.indicatorStyle;
     this.cursorStyleOverride = options.cursorStyle;
+    this.caretShape = options.caretShape ?? "bar";
     this.contentStyleOverride = options.contentStyle;
     this.multiline = this._multiline;
     this._viewport = new Viewport();
@@ -1340,8 +1355,12 @@ export class TextInput extends ThemedWidget {
   // next flips, which is when a host draws again. A print, drawn for no
   // moment, draws it at 0 like any placed animation. Lit, the cell is the
   // cursor's; dark, it is drawn as the text around it, since the cursor is a
-  // color pair and no attribute hides it.
+  // color pair and no attribute hides it. Where the painter shows the
+  // terminal's cursor, the cell is the text's, marked for it: the terminal
+  // blinks its own, and an IME's candidate window and a screen reader follow
+  // it to the editing point.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
+    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(this.caretShape))];
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 

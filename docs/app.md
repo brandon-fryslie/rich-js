@@ -37,6 +37,8 @@ With `keyboard: "kitty"` the app asks the terminal for the kitty keyboard protoc
 
 `onMouse(handler)` hears every pointer event but the vertical wheel — presses, releases, motion and sideways scrolling — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
 
+`app.pointerShape` sets the pointer's shape over the terminal by its CSS `cursor` name — `"pointer"`, `"text"`, `"default"` and the rest of `PointerShape` — on a terminal that reads OSC 22, while the app runs; the shape it already has writes nothing, and the app gives the terminal its default back when it hands it back. A [`WidgetApp`](/widgets) sets it from the widget under the pointer.
+
 `onWheel(handler)` is offered each notch of the wheel as a `WheelEvent` — the cell under the pointer and `lines`, `1` towards the end of the content and `-1` back — and returns whether it moved anything with it. A notch nothing moved with is passed outward, to the host's `passWheel`: on a page the page scrolls, and in a terminal, which is the outermost thing, nothing happens. An app that reads no wheel passes every notch, so a still app on a page never traps the page's scrolling. A `WidgetApp` offers the wheel to the viewport under the pointer first, then to its own `onWheel` handlers.
 
 Ctrl+C stops the app. No other key means anything to the app: every other key does what your handlers make it do, so `q` quits only an app that binds it. `quitKeys` lists the keys that stop the app, by `keyName`, and they are heard before any handler, so no handler can swallow one. `["ctrl+c"]` is the default; `[]` leaves every key to you. A name no key goes by — `esc`, `Ctrl+C`, `shift+g` — throws when the app is made, rather than binding a key that never fires:
@@ -169,7 +171,7 @@ Inside tmux, tmux answers OSC 10 and OSC 11 itself, with its client terminal's c
 
 ## Every exit hands the terminal back
 
-While it runs, the app hides the cursor, switches the terminal to raw mode and, on the alternate surface, enters the alternate screen and turns on pointer reporting. All of it is undone when:
+While it runs, the app hides the cursor — but on the cell a frame asks for it, a focused [text field](/widgets#textinput)'s editing point, where it shows it in the shape asked for — switches the terminal to raw mode and, on the alternate surface, enters the alternate screen and turns on pointer reporting. All of it is undone when:
 
 - you call `stop()` — `run()` resolves;
 - the view throws while a frame is painted — `run()` rejects with that error;

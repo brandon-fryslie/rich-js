@@ -101,12 +101,20 @@ export class WidgetApp implements FrameSource, FrameHost {
     // [LAW:single-enforcer] The app reads the terminal; the router routes
     // what it hears, after the app's quit keys.
     this.app.onKey((press) => this.router.key(press));
-    this.app.onMouse((event) => this.router.mouse(event));
+    this.app.onMouse((event) => {
+      this.router.mouse(event);
+      this.pointAt();
+    });
     this.app.onPaste((text) => this.router.paste(text));
-    this.app.onWheel((wheel) => this.router.wheel(wheel));
+    this.app.onWheel((wheel) => {
+      const moved = this.router.wheel(wheel);
+      this.pointAt();
+      return moved;
+    });
     this.app.onPaint(() => {
       this.focus.settle();
       this.router.framePainted();
+      this.pointAt();
     });
     // [LAW:single-enforcer] `settle` judges every focus move, so every move
     // paints — including one onto a widget no frame has read yet.
@@ -228,6 +236,15 @@ export class WidgetApp implements FrameSource, FrameHost {
    */
   onWheel(handler: (wheel: WheelEvent) => boolean): Unsubscribe {
     return this.app.onWheel(handler);
+  }
+
+  // [LAW:one-source-of-truth] The pointer's shape is the shape of the widget
+  // it acts on — a drag's, else the hovered one's — read again whenever either moves.
+  private pointAt(): void {
+    // A stopped app's terminal is someone else's: an event still in flight
+    // when it stopped has no pointer left to shape.
+    if (this.app.phase === "stopped") return;
+    this.app.pointerShape = this.router.pointing?.pointerShape ?? "default";
   }
 
   private compose(view: Renderable, options: RenderOptions): Segment[] {

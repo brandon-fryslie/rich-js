@@ -10,6 +10,7 @@ import type { HostFrame, Renderable, Measurable, RenderOptions } from "../core/p
 import type { Segment } from "../core/segment.js";
 import type { Anchor } from "../core/anchor.js";
 import type { Unsubscribe } from "../core/subscription.js";
+import type { PointerShape } from "../core/terminal-requests.js";
 import type { KeyEvent, TerminalMouseEvent } from "../host/input.js";
 
 // --- Event types ---
@@ -96,6 +97,8 @@ export interface InteractiveWidget extends Renderable, Measurable {
   hovered: boolean;
   active: boolean;
   disabled: boolean;
+  /** The mouse pointer's shape while it is over this widget (OSC 22). Absent, the terminal's default. */
+  readonly pointerShape?: PointerShape;
 
   // Event handlers
   // [LAW:single-enforcer] handleKey claims a key by calling `event.stop()`.

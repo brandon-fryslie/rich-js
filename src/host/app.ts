@@ -34,6 +34,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
+import type { PointerShape } from "../core/terminal-requests.js";
 import { Segment } from "../core/segment.js";
 import { SurfaceRenderer, type Surface } from "../core/paint.js";
 import { fitHeight, render, type HostFrame, type FrameHost, type Renderable } from "../core/protocol.js";
@@ -229,6 +230,8 @@ export class App implements FrameHost {
   // the take that asked, since `leave` can run between the answer and its
   // handler, and the hand-back pops exactly what its take pushed.
   private held: { pushed: boolean } | null = null;
+  // The pointer's shape this take has set, given back on hand-back.
+  private pointer: PointerShape = "default";
   private readonly keyboard: KeyboardProtocol;
   private _frame: readonly (readonly Segment[])[] = [];
   private readonly painter: SurfaceRenderer;
@@ -543,12 +546,32 @@ export class App implements FrameHost {
     this.end({ kind: "failed", error });
   }
 
+  /**
+   * The mouse pointer's shape over the terminal (OSC 22), from now until it
+   * is set again or the app stops. A suspend gives the terminal its default
+   * and the resume shows this shape, one set while suspended included; one
+   * set before `run` is shown when it starts. The same shape again writes
+   * nothing, and a stopped app refuses one.
+   */
+  get pointerShape(): PointerShape {
+    return this.pointer;
+  }
+
+  set pointerShape(shape: PointerShape) {
+    if (this._phase === "stopped") throw new Error("App.pointerShape: a stopped app has handed its terminal back for good");
+    if (shape === this.pointer) return;
+    this.pointer = shape;
+    // Before the run or while suspended, the shape waits for the take that shows it.
+    if (this._phase === "running") this.console.setPointerShape(shape);
+  }
+
   // --- the terminal ---
 
   private enter(): void {
     this.host.setRawMode(true);
     this.painter.take();
     this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
+    if (this.pointer !== "default") this.console.setPointerShape(this.pointer);
     const take = { pushed: false };
     this.held = take;
     if (this.keyboard !== "kitty") return;
@@ -568,6 +591,7 @@ export class App implements FrameHost {
     this.owedDa1 = 0;
     this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
     this.held = null;
+    if (this.pointer !== "default") this.console.setPointerShape("default");
     this.painter.handBack();
     this.host.setRawMode(false);
   }
@@ -587,6 +611,7 @@ export class App implements FrameHost {
     this.input.reset();
     // A suspended app handed the terminal back when it suspended.
     if (phase === "running") this.leave();
+    this.pointer = "default";
     this.host.stop();
     this.settle(outcome);
   }
@@ -683,7 +708,7 @@ export class App implements FrameHost {
     // clock. The app set the budget, so the app shapes what comes back: no
     // deeper than the terminal — a taller frame would scroll the rows the
     // painter goes back over — and, as a region, exactly that deep.
-    const drawn = drawView(this.view, this._time(), this, { ...options, height }, (renderable, under) =>
+    const drawn = drawView(this.view, this._time(), this, { ...options, height, caret: this.painter.caret(this.console.destination) }, (renderable, under) =>
       fitHeight(Segment.splitLines(render(renderable, under)).slice(0, height.rows), height),
     );
     const frame = this.painter.paint(() => drawn.lines, { rows: height.rows, cols: options.maxWidth }, this.console.destination);

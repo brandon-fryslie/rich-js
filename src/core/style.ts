@@ -85,6 +85,13 @@ export const ATTRIBUTE_SHORT_ALIASES: Readonly<Record<string, AttributeName>> = 
 
 // --- Types ---
 
+/**
+ * The shapes a terminal draws its own cursor in (DECSCUSR): a whole cell, a
+ * line under it, or a bar at its left edge — an insertion point between two
+ * cells.
+ */
+export type CaretShape = "block" | "underline" | "bar";
+
 export interface StyleOptions {
   color?: string | ColorSpec;
   bgcolor?: string | ColorSpec;
@@ -106,6 +113,7 @@ export interface StyleOptions {
   anchor?: Anchor;
   boxFrame?: object;
   bidi?: BidiStamp;
+  caret?: CaretShape;
   /**
    * The validity interval the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
@@ -183,6 +191,14 @@ export class Style {
    */
   readonly bidi: BidiStamp | undefined;
   /**
+   * These cells are where the terminal's own cursor stands, in this shape: a
+   * painter that shows it (`Renderer.caret`, `./paint.ts`) puts it on the
+   * first such cell of the frame. It draws nothing — the painter is what turns
+   * it into bytes, as the encoder does a link — so a field drawn under a
+   * painter that shows no cursor draws its caret itself.
+   */
+  readonly caret: CaretShape | undefined;
+  /**
    * The validity interval this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`validFrom`), and
    * when it next changes (`validUntil`) — both `t` for a cell drawn by
@@ -230,6 +246,7 @@ export class Style {
     this.anchor = options.anchor;
     this.boxFrame = options.boxFrame;
     this.bidi = options.bidi;
+    this.caret = options.caret;
   }
 
   get isNull(): boolean {
@@ -254,6 +271,7 @@ export class Style {
       this.anchor === undefined &&
       this.boxFrame === undefined &&
       this.bidi === undefined &&
+      this.caret === undefined &&
       this.validity.validUntil === Number.POSITIVE_INFINITY &&
       this.validity.validFrom === Number.NEGATIVE_INFINITY
     );
@@ -311,6 +329,11 @@ export class Style {
   /** The same look, its cells' direction as `bidi` says. */
   withBidi(bidi: BidiStamp | undefined): Style {
     return this.with({ bidi });
+  }
+
+  /** The same look, the terminal's cursor standing on its cells in `caret`'s shape, or not. */
+  withCaret(caret: CaretShape | undefined): Style {
+    return this.with({ caret });
   }
 
   /** The style's text attributes, each as it sets it. */
@@ -378,6 +401,7 @@ export class Style {
       anchor: other.anchor ?? this.anchor,
       boxFrame: other.boxFrame ?? this.boxFrame,
       bidi: other.bidi ?? this.bidi,
+      caret: other.caret ?? this.caret,
       // Cells under both change when either does.
       validity: intersection(this.validity, other.validity),
     });
@@ -405,6 +429,7 @@ export class Style {
       anchorsEqual(this.anchor, other.anchor) &&
       this.boxFrame === other.boxFrame &&
       this.bidi === other.bidi &&
+      this.caret === other.caret &&
       this.validity.validUntil === other.validity.validUntil &&
       this.validity.validFrom === other.validity.validFrom
     );
@@ -464,7 +489,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colors, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `validity` —
+   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `caret`, `validity` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */
