@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-557",
+      "ref": "refs/pull/557/merge",
+      "sha": "5c19ef185e61d43ac0cb4a41109c8df5b7fe0ac0",
+      "timestamp": "2026-11-05T17:19:10.560Z",
+      "commits": [
+        {
+          "sha": "5c19ef185e61d43ac0cb4a41109c8df5b7fe0ac0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:16:33-07:00",
+          "message": "Merge 2b162b21c3d052547189c1db836045e90e4d3307 into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
+        },
+        {
+          "sha": "2b162b21c3d052547189c1db836045e90e4d3307",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:16:22-07:00",
+          "message": "The orders table names words (rich-control-codes-xh4n.6pi)\n"
+        },
+        {
+          "sha": "59a79142f41ffee357ef75c8e8b8026adcfd90cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:05:20-07:00",
+          "message": "kitty gets the words order: rows laid out visually, each right-to-left word written in the order kitty turns back (rich-control-codes-xh4n.6pi)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-556",
       "ref": "refs/pull/556/merge",
       "sha": "a39904d365049f8dee164730c3181d3ba7f07ff8",
