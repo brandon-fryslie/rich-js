@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-556",
+      "ref": "refs/pull/556/merge",
+      "sha": "a39904d365049f8dee164730c3181d3ba7f07ff8",
+      "timestamp": "2026-11-05T17:15:35.335Z",
+      "commits": [
+        {
+          "sha": "a39904d365049f8dee164730c3181d3ba7f07ff8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:13:45-07:00",
+          "message": "Merge 0b2eda65b6acee40d0787f9753871191b7a265f7 into a31f8cc33cafbdf0842373f7789d7fbe7793c0da\n"
+        },
+        {
+          "sha": "0b2eda65b6acee40d0787f9753871191b7a265f7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T10:13:33-07:00",
+          "message": "TextInput shows, hits and moves through right-to-left text in its destination's order (rich-control-codes-xh4n.itm)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a31f8cc33cafbdf0842373f7789d7fbe7793c0da",
