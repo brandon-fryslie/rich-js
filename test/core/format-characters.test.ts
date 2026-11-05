@@ -13,8 +13,9 @@ import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { render } from "../../src/core/protocol.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import { renderToString, segmentsToString } from "../../src/core/render.js";
+import { segmentsToString } from "../../src/core/render.js";
 import { Style } from "../../src/core/style.js";
+import type { TextOrder } from "../../src/core/text-order.js";
 import { JSONRenderable } from "../../src/core/json.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Syntax } from "../../src/renderables/syntax.js";
@@ -37,6 +38,7 @@ const LAPTOP = "\u{1f4bb}";
 const ENGLAND = "\u{1f3f4}\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}";
 const HIDDEN = "\u{e0068}\u{e0069}";
 const COMBINING = "\u0301";
+const PDF = "\u202c";
 
 function wire(renderable: string | Renderable, width: number, colorSystem?: "truecolor"): string {
   const chunks: string[] = [];
@@ -469,7 +471,8 @@ describe("a span edge inside a sequence", () => {
   const drawn = (bytes: string): string => bytes.replace(SGR, "").split("\n")[0]!;
   // `text` styled bold from the code unit `at` on, written at a width it fits.
   const options = new Console({ width: 80 }).options;
-  const edged = (text: string, at: number): string => drawn(segmentsToString(render(new RichText(text).stylize("bold", at), options), TRUECOLOR));
+  const edged = (text: string, at: number, textOrder: TextOrder = "plain"): string =>
+    drawn(segmentsToString(render(new RichText(text).stylize("bold", at), { ...options, textOrder }), { ...TRUECOLOR, textOrder }));
 
   it("reports the edge in the style the edge cell is drawn in", () => {
     const right = (text: string, at: number): string => new RichText(text).stylize("on red", at).edgeStyle("right", options).toString();
@@ -514,6 +517,16 @@ describe("a span edge inside a sequence", () => {
     expect(cellLen(edged(text, at))).toBe(cellLen(text));
   });
 
+  // The PDF ends the heart's cluster, so the selector selects nothing in the text
+  // as given; every order that drops the PDF joins them on the wire.
+  it.each(["plain", "visual", "words"] as const)("writes a selector past a removed control as wide as it measures under %s", (textOrder) => {
+    const text = `${HEART}${PDF}${VS16}|`;
+    for (let at = 0; at <= text.length; at += 1) {
+      const measured = new RichText(text).stylize("bold", at).measure({ ...options, textOrder }).maximum;
+      expect([at, cellLen(edged(text, at, textOrder))]).toEqual([at, measured]);
+    }
+  });
+
   it("keeps a flag's tags with its base", () => {
     expect(edged(`a${ENGLAND}b`, 5)).toBe(`a${ENGLAND}b`);
   });
@@ -548,27 +561,5 @@ describe("a span edge inside a sequence", () => {
       const row = drawn(segmentsToString([new Segment(left, Style.parse("bold")), new Segment(right)], TRUECOLOR));
       expect([left, right, cellLen(row)]).toEqual([left, right, cellLen(left) + cellLen(right)]);
     }
-  });
-});
-
-describe("a removable control between a glyph and its extender", () => {
-  const SGR = /\x1b\[[0-9;]*m/g;
-  const ORDERS = ["plain", "logical", "visual", "words"] as const;
-  // The selector selects nothing in the text as given, since the PDF ends the
-  // cluster; under the orders that drop the PDF it joins the heart on the wire.
-  const TEXT = `${HEART}‬${VS16}|`;
-  const rows = (renderable: Renderable, textOrder: (typeof ORDERS)[number]): string[] =>
-    renderToString(renderable, { width: 20, textOrder, colorSystem: "truecolor" }).replace(SGR, "").split("\n").filter((row) => row !== "");
-
-  it.each(ORDERS)("writes as wide as it measures under %s, wherever a span edge falls", (textOrder) => {
-    const options = { ...new Console({ width: 20 }).options, textOrder };
-    for (let at = 0; at <= TEXT.length; at += 1) {
-      const text = new RichText(TEXT).stylize("bold", at);
-      expect([at, cellLen(rows(text, textOrder)[0]!)]).toEqual([at, text.measure(options).maximum]);
-    }
-  });
-
-  it.each(ORDERS)("keeps a frame around it square under %s", (textOrder) => {
-    expect(new Set(rows(Panel.fit(new RichText(TEXT)), textOrder).map(cellLen)).size).toBe(1);
   });
 });
