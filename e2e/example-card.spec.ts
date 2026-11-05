@@ -3,7 +3,7 @@
  * A static docs example is an editable card (docs/.vitepress/theme/RichExample.ts),
  * in the built site: at rest it is the page's highlighted code over the output
  * the build printed, and hydrating it moves nothing; clicking into the code
- * and typing re-renders the output from the edit; reset puts the page's code
+ * and editing it re-renders the output from the edit; reset puts the page's code
  * and output back; and a program that never ends leaves the page responsive
  * while the card says it was stopped. A silent or throws block is the same
  * card; a shape or node block is too, read-only.
@@ -65,7 +65,7 @@ test("editing the first table's rows re-renders it, and reset puts the page's ba
   // The page's last line prints the table; a row added above it is in what it prints.
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Home");
-  await page.keyboard.type('table.addRow("Oct 8, 2026", "An Edited Row", "$1", "$2");\n');
+  await page.keyboard.insertText('table.addRow("Oct 8, 2026", "An Edited Row", "$1", "$2");\n');
   await expect.poll(() => shown(page), { timeout: 15_000 }).toContain("An Edited Row");
   await expect(firstCard(page).locator(".rich-example-edited")).toContainText("edited");
   await expect(firstCard(page).locator(".rich-example-failure")).toHaveCount(0);
@@ -84,7 +84,7 @@ test("a program that never ends leaves the page responsive, and the card says it
   await edit(page);
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Home");
-  await page.keyboard.type("while (true) {}\n");
+  await page.keyboard.insertText("while (true) {}\n");
   // The loop runs in the card's worker: the page answers while it spins.
   await page.waitForTimeout(1_000);
   const answered = await Promise.race([
@@ -104,7 +104,7 @@ test("a program that prints without end is stopped in its worker, and the page s
   await edit(page);
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Home");
-  await page.keyboard.type('for (;;) console.print("flood");\n');
+  await page.keyboard.insertText('for (;;) console.print("flood");\n');
   await expect(firstCard(page).locator(".rich-example-failure")).toContainText("it was still printing", { timeout: 15_000 });
   expect(await page.evaluate(() => "answered")).toBe("answered");
   await expect(firstCard(page).locator(".rich-example-output")).toHaveClass(/rich-example-stale/);
@@ -117,9 +117,9 @@ test("a program that exits 0 is drawn as one that finished", async ({ page }) =>
   await edit(page);
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Home");
-  await page.keyboard.type('table.addRow("Oct 8, 2026", "An Exiting Row", "$1", "$2");\n');
+  await page.keyboard.insertText('table.addRow("Oct 8, 2026", "An Exiting Row", "$1", "$2");\n');
   await page.keyboard.press("ControlOrMeta+End");
-  await page.keyboard.type("\nprocess.exit(0);");
+  await page.keyboard.insertText("\nprocess.exit(0);");
   // Output is no longer stale only once it is drawn from the code with the exit in it.
   await expect(firstCard(page).locator(".rich-example-output")).not.toHaveClass(/rich-example-stale/, { timeout: 15_000 });
   expect(await shown(page)).toContain("An Exiting Row");
@@ -132,7 +132,7 @@ test("Try it opens the card's edit", async ({ page }) => {
   await edit(page);
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Home");
-  await page.keyboard.type('table.addRow("Oct 8, 2026", "An Edited Row", "$1", "$2");\n');
+  await page.keyboard.insertText('table.addRow("Oct 8, 2026", "An Edited Row", "$1", "$2");\n');
   await expect.poll(() => shown(page), { timeout: 15_000 }).toContain("An Edited Row");
   await firstCard(page).getByRole("link", { name: "Try it" }).click();
   await page.waitForURL(/playground/);
@@ -147,7 +147,7 @@ test("an error names the card's own line, under the last good output", async ({ 
   await edit(page);
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Home");
-  await page.keyboard.type('throw new RangeError("edited");\n');
+  await page.keyboard.insertText('throw new RangeError("edited");\n');
   // The page's block is 21 lines, the last printing the table; the throw is now line 21.
   await expect(firstCard(page).locator(".rich-example-failure summary")).toHaveText(/RangeError: edited \(line 21\)$/, { timeout: 15_000 });
   expect(errors).toEqual([]);
@@ -192,7 +192,7 @@ test("a click above a card's code opens it folded, and an error's line is counte
   await card.locator("pre.shiki").click({ position: { x: 40, y: 5 } });
   await expect(card.locator(".cm-content")).toBeFocused({ timeout: 10_000 });
   await expect(card.locator(".rich-setup-strip")).toBeVisible();
-  await page.keyboard.type("throw new RangeError(\"edited\");\n");
+  await page.keyboard.insertText("throw new RangeError(\"edited\");\n");
   // Two lines of setup, each with the blank line under it: the block's first line is the program's fifth.
   await expect(card.locator(".rich-example-failure summary")).toHaveText(/RangeError: edited \(line 5\)$/, { timeout: 15_000 });
   await expect(card.locator(".rich-setup-label")).toHaveCount(2);
@@ -226,7 +226,7 @@ test("a silent block says it prints nothing until an edit prints something", asy
   await expect(card.locator(".rich-example-light")).toHaveCount(0);
   await editLastLine(page, card);
   await page.keyboard.press("End");
-  await page.keyboard.type('\nconsole.print("now it prints");');
+  await page.keyboard.insertText('\nconsole.print("now it prints");');
   await expect(card.locator(".rich-example-light pre")).toContainText("now it prints", { timeout: 15_000 });
   await expect(card.locator(".rich-example-note")).toHaveCount(0);
   await card.getByRole("button", { name: "reset" }).click();
@@ -245,7 +245,7 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(card.locator(".rich-example-caption")).toHaveText("produced by running the code above, which throws");
     await editLastLine(page, card);
     await page.keyboard.press("Shift+End");
-    await page.keyboard.type('console.print("[bold]Hello[/bold]");');
+    await page.keyboard.insertText('console.print("[bold]Hello[/bold]");');
     await expect(output).toHaveText(/^\s*Hello\s*$/, { timeout: 15_000 });
     await expect(card.locator(".rich-example-caption")).toHaveText("produced by running the code above");
     await expect(card.locator(".rich-example-failure")).toHaveCount(0);
