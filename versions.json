@@ -4,15 +4,22 @@
     {
       "version": "pr-562",
       "ref": "refs/pull/562/merge",
-      "sha": "bb9e7957fc09bfe3a1abb0867c014bb970cd687f",
-      "timestamp": "2026-11-05T22:00:47.486Z",
+      "sha": "1fccfb2856c98f37c3787b3dcb4053f44abcbfdd",
+      "timestamp": "2026-11-05T22:03:14.297Z",
       "commits": [
         {
-          "sha": "bb9e7957fc09bfe3a1abb0867c014bb970cd687f",
+          "sha": "1fccfb2856c98f37c3787b3dcb4053f44abcbfdd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T21:58:47Z",
-          "message": "Merge 07b208666373c46736e5b2430b4e17e44e9a0744 into b00624001284316cd6d5bb730f1564914df76f42\n"
+          "timestamp": "2026-11-05T22:00:45Z",
+          "message": "Merge d506065e4d8f2a352c10e4465de9ee80a9c5ac5e into b00624001284316cd6d5bb730f1564914df76f42\n"
+        },
+        {
+          "sha": "d506065e4d8f2a352c10e4465de9ee80a9c5ac5e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T15:00:36-07:00",
+          "message": "Drop the unmeasured logical advice for Terminal.app; say which build the bidi rows came from (rich-control-codes-xh4n.gp4)\n"
         },
         {
           "sha": "07b208666373c46736e5b2430b4e17e44e9a0744",
