@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-565",
-      "ref": "refs/pull/565/merge",
-      "sha": "85a601d32c4fd33a079271556826d89b8b8f9f33",
-      "timestamp": "2026-11-06T00:05:37.749Z",
-      "commits": [
-        {
-          "sha": "85a601d32c4fd33a079271556826d89b8b8f9f33",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:03:26Z",
-          "message": "Merge f6098fa9ddd34b8ca0549e63aea90bad5f73ee36 into 071d41c8dcc12133fe39fde3a8b6f812dd4df86a\n"
-        },
-        {
-          "sha": "f6098fa9ddd34b8ca0549e63aea90bad5f73ee36",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:03:16-07:00",
-          "message": "Only a bar caret turns; the docs promise the leading edge, not where a typed character lands; paint steps one grapheme (rich-control-codes-xh4n.e1h)\n"
-        },
-        {
-          "sha": "157ef4448259a38efcba252dd4143ad64aa9cbfb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T16:57:20-07:00",
-          "message": "caretMark takes a shape only: a mark stands on its glyph's leading edge and ordering alone sets a right side (caretMarkOn), so no caller states an edge for orient to contradict; one turned style per row (rich-control-codes-xh4n.e1h)\n"
-        },
-        {
-          "sha": "a6038b95b8b5954423c91d602adf411be30b46dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T16:51:43-07:00",
-          "message": "The caret's side is set where the row is ordered: orient's displayed turns a caret mark to the level its glyph is shown at, so a masked or pictured row puts the bar where its shown glyphs do; CaretMark is branded to caretMark (rich-control-codes-xh4n.e1h)\n\nBREAKING: Style.withCaret and StyleOptions.caret take a CaretMark (caretMark(shape, side)), not a CaretShape.\n\nReview (high): caretSide re-derived levels from the raw value; replaced. Search bar keeps measure. The paint clamp for a right-side bar in the last column stays: no column exists past the screen's edge.\n"
-        },
-        {
-          "sha": "3dba596c5c050a22e5e808a0a6205d0d5e086711",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T16:39:51-07:00",
-          "message": "A bar caret in a right-to-left run stands on the insertion point's edge: Style.caret is a CaretMark, its shape and the side of its cell the insertion point is on, read off the levels the row is ordered by (rich-control-codes-xh4n.e1h)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "071d41c8dcc12133fe39fde3a8b6f812dd4df86a",
-      "timestamp": "2026-11-05T23:30:56.234Z",
+      "sha": "9c5b3e136c6a8f85fa696554c77e69874e3ce96f",
+      "timestamp": "2026-11-06T00:20:33.768Z",
       "commits": [
         {
-          "sha": "071d41c8dcc12133fe39fde3a8b6f812dd4df86a",
+          "sha": "9c5b3e136c6a8f85fa696554c77e69874e3ce96f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T16:29:06-07:00",
-          "message": "TextInput reads glyph offsets off the frame's anchors (rich-control-codes-xh4n.3f7) (#564)\n\n* A press reads its glyph off the frame it lands on: every drawn cell carries its offset, and the screen order is read off the drawn row (rich-control-codes-xh4n.3f7)\n\nA multiline press judged whether the frame drew the end slot from the current\ncursor, so after the cursor moved, a press in a right-to-left row landed a glyph\noff. The row is now drawn once, each glyph stamped with a Slot, and the press and\nthe arrow keys read their stops from that drawn row; only under logical, where\nthe terminal orders the row, is shownOrder applied over it.\n\n* Every stop survives ordering: a lone mark is shown on the stand-in, a gap row's end is a stop, a placeholder takes its own direction, and a row is stamped only while its stops are read (rich-control-codes-xh4n.3f7)\n\n* Every offset a row holds is one of its stops: a cursor in what a wrap dropped stands on the row's end and steps out to the next row, a glyph is closed against its stand-in by the segmenter, a press past a right-to-left row reaches its end, and a logical row is ordered as the isolate the wire writes (rich-control-codes-xh4n.3f7)\n\n* A step reads the stops the painted frame recorded, an end drawn with no cell is ordered as the caret's blank, a logical row is ordered as sealed writes it with what follows it on its line, and a step back out of a row lands on the end a wrap dropped a gap after (rich-control-codes-xh4n.3f7)"
+          "timestamp": "2026-11-05T17:18:23-07:00",
+          "message": "A bar caret in a right-to-left run stands on the insertion point's edge: Style.caret is a CaretMark, its shape and the side of its cell the insertion point is on, read off the levels the row is ordered by (rich-control-codes-xh4n.e1h) (#565)\n\n* A bar caret in a right-to-left run stands on the insertion point's edge: Style.caret is a CaretMark, its shape and the side of its cell the insertion point is on, read off the levels the row is ordered by (rich-control-codes-xh4n.e1h)\n\n* The caret's side is set where the row is ordered: orient's displayed turns a caret mark to the level its glyph is shown at, so a masked or pictured row puts the bar where its shown glyphs do; CaretMark is branded to caretMark (rich-control-codes-xh4n.e1h)\n\nBREAKING: Style.withCaret and StyleOptions.caret take a CaretMark (caretMark(shape, side)), not a CaretShape.\n\nReview (high): caretSide re-derived levels from the raw value; replaced. Search bar keeps measure. The paint clamp for a right-side bar in the last column stays: no column exists past the screen's edge.\n\n* caretMark takes a shape only: a mark stands on its glyph's leading edge and ordering alone sets a right side (caretMarkOn), so no caller states an edge for orient to contradict; one turned style per row (rich-control-codes-xh4n.e1h)\n\n* Only a bar caret turns; the docs promise the leading edge, not where a typed character lands; paint steps one grapheme (rich-control-codes-xh4n.e1h)"
         }
       ]
     }
