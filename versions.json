@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
+      "timestamp": "2026-11-06T14:06:19.596Z",
+      "commits": [
+        {
+          "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T07:03:27-07:00",
+          "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u (rich-control-codes-xh4n.d9w) (#582)\n\n* decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n\n* A restore is drawn statically only back to a save on its line; save and restore are two named groups; e2e and text docs follow (rich-control-codes-xh4n.d9w review)\n\n* The docs gate reads what ends a line from the decoder (LINE_ENDS), C1 NEL and CNL included; save and restore handled once in the scan; DECLRMM noted (rich-control-codes-xh4n.d9w review)"
+        }
+      ]
+    },
+    {
       "version": "pr-581",
       "ref": "refs/pull/581/merge",
       "sha": "48adb0fea314b4f72aa2b98ca0c996e32e134147",
@@ -34,57 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T06:23:06-07:00",
           "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-582",
-      "ref": "refs/pull/582/merge",
-      "sha": "7a2496abc28f37134cd65304978640515e0ba6bd",
-      "timestamp": "2026-11-06T13:53:05.348Z",
-      "commits": [
-        {
-          "sha": "7a2496abc28f37134cd65304978640515e0ba6bd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T13:50:57Z",
-          "message": "Merge f3159d4c8da5cff98cf837bf554e07a772377218 into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
-        },
-        {
-          "sha": "f3159d4c8da5cff98cf837bf554e07a772377218",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:50:47-07:00",
-          "message": "The docs gate reads what ends a line from the decoder (LINE_ENDS), C1 NEL and CNL included; save and restore handled once in the scan; DECLRMM noted (rich-control-codes-xh4n.d9w review)\n"
-        },
-        {
-          "sha": "7068497a0e73cee770a63658fa3675a862282e74",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:41:27-07:00",
-          "message": "A restore is drawn statically only back to a save on its line; save and restore are two named groups; e2e and text docs follow (rich-control-codes-xh4n.d9w review)\n"
-        },
-        {
-          "sha": "d13ef70ea2e2a4f3d3e0e79d5022e54c4977b10b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:27:13-07:00",
-          "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "c92c321cc7035dfe27312c8023b9f75dc54494d8",
-      "timestamp": "2026-11-06T13:16:22.006Z",
-      "commits": [
-        {
-          "sha": "c92c321cc7035dfe27312c8023b9f75dc54494d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:13:54-07:00",
-          "message": "A right-to-left text body in a Panel, Padding or Layout pane stands at its right inner edge (rich-control-codes-xh4n.9m6) (#580)\n\n* A text body in a Panel, Padding or Layout pane starts at its paragraph's edge, so a right-to-left one stands at the right inner edge (rich-control-codes-xh4n.9m6)\n\n* A right-to-left row placed at its own edge is padded unstyled, as the fill beside a Latin one is; tests pin a handed justify, a styled body and what a Padding hands a renderable (review of #580)\n\n* A pad drawn in another style than the base joins no run beside it, so no glyph is ever drawn in the pad's style (review of #580)\n\n* A row's pad says once how it is drawn and whether it joins, so an unstyled base still joins its pad; docs say the rule reaches a container's own text body (review of #580)"
         }
       ]
     }
