@@ -273,7 +273,9 @@ const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${SEQUENCE_SO_FAR}|${STRING
  * an ESC, running a C0 control and ignoring DEL there, and takes a later byte as
  * the escape's final, which the decoder draws as text. Only the next ESC or C1
  * control cancels it, and then a terminal drops it as the decoder does; an
- * abort after it is the inert escape `ESCAPES` takes whole.
+ * abort after it is the inert escape `ESCAPES` takes whole. `next` is never an
+ * abort from beyond `bytes`: what `tokens` passes is a line break or an OSC 8
+ * introducer, and an ESC ending a write is held open (`OPEN_ESCAPE`).
  */
 const performed = (control: string, next: string): boolean =>
   isC1(control.charCodeAt(0)) || (control === "\x1b" && next !== "\x1b" && !isC1(next.charCodeAt(0)));
