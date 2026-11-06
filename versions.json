@@ -4,15 +4,22 @@
     {
       "version": "pr-580",
       "ref": "refs/pull/580/merge",
-      "sha": "9d9d47b9dc6392fd6e6d2cb43e78f4623e7d7963",
-      "timestamp": "2026-11-06T12:52:30.173Z",
+      "sha": "f0e0bae71eadaf483d3e533fc48314e0670952a1",
+      "timestamp": "2026-11-06T12:56:37.518Z",
       "commits": [
         {
-          "sha": "9d9d47b9dc6392fd6e6d2cb43e78f4623e7d7963",
+          "sha": "f0e0bae71eadaf483d3e533fc48314e0670952a1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T12:50:11Z",
-          "message": "Merge ab40e7b2726437286a66926a2ab27e23f5938659 into 4c703f46a6759a75eb8bb866936709e8e35f2020\n"
+          "timestamp": "2026-11-06T12:54:03Z",
+          "message": "Merge 8c533c50cabd6c18a1cbadabd5b2a62c27d995a2 into 4c703f46a6759a75eb8bb866936709e8e35f2020\n"
+        },
+        {
+          "sha": "8c533c50cabd6c18a1cbadabd5b2a62c27d995a2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T05:53:37-07:00",
+          "message": "A pad drawn in another style than the base joins no run beside it, so no glyph is ever drawn in the pad's style (review of #580)\n"
         },
         {
           "sha": "ab40e7b2726437286a66926a2ab27e23f5938659",
