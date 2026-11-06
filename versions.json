@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-575",
+      "ref": "refs/pull/575/merge",
+      "sha": "a2e87eebd70fe1e5ba72abb86180f320bc266205",
+      "timestamp": "2026-11-06T09:58:02.794Z",
+      "commits": [
+        {
+          "sha": "a2e87eebd70fe1e5ba72abb86180f320bc266205",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T02:56:17-07:00",
+          "message": "Merge b823d6f5af7ab93148a9e256aa6e87ae3ae65be1 into 38f4a235b102533a1af99fe942c56d71a2659ff7\n"
+        },
+        {
+          "sha": "b823d6f5af7ab93148a9e256aa6e87ae3ae65be1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T02:56:06-07:00",
+          "message": "decodeAnsi reads colon-form SGR sub-parameters: 4:n underlines, 38:/48: colors, each group its own code (rich-control-codes-xh4n.qx1)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "38f4a235b102533a1af99fe942c56d71a2659ff7",
