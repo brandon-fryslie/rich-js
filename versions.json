@@ -4,15 +4,22 @@
     {
       "version": "pr-572",
       "ref": "refs/pull/572/merge",
-      "sha": "dc99e95c0482fdd4f1dbe79795d374e69c4f6897",
-      "timestamp": "2026-11-06T07:22:08.708Z",
+      "sha": "3545dc59d1807ef7cea808442a9d044d22880933",
+      "timestamp": "2026-11-06T07:25:33.321Z",
       "commits": [
         {
-          "sha": "dc99e95c0482fdd4f1dbe79795d374e69c4f6897",
+          "sha": "3545dc59d1807ef7cea808442a9d044d22880933",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:19:36Z",
-          "message": "Merge 39ac77cd818ac82a13014020f65f5487cfae2679 into 14220a72e7e7a74b2276294c29774383f30cafd4\n"
+          "timestamp": "2026-11-06T07:23:29Z",
+          "message": "Merge 9055f2581e07adf22bf7fa650d94d2f4bff2b516 into 14220a72e7e7a74b2276294c29774383f30cafd4\n"
+        },
+        {
+          "sha": "9055f2581e07adf22bf7fa650d94d2f4bff2b516",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T00:23:14-07:00",
+          "message": "Prepend lookup takes a code point; the table's test pins both cross-version Prepends and skips unassigned code points (rich-control-codes-xh4n.7cz review)\n"
         },
         {
           "sha": "39ac77cd818ac82a13014020f65f5487cfae2679",
