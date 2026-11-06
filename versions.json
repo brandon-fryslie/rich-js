@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-580",
-      "ref": "refs/pull/580/merge",
-      "sha": "53510c7ab254b781dda0122a8ca45e0a0a33a796",
-      "timestamp": "2026-11-06T13:03:21.816Z",
-      "commits": [
-        {
-          "sha": "53510c7ab254b781dda0122a8ca45e0a0a33a796",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T13:01:17Z",
-          "message": "Merge 113c224c01e7a3a0eb6deb8bf6c51dcf35954c41 into 4c703f46a6759a75eb8bb866936709e8e35f2020\n"
-        },
-        {
-          "sha": "113c224c01e7a3a0eb6deb8bf6c51dcf35954c41",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:00:47-07:00",
-          "message": "A row's pad says once how it is drawn and whether it joins, so an unstyled base still joins its pad; docs say the rule reaches a container's own text body (review of #580)\n"
-        },
-        {
-          "sha": "8c533c50cabd6c18a1cbadabd5b2a62c27d995a2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:53:37-07:00",
-          "message": "A pad drawn in another style than the base joins no run beside it, so no glyph is ever drawn in the pad's style (review of #580)\n"
-        },
-        {
-          "sha": "ab40e7b2726437286a66926a2ab27e23f5938659",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:49:56-07:00",
-          "message": "A right-to-left row placed at its own edge is padded unstyled, as the fill beside a Latin one is; tests pin a handed justify, a styled body and what a Padding hands a renderable (review of #580)\n"
-        },
-        {
-          "sha": "2c8103ca8f0f62bfe1b6fb7bbf502573f6a07e7c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:41:43-07:00",
-          "message": "A text body in a Panel, Padding or Layout pane starts at its paragraph's edge, so a right-to-left one stands at the right inner edge (rich-control-codes-xh4n.9m6)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4c703f46a6759a75eb8bb866936709e8e35f2020",
-      "timestamp": "2026-11-06T12:31:10.306Z",
+      "sha": "c92c321cc7035dfe27312c8023b9f75dc54494d8",
+      "timestamp": "2026-11-06T13:16:22.006Z",
       "commits": [
         {
-          "sha": "4c703f46a6759a75eb8bb866936709e8e35f2020",
+          "sha": "c92c321cc7035dfe27312c8023b9f75dc54494d8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:29:04-07:00",
-          "message": "A pointer shape is parsed where it enters, so no caller writes a second OSC through OSC 22 (rich-control-codes-xh4n.19b) (#579)\n\n* A pointer shape is parsed where it enters, so no caller writes a second OSC through OSC 22 (rich-control-codes-xh4n.19b)\n\nPointerShape is derived from one runtime list; Console.setPointerShape and the App.pointerShape setter parse first, attended or not, running or not.\n\n* Review: stopped-app error precedes the shape parse; a non-string is named by its type; App test moves to widgets; docs state the TypeError (rich-control-codes-xh4n.19b)\n\n* pointerSequence takes only a ParsedPointerShape, which only pointerShape makes; the parser takes unknown (rich-control-codes-xh4n.19b)"
+          "timestamp": "2026-11-06T06:13:54-07:00",
+          "message": "A right-to-left text body in a Panel, Padding or Layout pane stands at its right inner edge (rich-control-codes-xh4n.9m6) (#580)\n\n* A text body in a Panel, Padding or Layout pane starts at its paragraph's edge, so a right-to-left one stands at the right inner edge (rich-control-codes-xh4n.9m6)\n\n* A right-to-left row placed at its own edge is padded unstyled, as the fill beside a Latin one is; tests pin a handed justify, a styled body and what a Padding hands a renderable (review of #580)\n\n* A pad drawn in another style than the base joins no run beside it, so no glyph is ever drawn in the pad's style (review of #580)\n\n* A row's pad says once how it is drawn and whether it joins, so an unstyled base still joins its pad; docs say the rule reaches a container's own text body (review of #580)"
         }
       ]
     }
