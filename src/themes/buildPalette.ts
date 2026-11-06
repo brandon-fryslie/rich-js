@@ -1,7 +1,7 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
 import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
 import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
-import { neutralText, type NeutralIntent } from "./text-on.js";
+import { neutralText, textFloor, type NeutralIntent } from "./text-on.js";
 
 /**
  * Base colors required to build a full semantic palette.
@@ -34,9 +34,6 @@ const HOVER_ALPHA = 0.1;
 const SELECTION_ALPHA = 0.4;
 const SCROLLBAR_ALPHA = 0.4;
 const SCROLLBAR_HOVER_ALPHA = 0.5;
-// WCAG AA for body text, and AA-large for text meant to recede.
-const TEXT_FLOOR = 4.5;
-const MUTED_TEXT_FLOOR = 3;
 
 const ACCENT_KEYS: readonly AccentRole[] = ["primary", "secondary", "accent", "success", "warning", "error"];
 
@@ -148,7 +145,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "border-blurred": (at) => shiftLightness(at("surface"), -BORDER_BLUR_DROP),
 
   "block-cursor-background": same("primary"),
-  "block-cursor-foreground": textOver("text", "primary"),
+  "block-cursor-foreground": textOver("text", "block-cursor-background"),
   "block-cursor-blurred-background": (at) => withAlpha(at("primary"), BLURRED_CURSOR_ALPHA),
   "block-cursor-blurred-foreground": same("foreground"),
   "block-hover-background": (at) => withAlpha(at("boost"), HOVER_ALPHA),
@@ -200,6 +197,9 @@ export const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "fo
 /** Every role of every palette, read off the rules. */
 export const PALETTE_ROLES: readonly PaletteRole[] = [...BASE_KEYS, ...(Object.keys(RULES) as PaletteRole[])];
 const ROLE_NAMES: ReadonlySet<string> = new Set(PALETTE_ROLES);
+// Textual's ground-relative text, which a theme ported from it may state as a role.
+const NEUTRAL_INTENTS: ReadonlySet<string> = new Set<NeutralIntent>(["text", "text-muted", "text-disabled"]);
+const groundRelative = (role: string): boolean => NEUTRAL_INTENTS.has(role) || role.startsWith("on-");
 
 /**
  * Build a full semantic palette from its base colors and any other role it
@@ -224,16 +224,15 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
   };
 
   // [LAW:single-enforcer] Stated and derived alike: the color is the palette's,
-  // whether it reads is decided here. A stated tint stays translucent because
-  // it composites on each ground it is held to, and a `*-muted` that draws
-  // nothing leaves it on `background`.
+  // whether it reads is decided here, at the floor `textOn` holds the intent to.
+  // A stated color is already drawn on `background` (`statedRoles`).
   const grounds = (["background", "surface", "panel"] as const).map((role) => at(role).compositeOver(at("background")));
   const side = contrastFor(at("background"));
   for (const key of ACCENT_KEYS) {
     const muted = at(`${key}-muted`).compositeOver(at("background"));
-    known.set(`text-${key}`, heldOn(given[`text-${key}`] ?? at(`text-${key}`), [...grounds, muted], TEXT_FLOOR, side));
+    known.set(`text-${key}`, heldOn(at(`text-${key}`), [...grounds, muted], textFloor(`text-${key}`), side));
   }
-  known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, MUTED_TEXT_FLOOR, side));
+  known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, textFloor("foreground-muted"), side));
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
 }
 
@@ -245,7 +244,7 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
 function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRgba> {
   const drawn = drawnOn(name, given.background);
   const stated = Object.entries(given).flatMap(([role, color]: [string, ColorRgba | undefined]): [PaletteRole, ColorRgba][] => {
-    if (!ROLE_NAMES.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role`);
+    if (!ROLE_NAMES.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role${groundRelative(role) ? ` — text drawn relative to its ground is \`textOn(palette, intent, ground)\`, not a palette color` : ""}`);
     if (color === undefined) return [];
     return [[role as PaletteRole, role === "boost" ? color : drawn(color)]];
   });

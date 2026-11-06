@@ -8,7 +8,7 @@ import { ColorDepth, ColorRgba } from "../../src/core/color.js";
 import { contrastRatio } from "../../src/themes/colorMath.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
 import { getThemePalette, listThemePalettes, type ThemeName } from "../../src/themes/registry.js";
-import { named, readsOn, slide, textOn, tinted, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
+import { named, readsOn, slide, textFloor, textOn, tinted, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
 
 const FLOOR: Readonly<Record<TextIntent, number>> = {
   foreground: 4.5,
@@ -89,6 +89,12 @@ describe("the named fit draws only colors the theme names", () => {
         expect(reads || namedColors.has(drawn.hex), `${intent} on ${ground.hex}`).toBe(true);
       }
     }
+  });
+});
+
+describe("textFloor", () => {
+  it("is the floor each intent is held to", () => {
+    for (const intent of TEXT_INTENTS) expect(textFloor(intent), intent).toBe(FLOOR[intent]);
   });
 });
 

@@ -103,7 +103,20 @@ describe("what buildPalette is given", () => {
 
   it("a key that names no role is refused by name", () => {
     const overrides = { "scrollbar-color": new ColorRgba(1, 2, 3) };
-    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/"t": "scrollbar-color" is not a role/);
+    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/"t": "scrollbar-color" is not a role$/);
+  });
+
+  it.each(["text", "text-muted", "text-disabled", "on-primary"])("Textual's ground-relative %s points at textOn", (role) => {
+    const overrides = { [role]: new ColorRgba(1, 2, 3) };
+    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/is not a role — text drawn relative to its ground is `textOn/);
+  });
+
+  it("a cursor's text is chosen on the cursor", () => {
+    const cursor = new ColorRgba(250, 250, 240);
+    const palette = buildPalette("t", true, { ...base, "block-cursor-background": cursor });
+    // A light cursor on a dark palette whose primary is mid-blue: text chosen
+    // for `primary` would be white, and white does not read on this cursor.
+    expect(contrastRatio(palette.get("block-cursor-foreground"), cursor)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

@@ -15,6 +15,7 @@ import { GRUVBOX, DRACULA, ROSE_PINE_DAWN } from "../../src/themes/terminalTheme
 import { EASES } from "../../src/core/easing.js";
 import { getThemePalette } from "../../src/themes/registry.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
+import { slide, textOn, tinted } from "../../src/themes/text-on.js";
 import { baseStyleOf } from "../core/base-style.js";
 
 // [LAW:behavior-not-structure] Every assertion below compares what a template
@@ -305,11 +306,49 @@ describe("the palette is read at evaluate time, not at registration", () => {
   it("the function inventory does not depend on which palette is current", () => {
     // Why a fixed inventory matters: a per-variable function family would
     // have had a *different set of names* per theme, and a template parsed
-    // under one theme could hit FuncNotFound under another. `color` and
-    // `ramp` are the same two names regardless of palette contents.
+    // under one theme could hit FuncNotFound under another. The names are
+    // the same regardless of palette contents.
     const names = Object.keys(paletteFuncs(() => GRUVBOX.palette));
     expect(names).toEqual(Object.keys(paletteFuncs(() => DRACULA.palette)));
     expect(names).toEqual(["color", "ramp", "textOn"]);
+  });
+});
+
+describe("textOn: a theme's text on a ground, from a template", () => {
+  const run = (funcs: ReturnType<typeof paletteFuncs>, source: string) =>
+    createEngine<RichText>({
+      fromString: (s) => new RichText(s),
+      isT: (v) => v instanceof RichText,
+      toString: (rt) => rt.plain,
+      funcs: { ...richTextFuncs(), ...funcs },
+    })
+      .parse(source)
+      .evaluate({})
+      .map((f) => f.plain)
+      .join("");
+  const ground = palette.get("primary-muted");
+
+  it("is the library's textOn on the same ground, fit and destination", () => {
+    const drawnAt: DrawnAt = { depth: ColorDepth.STANDARD };
+    const got = run(paletteFuncs(() => palette, { fit: () => tinted, drawnAt: () => drawnAt }), `{{ textOn "text-error" "${ground.hex}" }}`);
+    expect(got).toBe(textOn(palette, "text-error", ground, { fit: tinted, drawnAt }).hex);
+  });
+
+  it("reads its fit each time it is evaluated", () => {
+    let calls = 0;
+    const funcs = paletteFuncs(() => palette, {
+      fit: () => {
+        calls++;
+        return slide;
+      },
+    });
+    run(funcs, `{{ textOn "text" "${ground.hex}" }}`);
+    run(funcs, `{{ textOn "text" "${ground.hex}" }}`);
+    expect(calls).toBe(2);
+  });
+
+  it("refuses a name that is not a text intent, listing the intents", () => {
+    expect(() => run(paletteFuncs(() => palette), `{{ textOn "primary" "${ground.hex}" }}`)).toThrow(/"primary" is not a text intent — one of "foreground"/);
   });
 });
 

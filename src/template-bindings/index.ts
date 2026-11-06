@@ -11,9 +11,9 @@
  *   and `link`. Needs no configuration; safe to register unconditionally. A
  *   consumer with no theme system still gets the complete color vocabulary by
  *   feeding it hex literals.
- * - `paletteFuncs(getPalette)` — `color` and `ramp`, the two functions that
- *   resolve a palette name. This is the *only* registration that knows a
- *   palette exists. [LAW:one-way-deps]
+ * - `paletteFuncs(getPalette)` — `color` and `ramp`, which resolve a palette
+ *   name, and `textOn`, a theme's text on a ground. This is the *only*
+ *   registration that knows a palette exists. [LAW:one-way-deps]
  * - `withAnimation(config, frame)` — the engine config with `frames`,
  *   `stepped`, `tween`, `loop` and `glyphs` registered, drawn for a moment on
  *   a timeline, and the two engine hooks their validity intervals reach the frame through
@@ -55,8 +55,8 @@ export { withAnimation, templateFrame, type AnimationOptions, type TemplateFrame
 /**
  * Funcs registered by the rich-js binding — the color sinks, the palette-free
  * color math, text attributes, and the `link` cell-splitter. Nothing here
- * needs a theme; the two that do (`color`, `ramp`) ship separately via
- * `paletteFuncs(getPalette)`, merged consumer-side. `drawnAt` is forwarded to
+ * needs a theme; the ones that do (`color`, `ramp`, `textOn`) ship separately
+ * via `paletteFuncs(getPalette)`, merged consumer-side. `drawnAt` is forwarded to
  * `colorFuncs` — the depth `ensureContrast` measures at, truecolor when omitted.
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's

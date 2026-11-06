@@ -39,7 +39,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `richTextFuncs()` is everything that does not: the color sinks `fg` and `bg`, the palette-free color math, every text attribute, `link`, and `style`. It is safe to register unconditionally. Its one optional argument, `drawnAt: () => DrawnAt`, says where the text lands — `{ depth, terminal? }`, the depth the terminal will draw at and, when you know it, the `TerminalTheme` drawing it: `ensureContrast` measures its floor on the colors actually drawn, at sixteen colors in that terminal's own — what that guarantees, fallback included, is stated once in [Contrast](/contrast). Omitted, it is truecolor. A host that swaps `ensureContrast` alone — per segment, say — registers `ensureContrastFunc(drawnAt)` over the key instead. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
 
-`paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
+`paletteFuncs(getPalette, place?)` is the ones that do: `color`, which turns a palette variable name into a color, `ramp`, whose stops are palette names, and `textOn`, a theme's text on a ground. It is the only registration that knows a palette exists. `textOn` holds its floor where `place.drawnAt` says the text lands, so a host drawing below truecolor hands the same `drawnAt` getter to both registrations — `richTextFuncs(drawnAt)` and `paletteFuncs(getPalette, { drawnAt })` — and `ensureContrast` and `textOn` measure the one destination.
 
 Animation is not a third map to merge. It answers a different question — what moment is the template drawn for? — and `withAnimation(config, frame)` takes the engine config those maps went into and returns it with `tween`, `loop`, `glyphs`, `frames` and `stepped` registered, drawn for the time your clock hands in, and the two engine hooks that carry what they drew to the frame. A config that already has one of those five names is refused. [Animating a template](#animating-a-template) covers them.
 
@@ -73,7 +73,7 @@ The two bridge functions are what bind the engine's generic output type to `Rich
 
 `paletteFuncs` asks for `() => Palette` rather than a `Palette`, because templates are parsed once and evaluated many times. An engine that captured a palette at construction would be frozen to whichever theme happened to be current then — and that freeze outlives every later theme change while the rest of the application's colors move on. A live preview or a theme picker would render half its colors from the new theme and half from the old.
 
-The getter costs nothing structurally. Function bodies run at evaluate time, so reading the palette through a getter leaves parse-once/evaluate-many intact. What a getter must never change is *which functions exist* — and it cannot, because the two names do not depend on the palette's contents.
+The getter costs nothing structurally. Function bodies run at evaluate time, so reading the palette through a getter leaves parse-once/evaluate-many intact. What a getter must never change is *which functions exist* — and it cannot, because the names do not depend on the palette's contents.
 
 ## Writing templates
 

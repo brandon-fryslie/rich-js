@@ -75,7 +75,8 @@ function drawnContrast(fg: ColorRgba, ground: ColorRgba, { depth, terminal }: Dr
 
 /** The candidate standing furthest off the ground as drawn. */
 function furthest(candidates: readonly ColorRgba[], ground: ColorRgba, drawnAt: DrawnAt): ColorRgba {
-  return candidates.reduce((best, c) => (drawnContrast(c, ground, drawnAt) > drawnContrast(best, ground, drawnAt) ? c : best));
+  const scored = candidates.map((color) => ({ color, contrast: drawnContrast(color, ground, drawnAt) }));
+  return scored.reduce((best, c) => (c.contrast > best.contrast ? c : best)).color;
 }
 
 /**
@@ -113,7 +114,7 @@ export const tinted: TextFit = ({ tint, ground, floor, drawnAt }) => {
   return shares.map((share) => alphaBlend(tint, pole, share)).find((c) => readsOn(c, ground, floor, drawnAt)) ?? pole;
 };
 
-/** The fits that ship, by name: what a template spells. */
+/** The fits that ship, by name: what a setting that names a fit is read through. */
 export const TEXT_FITS = { slide, named, tinted } as const satisfies Record<string, TextFit>;
 
 
@@ -144,14 +145,20 @@ export function neutralText(intent: NeutralIntent, ground: ColorRgba): ColorRgba
   return ensureContrast(withAlpha(contrastFor(ground), alpha), ground, floor);
 }
 
-/** What an intent is on one ground: the four values `textOn` measures and a fit reads. */
+/**
+ * What an intent is on one ground: the candidate `textOn` measures, and what a
+ * fit reads when it misses. The fit's half is a thunk, so a candidate that
+ * reads — the common case, on every frame a widget draws — builds no shades.
+ */
 interface Spec {
   readonly candidate: ColorRgba;
-  readonly floor: number;
-  readonly tint: ColorRgba;
-  readonly shades: readonly ColorRgba[];
+  readonly miss: () => { readonly tint: ColorRgba; readonly shades: readonly ColorRgba[] };
 }
-type SpecOn = (palette: Palette, ground: ColorRgba) => Spec;
+/** An intent: the floor it is held to, and what it is on a ground. */
+interface IntentRule {
+  readonly floor: number;
+  readonly on: (palette: Palette, ground: ColorRgba) => Spec;
+}
 
 const RUNGS = [1, 2, 3] as const;
 
@@ -170,27 +177,30 @@ const neutralShades = (palette: Palette, ground: ColorRgba, own: readonly Palett
 ];
 
 /** A palette's fixed text color: drawn as the theme names it. */
-const fixed = (role: PaletteRole, floor: number, own: readonly PaletteRole[]): SpecOn => (palette, ground) => ({
-  candidate: palette.get(role),
+const fixed = (role: PaletteRole, floor: number, own: readonly PaletteRole[]): IntentRule => ({
   floor,
-  tint: palette.get(role),
-  shades: neutralShades(palette, ground, own),
+  on: (palette, ground) => ({
+    candidate: palette.get(role),
+    miss: () => ({ tint: palette.get(role), shades: neutralShades(palette, ground, own) }),
+  }),
 });
 
 /** A ground-relative weight: Textual's translucent pole on this ground. */
-const relative = (intent: NeutralIntent, own: readonly PaletteRole[]): SpecOn => (palette, ground) => ({
-  candidate: withAlpha(contrastFor(ground), RELATIVE[intent].alpha),
+const relative = (intent: NeutralIntent, own: readonly PaletteRole[]): IntentRule => ({
   floor: RELATIVE[intent].floor,
-  tint: contrastFor(ground),
-  shades: neutralShades(palette, ground, own),
+  on: (palette, ground) => ({
+    candidate: withAlpha(contrastFor(ground), RELATIVE[intent].alpha),
+    miss: () => ({ tint: contrastFor(ground), shades: neutralShades(palette, ground, own) }),
+  }),
 });
 
 /** An accent's text: the palette's `text-<accent>`, tinted toward the accent. */
-const accent = (role: AccentRole): SpecOn => (palette, ground) => ({
-  candidate: palette.get(`text-${role}`),
+const accent = (role: AccentRole): IntentRule => ({
   floor: BODY,
-  tint: palette.get(role),
-  shades: [palette.get(`text-${role}`), ...ladder(palette, role, ground)],
+  on: (palette, ground) => ({
+    candidate: palette.get(`text-${role}`),
+    miss: () => ({ tint: palette.get(role), shades: [palette.get(`text-${role}`), ...ladder(palette, role, ground)] }),
+  }),
 });
 
 /**
@@ -213,9 +223,18 @@ const INTENTS = {
   "text-success": accent("success"),
   "text-warning": accent("warning"),
   "text-error": accent("error"),
-} as const satisfies Record<string, SpecOn>;
+} as const satisfies Record<string, IntentRule>;
 
 export type TextIntent = keyof typeof INTENTS;
+
+/**
+ * The contrast `intent` is held to on any ground. [LAW:one-source-of-truth]
+ * `buildPalette` holds a theme's fixed text to these same floors, which is why
+ * `textOn` draws that text untouched on the grounds Textual promises it.
+ */
+export function textFloor(intent: TextIntent): number {
+  return INTENTS[intent].floor;
+}
 
 /** Whether `name` is a text intent: what a template's string is parsed through. */
 export function isTextIntent(name: string): name is TextIntent {
@@ -239,9 +258,10 @@ export function textOn(
   { fit = slide, drawnAt = TRUECOLOR }: { readonly fit?: TextFit; readonly drawnAt?: DrawnAt } = {},
 ): ColorRgba {
   const drawnGround = ground.compositeOver(palette.get("background"));
-  const { candidate, floor, tint, shades } = INTENTS[intent](palette, drawnGround);
+  const { floor, on } = INTENTS[intent];
+  const { candidate, miss } = on(palette, drawnGround);
   const drawn = candidate.compositeOver(drawnGround);
-  return readsOn(drawn, drawnGround, floor, drawnAt)
-    ? drawn
-    : fit({ candidate: drawn, ground: drawnGround, floor, drawnAt, tint, shades: shades.map((s) => s.compositeOver(drawnGround)) });
+  if (readsOn(drawn, drawnGround, floor, drawnAt)) return drawn;
+  const { tint, shades } = miss();
+  return fit({ candidate: drawn, ground: drawnGround, floor, drawnAt, tint, shades: shades.map((s) => s.compositeOver(drawnGround)) });
 }

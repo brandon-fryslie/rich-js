@@ -21,6 +21,7 @@ import {
   Style,
   TEXT_FITS,
   TEXT_INTENTS,
+  textFloor,
   textOn,
   tinted,
   TRUECOLOR,
@@ -64,7 +65,6 @@ const INTENTS: readonly TextIntent[] = COMPARED.split(" ").map((name) => {
 });
 
 const LABEL = 19;
-const FLOOR: Partial<Record<TextIntent, number>> = { "text-muted": 3, "text-disabled": 0, "foreground-muted": 3, "foreground-disabled": 0 };
 
 /** One row: `intent` under `fit` on every ground, a cell under its floor ending in a red dot. */
 function row(palette: Palette, intent: TextIntent, label: string, fit: TextFit): RichText {
@@ -73,7 +73,7 @@ function row(palette: Palette, intent: TextIntent, label: string, fit: TextFit):
     const text = textOn(palette, intent, ground, { fit, drawnAt: TRUECOLOR });
     const bg = ColorSpec.fromRgba(ground);
     line.append("Aa", Style.fromColor(ColorSpec.fromRgba(text), bg));
-    line.append(readsOn(text, ground, FLOOR[intent] ?? 4.5) ? " " : "•", new Style({ color: "red", bold: true, bgcolor: bg }));
+    line.append(readsOn(text, ground, textFloor(intent)) ? " " : "•", new Style({ color: "red", bold: true, bgcolor: bg }));
   }
   return line;
 }
@@ -90,7 +90,7 @@ export function section9TextOn(out: Console): void {
     ),
   );
   out.print(dim(`  Grounds: ${DECORATIVE.join(", ")} — each darken-3 … lighten-3 and muted — then surface, panel. A red dot: under the floor.`));
-  out.print(dim(`  Fits by name, for a template: ${Object.keys(TEXT_FITS).join(", ")}.`));
+  out.print(dim(`  Fits by name, for a setting that names one: ${Object.keys(TEXT_FITS).join(", ")}.`));
   out.print(blank());
   for (const name of listThemePalettes()) {
     const palette = getThemePalette(name);
