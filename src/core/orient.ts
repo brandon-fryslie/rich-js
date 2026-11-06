@@ -298,20 +298,6 @@ export function edges(text: string, order: TextOrder, direction?: ParagraphLevel
   return { left: drawn[0] ?? 0, right: drawn.at(-1) ?? 0 };
 }
 
-/**
- * `glyphs`, one row whose paragraph is `direction` when one is stated, in the
- * order `order` shows them left to right, each as its index: what a column on the
- * screen maps back through. Directed exactly when `reorder` directs it, so under
- * `plain` it is the glyphs' own order. The glyphs are taken as given, so a caller
- * that draws each as a cell of its own keeps each.
- */
-export function shownOrder(glyphs: readonly string[], order: TextOrder, direction?: ParagraphLevel): number[] {
-  const text = glyphs.join("");
-  if (order === "plain" || (direction === undefined && !isBidi(text))) return glyphs.map((_, index) => index);
-  const { level, levels } = paragraph(text, direction);
-  return visualOrder(clusterLevels(glyphs, lineLevels(text, levels, level), level, () => false));
-}
-
 function ordered(text: string, direction: ParagraphLevel | undefined): number[] {
   const { level, levels } = paragraph(text, direction);
   return visualOrder(lineLevels(text, levels, level));

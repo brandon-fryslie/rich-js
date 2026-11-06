@@ -480,9 +480,10 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
           input.handleKey(key(name));
           const stepped = input.cursorPosition;
           // A row wider than the offer draws no cell for its end, which stands,
-          // with no cells, beside the character typed last: a step reaches it
-          // and no press does, so the screen names no stop to compare it with.
-          if (stepped !== beside && !Array.from({ length: drawnTo }, (_, x) => pressed(x)).includes(stepped)) continue;
+          // with no cells, beside the character typed last, and has no padding
+          // past it to press: a step reaches that line end and no press does.
+          const lineEnd = stepped === value.length || value[stepped] === "\n";
+          if (stepped !== beside && lineEnd && !Array.from({ length: drawnTo }, (_, x) => pressed(x)).includes(stepped)) continue;
           expect(stepped, `${JSON.stringify(value)} from ${stop}, ${name}`).toBe(beside);
         }
       }
