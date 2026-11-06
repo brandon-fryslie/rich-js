@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-578",
+      "ref": "refs/pull/578/merge",
+      "sha": "eec819293f3f2eb0ef2ccc0767f6c319cf032ec6",
+      "timestamp": "2026-11-06T11:40:20.913Z",
+      "commits": [
+        {
+          "sha": "eec819293f3f2eb0ef2ccc0767f6c319cf032ec6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T04:37:53-07:00",
+          "message": "Merge 328fb2b21bd42f71efb36214606e0e7fff24655d into a949c97513c1c182d3ddda4fa21cc4d6bde1e3df\n"
+        },
+        {
+          "sha": "328fb2b21bd42f71efb36214606e0e7fff24655d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T04:37:37-07:00",
+          "message": "decodeAnsi ends a line at CNL as at NEL, once per row it moves down; CPL stays dropped (rich-control-codes-xh4n.llj)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a949c97513c1c182d3ddda4fa21cc4d6bde1e3df",
