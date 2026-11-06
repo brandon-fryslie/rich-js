@@ -29,8 +29,9 @@ that means styling says so, because otherwise any string could set a link or
 conceal text with no caller having asked.
 
 `decodeAnsi` is the road for bytes a program already wrote, and it reads what a
-terminal or a printer would make of them. A CR returns to the first column, and a cursor move along the line (CUB, CUF, CHA, CHT, CBT, HPB, HPR, HPA) moves the column as a terminal does. nroff's
-overstrike, which `man` writes, becomes styles, and a backspace that is no
+terminal or a printer would make of them. A CR returns to the first column, and a cursor move along
+the line (CUB, CUF, CHA, CHT, CBT, HPB, HPR, HPA) moves the column as a terminal
+does. nroff's overstrike, which `man` writes, becomes styles, and a backspace that is no
 overstrike moves back a column so what follows draws over what was there:
 
 ```typescript

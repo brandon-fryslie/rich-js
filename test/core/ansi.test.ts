@@ -225,6 +225,10 @@ describe("decodeAnsi lines and other escapes", () => {
     // A count is bounded, so a short escape cannot pad a line without end.
     expect(decodeAnsi(`\x1b[${"9".repeat(400)}Cz`).plain.length).toBe(9999);
     expect(decodeAnsi("\x1b[4294967295Gz").plain.length).toBe(9999);
+    // The bound never turns a move around on a line already longer than it.
+    const long = "x".repeat(12000);
+    expect(decodeAnsi(`${long}\bz`).plain).toBe(`${"x".repeat(11999)}z`);
+    expect(decodeAnsi(`${long}\x1b[Cz`).plain).toBe(`${long}z`);
     // Vertical motion stays dropped.
     expect(decodeAnsi("ab\x1b[1Ac\x1b[2Bd\x1b[Ee").plain).toBe("abcde");
   });

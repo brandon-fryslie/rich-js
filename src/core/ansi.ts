@@ -140,23 +140,30 @@ const tabStop = (index: number): number => index * TAB_STOP + 1;
  * an absent or zero parameter is: back (CUB, and HPB's `j`), forward (CUF, and
  * HPR's `a`), to a column (CHA, and HPA's backquote), and forward and back by
  * tab stops (CHT, CBT). Back stops at the first column, as on a terminal, and
- * forward at `LAST_COLUMN`. `\r` is CHA 1 and a backspace CUB 1.
+ * a move past `LAST_COLUMN` stops there, or where the cursor already stands
+ * beyond it, so no move turns into one the other way. `\r` is CHA 1 and a
+ * backspace CUB 1.
  */
+type Move = (column: number, count: number) => number;
+const back: Move = (column, count) => column - count;
+const forward: Move = (column, count) => column + count;
+const to: Move = (_column, count) => count;
+
 const MOTIONS = {
-  D: (column: number, count: number) => column - count,
-  j: (column: number, count: number) => column - count,
-  C: (column: number, count: number) => column + count,
-  a: (column: number, count: number) => column + count,
-  G: (_column: number, count: number) => count,
-  "`": (_column: number, count: number) => count,
-  I: (column: number, count: number) => tabStop(Math.floor((column - 1) / TAB_STOP) + count),
-  Z: (column: number, count: number) => tabStop(Math.ceil((column - 1) / TAB_STOP) - count),
-} as const;
+  D: back,
+  j: back,
+  C: forward,
+  a: forward,
+  G: to,
+  "`": to,
+  I: (column, count) => tabStop(Math.floor((column - 1) / TAB_STOP) + count),
+  Z: (column, count) => tabStop(Math.ceil((column - 1) / TAB_STOP) - count),
+} as const satisfies Record<string, Move>;
 
 type Motion = keyof typeof MOTIONS;
 
 const moved = (column: number, motion: Motion, count: number): number =>
-  Math.min(LAST_COLUMN, Math.max(1, MOTIONS[motion](column, count)));
+  Math.min(Math.max(LAST_COLUMN, column), Math.max(1, MOTIONS[motion](column, count)));
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -165,7 +172,7 @@ function* escapeTokens(bytes: string): Generator<Token> {
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (motion !== undefined) {
-      yield { kind: "move", motion: motion as Motion, count: Math.min(LAST_COLUMN, Math.max(1, Number(count))) };
+      yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     }
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
     if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
