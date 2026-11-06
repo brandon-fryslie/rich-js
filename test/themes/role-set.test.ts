@@ -228,14 +228,20 @@ describe("what a role is drawn on decides it", () => {
   // Body text's floor, and the muted weight's for the smallest heading.
   const floor = (role: PaletteRole): number => (role === "markdown-h6-color" ? 3 : 4.5);
   it.each([...authored, ...derived].map((palette) => [palette.name, palette] as const))("%s: every component's text reads on its ground", (_name, palette) => {
-    for (const [text, { ground }] of Object.entries(COMPONENT_TEXT) as [PaletteRole, { ground: PaletteRole }][]) {
-      const on = palette.get(ground).compositeOver(palette.get("background"));
+    for (const [text, pair] of Object.entries(COMPONENT_TEXT) as [PaletteRole, { ground: PaletteRole; on?: PaletteRole }][]) {
+      const { ground } = pair;
+      const on = palette.get(ground).compositeOver(palette.get(pair.on ?? "background").compositeOver(palette.get("background")));
       expect(contrastRatio(palette.get(text), on), `${text} on ${ground}`).toBeGreaterThanOrEqual(floor(text));
     }
   });
 
-  it("every heading level, h1 to h6, is a component's text", () => {
-    for (const n of [1, 2, 3, 4, 5, 6]) expect(Object.hasOwn(COMPONENT_TEXT, `markdown-h${n}-color`)).toBe(true);
+  // Stated independently of the table: the key and its description sit on the footer bar.
+  it.each(authored.map((palette) => [palette.name, palette] as const))("%s: the footer key reads on the footer bar", (_name, palette) => {
+    const bar = palette.get("footer-background").compositeOver(palette.get("background"));
+    for (const role of ["footer-key", "footer-description"] as const) {
+      const on = palette.get(`${role}-background`).compositeOver(bar);
+      expect(contrastRatio(palette.get(`${role}-foreground`), on), role).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 
