@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-566",
+      "ref": "refs/pull/566/merge",
+      "sha": "807a0ba44e1ca1195de826e121f0127ffb943f14",
+      "timestamp": "2026-11-06T00:28:59.064Z",
+      "commits": [
+        {
+          "sha": "807a0ba44e1ca1195de826e121f0127ffb943f14",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T17:26:35-07:00",
+          "message": "Merge d2710837279a46acb21354a8793d4b1234fb0ab0 into 9c5b3e136c6a8f85fa696554c77e69874e3ce96f\n"
+        },
+        {
+          "sha": "d2710837279a46acb21354a8793d4b1234fb0ab0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T17:26:26-07:00",
+          "message": "A focused Dropdown's filter is the terminal's own cursor: where the painter shows it, the caret is a blank cell marked caretMark(\"bar\"), its side set by ordering; labeled takes its label as segments so the mark survives ordering (rich-control-codes-xh4n.okr)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9c5b3e136c6a8f85fa696554c77e69874e3ce96f",
