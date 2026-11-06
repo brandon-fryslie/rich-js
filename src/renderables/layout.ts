@@ -3,7 +3,7 @@
  */
 
 import { Segment } from "../core/segment.js";
-import { embed } from "./embed.js";
+import { embed, renderFilling } from "./embed.js";
 import type {
   Renderable,
   Measurable,
@@ -184,7 +184,7 @@ export class Layout implements Renderable, Measurable {
       // `Group` is still a region of lines.
       const renderable = this._renderable.get();
       if (renderable) {
-        const lines = fitHeight(Segment.splitLines(render(renderable, options)), options.height);
+        const lines = fitHeight(Segment.splitLines(renderFilling(renderable, options)), options.height);
         for (const line of lines) {
           yield* Segment.adjustLineLength(line, options.maxWidth);
           yield Segment.line();

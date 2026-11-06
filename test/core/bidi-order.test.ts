@@ -16,6 +16,8 @@ import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
 import { Markdown } from "../../src/renderables/markdown.js";
+import { Layout } from "../../src/renderables/layout.js";
+import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { Syntax } from "../../src/renderables/syntax.js";
@@ -449,6 +451,25 @@ describe("a paragraph starts at its own edge", () => {
   test("a Markdown paragraph in Arabic stands at the right edge", () => {
     const [row] = shown(new Markdown(ARABIC), "visual", 30).filter((line) => line.trim() !== "");
     expect(padded(row!)).toBe("left");
+  });
+
+  // A container that pads every row of its body to its width places that row,
+  // so a text body starts at its paragraph's edge, as a printed one does.
+  test.each(laidOut)("a Panel's right-to-left string body stands at its right inner edge, a Latin one at its left, under %s", (order) => {
+    const inner = (content: string): string => shown(new Panel(content, { width: 24 }), order, 40)[1]!.slice(2, -2);
+    expect(padded(inner(ARABIC))).toBe("left");
+    expect(padded(inner("abc"))).toBe("right");
+  });
+
+  test.each(laidOut)("a Padding's and a Layout's right-to-left text body stands at the right edge, under %s", (order) => {
+    expect(padded(shown(new Padding(HEBREW, 0), order, 20)[0]!)).toBe("left");
+    expect(padded(shown(new Layout(HEBREW), order, 20)[0]!)).toBe("left");
+    expect(padded(shown(new Layout("abc"), order, 20)[0]!)).toBe("right");
+  });
+
+  test("a renderable a Padding holds is handed no justify: a Strip in Hebrew keeps its own cells", () => {
+    const strip = (): Strip => new Strip([new RichText("שלום"), new RichText("x")], SEPARATOR_STYLES.powerline);
+    expect(rows(plainBytes(new Padding(strip(), 0), "visual", 20))[0]!.trimEnd()).toBe(rows(plainBytes(strip(), "visual", 20))[0]!.trimEnd());
   });
 
   test("plain writes logical order, whose start is the line's first character: today's bytes", () => {
