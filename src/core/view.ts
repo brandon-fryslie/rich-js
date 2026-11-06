@@ -38,7 +38,7 @@
  */
 
 import type { Animation } from "./animation.js";
-import { activePass, render, type HostFrame, type Renderable, type RenderOptions } from "./protocol.js";
+import { PASSES_EDGE, activePass, fillingOptions, renderPassing, type HostFrame, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
 import { intersection, NEVER_CHANGES, type ValidityInterval } from "./style.js";
 import { Timeline } from "./timeline.js";
@@ -51,8 +51,14 @@ export type View = Renderable | (() => Renderable);
 
 /** `view` as the renderable a host holds: a function is asked each time it is drawn. */
 export function hostView(view: View): Renderable {
-  return typeof view === "function" ? { render: (options) => render(view(), options) } : view;
+  return typeof view === "function" ? asked(view) : view;
 }
+
+/** A function view drawn as what it returns, which is handed the edge its frame is. */
+const asked = (view: () => Renderable) => ({
+  [PASSES_EDGE]: true as const,
+  render: (options: RenderOptions): Iterable<Segment> => renderPassing(view(), options),
+});
 
 /**
  * A host's time, its clock read once: `now` on that clock; `epoch`, the
@@ -147,7 +153,8 @@ export function drawView(
   };
   // Made before the render opens: the one time the frame has.
   const frame = frameNow(drawnBy, time);
-  const lines = draw(view, { ...options, frame, onValidity });
+  // A frame is the screen's rows, filled as a printed line's are.
+  const lines = draw(view, fillingOptions(view, { ...options, frame, onValidity }));
   const validity = frameValidity(lines, told);
   // The frame as the sample of the view it is, on the timeline's clock; the
   // timeline says when the host's clock leaves its validity interval.

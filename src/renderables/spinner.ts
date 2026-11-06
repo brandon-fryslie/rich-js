@@ -60,7 +60,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, measure, render } from "../core/protocol.js";
+import { PASSES_EDGE, drawable, measure, render, renderPassing } from "../core/protocol.js";
 import { EmbeddedText } from "./embed.js";
 import { FrameSequence } from "./frames.js";
 import { finiteTime } from "../core/easing.js";
@@ -90,6 +90,10 @@ export interface SpinnerOptions {
 }
 
 export class Spinner implements Animation<Renderable & Measurable> {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   readonly name: string;
   readonly speed: number;
   readonly style: string | Style;
@@ -175,7 +179,7 @@ export class Spinner implements Animation<Renderable & Measurable> {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    return render(this._placed, options);
+    return renderPassing(this._placed, options);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -185,9 +189,10 @@ export class Spinner implements Animation<Renderable & Measurable> {
   /** The frame `choose` picks from the frames the output can draw, and the label, saying the validity interval it is in if `choose` says. */
   private _frame(
     choose: (played: Animation<RichText>, options: RenderOptions) => { readonly value: RichText; readonly validity?: ValidityInterval },
-  ): Renderable & Measurable {
+  ): Renderable & Measurable & { readonly [PASSES_EDGE]: true } {
     const drawn = (options: RenderOptions): Sequence => drawable(options, this._named, this._ascii, sequenceGlyphs);
     return {
+      [PASSES_EDGE]: true,
       render: (options) => {
         const { value, validity } = choose(drawn(options).played, options);
         const segments = this._render(value, options);

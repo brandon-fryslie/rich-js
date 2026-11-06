@@ -64,7 +64,7 @@ import type {
   RenderOptions,
   Scrollable,
 } from "../core/protocol.js";
-import { afterPass, render } from "../core/protocol.js";
+import { afterPass, renderFilling } from "../core/protocol.js";
 import { ListState, State } from "../core/state.js";
 
 /** What a render found: the rows it shows, and the lines of content behind them. */
@@ -120,7 +120,7 @@ export interface LaidLines {
 /** `content` drawn whole at the width `options` offers, as lines a viewport slices. */
 function drawnWhole(content: Renderable): (options: RenderOptions) => LaidLines {
   return (options) => {
-    const all = Segment.splitLines(render(content, options));
+    const all = Segment.splitLines(renderFilling(content, options));
     return { length: all.length, lines: (start, end) => all.slice(start, end) };
   };
 }

@@ -26,7 +26,7 @@ import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
 import { Memo } from "../core/memo.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { measure, render } from "../core/protocol.js";
+import { PASSES_EDGE, measure, render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style, TextStyle } from "../core/style.js";
 import { RichText, type Span } from "../core/text.js";
@@ -44,6 +44,10 @@ interface Reading {
  * object's `[object Object]` is not eaten as a tag.
  */
 export class EmbeddedText implements Renderable, Measurable {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   // [LAW:types-are-the-program] Two kinds, and the kind is the discriminator: a
   // string still to be read, or text whose reading is already fixed.
   private readonly _source: string | RichText;
@@ -113,22 +117,6 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
     return content as Renderable & Partial<Measurable>;
   }
   return new EmbeddedText(content);
-}
-
-/**
- * A body drawn by a container that pads every row of it to the container's
- * width — a `Padding`, so a `Panel` and every `Table` cell (whose column
- * always names a justify, so never reaches the default here), and a leaf
- * `Layout`. There the container
- * places the row, so text starts at its paragraph's own edge, as the text a
- * `Console.print` sets itself does: a right-to-left body sits at the right
- * inner edge rather than wherever the padding happens to fall. Any other
- * renderable is handed the options untouched, since one that sets a child at
- * its natural width reads an absent `justify` as exactly that.
- */
-export function renderFilling(content: Renderable, options: RenderOptions): Iterable<Segment> {
-  if (!(content instanceof EmbeddedText)) return render(content, options);
-  return render(content, { ...options, justify: options.justify ?? "default" });
 }
 
 /**

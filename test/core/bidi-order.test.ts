@@ -15,8 +15,13 @@ import { SEPARATOR_STYLES, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
+import { Animation } from "../../src/core/animation.js";
+import { render, type Renderable } from "../../src/core/protocol.js";
+import { Align } from "../../src/renderables/align.js";
+import { Traceback } from "../../src/renderables/traceback.js";
 import { Markdown } from "../../src/renderables/markdown.js";
 import { Layout } from "../../src/renderables/layout.js";
+import { Live } from "../../src/renderables/live.js";
 import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Rule } from "../../src/renderables/rule.js";
@@ -24,6 +29,11 @@ import { Syntax } from "../../src/renderables/syntax.js";
 import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
+import { Constrain } from "../../src/renderables/constrain.js";
+import { Group } from "../../src/renderables/group.js";
+import { Spinner } from "../../src/renderables/spinner.js";
+import { scroll } from "../../src/renderables/scroll.js";
+import { Viewport } from "../../src/renderables/viewport.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Button } from "../../src/widgets/button.js";
 import { balancedControls, implicit, implicitVte, kitty, none, rows } from "./bidi-terminal.js";
@@ -467,11 +477,39 @@ describe("a paragraph starts at its own edge", () => {
     expect(padded(shown(new Layout("abc"), order, 20)[0]!)).toBe("right");
   });
 
-  test("a renderable a Padding holds is handed no justify", () => {
+  test("a renderable that sets its own lines is not handed a Padding's default edge, through a Group or not, and a justify the Padding was handed reaches it", () => {
     const handed: unknown[] = [];
     const probe = { render: (options: { justify?: unknown }) => (handed.push(options.justify), [new Segment("x")]) };
     plainBytes(new Padding(probe, 0), "visual", 20);
-    expect(handed).toEqual([undefined]);
+    plainBytes(new Padding(new Group(probe), 0), "visual", 20);
+    [...new Padding(probe, 0).render({ maxWidth: 20, textOrder: "visual", justify: "center" })];
+    expect(handed).toEqual([undefined, undefined, "center"]);
+  });
+
+  // What passes its options through — a Group, a Constrain — leaves the row's
+  // placement to whatever fills the row, so a text inside one is set at its
+  // own edge exactly as it is held bare.
+  test.each(laidOut)("a right-to-left text through a Group or a Constrain in a row-filling container stands at the right, a Latin one at the left, under %s", (order) => {
+    const holders = [
+      (body: RichText) => new Padding(new Group(body), 0),
+      (body: RichText) => new Layout(new Group(body)),
+      (body: RichText) => new Padding(new Constrain(new Group(body), 30), 0),
+    ];
+    for (const holder of holders) {
+      expect(padded(shown(holder(new RichText(HEBREW)), order, 20)[0]!)).toBe("left");
+      expect(padded(shown(holder(new RichText("abc")), order, 20)[0]!)).toBe("right");
+    }
+    const inner = (body: string): string => shown(new Panel(new Group(new RichText(body)), { width: 24 }), order, 40)[1]!.slice(2, -2);
+    expect(padded(inner(HEBREW))).toBe("left");
+    expect(padded(inner("abc"))).toBe("right");
+  });
+
+  test.each(laidOut)("a right-to-left text in a Viewport or a Scroll stands at the right of the rows it pads, under %s", (order) => {
+    const body = (): Group => new Group(new RichText(`abcdefghijkl\n${HEBREW}`));
+    const [, viewed] = shown(new Viewport().showing(body()), order, 20);
+    expect(padded(viewed!)).toBe("left");
+    const [, scrolled] = shown(scroll(body(), { width: 12, height: 2 }), order, 20);
+    expect(padded(scrolled!)).toBe("left");
   });
 
   // The pad that sets a body at its edge is the container's fill, which is
@@ -530,6 +568,71 @@ describe("a paragraph starts at its own edge", () => {
     const tree = new Tree("root");
     tree.add("שלום");
     expect(printed(tree, 30)[1]).toBe("└── םולש");
+  });
+
+  test("print sets a text inside a Group at the paragraph's edge, as it sets a bare one", () => {
+    expect(printed(new Group(new RichText("שלום")), 24)).toEqual(printed(new RichText("שלום"), 24));
+    expect(padded(printed(new Group(new RichText("שלום")), 24)[0]!)).toBe("left");
+    expect(printed(new Group(new RichText("abc")), 24)).toEqual(["abc"]);
+  });
+
+  test("a justify a print names still reaches a Tree's labels, and its default does not", () => {
+    const tree = (): Tree => {
+      const root = new Tree("root");
+      root.add("a much longer child label");
+      return root;
+    };
+    const recording = new Console({ width: 40, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(tree(), { justify: "right" });
+    const [root] = recording.exportText().split("\n");
+    expect(root).toBe(`${" ".repeat(36)}root`);
+  });
+
+  test("a Live's right-to-left view stands at the right edge, as a printed one does", () => {
+    const chunks: string[] = [];
+    const console = new Console({ width: 20, height: 2, textOrder: "visual", colorSystem: null, forceTerminal: true, file: { write: (s: string) => void chunks.push(s) } });
+    const live = new Live(new RichText(HEBREW, { end: "" }), { console, autoRefresh: false, altScreen: true });
+    live.start();
+    const before = chunks.join("").length;
+    live.refresh();
+    live.stop();
+    const row = chunks.join("").slice(before).replace(/\x1b\[[0-9;?]*[A-Za-z]|\r/g, "").split("\n")[0]!;
+    expect(row).toBe(" ".repeat(20 - cellLen(HEBREW)) + printed(new RichText(HEBREW), 20)[0]!.trimStart());
+  });
+
+  test("a view handed as a function, and an animated text, are placed as the text they draw", () => {
+    const live = (view: ConstructorParameters<typeof Live>[0]): string => {
+      const chunks: string[] = [];
+      const console = new Console({ width: 20, height: 2, textOrder: "visual", colorSystem: null, forceTerminal: true, file: { write: (s: string) => void chunks.push(s) } });
+      const host = new Live(view, { console, autoRefresh: false, altScreen: true });
+      host.start();
+      const before = chunks.join("").length;
+      host.refresh();
+      host.stop();
+      return chunks.join("").slice(before).replace(/\x1b\[[0-9;?]*[A-Za-z]|\r/g, "").split("\n")[0]!;
+    };
+    const text = (): RichText => new RichText(HEBREW, { end: "" });
+    expect(live(() => text())).toBe(live(text()));
+    expect(shown(new Padding(Animation.constant(text()), 0), "visual", 20)).toEqual(shown(new Padding(text(), 0), "visual", 20));
+  });
+
+  test("a renderable's rows are closed lines, so a print places them whatever its end", () => {
+    const recording = new Console({ width: 20, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(new Group(new RichText("שלום")), { end: " | " });
+    expect(padded(recording.exportText().split("\n")[0]!)).toBe("left");
+  });
+
+  test("a spinner's right-to-left label in a Group stands at the right of the row a Padding fills", () => {
+    expect(padded(shown(new Padding(new Group(new Spinner("line", "טוען")), 0), "visual", 20)[0]!)).toBe("left");
+  });
+
+  test("a printed value, data or block that sets its own lines keeps them where it set them", () => {
+    expect(printed(new Pretty(["שלום", "abc"]), 40).every((row) => !row.startsWith(" ".repeat(10)))).toBe(true);
+    expect(printed(JSONRenderable.fromString('{"שם":"x"}'), 40).every((row) => !row.startsWith(" ".repeat(10)))).toBe(true);
+    expect(printed(new Panel(JSONRenderable.fromString('{"שם":"x"}')), 40).every((row) => !row.slice(1).startsWith(" ".repeat(10)))).toBe(true);
+    const natural: Renderable = { render: (options) => render(new RichText("שלום"), options) };
+    expect(printed(new Align(natural, "center"), 40)[0]!.trimEnd()).toBe(`${" ".repeat(18)}םולש`);
+    expect(printed(new Traceback(new Error("first line\nשורה שנייה")), 60).some((row) => row.startsWith(" ".repeat(20)))).toBe(false);
   });
 
   test("a print that leaves its line open is a fragment, and is not placed", () => {

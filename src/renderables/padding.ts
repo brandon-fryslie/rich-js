@@ -12,8 +12,8 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
-import { embed, renderFilling } from "./embed.js";
+import { fitHeight, getStyle, insetHeight, renderFilling, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { embed } from "./embed.js";
 
 export type PaddingDimensions =
   | number

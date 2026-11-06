@@ -38,7 +38,7 @@ import { Animation } from "../core/animation.js";
 import { passAt, positiveSeconds, stepSequence } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { render, withBoundedWidth } from "../core/protocol.js";
+import { renderFilling, withBoundedWidth } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 
 /** The slot a scroll draws, and how far the content is moved in it. */
@@ -159,7 +159,7 @@ class ScrollFrame implements Renderable, Measurable {
     // The slot is cropped to the room it is given, as a `Panel` of a declared width is.
     const width = Math.min(this.width, options.maxWidth);
     const natural = naturalWidth(this.what, this.content, options);
-    const drawn = [...render(this.content, { ...options, maxWidth: natural, height: undefined })];
+    const drawn = [...renderFilling(this.content, { ...options, maxWidth: natural, height: undefined })];
     const lines = Segment.splitLines(drawn);
     const { col, row, height } = this.window({ width: natural, rows: lines.length, slot: width });
     const blank = Math.min(width, Math.max(0, -col));

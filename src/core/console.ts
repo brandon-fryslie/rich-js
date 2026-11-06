@@ -36,7 +36,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { activePass, isRenderable, measure, render, type HostFrame, type Justify, type Pass } from "./protocol.js";
+import { PASSES_EDGE, activePass, fillingOptions, isRenderable, passingOptions, measure, render, type HostFrame, type Justify, type Pass } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
 import { ListState, State, refuseRenderWrite } from "./state.js";
 
@@ -255,6 +255,10 @@ const PLACED_BY: Record<Justify, Alignment | undefined> = {
 // `justify`, `overflow`, `noWrap` and `tabSize` stay behind, as they do in the
 // reference: the print's options set the whole run.
 class TextRun implements Renderable, Measurable {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   private readonly text: RichText;
 
   constructor(
@@ -658,7 +662,6 @@ export class Console {
       ...options,
       ...strings,
       frame: opts.frame,
-      justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
     };
@@ -684,14 +687,16 @@ export class Console {
     // `Panel` ends in a line break and a bare `ProgressBar` does not (a line
     // fragment — test/seam/line-ends.ts), and both leave the next print at the
     // start of a line.
-    // Unasked, the text a print sets itself starts at each paragraph's own
-    // edge. A renderable is handed no justify: the containers inside it that
-    // set a child down at its natural width read absent as exactly that. A
-    // print whose `end` does not break the line is a fragment of one, whose
-    // edge is unknown until the line is whole, and stays unplaced.
-    const textOpts: RenderOptions = { ...renderOpts, justify: opts.justify ?? (end.endsWith("\n") ? "default" : undefined) };
+    // Unasked, what a print closes a line on starts at each paragraph's own
+    // edge: the text it sets itself, and a renderable's rows, which are always
+    // closed, as a `Padding`'s are (`renderFilling`), whatever its `end`. Text
+    // whose `end` does not break the line is a fragment of one, whose edge is
+    // unknown until the line is whole, and stays unplaced.
+    const askedOpts: RenderOptions = { ...renderOpts, justify: opts.justify };
+    const placing = (block: PrintBlock): typeof fillingOptions => (block.kind === "text" && !end.endsWith("\n") ? passingOptions : fillingOptions);
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
-      const [renderable, blockOpts] = block.kind === "text" ? [new TextRun(block.items, terminator), textOpts] : [block.renderable, renderOpts];
+      const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
+      const blockOpts = placing(block)(renderable, askedOpts);
       if (align) return { lines: placeBlock(renderable, align, blockOpts), closed: true };
       const drawn = [...render(renderable, blockOpts)];
       // A text run's last segment is always its `end`, yielded even when

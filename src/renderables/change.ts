@@ -24,7 +24,7 @@
 import { Animation } from "../core/animation.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { PASSES_EDGE, render, renderPassing } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { Recolored } from "./effect.js";
 import { requireCurve, transition, mask, type Curve, type Transition } from "./effects.js";
@@ -88,6 +88,10 @@ export function wipe(curve: Curve, edge = WIPE_EDGE): Transition<Change> {
 
 /** One frame of a change at `t`: `from` and `to` spliced cell by cell, each veiled by how near the half its cell is. */
 class ChangeFrame implements Renderable, Measurable {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   constructor(
     readonly from: Renderable,
     readonly to: Renderable,
@@ -97,8 +101,8 @@ class ChangeFrame implements Renderable, Measurable {
   ) {}
 
   render(options: RenderOptions): Iterable<Segment> {
-    const before = Segment.splitLines(render(this.from, options));
-    const drawn = [...render(this.to, options)];
+    const before = Segment.splitLines(renderPassing(this.from, options));
+    const drawn = [...renderPassing(this.to, options)];
     const after = Segment.splitLines(drawn);
     // [LAW:one-source-of-truth] The new renderable's rows are the shape of every frame, its last row ending as it ends.
     const lengths = after.map((line) => Segment.getLineLength(line));

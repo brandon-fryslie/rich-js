@@ -3,7 +3,7 @@
  */
 
 import { Segment } from "../core/segment.js";
-import { embed, renderFilling } from "./embed.js";
+import { embed } from "./embed.js";
 import type {
   Renderable,
   Measurable,
@@ -16,7 +16,7 @@ import {
   withBoundedWidth,
   withCellWidth,
 } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { render, renderFilling } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
 import type { CellCol } from "../core/cells.js";
