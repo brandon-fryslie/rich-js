@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-583",
+      "ref": "refs/pull/583/merge",
+      "sha": "53f178e8ecaab3d95b54141411dd1fc42c36e4c9",
+      "timestamp": "2026-11-06T14:12:21.038Z",
+      "commits": [
+        {
+          "sha": "53f178e8ecaab3d95b54141411dd1fc42c36e4c9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T07:09:50-07:00",
+          "message": "Merge 26afa31200c3c5a3f575ffef997ba2f7841f2076 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
+        },
+        {
+          "sha": "26afa31200c3c5a3f575ffef997ba2f7841f2076",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T07:09:39-07:00",
+          "message": "decodeAnsi draws REP (CSI n b): the preceding graphic character n more times, to the margin (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-581",
       "ref": "refs/pull/581/merge",
       "sha": "ae758144b2a0c413bb8aee839b9989a5ae1e794f",
