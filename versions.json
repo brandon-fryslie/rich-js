@@ -2,45 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-583",
-      "ref": "refs/pull/583/merge",
-      "sha": "db2aa22c6d7ae76838515a6d0f56f8ce5ddfd259",
-      "timestamp": "2026-11-06T14:39:15.194Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "820c40296fc5841cb8b5028d7f7706acaaf920b7",
+      "timestamp": "2026-11-06T14:52:17.805Z",
       "commits": [
         {
-          "sha": "db2aa22c6d7ae76838515a6d0f56f8ce5ddfd259",
+          "sha": "820c40296fc5841cb8b5028d7f7706acaaf920b7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T14:37:35Z",
-          "message": "Merge 128b19cc48acbff491aff5e8b3209e549f363124 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
-        },
-        {
-          "sha": "128b19cc48acbff491aff5e8b3209e549f363124",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:37:26-07:00",
-          "message": "Review: what REP repeats is one predicate, repeatable, which the decoder and the docs gate both ask; a static run draws at its own terminal's width (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "290c8338e020bb2cb96388b8f9f884c35b0a95c6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:29:09-07:00",
-          "message": "Review: AnsiDecoder refuses a width that is not a positive whole number, the docs decode at the example terminal's width, REP's last character is set once per text run (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "801ee7eb6faf0bde1153e057db834fd01b5f76c5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:22:07-07:00",
-          "message": "Review: REP is one constant, the docs gate draws it only after a graphic character, an overstrike repeats in the SGR style, the header names REP (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "26afa31200c3c5a3f575ffef997ba2f7841f2076",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:09:39-07:00",
-          "message": "decodeAnsi draws REP (CSI n b): the preceding graphic character n more times, to the margin (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+          "timestamp": "2026-11-06T07:49:52-07:00",
+          "message": "decodeAnsi draws REP (CSI n b) (rich-control-codes-xh4n.m2d) (#583)\n\n* decodeAnsi draws REP (CSI n b): the preceding graphic character n more times, to the margin (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review: REP is one constant, the docs gate draws it only after a graphic character, an overstrike repeats in the SGR style, the header names REP (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review: AnsiDecoder refuses a width that is not a positive whole number, the docs decode at the example terminal's width, REP's last character is set once per text run (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review: what REP repeats is one predicate, repeatable, which the decoder and the docs gate both ask; a static run draws at its own terminal's width (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     },
@@ -91,21 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T06:23:06-07:00",
           "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
-      "timestamp": "2026-11-06T14:06:19.596Z",
-      "commits": [
-        {
-          "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:03:27-07:00",
-          "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u (rich-control-codes-xh4n.d9w) (#582)\n\n* decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n\n* A restore is drawn statically only back to a save on its line; save and restore are two named groups; e2e and text docs follow (rich-control-codes-xh4n.d9w review)\n\n* The docs gate reads what ends a line from the decoder (LINE_ENDS), C1 NEL and CNL included; save and restore handled once in the scan; DECLRMM noted (rich-control-codes-xh4n.d9w review)"
         }
       ]
     }
