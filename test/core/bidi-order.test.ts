@@ -493,6 +493,19 @@ describe("a paragraph starts at its own edge", () => {
     expect(printed(tree, 30)[1]).toBe("└── םולש");
   });
 
+  test("a print that leaves its line open is a fragment, and is not placed", () => {
+    const recording = new Console({ width: 20, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print("שלום", { end: " | " });
+    recording.print("x");
+    expect(recording.exportText()).toBe("םולש | x\n");
+  });
+
+  test.each(["start", "left", "default"] as const)("a FlexStrip packs its items the same under justify %s as under none", (justify) => {
+    const strip = new FlexStrip([new RichText("abc"), new RichText("שלום")], { gap: 1 });
+    const drawn = (given: typeof justify | undefined) => Segment.plainOf([...strip.render({ maxWidth: 18, textOrder: "visual", justify: given })]);
+    expect(drawn(justify)).toBe(drawn(undefined));
+  });
+
   test.each(laidOut)("the last row of a full right-to-left paragraph starts at its right, under %s", (order) => {
     const lines = shown(new RichText(SENTENCE, { end: "", justify: "full" }), order, 12);
     expect(padded(lines.at(-1)!)).toBe("left");

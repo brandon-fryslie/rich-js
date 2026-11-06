@@ -686,8 +686,10 @@ export class Console {
     // start of a line.
     // Unasked, the text a print sets itself starts at each paragraph's own
     // edge. A renderable is handed no justify: the containers inside it that
-    // set a child down at its natural width read absent as exactly that.
-    const textOpts: RenderOptions = { ...renderOpts, justify: opts.justify ?? "default" };
+    // set a child down at its natural width read absent as exactly that. A
+    // print whose `end` does not break the line is a fragment of one, whose
+    // edge is unknown until the line is whole, and stays unplaced.
+    const textOpts: RenderOptions = { ...renderOpts, justify: opts.justify ?? (end.endsWith("\n") ? "default" : undefined) };
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
       const [renderable, blockOpts] = block.kind === "text" ? [new TextRun(block.items, terminator), textOpts] : [block.renderable, renderOpts];
       if (align) return { lines: placeBlock(renderable, align, blockOpts), closed: true };

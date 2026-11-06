@@ -240,11 +240,12 @@ for (const justify of ["default", "left", "center", "right"] as const) {
 
 | Mode | Behavior |
 |---|---|
-| `"default"` | Placed at the left with no padding — the line ends where the text does |
+| `"default"` | No padding — the line ends where the text does. A right-to-left paragraph sits against the right edge, where its reader starts ([Right-to-left text](./right-to-left)); a print whose `end` does not break the line stays unpadded |
+| `"start"` | Padded out to the full width from the paragraph's own edge: `"left"` for a left-to-right line, `"right"` for a right-to-left one |
 | `"left"` | Placed at the left and padded out to the full width |
 | `"center"` | Padded on both sides to center it |
 | `"right"` | Padded on the left to sit against the right edge |
-| `"full"` | The spaces between words widen until the line reaches the right edge; a paragraph's last line is left as it is |
+| `"full"` | The spaces between words widen until the line reaches the right edge; a paragraph's last line is set as `"default"` sets one |
 
 `"left"`, `"center"` and `"right"` place what you print as one block. Its
 widest line sets the block's width, each shorter line is justified inside that
