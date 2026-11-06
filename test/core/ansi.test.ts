@@ -195,6 +195,23 @@ describe("decodeAnsi links", () => {
     }
     expect(decodeAnsi("a\x1b\x07Bc").plain).toBe("ac");
     expect(decodeAnsi("\x1b]0;t\x01i\x07x").plain).toBe("x");
+    expect(new AnsiDecoder().decodeLine("\x1b[31\x07mx").plain).toBe("x");
+    expect(new AnsiDecoder().decodeLine("ab\x1b[3\r\x18c").plain).toBe("cb");
+  });
+
+  it("ends a line at a break inside a CSI or an escape and goes on with the sequence on the next", () => {
+    const red = decodeAnsi("\x1b[31\nmx");
+    expect(red.plain).toBe("\nx");
+    expect(styleAt(red, 1).color?.number).toBe(1);
+    expect(decodeAnsi("a\x1b\x0c[31mb").plain).toBe("a\nb");
+    expect(decodeAnsi("\x1b[3\n1\n2mx").plain).toBe("\n\nx");
+  });
+
+  it("runs a control inside an escape after the string escape that escape cuts off has ended", () => {
+    expect(decodeAnsi("\x1b]8;;http://a\x1b\x07\\text").spans).toEqual([]);
+    const red = decodeAnsi("a\x1b]0;t\x1b\x0c\x1b[31mb");
+    expect(red.plain).toBe("a\nb");
+    expect(styleAt(red, 2).color?.number).toBe(1);
   });
 
   it("keeps a link open across an SGR reset, as a terminal does", () => {

@@ -89,7 +89,10 @@ and every other 8-bit string escape is silent, payload and all. In either form a
 string runs to its terminator, the end of its line, or an `ESC` or C1 control,
 which ends it and then acts as itself, as in those terminals' parser. A CAN
 (`\x18`) or SUB (`\x1a`) abandons a string, a CSI or any other escape it lands
-in, and what follows draws as text. `ESC E`
+in, and what follows draws as text. Any other C0 control inside a CSI or an escape runs where it
+stands and the sequence goes on past it, as a VT500 parser does: `\x1b[3\r1m` returns
+to the first column and then sets SGR 31, and an LF, VT or FF there ends the line
+with the sequence carried onto the next. A DEL there does nothing. `ESC E`
 ends a line as NEL does, and so does CNL (`\x1b[nE`), once whatever its count.
 On a terminal CNL passes `n` rows, or none on the bottom row, where it does not
 scroll; the decoder holds no cursor row and no screen height, so it keeps only
