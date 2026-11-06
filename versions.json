@@ -4,15 +4,22 @@
     {
       "version": "pr-567",
       "ref": "refs/pull/567/merge",
-      "sha": "ee469d2b350d56e70b9461eda974f02cc8c6ae57",
-      "timestamp": "2026-11-06T01:45:56.787Z",
+      "sha": "4f46eaa62555856646027af3ce03e716323f86aa",
+      "timestamp": "2026-11-06T01:59:53.257Z",
       "commits": [
         {
-          "sha": "ee469d2b350d56e70b9461eda974f02cc8c6ae57",
+          "sha": "4f46eaa62555856646027af3ce03e716323f86aa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:44:13-07:00",
-          "message": "Merge b6b0ee3a4bc27d89e56c3e80f0be982942222a1e into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
+          "timestamp": "2026-11-06T01:57:27Z",
+          "message": "Merge 688948f550443f86df6bac91cf223b6be15f3481 into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
+        },
+        {
+          "sha": "688948f550443f86df6bac91cf223b6be15f3481",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T18:57:15-07:00",
+          "message": "A press past a row's cells lands on the stop shown beside it; the right-to-left page no longer lists pointer hits as a logical limit; press tests drive one router per input over one render, logical included in the direct press test (review of #567)\n"
         },
         {
           "sha": "b6b0ee3a4bc27d89e56c3e80f0be982942222a1e",
