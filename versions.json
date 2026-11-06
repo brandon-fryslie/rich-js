@@ -4,15 +4,22 @@
     {
       "version": "pr-567",
       "ref": "refs/pull/567/merge",
-      "sha": "49c09e07d801acc84d735c004a9b5021568449cf",
-      "timestamp": "2026-11-06T01:22:56.146Z",
+      "sha": "6a43c58e4e8cf5ec14dbf9ccd6b47269e9c4dad4",
+      "timestamp": "2026-11-06T01:37:23.404Z",
       "commits": [
         {
-          "sha": "49c09e07d801acc84d735c004a9b5021568449cf",
+          "sha": "6a43c58e4e8cf5ec14dbf9ccd6b47269e9c4dad4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:20:55-07:00",
-          "message": "Merge 5df6bf34b61d71cd936339a7041abbe73b5169a9 into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
+          "timestamp": "2026-11-06T01:35:00Z",
+          "message": "Merge d934a1a036d0aa3bfd53d8e202c8f1eeda866bbe into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
+        },
+        {
+          "sha": "d934a1a036d0aa3bfd53d8e202c8f1eeda866bbe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T18:34:47-07:00",
+          "message": "App.frameColumn owns the screen-to-frame column map, cached per painted line; the router asks it once per event; controls stay out of what UAX #9 orders; logical press tests drive the router (review of #567)\n"
         },
         {
           "sha": "5df6bf34b61d71cd936339a7041abbe73b5169a9",
