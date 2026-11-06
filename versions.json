@@ -4,15 +4,22 @@
     {
       "version": "pr-568",
       "ref": "refs/pull/568/merge",
-      "sha": "61a0439c72dea002fb3769edd0cddaad3f68ab1e",
-      "timestamp": "2026-11-06T02:41:31.115Z",
+      "sha": "ef93b64a6faadfdce3d590b279a6edf45a08328f",
+      "timestamp": "2026-11-06T02:48:00.123Z",
       "commits": [
         {
-          "sha": "61a0439c72dea002fb3769edd0cddaad3f68ab1e",
+          "sha": "ef93b64a6faadfdce3d590b279a6edf45a08328f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T02:39:07Z",
-          "message": "Merge 55aebc4cd9c5cbac74c727d57a66bf040d23d1c5 into e10e52e187beaa25544769690371364ed04439a3\n"
+          "timestamp": "2026-11-06T02:45:36Z",
+          "message": "Merge 36966c63ea2c9e82e2b50d3fd0bc2cbbabedd0c0 into e10e52e187beaa25544769690371364ed04439a3\n"
+        },
+        {
+          "sha": "36966c63ea2c9e82e2b50d3fd0bc2cbbabedd0c0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T19:45:26-07:00",
+          "message": "Drop _endCells and Stops.end: a wrapped row's end stays a probe, so no layout shifts and a press past a row still lands on the end; keep a caret segment's control at the end slot; delete the uncalled shownOrder; scope the docs to the orders the frame orders; narrow the step oracle's skip to an unpressable line end (rich-control-codes-xh4n.tmh)\n"
         },
         {
           "sha": "55aebc4cd9c5cbac74c727d57a66bf040d23d1c5",
