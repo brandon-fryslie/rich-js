@@ -222,30 +222,33 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
 
 const identity: SgrOp = (style) => style;
 
+const parameter = (code: string): number => Math.min(255, Number(code));
+
 /**
- * The T.416 colon form of an extended color: `5:n`, `2:r:g:b`, or `2:cs:r:g:b`,
- * whose colour-space slot, empty or not, names no color a terminal draws.
+ * The T.416 colon form of an extended color as the `;` arguments `SGR_OPS`
+ * reads: `5:n`, `2:r:g:b`, or `2:cs:r:g:b`, whose colour-space slot, empty or
+ * not, names no color a terminal draws. The slot is told by count or by being
+ * empty, so it is read before an empty argument becomes 0.
  */
-function subColor([kind, ...args]: readonly number[]): ColorSpec | undefined {
-  return extendedColor([kind!, ...(kind === 2 && args.length > 3 ? args.slice(1) : args)].values());
+function colorArguments([kind = "", ...args]: readonly string[]): number[] {
+  const slot = kind === "2" && (args.length > 3 || args[0] === "");
+  return [kind, ...(slot ? args.slice(1) : args)].map(parameter);
 }
 
 /**
- * What a code carrying colon sub-parameters does: its arguments are its own, so
- * the codes after it are untouched. `4:n` picks an underline's kind; a curly,
- * dotted or dashed one (3–5) is the underline `Style` can hold.
+ * A code carrying colon sub-parameters, as the plain codes `SGR_OPS` applies in
+ * turn: its arguments are its own, so the codes after it are untouched. `4:n`
+ * is one underline kind, so it clears the last; a curly, dotted or dashed one
+ * (3–5) is the underline `Style` can hold. A code T.416 gives no sub-parameters
+ * is skipped, as is a kind past 5.
  */
-const SUB_OPS: ReadonlyMap<number, (style: Style, subs: readonly number[]) => Style> = new Map([
-  [4, (style: Style, [kind]: readonly number[]) =>
-    kind === 0 ? style.add(new Style({ underline: false, doubleUnderline: false }))
-    : kind === 2 ? style.add(new Style({ doubleUnderline: true }))
-    : kind !== undefined && kind >= 1 && kind <= 5 ? style.add(UNDERLINED)
-    : style],
-  [38, (style: Style, subs: readonly number[]) => style.add(new Style({ color: subColor(subs) }))],
-  [48, (style: Style, subs: readonly number[]) => style.add(new Style({ bgcolor: subColor(subs) }))],
-]);
-
-const parameter = (code: string): number => Math.min(255, Number(code));
+function subCodes(code: number, subs: readonly string[]): (readonly [number, number[]])[] {
+  if (code === 38 || code === 48 || code === 58) return [[code, colorArguments(subs)]];
+  if (code !== 4) return [];
+  const kind = parameter(subs[0] ?? "");
+  if (kind > 5) return [];
+  return kind === 0 ? [[24, []]] : [[24, []], [kind === 2 ? 21 : 4, []]];
+}
 
 /**
  * `params` applied to `style`. An empty parameter is 0 and one above 255 is
@@ -254,15 +257,21 @@ const parameter = (code: string): number => Math.min(255, Number(code));
  * skips the group. The `;` arguments of `38` stop at such a group.
  */
 function applySgr(style: Style, params: string): Style {
-  const groups = params.split(";").map((group) => group.split(":").map(parameter));
+  const groups = params.split(";").map((group) => group.split(":"));
   let at = 0;
-  const rest: Iterator<number> = {
-    next: () => (at < groups.length && groups[at]!.length === 1 ? { done: false, value: groups[at++]![0]! } : { done: true, value: undefined }),
+  // The next group, while it is a plain code; a colon group ends the run.
+  const plain = (): IteratorResult<number> => {
+    const group = groups[at];
+    if (group === undefined || group.length > 1) return { done: true, value: undefined };
+    at += 1;
+    return { done: false, value: parameter(group[0]!) };
   };
+  const rest: Iterator<number> = { next: plain };
   let result = style;
   while (at < groups.length) {
-    const [code, ...subs] = groups[at++]!;
-    result = subs.length === 0 ? (SGR_OPS.get(code!) ?? identity)(result, rest) : (SUB_OPS.get(code!)?.(result, subs) ?? result);
+    const [code = "", ...subs] = groups[at++]!;
+    const steps = subs.length === 0 ? [[parameter(code), rest] as const] : subCodes(parameter(code), subs).map(([c, args]) => [c, args.values()] as const);
+    for (const [c, args] of steps) result = (SGR_OPS.get(c) ?? identity)(result, args);
   }
   return result;
 }

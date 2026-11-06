@@ -113,6 +113,21 @@ describe("decodeAnsi SGR parameters", () => {
     expect(styleAt(cleared, 3).doubleUnderline).toBe(false);
   });
 
+  it("reads 4:n as the one underline kind, replacing the last", () => {
+    const text = decodeAnsi("\x1b[4:2ma\x1b[4:1mb\x1b[4mc\x1b[4:2md");
+    expect([styleAt(text, 1).underline, styleAt(text, 1).doubleUnderline]).toEqual([true, false]);
+    expect([styleAt(text, 3).underline, styleAt(text, 3).doubleUnderline]).toEqual([false, true]);
+  });
+
+  it("names no color for a colon-form color cut short after an empty colour-space slot", () => {
+    expect(styleAt(decodeAnsi("\x1b[38:2::1:2mx"), 0).isNull).toBe(true);
+  });
+
+  it("ends the ; arguments of 38 at a colon group", () => {
+    const style = styleAt(decodeAnsi("\x1b[38;5;4:3mx"), 0);
+    expect([style.color, style.underline]).toEqual([undefined, true]);
+  });
+
   it("lets no sub-parameter act as a code of its own", () => {
     const text = decodeAnsi("\x1b[58:2::1:3:4;9:1mx");
     expect(styleAt(text, 0).isNull).toBe(true);
