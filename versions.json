@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-567",
+      "ref": "refs/pull/567/merge",
+      "sha": "49c09e07d801acc84d735c004a9b5021568449cf",
+      "timestamp": "2026-11-06T01:22:56.146Z",
+      "commits": [
+        {
+          "sha": "49c09e07d801acc84d735c004a9b5021568449cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T18:20:55-07:00",
+          "message": "Merge 5df6bf34b61d71cd936339a7041abbe73b5169a9 into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
+        },
+        {
+          "sha": "5df6bf34b61d71cd936339a7041abbe73b5169a9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T18:20:43-07:00",
+          "message": "Under logical, the router maps a pointer's column through the whole composed line to the frame's (writtenColumn), so a press inside a Panel lands where the terminal shows it; TextInput reads presses off the frame's order and steps off the shown one (rich-control-codes-xh4n.wk5)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "40add431b708b04ca01ed0593bc03a2c2601e613",
