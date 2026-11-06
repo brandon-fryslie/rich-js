@@ -21,9 +21,9 @@
  */
 
 import { advance, closersOf, lineLevels, mirroredCluster, opened, paragraph, visualOrder, withoutExplicit, type Open } from "./bidi.js";
-import { cellLen, EXTENDER, graphemes, wireText, ZWJ_CHARACTER } from "./cells.js";
+import { cellLen, EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
-import { Segment } from "./segment.js";
+import { rowClusters, Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
 
 const LRI = "\u2066";
@@ -193,7 +193,7 @@ function shownAsLaid(run: readonly Piece[]): readonly Piece[] {
   const clusters: string[] = [];
   const cells: Piece[] = [];
   let unit = 0;
-  for (const cluster of graphemes(run.map((piece) => piece.text).join(""))) {
+  for (const cluster of rowClusters(run)) {
     clusters.push(cluster);
     for (let cell = cellLen(cluster); cell > 0; cell--) cells.push(owners[unit]!);
     unit += cluster.length;

@@ -12,9 +12,9 @@
  */
 
 import { isBidi, lineLevels, mirroredCluster, openersAlong, paragraph, paragraphLevel, REMOVED, shaped, visualOrder, withoutExplicit, withoutMarks } from "./bidi.js";
-import { cellLen, graphemes } from "./cells.js";
+import { cellLen } from "./cells.js";
 import { pattern } from "./pattern.js";
-import { Segment } from "./segment.js";
+import { rowClusters, Segment } from "./segment.js";
 import { caretMarkOn, NULL_STYLE, type Style } from "./style.js";
 import type { BidiStamp, ParagraphLevel, TextOrder } from "./text-order.js";
 
@@ -147,7 +147,7 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   // Clusters are found in the whole row, because a span edge inside one is no
   // place to cut it: reversed apart, a mark lands on another letter.
   const styles = shown.flatMap((segment) => new Array<Style | undefined>(segment.text.length).fill(segment.style));
-  const glyphs = graphemes(text);
+  const glyphs = rowClusters(shown);
   const levelOf = clusterLevels(glyphs, finished, paragraphLevel, (unit) => styles[unit]?.textEnd === true);
   const clusters: Cluster[] = [];
   const turned = new Map<Style, Style>();
