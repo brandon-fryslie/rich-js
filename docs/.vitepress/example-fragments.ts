@@ -13,7 +13,7 @@
 import { Segment, decodeAnsi } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
 import { OSC8 } from "../../src/core/osc8.js";
-import { LINE_BREAK_ESCAPES, LINE_FINALS } from "../../src/core/ansi.js";
+import { CURSOR_SAVES, LINE_BREAK_ESCAPES, LINE_FINALS } from "../../src/core/ansi.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
 
 /**
@@ -39,11 +39,11 @@ const LINE = [...LINE_FINALS].map((final) => `\\x${final.charCodeAt(0).toString(
 
 /**
  * The escapes `decodeAnsi` draws: SGR, erase in line, a move along the line or
- * an edit of it (`LINE_FINALS`), a line break (`LINE_BREAK_ESCAPES`), a G0 or G1 designation, a soft reset
+ * an edit of it (`LINE_FINALS`), a line break (`LINE_BREAK_ESCAPES`), a cursor save or restore (`CURSOR_SAVES`), a G0 or G1 designation, a soft reset
  * (DECSTR), and an OSC 8 link. It drops every other, RIS among them: the decoder
  * resets its state there too, but a terminal also clears its screen.
  */
-const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|${LINE_BREAK_ESCAPES}|\\x1b[()][0-~]|\\x1b\\[!p|${OSC8.source})$`);
+const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|${LINE_BREAK_ESCAPES}|${CURSOR_SAVES}|\\x1b[()][0-~]|\\x1b\\[!p|${OSC8.source})$`);
 
 /**
  * The start of an escape `DRAWN` may yet match once the rest of it is written:

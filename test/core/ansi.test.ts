@@ -309,6 +309,48 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("\x1b[1ma\x1b[Eb").spans).toHaveLength(2);
   });
 
+  it.each([
+    ["DECSC and DECRC", "\x1b7", "\x1b8"],
+    ["SCOSC and SCORC", "\x1b[s", "\x1b[u"],
+    ["SCOSC and SCORC in C1", "\x9bs", "\x9bu"],
+  ])("restores a column saved on the line, by %s", (_, save, restore) => {
+    expect(decodeAnsi(`a${save}b${restore}c`).plain).toBe("ac");
+    // `tput sc`, a status written, `tput rc`, and the line overwritten from the save.
+    expect(decodeAnsi(`> ${save}working...${restore}done      `).plain).toBe("> done      ");
+  });
+
+  it("restores the style and the sets a save held, on any line", () => {
+    const red = decodeAnsi("\x1b[31m\x1b7\x1b[0m\x1b8x");
+    expect(red.spans.map((span) => String(span.style))).toEqual(["color(1)"]);
+    expect(decodeAnsi("\x1b(0\x1b7\x1b(B\x1b8q").plain).toBe("─");
+    expect(decodeAnsi("\x1b)0\x0e\x1b7\x0f\x1b8q").plain).toBe("─");
+    // A later line: the rendition comes back, the column names a row gone by.
+    expect(decodeAnsi("ab\x1b[1m\x1b7\x1b[0m\ncd\x1b8e").plain).toBe("ab\ncde");
+    expect(String(decodeAnsi("ab\x1b[1m\x1b7\x1b[0m\ncd\x1b8e").spans.at(-1)!.style)).toBe("bold");
+  });
+
+  it("restores the default rendition, and no column, with nothing saved", () => {
+    const text = decodeAnsi("ab\x1b[31m\x1b(0\x1b8q");
+    expect(text.plain).toBe("abq");
+    expect(text.spans).toEqual([]);
+  });
+
+  it.each([
+    ["a soft reset, DECSTR", "\x1b[!p"],
+    ["a full reset, RIS", "\x1bc"],
+  ])("forgets a save at %s", (_, reset) => {
+    const text = decodeAnsi(`a\x1b[1m\x1b7${reset}b\x1b8c`);
+    expect(text.plain.endsWith("bc")).toBe(true);
+    expect(text.spans).toEqual([]);
+  });
+
+  it("leaves margins and kitty's keyboard protocol, which share a save's and a restore's finals, dropped", () => {
+    expect(decodeAnsi("a\x1b[1;5sb\x1b[uc").plain).toBe("abc");
+    expect(decodeAnsi("a\x1b[sb\x1b[?uc\x1b[>1uc\x1b[97uc").plain).toBe("abccc");
+    // DECALN carries an intermediate; it is no restore.
+    expect(decodeAnsi("a\x1b7b\x1b#8c").plain).toBe("abc");
+  });
+
   it("erases within the line from the cursor, up to it, or all of it", () => {
     expect(decodeAnsi("Downloading 100%\r\x1b[KDone").plain).toBe("Done");
     expect(decodeAnsi("Downloading\r\x1b[2KDone").plain).toBe("Done");

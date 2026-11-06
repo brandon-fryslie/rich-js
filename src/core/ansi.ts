@@ -51,13 +51,21 @@
  * holds no cursor row or screen height to count rows against (`CNL`). CPL goes
  * up to a line already decoded, so it stays dropped.
  *
+ * Saving the cursor is the seventh. Rich drops `\x1b7` and `\x1b8` (and
+ * `\x1b[s`, `\x1b[u`), which curses and `tput sc`/`rc` write, so text drawn
+ * after a restore lands after what it overwrote. Here a save holds what a
+ * terminal's does — the column, the SGR style and the sets — and a restore
+ * brings them back (`CURSOR_SAVES`). The column comes back only on the line it
+ * was saved on: on a later one it names a row the decoder no longer holds, as
+ * CPL does.
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator: movement along the line
  * (`MOTIONS`) moves the column as `\r` and a backspace do, since a redraw writes
  * `\x1b[2D` as readily as two backspaces, and the line editor's edits beside it
  * (`EDITS`) erase, delete and insert cells; every other cursor movement but
- * CNL's is dropped, not performed. The right margin is the decoder's `width`.
+ * CNL's and a restore's is dropped, not performed. The right margin is the decoder's `width`.
  *
  * Tier 5 of `src/core/`: it builds `RichText`, so it sits above `text`, and
  * `RichText` cannot offer a `fromAnsi` static without importing upward.
@@ -83,7 +91,9 @@ type Token =
   | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
   | { readonly kind: "move"; readonly motion: Motion; readonly count: number }
   | { readonly kind: "edit"; readonly edit: Edit; readonly count: number }
-  | { readonly kind: "erase"; readonly mode: EraseMode };
+  | { readonly kind: "erase"; readonly mode: EraseMode }
+  /** DECSC or SCOSC (`save`), DECRC or SCORC (not). */
+  | { readonly kind: "cursor"; readonly save: boolean };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
 type EraseMode = "0" | "1" | "2";
@@ -162,6 +172,15 @@ const EDITS = { X: eraseCells, P: deleteCells, "@": insertCells } as const satis
 
 type Edit = keyof typeof EDITS;
 
+/**
+ * Save and restore the cursor: DECSC `\x1b7` and DECRC `\x1b8`, and SCOSC
+ * `\x1b[s` and SCORC `\x1b[u`, each exactly — with parameters `s` is DECSLRM's
+ * margins, and `u` with a parameter or a marker is kitty's keyboard protocol,
+ * both left to the silent "any other CSI". `\x1b#8` carries an intermediate, so
+ * it is not `\x1b8`. The docs' output gate reads this rather than a copy of it.
+ */
+export const CURSOR_SAVES: string = String.raw`\x1b[78]|${CSI}[su]`;
+
 const finalClass = (table: object): string => `[${hex(finals(Object.keys(table).join("")))}]`;
 
 /**
@@ -188,7 +207,7 @@ export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(E
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<cursor>${CURSOR_SAVES})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -217,9 +236,10 @@ const lineBreaks = (): RegExp =>
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { count, motion, edit, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
+    const { cursor, count, motion, edit, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
+    if (cursor !== undefined) yield { kind: "cursor", save: /[7s]$/.test(cursor) };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
@@ -501,6 +521,16 @@ function drawnIn(charset: Charset, text: string): string {
  */
 const DEFAULT_WIDTH = 80;
 
+/** What a cursor save holds of the stream beside its column: the style and the sets. */
+interface Rendition {
+  readonly sgr: Style;
+  readonly sets: readonly [Charset, Charset];
+  readonly shifted: 0 | 1;
+}
+
+/** What a restore with nothing saved brings back, and what a reset leaves saved. */
+const DEFAULT_RENDITION: Rendition = { sgr: NULL_STYLE, sets: ["B", "B"], shifted: 0 };
+
 /** What a decoder knows of the terminal that drew its bytes. */
 export interface AnsiDecoderOptions {
   /**
@@ -525,6 +555,8 @@ export class AnsiDecoder {
   /** G0 and G1, each a designation's final byte, and which of them SO and SI have shifted in. */
   private readonly sets: [Charset, Charset] = ["B", "B"];
   private shifted: 0 | 1 = 0;
+  /** The rendition a cursor save holds; its column is the line's own (`decodeLine`). */
+  private saved: Rendition = DEFAULT_RENDITION;
 
   constructor(options: AnsiDecoderOptions = {}) {
     this.width = options.width ?? DEFAULT_WIDTH;
@@ -545,6 +577,8 @@ export class AnsiDecoder {
   decodeLine(line: string): RichText {
     const cells: Cell[] = [ORIGIN];
     let column = 1;
+    // A column saved on this line; a save on another names a row this one is not.
+    let savedColumn: number | undefined = undefined;
     for (const token of tokens(line)) {
       switch (token.kind) {
         case "text": {
@@ -565,6 +599,8 @@ export class AnsiDecoder {
           this.sgr = NULL_STYLE;
           this.sets.fill("B");
           this.shifted = 0;
+          this.saved = DEFAULT_RENDITION;
+          savedColumn = undefined;
           if (token.soft) break;
           this.link = undefined;
           cells.length = 1;
@@ -587,6 +623,18 @@ export class AnsiDecoder {
           break;
         case "erase":
           erase(cells, column, token.mode);
+          break;
+        case "cursor":
+          if (token.save) {
+            this.saved = { sgr: this.sgr, sets: [...this.sets], shifted: this.shifted };
+            savedColumn = column;
+            break;
+          }
+          this.sgr = this.saved.sgr;
+          this.sets.splice(0, 2, ...this.saved.sets);
+          this.shifted = this.saved.shifted;
+          column = savedColumn ?? column;
+          if (column !== 1) cells[0] = ORIGIN;
           break;
         case "sgr":
           this.sgr = applySgr(this.sgr, token.params);

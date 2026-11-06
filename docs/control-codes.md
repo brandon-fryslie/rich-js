@@ -91,6 +91,14 @@ scroll; the decoder holds no cursor row and no screen height, so it keeps only
 that what follows is on a line of its own. CPL (`\x1b[nF`) goes up to a line
 already decoded, and is dropped with the other vertical moves.
 
+A cursor save — DECSC `\x1b7`, or SCOSC `\x1b[s` — holds what a terminal's
+does: the column, the style and the character sets. A restore (`\x1b8`,
+`\x1b[u`) brings them back, so the status `tput sc` and `tput rc` frame is
+overwritten as it is on screen. A restore on a later line brings back the style
+and the sets but not the column, which names a row already decoded, as CPL's
+does. With parameters, `\x1b[s` sets DECSLRM's margins and `\x1b[u` is kitty's
+keyboard protocol, so the decoder drops both. Either reset forgets the save.
+
 A C1 control in text is often a Windows-1252 byte decoded as Latin-1: `\x85` was
 meant as `…`. Telling that from a planted sequence takes the whole string, so
 repairing it is the caller's to do before the text reaches `RichText` or

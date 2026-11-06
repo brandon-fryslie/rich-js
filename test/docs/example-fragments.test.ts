@@ -17,12 +17,17 @@ describe("scanEscapes", () => {
     expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
   });
 
+  it.each(["\x1b7", "\x1b8", "\x1b[s", "\x1b[u"])("passes %j, a cursor save or restore the drawing performs", (escape) => {
+    expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
+  });
+
   it.each([
     ["a cursor move", "\x1b[2A"],
     ["a move up to a line's start, CPL", "\x1b[F"],
     ["a screen clear", "\x1b[2J"],
     ["a mode switch", "\x1b[?1049h"],
-    ["a cursor save, which is no CSI", "\x1b7"],
+    ["left and right margins, DECSLRM, which share a save's final", "\x1b[1;5s"],
+    ["a kitty keyboard query, which shares a restore's final", "\x1b[?u"],
     ["a reverse index", "\x1bM"],
     ["a reset", "\x1bc"],
     ["an OSC that is not a link", "\x1b]0;title\x07"],
