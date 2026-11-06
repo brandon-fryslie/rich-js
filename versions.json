@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-578",
-      "ref": "refs/pull/578/merge",
-      "sha": "2ea9dbea4fe3b133ee4c2695f77552f6e8f8b556",
-      "timestamp": "2026-11-06T11:57:54.941Z",
-      "commits": [
-        {
-          "sha": "2ea9dbea4fe3b133ee4c2695f77552f6e8f8b556",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T11:55:28Z",
-          "message": "Merge 86cddd171747991830bfa9908e0e3a44c92e5f61 into a949c97513c1c182d3ddda4fa21cc4d6bde1e3df\n"
-        },
-        {
-          "sha": "86cddd171747991830bfa9908e0e3a44c92e5f61",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:55:16-07:00",
-          "message": "CNL's rule rests on the decoder holding no cursor row; the docs gate reads LINE_BREAK_ESCAPES (rich-control-codes-xh4n.llj)\n\nMedium review: the bottom-row argument was backwards (CNL never scrolls). DRAWN no longer copies the line-break pattern, and a test pins CNL and ESC E as drawn, CPL dropped. decodeLine's CNL drop is documented beside its form-feed drop.\n"
-        },
-        {
-          "sha": "e5cd7a1a998f80202593868541ed3502bdc34a77",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:47:21-07:00",
-          "message": "CNL ends a line once whatever its count; the docs gate counts CNL and ESC E as drawn (rich-control-codes-xh4n.llj)\n\nHigh review: a count invented rows no terminal draws (999E, a CPL/CNL redraw). With no screen height, a count is unknowable; one break is NEL's meaning.\n"
-        },
-        {
-          "sha": "328fb2b21bd42f71efb36214606e0e7fff24655d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:37:37-07:00",
-          "message": "decodeAnsi ends a line at CNL as at NEL, once per row it moves down; CPL stays dropped (rich-control-codes-xh4n.llj)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a949c97513c1c182d3ddda4fa21cc4d6bde1e3df",
-      "timestamp": "2026-11-06T11:24:49.937Z",
+      "sha": "22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03",
+      "timestamp": "2026-11-06T12:12:32.710Z",
       "commits": [
         {
-          "sha": "a949c97513c1c182d3ddda4fa21cc4d6bde1e3df",
+          "sha": "22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:22:27-07:00",
-          "message": "decodeAnsi draws DEC Special Graphics: ESC ( 0 maps q to ─ until ESC ( B (rich-control-codes-xh4n.hdm) (#577)\n\n* decodeAnsi draws the designated character set: DEC Special Graphics in G0 or G1, shifted by SO and SI (rich-control-codes-xh4n.hdm)\n\n* decodeAnsi resets its charsets at RIS and DECSTR, and overstrikes as emphasis only in ASCII; the docs box closes (review of #577)\n\n* RIS clears the line and ends the link, DECSTR keeps the link, and overstrike stays emphasis on a character the set leaves ASCII (review of #577)"
+          "timestamp": "2026-11-06T05:10:27-07:00",
+          "message": "decodeAnsi ends a line at CNL as at NEL, once whatever its count; CPL stays dropped (rich-control-codes-xh4n.llj) (#578)\n\n* decodeAnsi ends a line at CNL as at NEL, once per row it moves down; CPL stays dropped (rich-control-codes-xh4n.llj)\n\n* CNL ends a line once whatever its count; the docs gate counts CNL and ESC E as drawn (rich-control-codes-xh4n.llj)\n\nHigh review: a count invented rows no terminal draws (999E, a CPL/CNL redraw). With no screen height, a count is unknowable; one break is NEL's meaning.\n\n* CNL's rule rests on the decoder holding no cursor row; the docs gate reads LINE_BREAK_ESCAPES (rich-control-codes-xh4n.llj)\n\nMedium review: the bottom-row argument was backwards (CNL never scrolls). DRAWN no longer copies the line-break pattern, and a test pins CNL and ESC E as drawn, CPL dropped. decodeLine's CNL drop is documented beside its form-feed drop."
         }
       ]
     }
