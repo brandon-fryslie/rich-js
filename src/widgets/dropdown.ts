@@ -314,13 +314,24 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     // Leading space gives the filter input a small gutter from the [ chrome,
     // matching the visual breathing room of the centered label. The caret is
     // fitted first and the gutter only where a cell is left for it: a cropped
-    // caret cell would take the terminal's cursor off the field.
+    // caret cell would take the terminal's cursor off the field. A query wider
+    // than its room shows its tail, so the caret stays at the editing point.
     const caretCells = caret?.cellLength ?? 0;
     const gutter = maxLabelLen - caretCells >= 1 ? " " : "";
     const filterRoom = Math.max(0, maxLabelLen - caretCells - gutter.length);
-    const [filterText] = splitText(this.filter, asCellCol(filterRoom));
+    const filterText = this.filterTail(filterRoom);
     const query = [new Segment(gutter + filterText, style), ...(caret === undefined ? [] : [caret])];
     return Segment.adjustLineLength(query, maxLabelLen, style);
+  }
+
+  // The end of the filter that fits `room` cells, padded on its left where a
+  // wide glyph at the cut fits neither side, so its last glyph meets the caret.
+  private filterTail(room: number): string {
+    let cut = cellLen(this.filter) - room;
+    if (cut <= 0) return this.filter;
+    let tail = this.filter;
+    while (cellLen(tail) > room) [, tail] = splitText(this.filter, asCellCol(cut++));
+    return " ".repeat(room - cellLen(tail)) + tail;
   }
 
   renderOverlay(options: RenderOptions): Iterable<Segment> | null {

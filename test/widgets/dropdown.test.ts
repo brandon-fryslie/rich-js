@@ -611,6 +611,14 @@ describe("Dropdown filter on the terminal's own cursor", () => {
     expect(segs.map((s) => s.text).join("")).toContain("│");
   });
 
+  it("shows the end of a query too long for the header, with the caret after it", () => {
+    const d = new Dropdown({ options: ["abcd"] });
+    d.focus(0);
+    typed(d, "abcdefgh");
+    const segs = header(d, { caret: true });
+    expect(segs.slice(0, caretAt(segs)).map((s) => s.text).join("")).toBe("[ gh");
+  });
+
   it("keeps the caret cell when the header has room for nothing else", () => {
     const d = new Dropdown({ options: ["a"] });
     d.focus(0);
