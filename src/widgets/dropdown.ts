@@ -355,10 +355,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     const inner = ` ${text} `;
     const style = this.disabled
       ? new Style(this.disabledInk)
-      : new Style({
-          ...ink(this.theme, "foreground", "surface"),
-          dim: true,
-        });
+      : new Style(ink(this.theme, "foreground-muted", "surface"));
     return [
       new Segment(" ", style),
       new Segment(inner, style),

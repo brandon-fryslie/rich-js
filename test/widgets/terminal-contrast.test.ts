@@ -20,6 +20,7 @@ import { Segment } from "../../src/core/segment.js";
 import { NULL_STYLE } from "../../src/core/style.js";
 import { contrastRatio, TerminalTheme } from "../../src/core/color.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
+import { textFloor, textOn } from "../../src/themes/text-on.js";
 import { Button, type ButtonVariant } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Dropdown } from "../../src/widgets/dropdown.js";
@@ -96,15 +97,18 @@ const disabledScenes = (theme?: TerminalTheme): Scene[] => [
 // The segments that cover a cell: one of no text covers none.
 const cells = (draw: Scene[1]): Segment[] => Segment.splitLines(draw()).flat().filter((segment) => segment.cellLength > 0);
 
-// Every visible glyph of a scene and its contrast, resolved on `terminal`.
-const glyphs = (draw: Scene[1], terminal: TerminalTheme): { text: string; ratio: number; dim: boolean }[] => {
+// Every visible glyph of a scene, its contrast resolved on `terminal`, and
+// whether it is drawn in the theme's muted text on its ground — a placeholder,
+// a slider's empty track — which is meant to recede and has a floor of its own.
+const glyphs = (draw: Scene[1], terminal: TerminalTheme): { text: string; ratio: number; muted: boolean }[] => {
   const canvas = exportCanvas(terminal).background;
   return cells(draw)
     .filter((segment) => segment.text.trim() !== "")
     .map((segment) => {
       const look = resolveLook(segment.style ?? NULL_STYLE, terminal);
       const ground = look.background === "canvas" ? canvas : look.background;
-      return { text: segment.text, ratio: contrastRatio(look.foreground, ground), dim: segment.style?.dim === true };
+      const muted = look.foreground.hex === textOn(terminal.palette, "foreground-muted", ground).hex;
+      return { text: segment.text, ratio: contrastRatio(look.foreground, ground), muted };
     });
 };
 
@@ -124,7 +128,7 @@ describe("a widget constructed without a theme", () => {
 
 describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("a widget on %s", (_name, theme) => {
   it.each(scenes(theme))("%s keeps every glyph at the theme's floor", (_scene, draw) => {
-    expect(glyphs(draw, theme).filter(({ ratio, dim }) => !dim && ratio < floorOf(theme))).toEqual([]);
+    expect(glyphs(draw, theme).filter(({ ratio, muted }) => ratio < (muted ? textFloor("foreground-muted") : floorOf(theme)))).toEqual([]);
   });
 
   it.each(disabledScenes(theme))("%s is seen and reads as inactive", (_scene, draw) => {

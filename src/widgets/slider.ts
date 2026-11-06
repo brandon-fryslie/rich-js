@@ -158,7 +158,7 @@ export class Slider extends ThemedWidget {
       : new Style({ ...ink(this.theme, "text-primary", "background"), ...baseAttrs });
     const unfilledStyle = this.disabled
       ? new Style({ ...this.disabledInk, ...baseAttrs })
-      : new Style({ ...ink(this.theme, "foreground", "background"), dim: true, ...baseAttrs });
+      : new Style({ ...ink(this.theme, "foreground-muted", "background"), ...baseAttrs });
     const markerStyle = this.disabled
       ? new Style({ ...this.disabledInk, bold: true, ...baseAttrs })
       : new Style({ ...ink(this.theme, "text-primary", "background"), bold: true, ...baseAttrs });
