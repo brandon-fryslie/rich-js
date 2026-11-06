@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-572",
+      "ref": "refs/pull/572/merge",
+      "sha": "5902af779af7e1ac7994289006bf19a96d37436e",
+      "timestamp": "2026-11-06T07:08:39.191Z",
+      "commits": [
+        {
+          "sha": "5902af779af7e1ac7994289006bf19a96d37436e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T00:06:16-07:00",
+          "message": "Merge f58f028ed521b52b3abf4cf74f58e123f8bb35c7 into 14220a72e7e7a74b2276294c29774383f30cafd4\n"
+        },
+        {
+          "sha": "f58f028ed521b52b3abf4cf74f58e123f8bb35c7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T00:06:06-07:00",
+          "message": "isPrepend reads a vendored Prepend table at the pinned Unicode version, not the engine's segmenter (rich-control-codes-xh4n.7cz)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "14220a72e7e7a74b2276294c29774383f30cafd4",
