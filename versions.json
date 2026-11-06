@@ -4,15 +4,22 @@
     {
       "version": "pr-573",
       "ref": "refs/pull/573/merge",
-      "sha": "677fef927bb22960e34b2bc58762db2b8502fcc5",
-      "timestamp": "2026-11-06T08:20:01.417Z",
+      "sha": "b9033a601f5f6fe7e934f5562e8b429f138554f5",
+      "timestamp": "2026-11-06T08:24:32.082Z",
       "commits": [
         {
-          "sha": "677fef927bb22960e34b2bc58762db2b8502fcc5",
+          "sha": "b9033a601f5f6fe7e934f5562e8b429f138554f5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:16:59Z",
-          "message": "Merge 1f45b72624d6f51a2ae4d95cd825483beb82710d into b9e25db7fb558c55741ee1805a4255b4788a1264\n"
+          "timestamp": "2026-11-06T08:22:50Z",
+          "message": "Merge bd53f249f428f07f062eea0202fdb6e6aad7e66c into b9e25db7fb558c55741ee1805a4255b4788a1264\n"
+        },
+        {
+          "sha": "bd53f249f428f07f062eea0202fdb6e6aad7e66c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T01:22:40-07:00",
+          "message": "A C1 string introducer reads as its ESC form, cut at the line's end, and ESC E's line break is derived from CONTROL_CODES (rich-control-codes-xh4n.187 review)\n"
         },
         {
           "sha": "1f45b72624d6f51a2ae4d95cd825483beb82710d",
