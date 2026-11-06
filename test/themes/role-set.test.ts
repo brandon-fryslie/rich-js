@@ -3,8 +3,8 @@ import { ColorRgba, TerminalTheme, blendRgb, contrastRatio, parseHexColor, relat
 import { ensureContrast } from "../../src/themes/colorMath.js";
 import { resolveColorRef } from "../../src/themes/colorRef.js";
 import { THEMES } from "../../src/themes/data/index.js";
-import { IDENTITY } from "../../src/core/oklch.js";
-import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
+import { IDENTITY, Oklch } from "../../src/core/oklch.js";
+import { BASE_KEYS, COMPONENT_TEXT, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
 import type { Palette, PaletteRole, ShadedRole } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
@@ -176,9 +176,15 @@ describe("what buildPalette is given", () => {
     const palette = buildPalette("t", true, { ...dark, [ground]: new ColorRgba(255, 255, 255, 0.9), [text]: new ColorRgba(255, 255, 255, 0.5) });
     expect(contrastRatio(palette.get(text), palette.get(ground))).toBeGreaterThanOrEqual(floor);
   });
-  it("a stated opaque component text is the author's, kept", () => {
-    const chosen = new ColorRgba(250, 250, 250);
+  it("a stated opaque component text that reads is the author's, kept", () => {
+    const chosen = new ColorRgba(20, 20, 20);
     expect(buildPalette("t", true, { ...dark, "link-background": paleGround, "link-color": chosen }).get("link-color")).toEqual(chosen);
+  });
+  it("a stated opaque component text that does not read is held, keeping its hue", () => {
+    const chosen = new ColorRgba(120, 160, 230);
+    const held = buildPalette("t", true, { ...dark, "link-background": paleGround, "link-color": chosen }).get("link-color");
+    expect(contrastRatio(held, paleGround)).toBeGreaterThanOrEqual(4.5);
+    expect(Math.abs(Oklch.fromRgba(held).h - Oklch.fromRgba(chosen).h)).toBeLessThan(10);
   });
 });
 
@@ -219,15 +225,17 @@ describe("what a role is drawn on decides it", () => {
     expect(light.get("panel")).toEqual(blendRgb(light.get("surface"), light.get("primary"), 0.1));
   });
 
-  it.each(derived.map((palette) => [palette.name, palette] as const))("%s: the pairs on primary read", (_name, palette) => {
-    const ground = palette.get("primary");
-    for (const role of ["block-cursor-foreground", "link-color-hover", "button-color-foreground"] as const) {
-      expect(contrastRatio(palette.get(role), ground), role).toBeGreaterThanOrEqual(3);
+  // Body text's floor, and the muted weight's for the smallest heading.
+  const floor = (role: PaletteRole): number => (role === "markdown-h6-color" ? 3 : 4.5);
+  it.each([...authored, ...derived].map((palette) => [palette.name, palette] as const))("%s: every component's text reads on its ground", (_name, palette) => {
+    for (const [text, { ground }] of Object.entries(COMPONENT_TEXT) as [PaletteRole, { ground: PaletteRole }][]) {
+      const on = palette.get(ground).compositeOver(palette.get("background"));
+      expect(contrastRatio(palette.get(text), on), `${text} on ${ground}`).toBeGreaterThanOrEqual(floor(text));
     }
   });
 
-  it.each(derived.map((palette) => [palette.name, palette] as const))("%s: the smallest heading reads", (_name, palette) => {
-    expect(contrastRatio(palette.get("markdown-h6-color"), palette.get("background"))).toBeGreaterThanOrEqual(3);
+  it("every heading level, h1 to h6, is a component's text", () => {
+    for (const n of [1, 2, 3, 4, 5, 6]) expect(Object.hasOwn(COMPONENT_TEXT, `markdown-h${n}-color`)).toBe(true);
   });
 });
 

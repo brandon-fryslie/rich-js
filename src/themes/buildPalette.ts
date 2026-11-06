@@ -55,7 +55,7 @@ const WHITE = new ColorRgba(255, 255, 255);
  */
 type ComponentText = { readonly ground: PaletteRole } & ({ readonly intent: NeutralIntent } | { readonly color: PaletteRole });
 
-const COMPONENT_TEXT = {
+export const COMPONENT_TEXT = {
   "block-cursor-foreground": { ground: "block-cursor-background", intent: "text" },
   "block-cursor-blurred-foreground": { ground: "block-cursor-blurred-background", color: "foreground" },
   "button-color-foreground": { ground: "primary", intent: "text" },
@@ -281,13 +281,14 @@ const GROUND: { readonly [R in PaletteRole]?: PaletteRole } = {
  * A stated role as it is drawn: on its ground (`GROUND`), itself drawn on
  * `background`. `boost` alone stays a layer: it is what `panel` composites,
  * and a fully transparent color draws nothing anywhere. A component's stated
- * tint is Textual writing a rule rather than a color, so it is held to its
- * floor on its ground as the derived text is; a stated opaque color is the
- * author's choice and kept.
+ * text, tint or opaque, is held to its floor on its ground as the derived
+ * text is: an author's color that reads there is kept as given, and one that
+ * does not moves in lightness only, so it keeps its hue.
  */
 function drawnOnGround(role: PaletteRole, color: ColorRgba | undefined, at: At): ColorRgba | undefined {
-  if (color === undefined || role === "boost" || color.alpha === 0 || color.alpha === 1) return color;
+  if (color === undefined || role === "boost" || color.alpha === 0) return color;
   if (isComponentText(role)) return heldOnGround(role, color, at);
+  if (color.alpha === 1) return color;
   return color.compositeOver(at(GROUND[role] ?? "background").compositeOver(at("background")));
 }
 
