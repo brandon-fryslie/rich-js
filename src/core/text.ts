@@ -1236,9 +1236,11 @@ function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
   const { segments, covered } = drawnSegments(row.draft, layout.base, options);
   const { line, oriented, orient } = row.orient(segments);
   // An oriented row's cells are not where `free` counted them, and a pad
-  // joined to one would land inside its isolate.
-  const free = oriented ? NEVER_FREE : spanFree(segments, covered);
-  return [...placed({ segments: [...line], free, orient }, layout.maxWidth, padStyleOf(layout), edgeOf(layout.justify, row.startLevel))];
+  // joined to one would land inside its isolate. A pad in another style than
+  // the base joins nothing either: the run it joined would be drawn in it.
+  const padStyle = padStyleOf(layout);
+  const free = oriented || padStyle !== layout.base ? NEVER_FREE : spanFree(segments, covered);
+  return [...placed({ segments: [...line], free, orient }, layout.maxWidth, padStyle, edgeOf(layout.justify, row.startLevel))];
 }
 
 /**
