@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-584",
+      "ref": "refs/pull/584/merge",
+      "sha": "6a10366a4c7ecccd358e0f92e8e6e19cd9949f08",
+      "timestamp": "2026-11-06T15:06:35.321Z",
+      "commits": [
+        {
+          "sha": "6a10366a4c7ecccd358e0f92e8e6e19cd9949f08",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:04:51-07:00",
+          "message": "Merge db2dbe315efe61115fe4d508bf2c83832b60efbb into 0f0e2b67ec0449800b781c88e674866f6d824f9e\n"
+        },
+        {
+          "sha": "db2dbe315efe61115fe4d508bf2c83832b60efbb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:04:34-07:00",
+          "message": "Right-to-left text through a Group, a Viewport, a scroll or a view stands at its start edge (rich-control-codes-xh4n.5ya)\n\nEvery row-filling container hands its body justify \"default\", not only a\ntext body: Padding, Layout, Viewport, scroll, Console.print's renderable\nblocks and drawView (Live, App). Group and Constrain forward it. A Tree\nlabel and a traceback frame sit beside other drawing, so they drop only\nthe default (besideDrawing) and keep a justify the print named.\nLeft-to-right output is unchanged: RichText alone reads justify, and\n\"default\" draws a left-to-right row as no justify does.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0f0e2b67ec0449800b781c88e674866f6d824f9e",
