@@ -4,15 +4,22 @@
     {
       "version": "pr-571",
       "ref": "refs/pull/571/merge",
-      "sha": "24bcff3171799c977fc66050f8c040f30e133285",
-      "timestamp": "2026-11-06T06:13:18.996Z",
+      "sha": "b7a7c23c4081ef78e741dfd01ff38a81e6c58340",
+      "timestamp": "2026-11-06T06:32:39.563Z",
       "commits": [
         {
-          "sha": "24bcff3171799c977fc66050f8c040f30e133285",
+          "sha": "b7a7c23c4081ef78e741dfd01ff38a81e6c58340",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T23:10:52-07:00",
-          "message": "Merge c427436c9b0363791db5e033a24066569ea53b81 into d579241dad7483b9be74996fb69c690f6ebcdbb0\n"
+          "timestamp": "2026-11-06T06:30:12Z",
+          "message": "Merge fe9cb7b435efbeb7052ed7db59c091f2331d131b into d579241dad7483b9be74996fb69c690f6ebcdbb0\n"
+        },
+        {
+          "sha": "fe9cb7b435efbeb7052ed7db59c091f2331d131b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T23:30:00-07:00",
+          "message": "Review: a Prepend ends its cluster only before a base, the end slot keeps its own clusters, and a write ending on a Prepend ends it (rich-control-codes-xh4n.qmw)\n"
         },
         {
           "sha": "c427436c9b0363791db5e033a24066569ea53b81",
