@@ -4,15 +4,22 @@
     {
       "version": "pr-583",
       "ref": "refs/pull/583/merge",
-      "sha": "229f43a018d8c01ceb04c7f960a9772e17040511",
-      "timestamp": "2026-11-06T14:31:11.879Z",
+      "sha": "db2aa22c6d7ae76838515a6d0f56f8ce5ddfd259",
+      "timestamp": "2026-11-06T14:39:15.194Z",
       "commits": [
         {
-          "sha": "229f43a018d8c01ceb04c7f960a9772e17040511",
+          "sha": "db2aa22c6d7ae76838515a6d0f56f8ce5ddfd259",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T14:29:19Z",
-          "message": "Merge 290c8338e020bb2cb96388b8f9f884c35b0a95c6 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
+          "timestamp": "2026-11-06T14:37:35Z",
+          "message": "Merge 128b19cc48acbff491aff5e8b3209e549f363124 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
+        },
+        {
+          "sha": "128b19cc48acbff491aff5e8b3209e549f363124",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T07:37:26-07:00",
+          "message": "Review: what REP repeats is one predicate, repeatable, which the decoder and the docs gate both ask; a static run draws at its own terminal's width (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "290c8338e020bb2cb96388b8f9f884c35b0a95c6",
