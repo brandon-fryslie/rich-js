@@ -4,15 +4,22 @@
     {
       "version": "pr-566",
       "ref": "refs/pull/566/merge",
-      "sha": "807a0ba44e1ca1195de826e121f0127ffb943f14",
-      "timestamp": "2026-11-06T00:28:59.064Z",
+      "sha": "5c16af0be66806b1c7fe835f289f8e663df63443",
+      "timestamp": "2026-11-06T00:35:27.091Z",
       "commits": [
         {
-          "sha": "807a0ba44e1ca1195de826e121f0127ffb943f14",
+          "sha": "5c16af0be66806b1c7fe835f289f8e663df63443",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:26:35-07:00",
-          "message": "Merge d2710837279a46acb21354a8793d4b1234fb0ab0 into 9c5b3e136c6a8f85fa696554c77e69874e3ce96f\n"
+          "timestamp": "2026-11-06T00:33:04Z",
+          "message": "Merge b47a4a2e5b74041a30a9dc1bb56db22516fc45b4 into 9c5b3e136c6a8f85fa696554c77e69874e3ce96f\n"
+        },
+        {
+          "sha": "b47a4a2e5b74041a30a9dc1bb56db22516fc45b4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T17:32:50-07:00",
+          "message": "Dropdown: the caret cell survives a header too narrow for its gutter; labeled keeps an empty frame-styled segment unoriented; docs no longer tie the filter's caret shape to TextInput's (review of rich-control-codes-xh4n.okr)\n"
         },
         {
           "sha": "d2710837279a46acb21354a8793d4b1234fb0ab0",
