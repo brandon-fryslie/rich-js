@@ -30,7 +30,7 @@ describe("the vendored Prepend table", () => {
 
   // U+11A3A left Prepend in Unicode 17 and U+113D1 joined it in 16: each is
   // joined to its base by some supported Node, so each is cut on every one.
-  it.each([[0x11a3a, 0x11a00], [0x113d1, 0x11392]])("cuts %s from its base on every Node", (prepend, base) => {
+  it.each([["U+11A3A", 0x11a3a, 0x11a00], ["U+113D1", 0x113d1, 0x11392]])("cuts %s from its base on the running Node", (_name, prepend, base) => {
     expect(graphemes(String.fromCodePoint(prepend, base))).toEqual([String.fromCodePoint(prepend), String.fromCodePoint(base)]);
   });
 });

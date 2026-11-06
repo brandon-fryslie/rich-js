@@ -29,7 +29,8 @@ const WORD_JOINER = "\u2060";
  * off the vendored table. The engine still forms every cluster, so a Prepend
  * its ICU no longer joins is merely cut where it already ended, and one only an
  * older ICU joins is cut too: the set the library cuts and seals is the same on
- * every engine segmenting at Unicode 15 or later, and a lookup costs no segmentation and fills no cache.
+ * every engine segmenting at a Unicode from 15 through the
+ * pinned one, and a lookup costs no segmentation and fills no cache.
  */
 function isPrepend(character: string): boolean {
   return isPrependCodePoint(character.codePointAt(0)!);
@@ -79,7 +80,7 @@ function* ownCells({ index, segment }: Cluster): Generator<Cluster> {
 }
 
 // Only a cluster a Prepend leads can be cut, so every other one passes as the
-// segmenter made it, with nothing allocated.
+// segmenter made it.
 const leadsWithPrepend = (segment: string): boolean => isPrependCodePoint(segment.codePointAt(0)!);
 
 function* clustersOf(text: string): Generator<Cluster> {
