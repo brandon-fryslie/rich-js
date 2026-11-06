@@ -4,15 +4,22 @@
     {
       "version": "pr-567",
       "ref": "refs/pull/567/merge",
-      "sha": "6a43c58e4e8cf5ec14dbf9ccd6b47269e9c4dad4",
-      "timestamp": "2026-11-06T01:37:23.404Z",
+      "sha": "ee469d2b350d56e70b9461eda974f02cc8c6ae57",
+      "timestamp": "2026-11-06T01:45:56.787Z",
       "commits": [
         {
-          "sha": "6a43c58e4e8cf5ec14dbf9ccd6b47269e9c4dad4",
+          "sha": "ee469d2b350d56e70b9461eda974f02cc8c6ae57",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T01:35:00Z",
-          "message": "Merge d934a1a036d0aa3bfd53d8e202c8f1eeda866bbe into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
+          "timestamp": "2026-11-05T18:44:13-07:00",
+          "message": "Merge b6b0ee3a4bc27d89e56c3e80f0be982942222a1e into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
+        },
+        {
+          "sha": "b6b0ee3a4bc27d89e56c3e80f0be982942222a1e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T18:43:50-07:00",
+          "message": "Under logical a press reads the column the terminal reports, which is the frame's (VTE's vis2log): drop the router's screen-to-frame mapping, keep TextInput's press on its frame-order stops, and model the terminal's report in the tests (review of #567)\n"
         },
         {
           "sha": "d934a1a036d0aa3bfd53d8e202c8f1eeda866bbe",
