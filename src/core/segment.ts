@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, cutCells, splitText, asCellCol, type CellCol } from "./cells.js";
+import { cellLen, cutCells, graphemes, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 
@@ -615,4 +615,33 @@ function stylesEqual(a: Style | undefined, b: Style | undefined): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
   return a.equals(b);
+}
+
+/**
+ * The grapheme clusters of a row's text, found across style edges — a mark
+ * styled apart from its letter is still its letter's — but never across an edge
+ * of the end slot past the text (`Style.textEnd`). That slot is a blank no
+ * character holds, so a Prepend character typed last, which a segmenter joins to
+ * whatever follows, never takes it, and the caret it carries keeps a cell of its
+ * own. Every place that orders a row by cluster asks here, so none can disagree.
+ */
+export function rowClusters(pieces: readonly { readonly text: string; readonly style?: Style | undefined }[]): string[] {
+  const out: string[] = [];
+  // Pushed one by one: a row too long to spread into a call is still a row.
+  const flush = (text: string): void => {
+    for (const cluster of graphemes(text)) out.push(cluster);
+  };
+  let stretch = "";
+  let atEnd: boolean | undefined;
+  for (const { text, style } of pieces) {
+    const end = style?.textEnd === true;
+    if (end !== atEnd) {
+      flush(stretch);
+      stretch = "";
+      atEnd = end;
+    }
+    stretch += text;
+  }
+  flush(stretch);
+  return out;
 }

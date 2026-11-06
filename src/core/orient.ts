@@ -12,9 +12,9 @@
  */
 
 import { isBidi, lineLevels, mirroredCluster, openersAlong, paragraph, paragraphLevel, REMOVED, shaped, visualOrder, withoutExplicit, withoutMarks } from "./bidi.js";
-import { cellLen, graphemes } from "./cells.js";
+import { cellLen } from "./cells.js";
 import { pattern } from "./pattern.js";
-import { Segment } from "./segment.js";
+import { rowClusters, Segment } from "./segment.js";
 import { caretMarkOn, NULL_STYLE, type Style } from "./style.js";
 import type { BidiStamp, ParagraphLevel, TextOrder } from "./text-order.js";
 
@@ -147,9 +147,8 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   // Clusters are found in the whole row, because a span edge inside one is no
   // place to cut it: reversed apart, a mark lands on another letter.
   const styles = shown.flatMap((segment) => new Array<Style | undefined>(segment.text.length).fill(segment.style));
-  const noCharacter = (unit: number): boolean => styles[unit]?.textEnd === true;
-  const glyphs = endSlotsApart(graphemes(text), noCharacter);
-  const levelOf = clusterLevels(glyphs, finished, paragraphLevel, noCharacter);
+  const glyphs = rowClusters(shown);
+  const levelOf = clusterLevels(glyphs, finished, paragraphLevel, (unit) => styles[unit]?.textEnd === true);
   const clusters: Cluster[] = [];
   const turned = new Map<Style, Style>();
   let unit = 0;
@@ -173,29 +172,6 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
     run += cluster.level & 1 ? mirroredCluster(forms[index]!) : forms[index]!;
   }
   flush();
-  return out;
-}
-
-/**
- * `clusters` cut wherever the end slot past the text (`Style.textEnd`) begins or
- * ends: that slot is a blank no character holds, so a Prepend character typed
- * last, which a segmenter joins to whatever follows, never takes it, and the
- * caret it carries keeps a cell of its own. Only the edges are cut, so a slot's
- * own glyph keeps its surrogate pair.
- */
-function endSlotsApart(clusters: readonly string[], noCharacter: (unit: number) => boolean): string[] {
-  const out: string[] = [];
-  let unit = 0;
-  for (const cluster of clusters) {
-    let start = 0;
-    for (let at = 1; at < cluster.length; at += 1) {
-      if (noCharacter(unit + at) === noCharacter(unit + at - 1)) continue;
-      out.push(cluster.slice(start, at));
-      start = at;
-    }
-    out.push(cluster.slice(start));
-    unit += cluster.length;
-  }
   return out;
 }
 
