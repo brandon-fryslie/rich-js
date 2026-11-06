@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-577",
-      "ref": "refs/pull/577/merge",
-      "sha": "62f2c2bbe721e8f365f8f79da5b41c9f961361b6",
-      "timestamp": "2026-11-06T11:15:05.608Z",
-      "commits": [
-        {
-          "sha": "62f2c2bbe721e8f365f8f79da5b41c9f961361b6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T11:12:36Z",
-          "message": "Merge 15c585f742e3be48d5903867d38db2d3f8666e7d into e8ee9d2d00559fb249809ef4103d270a9269551c\n"
-        },
-        {
-          "sha": "15c585f742e3be48d5903867d38db2d3f8666e7d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:12:25-07:00",
-          "message": "decodeAnsi resets its charsets at RIS and DECSTR, and overstrikes as emphasis only in ASCII; the docs box closes (review of #577)\n"
-        },
-        {
-          "sha": "1ce916697288f393a795a3a0cc94982f62dad6a2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:00:27-07:00",
-          "message": "decodeAnsi draws the designated character set: DEC Special Graphics in G0 or G1, shifted by SO and SI (rich-control-codes-xh4n.hdm)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e8ee9d2d00559fb249809ef4103d270a9269551c",
