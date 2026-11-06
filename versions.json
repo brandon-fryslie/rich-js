@@ -4,15 +4,22 @@
     {
       "version": "pr-572",
       "ref": "refs/pull/572/merge",
-      "sha": "3545dc59d1807ef7cea808442a9d044d22880933",
-      "timestamp": "2026-11-06T07:25:33.321Z",
+      "sha": "7ac58ed309c5549fbdf610788bbe3081b3c3d2d2",
+      "timestamp": "2026-11-06T07:33:36.359Z",
       "commits": [
         {
-          "sha": "3545dc59d1807ef7cea808442a9d044d22880933",
+          "sha": "7ac58ed309c5549fbdf610788bbe3081b3c3d2d2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:23:29Z",
-          "message": "Merge 9055f2581e07adf22bf7fa650d94d2f4bff2b516 into 14220a72e7e7a74b2276294c29774383f30cafd4\n"
+          "timestamp": "2026-11-06T07:31:13Z",
+          "message": "Merge 5c9c5f233913469c5f2fe42a7747645c8f954771 into 14220a72e7e7a74b2276294c29774383f30cafd4\n"
+        },
+        {
+          "sha": "5c9c5f233913469c5f2fe42a7747645c8f954771",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T00:30:53-07:00",
+          "message": "Prepend comments state the table's bounds; test titles name code points (rich-control-codes-xh4n.7cz review)\n"
         },
         {
           "sha": "9055f2581e07adf22bf7fa650d94d2f4bff2b516",
