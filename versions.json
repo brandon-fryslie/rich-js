@@ -4,15 +4,22 @@
     {
       "version": "pr-589",
       "ref": "refs/pull/589/merge",
-      "sha": "4b19f9aeba497a5d7e5acb2dea57b83a4a479b69",
-      "timestamp": "2026-11-06T23:35:02.336Z",
+      "sha": "c2e202e287f724e0dd1c8505e85e4c0a9d47e75e",
+      "timestamp": "2026-11-06T23:40:43.760Z",
       "commits": [
         {
-          "sha": "4b19f9aeba497a5d7e5acb2dea57b83a4a479b69",
+          "sha": "c2e202e287f724e0dd1c8505e85e4c0a9d47e75e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:32:55Z",
-          "message": "Merge deed5075ffa52dd8163dfd132adfbf857319c0ef into f5cb509f1c072161a33d4f5deb776c9d4e56b2ff\n"
+          "timestamp": "2026-11-06T23:38:50Z",
+          "message": "Merge c210a1c40c9c179e577eb581f6e6199a157f35f0 into f5cb509f1c072161a33d4f5deb776c9d4e56b2ff\n"
+        },
+        {
+          "sha": "c210a1c40c9c179e577eb581f6e6199a157f35f0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T16:38:39-07:00",
+          "message": "A DEL inside a sequence is no token, so REP still repeats; a held break relocates by the census (rich-control-codes-xh4n.8qs)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "deed5075ffa52dd8163dfd132adfbf857319c0ef",
