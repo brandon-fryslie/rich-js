@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-580",
+      "ref": "refs/pull/580/merge",
+      "sha": "bccf672f4bc4cdabc7649d2787c3e99602c978f3",
+      "timestamp": "2026-11-06T12:44:34.436Z",
+      "commits": [
+        {
+          "sha": "bccf672f4bc4cdabc7649d2787c3e99602c978f3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T05:42:08-07:00",
+          "message": "Merge 2c8103ca8f0f62bfe1b6fb7bbf502573f6a07e7c into 4c703f46a6759a75eb8bb866936709e8e35f2020\n"
+        },
+        {
+          "sha": "2c8103ca8f0f62bfe1b6fb7bbf502573f6a07e7c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T05:41:43-07:00",
+          "message": "A text body in a Panel, Padding or Layout pane starts at its paragraph's edge, so a right-to-left one stands at the right inner edge (rich-control-codes-xh4n.9m6)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4c703f46a6759a75eb8bb866936709e8e35f2020",
