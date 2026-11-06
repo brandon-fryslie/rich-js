@@ -268,15 +268,55 @@ type Layout = { readonly drawn: Drawn } & (
 );
 
 /**
- * A row's stops two ways: left to right as the terminal shows them (`shown`),
- * which a step walks, and left to right as the frame holds them (`framed`),
- * which a press reads. A terminal that orders what it is written (`logical`)
- * reports a pointer at the column of what it was written, not where it shows
- * it — the BiDi recommendation's "the reported column is the model's column",
- * VTE's `vis2log` — so a press is already in the frame's order. Off `logical`
- * the two are one.
+ * A row's content as the frame holds it (`cells`, as `_orderedRow` stamped and
+ * ordered them), whether the terminal orders the line it is written in
+ * (`logical`), and the field's own cells around it (`own`): the line, when no
+ * frame shows the row. Its stops are read off it two ways, `framed` and
+ * `shownIn`.
  */
-type Stops = { readonly shown: readonly Seen[]; readonly framed: readonly Seen[] };
+type Stops = { readonly cells: readonly Cell[]; readonly ordersLine: boolean; readonly own: Outside };
+
+/** What is written on a row's line before its content and after it. */
+type Outside = { readonly before: readonly Segment[]; readonly after: readonly Segment[] };
+
+/** The stops of `cells` taken in `order`, a glyph's cells merged into its one stop. */
+function seenIn(cells: readonly Cell[], order: readonly number[]): Seen[] {
+  const screen: Seen[] = [];
+  for (const index of order) {
+    const { at, cells: width } = cells[index]!;
+    const last = screen.at(-1);
+    if (last?.at === at) screen[screen.length - 1] = { at, cells: last.cells + width };
+    else screen.push({ at, cells: width });
+  }
+  return screen;
+}
+
+/**
+ * A row's stops left to right as the frame holds them, which a press reads. A
+ * terminal that orders what it is written (`logical`) reports a pointer at the
+ * column of what it was written, not where it shows it — the BiDi
+ * recommendation's "the reported column is the model's column", VTE's
+ * `vis2log` — so a press is already in the frame's order.
+ */
+function framed(stops: Stops): Seen[] {
+  return seenIn(stops.cells, stops.cells.map((_, index) => index));
+}
+
+/**
+ * A row's stops left to right as the terminal shows them with `outside` around
+ * them on their line, which a step walks. One that orders what it is written
+ * orders the whole line (`shownWritten`), so where it shows the row depends on
+ * what is around it: with nothing but whitespace after it, L1 sets the caret's
+ * blank at the end at the line's level, and a neighbour's text after it keeps
+ * the blank in the row's run. Elsewhere it shows the frame's order.
+ */
+function shownIn(stops: Stops, { before, after }: Outside): Seen[] {
+  if (!stops.ordersLine) return framed(stops);
+  const { cells } = stops;
+  const line = [...before, ...cells.map((cell) => new Segment(cell.text, cell.style)), ...after];
+  const order = shownWritten(line).map((index) => index - before.length).filter((index) => index >= 0 && index < cells.length);
+  return seenIn(cells, order);
+}
 
 /**
  * [LAW:one-source-of-truth] The offset into its row of the glyph a cell
@@ -317,11 +357,33 @@ class Laid {
  */
 function offsetAtCell(stops: Stops, col: CellCol): CodePoint {
   let cells = 0;
-  for (const seen of stops.framed) {
+  for (const seen of framed(stops)) {
     cells += seen.cells;
     if (cells > col) return asCodePoint(seen.at);
   }
-  return asCodePoint((stops.shown.find((seen) => seen.cells === 0) ?? stops.shown.at(-1))?.at ?? 0);
+  const shown = shownIn(stops, stops.own);
+  return asCodePoint((shown.find((seen) => seen.cells === 0) ?? shown.at(-1))?.at ?? 0);
+}
+
+/**
+ * What `frame` writes around the content of row `row` of the field `layout`
+ * was drawn in, the content starting `contentCol` cells into the field's row
+ * and `cells` wide; `undefined` when the frame does not show that row.
+ */
+function outsideIn(frame: readonly (readonly Segment[])[], layout: Layout, row: number, contentCol: number, cells: number): Outside | undefined {
+  for (const line of frame) {
+    let start = 0;
+    for (const segment of line) {
+      for (let a = segment.style?.anchor; a !== undefined; a = a.inner) {
+        if (!(a.owner instanceof Laid) || a.owner.layout !== layout || a.row !== row) continue;
+        const from = start - a.col + contentCol;
+        const [before, , after] = Segment.divide(line, [from, from + cells]);
+        return { before: before!, after: after ?? [] };
+      }
+      start += segment.cellLength;
+    }
+  }
+  return undefined;
 }
 
 /** The layout stamped on the cell `anchor` names, at whatever depth. */
@@ -628,6 +690,9 @@ export class TextInput extends ThemedWidget {
   private readonly _drawn = new State<Drawn>({ maxWidth: Infinity, asciiOnly: false, textOrder: "plain" });
   // The last frame painted, which a step reads its row's stops off.
   private readonly _painted = new State<Painted | undefined>(undefined);
+  // The frame on screen, as the router last handed it (`framePainted`): the
+  // line a step reads what is written around its row off.
+  private readonly _frame = new State<readonly (readonly Segment[])[]>([]);
 
   // [LAW:single-enforcer] The multiline scroll: the viewport keeps the cursor
   // row in view, clamps when the value shrinks, and keeps its offset once the
@@ -810,7 +875,7 @@ export class TextInput extends ThemedWidget {
       // [LAW:types-are-the-program] relX is a column of the window the
       // clicked frame holds, past the bracket; a press on a bracket is one on
       // the cell inside it, beside the pointer.
-      const width = layout.screen.framed.reduce((cells, seen) => cells + seen.cells, 0);
+      const width = layout.screen.cells.reduce((sum, cell) => sum + cell.cells, 0);
       const relX = asCellCol(Math.min(Math.max(0, event.x - 1), Math.max(0, width - 1)));
       this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen, relX));
     }
@@ -1131,8 +1196,8 @@ export class TextInput extends ThemedWidget {
    * its end, `endCells` wide (what pads the row; the caret's blank, when it is
    * there, is drawn beside them). Ordered at the row's line's direction, its
    * runs of one style merged so a frame still writes a row as a few runs, and
-   * returned with its stops (`Stops`) once what is drawn
-   * after it on its line is known (`_screenOf`).
+   * returned with its stops (`Stops`) given the field's own cells around it
+   * on its line.
    */
   private _drawnRow(
     row: ScreenRow,
@@ -1140,7 +1205,7 @@ export class TextInput extends ThemedWidget {
     contentStyle: Style,
     caret?: Caret,
     endCells = 0,
-  ): { segments: Segment[]; screen: (after: readonly Segment[]) => Stops } {
+  ): { segments: Segment[]; screen: (own: Outside) => Stops } {
     const { ordered, screen } = this._orderedRow(row, drawn, contentStyle, caret, endCells);
     const segments: Segment[] = [];
     for (const { text, style, probe } of ordered) {
@@ -1166,7 +1231,7 @@ export class TextInput extends ThemedWidget {
     contentStyle: Style,
     caret?: Caret,
     endCells = 0,
-  ): { ordered: Cell[]; screen: (after: readonly Segment[]) => Stops } {
+  ): { ordered: Cell[]; screen: (own: Outside) => Stops } {
     const shownAs = this._shownAs(drawn);
     const caretAt = caret === undefined ? undefined : stopIn(row, caret.at);
     const pieces: { readonly at: number; readonly segments: Segment[] }[] = [];
@@ -1194,7 +1259,7 @@ export class TextInput extends ThemedWidget {
       ({ at, text: segment.text, style, cells: isProbe ? 0 : segment.cellLength, probe: isProbe });
     if (drawn.textOrder === "plain") {
       const ordered = pieces.flatMap((piece) => piece.segments.map((segment) => cell(piece.at, segment, segment.style, segment === probe)));
-      return { ordered, screen: () => this._screenOf(ordered, drawn, []) };
+      return { ordered, screen: (own) => ({ cells: ordered, ordersLine: drawn.textOrder === "logical", own }) };
     }
     const stamped = pieces.flatMap((piece) => Segment.anchorLines([piece.segments], new Slot(piece.at))[0]!);
     const probed = probe === undefined ? undefined : stamped[pieces.flatMap((piece) => piece.segments).indexOf(probe)];
@@ -1202,32 +1267,7 @@ export class TextInput extends ThemedWidget {
       const { at, style } = unslotted(segment);
       return cell(at, segment, style, probed !== undefined && segment.style?.anchor === probed.style?.anchor);
     });
-    return { ordered, screen: (after) => this._screenOf(ordered, drawn, after) };
-  }
-
-  /**
-   * The stops of `row` both ways (`Stops`), read off `ordered`, its cells as
-   * `_orderedRow` stamped and ordered them, with `after` drawn past them on
-   * their line. Where the terminal orders the row itself (`logical`) the
-   * shown order is the row as it is written (`shownWritten`); elsewhere it is
-   * the frame's. The end the frame drew no cell for stands where its probe is
-   * shown, with no cells, so it is still a stop.
-   */
-  private _screenOf(ordered: readonly Cell[], drawn: Drawn, after: readonly Segment[]): Stops {
-    const stops = (order: readonly number[]): Seen[] => {
-      const screen: Seen[] = [];
-      for (const index of order) {
-        const { at, cells } = ordered[index]!;
-        const last = screen.at(-1);
-        if (last?.at === at) screen[screen.length - 1] = { at, cells: last.cells + cells };
-        else screen.push({ at, cells });
-      }
-      return screen;
-    };
-    const framed = stops(ordered.map((_, index) => index));
-    if (drawn.textOrder !== "logical") return { shown: framed, framed };
-    const shown = shownWritten([...ordered.map((cell) => new Segment(cell.text, cell.style)), ...after]).filter((index) => index < ordered.length);
-    return { shown: stops(shown), framed };
+    return { ordered, screen: (own) => ({ cells: ordered, ordersLine: drawn.textOrder === "logical", own }) };
   }
 
   /**
@@ -1241,18 +1281,37 @@ export class TextInput extends ThemedWidget {
     const drawn = this._drawn.get();
     const caretShown = this.focused && !this.disabled;
     const painted = this._painted.get();
+    // What the frame on screen writes around the cursor's row while it shows
+    // this value — the line the terminal orders the row in — and, where it
+    // does not show that row, the field's own cells around it.
+    const outside = (stops: Stops): Outside => {
+      if (painted === undefined || painted.value !== this.value) return stops.own;
+      const { layout } = painted;
+      const cells = stops.cells.reduce((sum, cell) => sum + cell.cells, 0);
+      if (layout.kind === "line") return outsideIn(this._frame.get(), layout, 0, cellLen(OPEN), cells) ?? stops.own;
+      const at = cursorRowIn(layout.rows, this.cursorPosition);
+      const contentCol = layout.rows[at]?.isContinuation === true ? this._markerWidth : 0;
+      return outsideIn(this._frame.get(), layout, at - layout.offset, contentCol, cells) ?? stops.own;
+    };
     if (painted !== undefined && painted.value === this.value && painted.cursor === this.cursorPosition && painted.caretShown === caretShown) {
       const { layout } = painted;
       const stops = layout.kind === "line" ? layout.screen : layout.screens.get(cursorRowIn(layout.rows, this.cursorPosition));
-      if (stops !== undefined) return { row: this._screenRow(drawn), screen: stops.shown };
+      if (stops !== undefined) return { row: this._screenRow(drawn), screen: shownIn(stops, outside(stops)) };
     }
     const caret: Caret | undefined = caretShown ? { at: this.cursorPosition, draw: (glyph) => [new Segment(glyph, this.ground)] } : undefined;
     if (!this._multiline) {
       const { window, endCells } = this._singleLineWindow(drawn);
-      return { row: window, screen: this._orderedRow(window, drawn, this.ground, caret, endCells).screen([new Segment(CLOSE)]).shown };
+      const stops = this._orderedRow(window, drawn, this.ground, caret, endCells).screen({ before: [new Segment(OPEN)], after: [new Segment(CLOSE)] });
+      return { row: window, screen: shownIn(stops, outside(stops)) };
     }
     const row = this._screenRow(drawn);
-    return { row, screen: this._orderedRow(row, drawn, this.ground, caret).screen([]).shown };
+    const stops = this._orderedRow(row, drawn, this.ground, caret).screen({ before: [], after: [] });
+    return { row, screen: shownIn(stops, outside(stops)) };
+  }
+
+  /** Hear the frame on screen (`InteractiveWidget.framePainted`): a step reads its row's line off it. */
+  framePainted(frame: readonly (readonly Segment[])[]): void {
+    this._frame.set(frame);
   }
 
   // The stretch of the value a one-line frame's window showed, `width` cells from
@@ -1479,8 +1538,9 @@ export class TextInput extends ThemedWidget {
     const { segments: drawnRow, screen } = this._showsPlaceholder()
       ? this._placeholderRow(this.placeholder, drawn, contentStyle, caret, contentWidth)
       : this._drawnRow(window, drawn, contentStyle, caret, endCells);
-    const segments = [new Segment(OPEN, bracketStyle), ...drawnRow, close];
-    return { lines: [segments], layout: { drawn, kind: "line", start: window.start, screen: screen([close]) } };
+    const open = new Segment(OPEN, bracketStyle);
+    const segments = [open, ...drawnRow, close];
+    return { lines: [segments], layout: { drawn, kind: "line", start: window.start, screen: screen({ before: [open], after: [close] }) } };
   }
 
   // The placeholder over an empty value: shown as written at its own
@@ -1492,7 +1552,7 @@ export class TextInput extends ThemedWidget {
     contentStyle: Style,
     caret: Caret | undefined,
     width: number,
-  ): { segments: Segment[]; screen: () => Stops } {
+  ): { segments: Segment[]; screen: (own: Outside) => Stops } {
     const [visible] = splitText(text, asCellCol(width));
     const display = setCellSize(visible, asCellCol(width));
     const first = display.slice(0, nextGrapheme(display, asCodePoint(0)));
@@ -1500,8 +1560,8 @@ export class TextInput extends ThemedWidget {
       ? [new Segment(display, contentStyle)]
       : [...caret.draw(first || " "), ...(display.length > first.length ? [new Segment(display.slice(first.length), contentStyle)] : [])];
     const segments = this._oriented(content, drawn.textOrder, paragraphLevelOf(display, undefined));
-    const stops = [{ at: 0, cells: Segment.getLineLength(segments) }];
-    return { segments, screen: () => ({ shown: stops, framed: stops }) };
+    const cells = [{ at: 0, text: display, style: contentStyle, cells: Segment.getLineLength(segments), probe: false }];
+    return { segments, screen: (own) => ({ cells, ordersLine: false, own }) };
   }
 
   // A row's content in the order the frame shows it, as a button's label is
@@ -1552,9 +1612,10 @@ export class TextInput extends ThemedWidget {
       }
       const shown = this._screenRowAt(visualRows, rowIdx, drawn, levelOf);
       const onRow = rowIdx === cursorRow ? caret : undefined;
+      const before = [...line];
       const { segments, screen } = this._drawnRow(shown, drawn, contentStyle, onRow);
       line.push(...segments);
-      return { line, screen };
+      return { line, screen: (after) => screen({ before, after }) };
     };
     // The window is drawn at the width offered, or wider where the cursor's
     // row draws past it: a caret past the end of a full row.

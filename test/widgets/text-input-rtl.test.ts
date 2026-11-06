@@ -15,6 +15,8 @@ import { shownWritten } from "../../src/core/seal.js";
 import { cellOf } from "../../src/widgets/hit.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Columns } from "../../src/renderables/columns.js";
+import { RichText } from "../../src/core/text.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
 import { parserFor } from "./feed.js";
@@ -332,19 +334,27 @@ function reported(frame: readonly (readonly Segment[])[], order: TextOrder, x: n
 function screenOf(input: TextInput, order: TextOrder) {
   let frame: Segment[][] = [];
   const focusManager = new DefaultFocusManager({ mounted: () => [input], onScreen: () => [input], frameTime: () => 0 });
-  const router = parserFor(new EventRouter({
+  const routes = new EventRouter({
     source: { focusManager, get frame() { return frame; }, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
     focusOnClick: false,
-  }));
+  });
+  const router = parserFor(routes);
+  // A key goes to the widget the manager holds focus on, as in an app.
+  if (input.focused) focusManager.focus(input);
   return {
-    paint(drawn: RenderOptions, view: TextInput | Panel = input): { frame: Segment[][]; bytes: string } {
+    paint(drawn: RenderOptions, view: TextInput | Panel | Columns = input): { frame: Segment[][]; bytes: string } {
       const segments = [...render(view, drawn)];
       frame = Segment.splitLines(segments);
+      // As an app does once it has painted.
+      routes.framePainted();
       return { frame, bytes: segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: order }) };
     },
     press(x: number, y: number): void {
       const at = reported(frame, order, x, y);
       router.feed(`\x1b[<0;${at + 1};${y + 1}M\x1b[<0;${at + 1};${y + 1}m`);
+    },
+    step(way: "left" | "right"): void {
+      router.feed(way === "left" ? "\x1b[D" : "\x1b[C");
     },
   };
 }
@@ -579,6 +589,44 @@ describe("under logical, a press reads the column the terminal reports", () => {
       screen.press(screenColumn(rows(bytes)[y]!, unit), y);
       expect(input.cursorPosition, `at ${stop}`).toBe(stop);
     }
+  });
+});
+
+describe("under logical, a step walks the stops the terminal shows on the whole composed line", () => {
+  // The terminal orders the whole line, the neighbour's text with the field's
+  // row, so a step must walk the stops where that line shows them. Every stop
+  // has a cell in the frame painted with the caret at the end — each glyph its
+  // own, the end the caret's blank — so that frame says where each one is
+  // shown; a step from one goes to the stop shown beside it on its side.
+  it.each([
+    ["a right-to-left field beside right-to-left text", "אב", (input: TextInput) => new Columns([input, new RichText("שם")])],
+    ["a field opening on a neutral right of a right-to-left label", "- אב", (input: TextInput) => new Columns([new RichText("שם"), input])],
+    ["digits and a space right of a right-to-left label", "1 2", (input: TextInput) => new Columns([new RichText("שם"), input])],
+    ["alone", "אב", (input: TextInput) => new Columns([input])],
+  ])("%s", (_, value, compose) => {
+    const input = new TextInput({ value, multiline: true });
+    input.cursorStyleOverride = Style.parse("bold reverse");
+    input.focus(0);
+    const view = compose(input);
+    const drawn: RenderOptions = { maxWidth: 30, textOrder: "logical" };
+    const screen = screenOf(input, "logical");
+    input.cursorPosition = asCodeUnit(value.length);
+    const { bytes } = screen.paint(drawn, view);
+    const { y, unit: end } = caretUnit(bytes);
+    const row = rows(bytes)[y]!;
+    // The field's glyphs, as written, are the units from where its text starts up to the caret's blank.
+    const start = end - value.length;
+    const columnOf = new Map(stops(value).map((stop) => [stop, screenColumn(row, stop === value.length ? end : start + stop)]));
+    const leftToRight = [...columnOf].sort(([, a], [, b]) => a - b).map(([stop]) => stop);
+    leftToRight.forEach((stop, index) => {
+      for (const [way, beside] of [["left", leftToRight[index - 1]], ["right", leftToRight[index + 1]]] as const) {
+        if (beside === undefined) continue;
+        input.cursorPosition = asCodeUnit(stop);
+        screen.paint(drawn, view);
+        screen.step(way);
+        expect(input.cursorPosition, `${way} from ${stop}`).toBe(beside);
+      }
+    });
   });
 });
 

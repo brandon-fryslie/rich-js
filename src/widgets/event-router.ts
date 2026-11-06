@@ -92,11 +92,13 @@ export class EventRouter {
    * moved, a widget may have gone, moved, or arrived.
    *
    * [LAW:one-source-of-truth] Hover is the widget under the pointer on the
-   * frame on screen, so it is re-read whenever either one changes.
+   * frame on screen, so it is re-read whenever either one changes. The
+   * focused widget hears the frame too: what its keys act on is what it shows.
    */
   framePainted(): void {
     const hit = this.pointer && widgetAt(this.source.frame, this.pointer.x, this.pointer.y);
     this.hover(hit ? hit.widget : null);
+    this.source.focusManager.current?.framePainted?.(this.source.frame);
   }
 
   // --- External hooks ---

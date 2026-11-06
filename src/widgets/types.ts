@@ -108,6 +108,8 @@ export interface InteractiveWidget extends Renderable, Measurable {
   handleMouse(event: WidgetMouseEvent): void;
   /** A paste while focused: the text, each line break `\n`, at the frame's `time`. A widget without one ignores pastes. */
   handlePaste?(text: string, time: number): void;
+  /** The frame just painted, while focused: the rows on screen, which its keys act on. A widget without one ignores it. */
+  framePainted?(frame: readonly (readonly Segment[])[]): void;
   handleFocus(event: WidgetFocusEvent): void;
 
   // Programmatic control. `time` is the focus event's (`WidgetFocusEvent`).
