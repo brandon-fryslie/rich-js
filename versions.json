@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-572",
-      "ref": "refs/pull/572/merge",
-      "sha": "7ac58ed309c5549fbdf610788bbe3081b3c3d2d2",
-      "timestamp": "2026-11-06T07:33:36.359Z",
-      "commits": [
-        {
-          "sha": "7ac58ed309c5549fbdf610788bbe3081b3c3d2d2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:31:13Z",
-          "message": "Merge 5c9c5f233913469c5f2fe42a7747645c8f954771 into 14220a72e7e7a74b2276294c29774383f30cafd4\n"
-        },
-        {
-          "sha": "5c9c5f233913469c5f2fe42a7747645c8f954771",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:30:53-07:00",
-          "message": "Prepend comments state the table's bounds; test titles name code points (rich-control-codes-xh4n.7cz review)\n"
-        },
-        {
-          "sha": "9055f2581e07adf22bf7fa650d94d2f4bff2b516",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:23:14-07:00",
-          "message": "Prepend lookup takes a code point; the table's test pins both cross-version Prepends and skips unassigned code points (rich-control-codes-xh4n.7cz review)\n"
-        },
-        {
-          "sha": "39ac77cd818ac82a13014020f65f5487cfae2679",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:19:25-07:00",
-          "message": "The Prepend table is the union from the Node floor's Unicode through the pinned one, so the cut is the same on every Node; the data module answers the lookup (rich-control-codes-xh4n.7cz review)\n"
-        },
-        {
-          "sha": "f58f028ed521b52b3abf4cf74f58e123f8bb35c7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:06:06-07:00",
-          "message": "isPrepend reads a vendored Prepend table at the pinned Unicode version, not the engine's segmenter (rich-control-codes-xh4n.7cz)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "14220a72e7e7a74b2276294c29774383f30cafd4",
-      "timestamp": "2026-11-06T07:05:45.580Z",
+      "sha": "b9e25db7fb558c55741ee1805a4255b4788a1264",
+      "timestamp": "2026-11-06T07:48:34.729Z",
       "commits": [
         {
-          "sha": "14220a72e7e7a74b2276294c29774383f30cafd4",
+          "sha": "b9e25db7fb558c55741ee1805a4255b4788a1264",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:03:16-07:00",
-          "message": "A Prepend character is its own cluster, and sealed writes a word joiner after it so a clustering terminal agrees (rich-control-codes-xh4n.qmw) (#571)\n\n* A Prepend character is its own cluster, and sealed writes a word joiner after it so a clustering terminal agrees (rich-control-codes-xh4n.qmw)\n\n* Review: a Prepend ends its cluster only before a base, the end slot keeps its own clusters, and a write ending on a Prepend ends it (rich-control-codes-xh4n.qmw)\n\n* Review: a Prepend ends before anything taking a cell and before a control, and isPrepend is private (rich-control-codes-xh4n.qmw)\n\n* Review: the word joiner reaches a terminal only, a mark after any Prepend is kept, and a control waits with the Prepend for the text after it (rich-control-codes-xh4n.qmw)"
+          "timestamp": "2026-11-06T00:46:22-07:00",
+          "message": "isPrepend reads a vendored Prepend table at the pinned Unicode version, not the engine's segmenter (rich-control-codes-xh4n.7cz) (#572)\n\n* isPrepend reads a vendored Prepend table at the pinned Unicode version, not the engine's segmenter (rich-control-codes-xh4n.7cz)\n\n* The Prepend table is the union from the Node floor's Unicode through the pinned one, so the cut is the same on every Node; the data module answers the lookup (rich-control-codes-xh4n.7cz review)\n\n* Prepend lookup takes a code point; the table's test pins both cross-version Prepends and skips unassigned code points (rich-control-codes-xh4n.7cz review)\n\n* Prepend comments state the table's bounds; test titles name code points (rich-control-codes-xh4n.7cz review)"
         }
       ]
     }
