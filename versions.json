@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-587",
+      "ref": "refs/pull/587/merge",
+      "sha": "2635c8f1cdf57eda2283b7031381b1a9c6581684",
+      "timestamp": "2026-11-06T22:00:45.386Z",
+      "commits": [
+        {
+          "sha": "2635c8f1cdf57eda2283b7031381b1a9c6581684",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T14:58:15-07:00",
+          "message": "Merge d91594b45773a2cae17bc8201c0f76ca8b253b86 into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
+        },
+        {
+          "sha": "d91594b45773a2cae17bc8201c0f76ca8b253b86",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T14:58:04-07:00",
+          "message": "The docs gate asks the decoder which escapes it drew as no terminal would (rich-control-codes-xh4n.lyr)\n\nThe gate kept a regex copy of decodeAnsi's rules, which missed C1 forms\n(a C1 restore off its line, a C1 vertical move) and ended a save's line at\na U+2028 inside a link URI. The decoder now reports the first escape it\nperforms other than a terminal does (scanUndrawn), from its own line\nbreaks and the branches that decide each escape, carrying its line state\nacross writes. The gate's mirror and the exports only it read are gone.\n\nA save does not hold the open OSC 8 link: DECSC saves position, SGR and\nthe character sets (DEC STD 070, Ghostty's DECSC reference).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5",
