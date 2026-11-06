@@ -137,13 +137,11 @@ const CSI = either("[");
 // tell the two apart, so repairing it is the caller's.
 const STRING_SO_FAR = String.raw`${either("]P_^X")}[^${STRING_STOPS}\n]*`;
 const STRING_ESCAPE = String.raw`${STRING_SO_FAR}(?:\x07|\x1b\\|\x9c)?`;
-const C0: readonly string[] = Array.from({ length: 0x20 }, (_, code) => String.fromCharCode(code));
-const isIn = (characterClass: string) => (character: string): boolean => new RegExp(characterClass, "u").test(character);
 // [LAW:one-source-of-truth] The C0 controls a VT500 parser runs inside a CSI or
-// an escape and goes on with it: all but those that abort it (`ABORTS`) and
-// ESC, which starts another; and of them, those the census ends a line at.
-const RUN_IN_SEQUENCE = hex(C0.filter((control) => !isIn(`[${ABORTS}\\x1b]`)(control)).map((control) => control.charCodeAt(0)));
-const BREAKS_IN_SEQUENCE = hex(C0.filter(isIn(`\\n|${controlClass((disposition) => disposition === "line-break")}`)).map((control) => control.charCodeAt(0)));
+// an escape and goes on with it: all but those that abort it (`ABORTS`), ESC,
+// which starts another, and the line breaks, which end the decoder's line first.
+const NOT_RUN_IN_SEQUENCE = pattern(new RegExp(`[${ABORTS}\\x1b\\n]|${controlClass((disposition) => disposition === "line-break")}`, "u"));
+const RUN_IN_SEQUENCE = hex(Array.from({ length: 0x20 }, (_, code) => code).filter((code) => !NOT_RUN_IN_SEQUENCE.test(String.fromCharCode(code))));
 /** What a terminal runs (`RUN_IN_SEQUENCE`) or ignores (DEL) inside a CSI or an escape. */
 const IN_SEQUENCE = String.raw`${RUN_IN_SEQUENCE}\x7f`;
 /**
@@ -271,17 +269,10 @@ const CNL = "(?<rows>[0-9]*)(?:;[0-9;]*)?E";
  * Everything `decode` ends a line at, `\n`, C1 forms and the census's
  * line-break controls (`census`) included.
  */
-const CENSUS_BREAKS = controlClass((disposition) => disposition === "line-break");
-const LINE_ENDS = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|(?<census>${CENSUS_BREAKS})`;
-/** A line break the census ends a line at: of the C0 controls, those a terminal performs other than as CR LF. */
-const CENSUS_BREAK = pattern(new RegExp(CENSUS_BREAKS, "u"));
+const LINE_ENDS = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|(?<census>${controlClass((disposition) => disposition === "line-break")})`;
 
-// A string escape goes first so a line break its payload holds stays in it. A
-// CSI or an escape cut by a C0 line break (`held`) is the next line's: a
-// terminal runs the break and goes on with the sequence.
-const lineBreaks = (): RegExp =>
-  new RegExp(`(${STRING_ESCAPE})|(?<held>${HELD_SO_FAR})(?<cut>[${BREAKS_IN_SEQUENCE}])|${LINE_ENDS}`, "gu");
-const BREAK_IN_SEQUENCE = pattern(new RegExp(`[${BREAKS_IN_SEQUENCE}]`, "u"));
+// A string escape goes first so a line break its payload holds stays in it.
+const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "gu");
 
 /**
  * An escape begun at the end of the bytes and not yet complete, cut from the
@@ -725,32 +716,15 @@ function streamOf(width: number): Stream {
  */
 function linesOf(ansi: string): { readonly ended: readonly EndedLine[]; readonly last: string } {
   const ended: EndedLine[] = [];
-  // What the next line starts with: a sequence a line break cut, which goes on there.
-  let carried = "";
   let start = 0;
   for (const found of ansi.matchAll(lineBreaks())) {
     if (found[1] !== undefined) continue;
-    const { census, rows, held, cut } = found.groups!;
-    let line = carried + ansi.slice(start, found.index);
+    const { census, rows } = found.groups!;
+    const relocates = (census !== undefined && census !== "\x85") || Number(rows) > 1;
+    ended.push({ line: ansi.slice(start, found.index), end: found[0], relocates });
     start = found.index + found[0].length;
-    if (held === undefined) {
-      carried = "";
-      const relocates = (census !== undefined && census !== "\x85") || Number(rows) > 1;
-      ended.push({ line, end: found[0], relocates });
-      continue;
-    }
-    // Each break the sequence holds ends a line of its own, and the rest of it goes on.
-    carried = "";
-    for (const byte of held + cut!) {
-      if (!BREAK_IN_SEQUENCE.test(byte)) {
-        carried += byte;
-        continue;
-      }
-      ended.push({ line, end: byte, relocates: CENSUS_BREAK.test(byte) });
-      line = "";
-    }
   }
-  return { ended, last: carried + ansi.slice(start) };
+  return { ended, last: ansi.slice(start) };
 }
 
 /** A line and the break that ends it. */

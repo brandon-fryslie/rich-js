@@ -197,14 +197,6 @@ describe("decodeAnsi links", () => {
     expect(decodeAnsi("\x1b]0;t\x01i\x07x").plain).toBe("x");
     expect(new AnsiDecoder().decodeLine("\x1b[31\x07mx").plain).toBe("x");
     expect(new AnsiDecoder().decodeLine("ab\x1b[3\r\x18c").plain).toBe("cb");
-  });
-
-  it("ends a line at a break inside a CSI or an escape and goes on with the sequence on the next", () => {
-    const red = decodeAnsi("\x1b[31\nmx");
-    expect(red.plain).toBe("\nx");
-    expect(styleAt(red, 1).color?.number).toBe(1);
-    expect(decodeAnsi("a\x1b\x0c[31mb").plain).toBe("a\nb");
-    expect(decodeAnsi("\x1b[3\n1\n2mx").plain).toBe("\n\nx");
     expect(decodeAnsi("a\x1b[3\x7fb").plain).toBe("aaaa");
   });
 
