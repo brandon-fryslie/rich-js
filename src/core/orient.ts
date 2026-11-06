@@ -147,8 +147,9 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   // Clusters are found in the whole row, because a span edge inside one is no
   // place to cut it: reversed apart, a mark lands on another letter.
   const styles = shown.flatMap((segment) => new Array<Style | undefined>(segment.text.length).fill(segment.style));
-  const glyphs = graphemes(text);
-  const levelOf = clusterLevels(glyphs, finished, paragraphLevel, (unit) => styles[unit]?.textEnd === true);
+  const noCharacter = (unit: number): boolean => styles[unit]?.textEnd === true;
+  const glyphs = endSlotsApart(graphemes(text), noCharacter);
+  const levelOf = clusterLevels(glyphs, finished, paragraphLevel, noCharacter);
   const clusters: Cluster[] = [];
   const turned = new Map<Style, Style>();
   let unit = 0;
@@ -172,6 +173,28 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
     run += cluster.level & 1 ? mirroredCluster(forms[index]!) : forms[index]!;
   }
   flush();
+  return out;
+}
+
+/**
+ * `clusters` cut before each unit `noCharacter` names: the end slot past the text
+ * (`Style.textEnd`) is a blank no character holds, so a Prepend character typed
+ * last (U+0600–U+0605), which a segmenter joins to whatever follows, never takes
+ * it, and the caret it carries keeps a cell of its own.
+ */
+function endSlotsApart(clusters: readonly string[], noCharacter: (unit: number) => boolean): string[] {
+  const out: string[] = [];
+  let unit = 0;
+  for (const cluster of clusters) {
+    let start = 0;
+    for (let at = 1; at < cluster.length; at += 1) {
+      if (!noCharacter(unit + at)) continue;
+      out.push(cluster.slice(start, at));
+      start = at;
+    }
+    out.push(cluster.slice(start));
+    unit += cluster.length;
+  }
   return out;
 }
 
