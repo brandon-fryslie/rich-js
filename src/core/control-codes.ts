@@ -69,7 +69,7 @@ export const CONTROL_CODES: readonly ControlCodeRow[] = [
   // CR. A CRLF's LF ends its line however the two were chunked, and a CR's
   // overwrite is `decodeAnsi`'s. What is given up is a classic Mac file's lines.
   strip(0x0d, 0x0d),
-  // SO and SI switch the terminal's character set; DLE to SUB are transmission
+  // SO and SI switch the terminal's character set, which `decodeAnsi` performs; DLE to SUB are transmission
   // controls, and CAN and SUB abort a sequence; ESC begins one, and content that
   // means styling says so with `decodeAnsi`; FS to US are data separators.
   pictured(0x0e, 0x1f, controlPicture),

@@ -30,25 +30,28 @@ export interface Drawn {
 /**
  * Every complete escape sequence, cut as `decodeAnsi` (src/core/ansi.ts) cuts
  * them: a CSI; a string escape (OSC, DCS, APC, PM, SOS) run to its
- * terminator; any other escape, ECMA-48's intermediates and one final byte.
+ * terminator; any other escape, ECMA-48's intermediates and one final byte,
+ * which after an intermediate may be a string escape's introducer.
  */
-const ESCAPE = /\x1b(?:\[[0-?]*[ -/]*[@-~]|[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c)|[ -/]*[0-OQ-WYZ\\`-~])/g;
+const ESCAPE = /\x1b(?:\[[0-?]*[ -/]*[@-~]|[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c)|[ -/]+[0-~]|[0-OQ-WYZ\\`-~])/g;
 
 const LINE = [...LINE_FINALS].map((final) => `\\x${final.charCodeAt(0).toString(16)}`).join("");
 
 /**
  * The escapes `decodeAnsi` draws: SGR, erase in line, a move along the line or
- * an edit of it (`LINE_FINALS`), a G0 or G1 designation, and an OSC 8 link. It
- * drops every other.
+ * an edit of it (`LINE_FINALS`), a G0 or G1 designation, a soft reset
+ * (DECSTR), and an OSC 8 link. It drops every other, RIS among them: the decoder
+ * resets its state there too, but a terminal also clears its screen.
  */
-const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|\\x1b[()][0-~]|${OSC8.source})$`);
+const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|\\x1b[()][0-~]|\\x1b\\[!p|${OSC8.source})$`);
 
 /**
  * The start of an escape `DRAWN` may yet match once the rest of it is written:
- * a CSI so far all parameters, or an OSC 8 link short of its terminator. The
- * link's parts exclude `OSC8`'s terminators (src/core/osc8.ts).
+ * a CSI so far all parameters or DECSTR's `!`, a designation short of its set,
+ * or an OSC 8 link short of its terminator. The link's parts exclude `OSC8`'s
+ * terminators (src/core/osc8.ts).
  */
-const DRAWN_START = /^\x1b(?:\[[0-9;:]*|\]8?|\]8;[^;\x1b\x07\x9c]*(?:;[^\x1b\x07\x9c]*\x1b?)?)?$/;
+const DRAWN_START = /^\x1b(?:\[[0-9;:]*|\[!|[()]|\]8?|\]8;[^;\x1b\x07\x9c]*(?:;[^\x1b\x07\x9c]*\x1b?)?)?$/;
 
 /**
  * The most an escape may hold before it is complete. VTE takes a link's URI up

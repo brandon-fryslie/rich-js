@@ -47,13 +47,13 @@ The character set a program designates is drawn too. `\x1b(0` puts DEC Special
 Graphics in G0, the line drawing tmux, ncurses and `dialog` write, until
 `\x1b(B` puts ASCII back; `\x1b)0` puts it in G1, which SO shifts in and SI
 shifts out. The decoder keeps the designation across lines and calls, as it
-keeps a style:
+keeps a style, until a reset (RIS `\x1bc` or DECSTR `\x1b[!p`) clears both:
 
 ```typescript
 import { Console, decodeAnsi } from "@promptctl/rich-js";
 
 const output = new Console({ width: 30 });
-output.print(decodeAnsi("\x1b(0lqqqqk\nx\x1b(Bok \x1b(0x\nmqqqqj\x1b(B"));
+output.print(decodeAnsi("\x1b(0lqqqqk\nx\x1b(Bok  \x1b(0x\nmqqqqj\x1b(B"));
 ```
 
 A link URL holds no control, line separator or bidi control: RFC 3986 admits no

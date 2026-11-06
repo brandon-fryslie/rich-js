@@ -71,7 +71,8 @@ type Token =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
-  | { readonly kind: "designate"; readonly set: 0 | 1; readonly charset: string }
+  | { readonly kind: "designate"; readonly set: 0 | 1; readonly charset: Charset }
+  | { readonly kind: "reset" }
   | { readonly kind: "shift"; readonly set: 0 | 1 }
   | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
   | { readonly kind: "move"; readonly motion: Motion; readonly count: number }
@@ -170,17 +171,18 @@ export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(E
  * carriage return; a move along the line (`motion`) or an edit of it (`edit`),
  * reading the first parameter (`count`) as a terminal does; an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
- * (`mode`); any other CSI sequence; any other string escape — OSC, DCS, APC, PM,
- * SOS — run to a terminator or cut off where `STRING_ESCAPE` says; a G0 or G1
- * designation (`designate`, its `charset`); any other escape, ECMA-48's intermediates and one final byte (`\x1b(B`,
- * `\x1b)0`, `\x1b#8`, `\x1bc`); a character struck over itself (`struck`), over an
+ * (`mode`); a soft reset, DECSTR (`reset`); any other CSI sequence; any other
+ * string escape — OSC, DCS, APC, PM, SOS — run to a terminator or cut off where
+ * `STRING_ESCAPE` says; a G0 or G1 designation (`designate`, its `charset`, such
+ * as `\x1b(B` or `\x1b)0`); a full reset, RIS (`reset`); any other escape,
+ * ECMA-48's intermediates and one final byte (`\x1b#8`, `\x1b(%5`); a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
  * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line may not hold or a
  * terminal draws nothing for. The silent ones are the two "any other" escapes and
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -194,13 +196,14 @@ const lineBreaks = (): RegExp =>
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { count, motion, edit, sgr, mode, designate, charset, shift, underscore, struck, underlined } = match.groups!;
+    const { count, motion, edit, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
-    if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charset! };
+    if (reset !== undefined) yield { kind: "reset" };
+    if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charsetOf(charset!) };
     if (shift !== undefined) yield { kind: "shift", set: shift === "\x0e" ? 1 : 0 };
     if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
     if (struck !== undefined) yield { kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED };
@@ -450,7 +453,8 @@ function insertCells(cells: Cell[], column: number, count: number, margin: numbe
  * `£`. A final this does not name is ASCII, as `B` is, since every other set
  * is a national one no capture this decodes has been seen to use.
  */
-const CHARSETS: Readonly<Record<string, ReadonlyMap<string, string>>> = {
+const CHARSETS: { readonly [set in "B" | "0" | "A"]: ReadonlyMap<string, string> } = {
+  B: new Map(),
   "0": new Map(
     [..."_`abcdefghijklmnopqrstuvwxyz{|}~"].map((ascii, at) => [
       ascii,
@@ -460,10 +464,14 @@ const CHARSETS: Readonly<Record<string, ReadonlyMap<string, string>>> = {
   A: new Map([["#", "£"]]),
 };
 
+type Charset = keyof typeof CHARSETS;
+
+const charsetOf = (final: string): Charset => (Object.hasOwn(CHARSETS, final) ? (final as Charset) : "B");
+
 /** `text` as the character set `charset` draws it. */
-function drawnIn(charset: string, text: string): string {
+function drawnIn(charset: Charset, text: string): string {
   const glyphs = CHARSETS[charset];
-  return glyphs === undefined ? text : text.replace(/[\x21-\x7e]/g, (ascii) => glyphs.get(ascii) ?? ascii);
+  return glyphs.size === 0 ? text : text.replace(/[\x21-\x7e]/g, (ascii) => glyphs.get(ascii) ?? ascii);
 }
 
 /**
@@ -494,7 +502,7 @@ export class AnsiDecoder {
   private link: string | undefined = undefined;
   private readonly width: number;
   /** G0 and G1, each a designation's final byte, and which of them SO and SI have shifted in. */
-  private readonly sets: [string, string] = ["B", "B"];
+  private readonly sets: [Charset, Charset] = ["B", "B"];
   private shifted: 0 | 1 = 0;
 
   constructor(options: AnsiDecoderOptions = {}) {
@@ -525,10 +533,19 @@ export class AnsiDecoder {
           break;
         }
         case "overstrike": {
-          const character = drawnIn(this.sets[this.shifted], token.character);
-          column += draw(cells, column, character, this.sgr.add(token.emphasis).withLink(this.link));
+          // Overstrike is nroff's, and nroff writes ASCII; struck in another set,
+          // the later glyph only overwrites the earlier, as on a terminal.
+          const set = this.sets[this.shifted];
+          const emphasis = set === "B" ? token.emphasis : NULL_STYLE;
+          column += draw(cells, column, drawnIn(set, token.character), this.sgr.add(emphasis).withLink(this.link));
           break;
         }
+        case "reset":
+          this.sgr = NULL_STYLE;
+          this.link = undefined;
+          this.sets.fill("B");
+          this.shifted = 0;
+          break;
         case "designate":
           this.sets[token.set] = token.charset;
           break;

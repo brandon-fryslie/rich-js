@@ -205,8 +205,18 @@ describe("decodeAnsi lines and other escapes", () => {
     // The United Kingdom set draws # as £; any other set is ASCII.
     expect(decodeAnsi("\x1b(A#\x1b(B#").plain).toBe("£#");
     expect(decodeAnsi("\x1b(Kq").plain).toBe("q");
-    // An overstruck character is drawn in the set too.
-    expect(decodeAnsi("\x1b(0q\bq").plain).toBe("─");
+    // An overstruck character is drawn in the set too, overwritten rather than
+    // emphasized: overstrike is nroff's, and nroff writes ASCII.
+    const struck = decodeAnsi("\x1b(0x\bx_\bx");
+    expect(struck.plain).toBe("││");
+    expect(struck.spans).toEqual([]);
+  });
+
+  it("puts ASCII back in G0 and G1 at a full or soft reset, with the style", () => {
+    expect(decodeAnsi("\x1b(0q\x1bcq").plain).toBe("─q");
+    expect(decodeAnsi("\x1b)0\x0eq\x1b[!pq").plain).toBe("─q");
+    const reset = decodeAnsi("\x1b[1ma\x1b[!pb");
+    expect(reset.spans.map((span) => [span.start, span.end])).toEqual([[0, 1]]);
   });
 
   it("shifts G1 in at SO and G0 back at SI", () => {
