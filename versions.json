@@ -2,32 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
-      "timestamp": "2026-11-06T14:06:19.596Z",
-      "commits": [
-        {
-          "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:03:27-07:00",
-          "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u (rich-control-codes-xh4n.d9w) (#582)\n\n* decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n\n* A restore is drawn statically only back to a save on its line; save and restore are two named groups; e2e and text docs follow (rich-control-codes-xh4n.d9w review)\n\n* The docs gate reads what ends a line from the decoder (LINE_ENDS), C1 NEL and CNL included; save and restore handled once in the scan; DECLRMM noted (rich-control-codes-xh4n.d9w review)"
-        }
-      ]
-    },
-    {
       "version": "pr-581",
       "ref": "refs/pull/581/merge",
-      "sha": "48adb0fea314b4f72aa2b98ca0c996e32e134147",
-      "timestamp": "2026-11-06T13:54:05.502Z",
+      "sha": "ae758144b2a0c413bb8aee839b9989a5ae1e794f",
+      "timestamp": "2026-11-06T14:10:47.550Z",
       "commits": [
         {
-          "sha": "48adb0fea314b4f72aa2b98ca0c996e32e134147",
+          "sha": "ae758144b2a0c413bb8aee839b9989a5ae1e794f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T13:51:29Z",
-          "message": "Merge 819a3118fa5cf45c4d6b0189c84b439718f47c21 into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
+          "timestamp": "2026-11-06T14:08:11Z",
+          "message": "Merge b02c5026851a319fc4df153f233d42379cf3c704 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
+        },
+        {
+          "sha": "b02c5026851a319fc4df153f233d42379cf3c704",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T07:07:57-07:00",
+          "message": "Every component's text is chosen and held on its own ground, disabled text tints on the ground it is on, and a removed role points at textOn wherever it is read (rich-palette-xovz.5rt)\n"
         },
         {
           "sha": "819a3118fa5cf45c4d6b0189c84b439718f47c21",
@@ -49,6 +41,21 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T06:23:06-07:00",
           "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
+        }
+      ]
+    },
+    {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
+      "timestamp": "2026-11-06T14:06:19.596Z",
+      "commits": [
+        {
+          "sha": "700e048980d8aec60545d6aef96c8a57ccac4496",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T07:03:27-07:00",
+          "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u (rich-control-codes-xh4n.d9w) (#582)\n\n* decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n\n* A restore is drawn statically only back to a save on its line; save and restore are two named groups; e2e and text docs follow (rich-control-codes-xh4n.d9w review)\n\n* The docs gate reads what ends a line from the decoder (LINE_ENDS), C1 NEL and CNL included; save and restore handled once in the scan; DECLRMM noted (rich-control-codes-xh4n.d9w review)"
         }
       ]
     }
