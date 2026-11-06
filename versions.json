@@ -4,15 +4,22 @@
     {
       "version": "pr-570",
       "ref": "refs/pull/570/merge",
-      "sha": "bc108ffa0a50f9cfdf16d27bef776ce41a77f844",
-      "timestamp": "2026-11-06T05:16:29.246Z",
+      "sha": "6ad0d16656f83ef981aaa3e023fb986214dc026c",
+      "timestamp": "2026-11-06T05:39:31.077Z",
       "commits": [
         {
-          "sha": "bc108ffa0a50f9cfdf16d27bef776ce41a77f844",
+          "sha": "6ad0d16656f83ef981aaa3e023fb986214dc026c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:14:49Z",
-          "message": "Merge f6d861903e2ced8387612e4a7844eb8e5e344b24 into f197d9cf43c2ffb1cb1189b7cbc42038e2250062\n"
+          "timestamp": "2026-11-06T05:37:10Z",
+          "message": "Merge 0024ddbee0d8a03a6b9c17bfa298548982382ba7 into f197d9cf43c2ffb1cb1189b7cbc42038e2250062\n"
+        },
+        {
+          "sha": "0024ddbee0d8a03a6b9c17bfa298548982382ba7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T22:36:59-07:00",
+          "message": "One Frame type for what an event carries, a press orders the line only when it lands past the row, and docs/widgets.md names an event's frame (rich-control-codes-xh4n.bx4)\n"
         },
         {
           "sha": "f6d861903e2ced8387612e4a7844eb8e5e344b24",
