@@ -13,7 +13,7 @@
 import { Segment, decodeAnsi } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
 import { OSC8 } from "../../src/core/osc8.js";
-import { LINE_BREAK_ESCAPES, LINE_FINALS } from "../../src/core/ansi.js";
+import { CURSOR_RESTORE, CURSOR_SAVE, LINE_BREAK_ESCAPES, LINE_ENDS, LINE_FINALS } from "../../src/core/ansi.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
 
 /**
@@ -41,9 +41,22 @@ const LINE = [...LINE_FINALS].map((final) => `\\x${final.charCodeAt(0).toString(
  * The escapes `decodeAnsi` draws: SGR, erase in line, a move along the line or
  * an edit of it (`LINE_FINALS`), a line break (`LINE_BREAK_ESCAPES`), a G0 or G1 designation, a soft reset
  * (DECSTR), and an OSC 8 link. It drops every other, RIS among them: the decoder
- * resets its state there too, but a terminal also clears its screen.
+ * resets its state there too, but a terminal also clears its screen. A save and a
+ * restore are `SAVE`'s and `RESTORE`'s, since whether a restore is drawn depends
+ * on what came before it.
  */
 const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|${LINE_BREAK_ESCAPES}|\\x1b[()][0-~]|\\x1b\\[!p|${OSC8.source})$`);
+
+/**
+ * A cursor restore (`CURSOR_RESTORE`), drawn only back to a save on its own
+ * line: with nothing saved a terminal homes the cursor, and from a later line
+ * it goes up to the saved row, and the decoder holds no row to do either.
+ * `RESTORE_SPAN` is what ends a save's line or forgets it: whatever the decoder
+ * ends a line at (`LINE_ENDS`), and DECSTR.
+ */
+const RESTORE = new RegExp(`^(?:${CURSOR_RESTORE})$`);
+const SAVE = new RegExp(`^(?:${CURSOR_SAVE})$`);
+const RESTORE_SPAN = new RegExp(`${LINE_ENDS}|\\x1b\\[!p`, "u");
 
 /**
  * The start of an escape `DRAWN` may yet match once the rest of it is written:
@@ -70,6 +83,8 @@ export interface EscapeScan {
   readonly dropped: string | null;
   /** Where an escape starts that may yet be drawn once the rest of it is written; the length of the bytes when none does. */
   readonly unread: number;
+  /** Whether a cursor save stands on the line the bytes end on, for a restore in the next write to return to. */
+  readonly saved: boolean;
 }
 
 /**
@@ -79,20 +94,25 @@ export interface EscapeScan {
  * write by this as it comes (theme/static-run.ts); `undrawnEscape` reads a
  * program's whole output by it.
  */
-export function scanEscapes(bytes: string): EscapeScan {
+export function scanEscapes(bytes: string, savedBefore = false): EscapeScan {
   let read = 0;
+  let saved: number | undefined = savedBefore ? 0 : undefined;
   for (const match of bytes.matchAll(ESCAPE)) {
     // An escape begun before this one and never finished: an escape inside it ends any chance of drawing it.
     const open = bytes.indexOf("\x1b", read);
-    if (open < match.index) return { dropped: bytes.slice(open, match.index), unread: open };
-    if (!DRAWN.test(match[0])) return { dropped: match[0], unread: match.index };
+    if (open < match.index) return { dropped: bytes.slice(open, match.index), unread: open, saved: false };
+    if (SAVE.test(match[0])) saved = match.index + match[0].length;
+    else if (RESTORE.test(match[0]) ? !standing(bytes, saved, match.index) : !DRAWN.test(match[0])) return { dropped: match[0], unread: match.index, saved: false };
     read = match.index + match[0].length;
   }
   const open = bytes.indexOf("\x1b", read);
-  if (open === -1) return { dropped: null, unread: bytes.length };
+  if (open === -1) return { dropped: null, unread: bytes.length, saved: standing(bytes, saved, bytes.length) };
   const rest = bytes.slice(open);
-  return DRAWN_START.test(rest) && rest.length <= LONGEST_OPEN_ESCAPE ? { dropped: null, unread: open } : { dropped: rest, unread: open };
+  return DRAWN_START.test(rest) && rest.length <= LONGEST_OPEN_ESCAPE ? { dropped: null, unread: open, saved: standing(bytes, saved, open) } : { dropped: rest, unread: open, saved: false };
 }
+
+/** Whether a save made at `saved` still stands at `at`: made, and on the same line. */
+const standing = (bytes: string, saved: number | undefined, at: number): boolean => saved !== undefined && !RESTORE_SPAN.test(bytes.slice(saved, at));
 
 /**
  * The first escape in a program's whole output that a drawing of it drops,

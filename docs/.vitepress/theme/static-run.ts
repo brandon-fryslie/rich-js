@@ -69,6 +69,8 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
   let printed = 0;
   // An escape begun in one write and ended in a later one is read whole, once it is.
   let unread = "";
+  // Whether a cursor save stands on the line the bytes seen so far end on (`scanEscapes`).
+  let saved = false;
   let finish: (end: StaticEnd) => void = () => {};
   const result = new Promise<StaticResult>((resolve) => {
     // [LAW:single-enforcer] Every way a run ends comes through here, once:
@@ -90,9 +92,10 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
         chunks.push(chunk);
         printed += chunk.length;
         const seen = `${unread}${chunk}`;
-        const scan = scanEscapes(seen);
+        const scan = scanEscapes(seen, saved);
         if (scan.dropped !== null) return finish({ kind: "dropped" });
         unread = seen.slice(scan.unread);
+        saved = scan.saved;
         return printed > options.limitChars ? finish({ kind: "overflowed", limitChars: options.limitChars }) : undefined;
       }
       case "listening":
