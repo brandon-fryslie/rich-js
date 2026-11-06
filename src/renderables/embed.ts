@@ -116,6 +116,22 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
 }
 
 /**
+ * A body drawn by a container that pads every row of it to the container's
+ * width — a `Padding`, so a `Panel` and every `Table` cell (whose column
+ * always names a justify, so never reaches the default here), and a leaf
+ * `Layout`. There the container
+ * places the row, so text starts at its paragraph's own edge, as the text a
+ * `Console.print` sets itself does: a right-to-left body sits at the right
+ * inner edge rather than wherever the padding happens to fall. Any other
+ * renderable is handed the options untouched, since one that sets a child at
+ * its natural width reads an absent `justify` as exactly that.
+ */
+export function renderFilling(content: Renderable, options: RenderOptions): Iterable<Segment> {
+  if (!(content instanceof EmbeddedText)) return render(content, options);
+  return render(content, { ...options, justify: options.justify ?? "default" });
+}
+
+/**
  * Caller content set into a line it shares with other drawing — a panel's
  * title or subtitle in its border, a rule's title — read as Rich's `_title`
  * reads it: newlines become spaces, so the label stays on its line, and tabs

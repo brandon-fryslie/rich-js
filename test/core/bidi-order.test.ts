@@ -16,6 +16,8 @@ import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
 import { Markdown } from "../../src/renderables/markdown.js";
+import { Layout } from "../../src/renderables/layout.js";
+import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { Syntax } from "../../src/renderables/syntax.js";
@@ -449,6 +451,43 @@ describe("a paragraph starts at its own edge", () => {
   test("a Markdown paragraph in Arabic stands at the right edge", () => {
     const [row] = shown(new Markdown(ARABIC), "visual", 30).filter((line) => line.trim() !== "");
     expect(padded(row!)).toBe("left");
+  });
+
+  // A container that pads every row of its body to its width places that row,
+  // so a text body starts at its paragraph's edge, as a printed one does.
+  test.each(laidOut)("a Panel's right-to-left string body stands at its right inner edge, a Latin one at its left, under %s", (order) => {
+    const inner = (content: string): string => shown(new Panel(content, { width: 24 }), order, 40)[1]!.slice(2, -2);
+    expect(padded(inner(ARABIC))).toBe("left");
+    expect(padded(inner("abc"))).toBe("right");
+  });
+
+  test.each(laidOut)("a Padding's and a Layout's right-to-left text body stands at the right edge, under %s", (order) => {
+    expect(padded(shown(new Padding(HEBREW, 0), order, 20)[0]!)).toBe("left");
+    expect(padded(shown(new Layout(HEBREW), order, 20)[0]!)).toBe("left");
+    expect(padded(shown(new Layout("abc"), order, 20)[0]!)).toBe("right");
+  });
+
+  test("a renderable a Padding holds is handed no justify", () => {
+    const handed: unknown[] = [];
+    const probe = { render: (options: { justify?: unknown }) => (handed.push(options.justify), [new Segment("x")]) };
+    plainBytes(new Padding(probe, 0), "visual", 20);
+    expect(handed).toEqual([undefined]);
+  });
+
+  // The pad that sets a body at its edge is the container's fill, which is
+  // unstyled for a Latin body: a styled body's style stays on its glyphs.
+  test("a styled text body in a Padding keeps its style on its glyphs, right-to-left and Latin alike", () => {
+    const bytes = (content: string): string =>
+      renderToString(new Padding(new RichText(content, { style: "underline" }), 0), { width: 20, textOrder: "visual", colorSystem: "truecolor" });
+    expect(bytes(HEBREW)).toMatch(/^ {11}\x1b\[4m/);
+    expect(bytes("abc")).toMatch(/^\x1b\[4mabc\x1b\[0m {17}/);
+  });
+
+  test("a justify the Padding is handed still places its right-to-left body: a Table column's", () => {
+    const table = new Table({ showHeader: false, box: undefined, showEdge: false, padding: 0 });
+    table.addColumn("", { width: 12, justify: "left" });
+    table.addRow(HEBREW);
+    expect(padded(rows(plainBytes(table, "visual"))[0]!)).toBe("right");
   });
 
   test("plain writes logical order, whose start is the line's first character: today's bytes", () => {

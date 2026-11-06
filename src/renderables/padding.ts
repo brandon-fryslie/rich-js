@@ -12,8 +12,8 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { fitHeight, getStyle, insetHeight, render, withBoundedWidth, withCellWidth } from "../core/protocol.js";
-import { embed } from "./embed.js";
+import { fitHeight, getStyle, insetHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { embed, renderFilling } from "./embed.js";
 
 export type PaddingDimensions =
   | number
@@ -113,7 +113,7 @@ export class Padding implements Renderable, Measurable {
     // The style is the ground the content is drawn on, not only the spaces
     // around it — Rich's `render_lines(..., style=style)`. Applied to the
     // padding alone, a background left a hole behind the content.
-    const drawn = Segment.splitLines(Segment.applyStyle(render(this.renderable, innerOptions), style));
+    const drawn = Segment.splitLines(Segment.applyStyle(renderFilling(this.renderable, innerOptions), style));
     const lines = fitHeight(drawn, innerOptions.height);
     const leftPad = new Segment(" ".repeat(this.left), style);
     const rightPad = new Segment(" ".repeat(this.right), style);
