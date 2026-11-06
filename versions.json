@@ -4,15 +4,22 @@
     {
       "version": "pr-585",
       "ref": "refs/pull/585/merge",
-      "sha": "64dd89dfac60a1dd2a0976485404881c648ebf92",
-      "timestamp": "2026-11-06T15:12:08.719Z",
+      "sha": "6a5f5edd725539a7ff44045df4e5097c213828db",
+      "timestamp": "2026-11-06T15:19:26.648Z",
       "commits": [
         {
-          "sha": "64dd89dfac60a1dd2a0976485404881c648ebf92",
+          "sha": "6a5f5edd725539a7ff44045df4e5097c213828db",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:10:17-07:00",
-          "message": "Merge 24b0d487a2e620743139f208feadeb863bcd51ff into 0f0e2b67ec0449800b781c88e674866f6d824f9e\n"
+          "timestamp": "2026-11-06T15:17:17Z",
+          "message": "Merge bba4e636f931e7f989e4086256811a247a329ee5 into 0f0e2b67ec0449800b781c88e674866f6d824f9e\n"
+        },
+        {
+          "sha": "bba4e636f931e7f989e4086256811a247a329ee5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:17:07-07:00",
+          "message": "A footer key's text is held on the footer bar its ground sits on; buildPalette's contract names held component text (rich-unfiled-791c.h35m)\n"
         },
         {
           "sha": "24b0d487a2e620743139f208feadeb863bcd51ff",
