@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-571",
-      "ref": "refs/pull/571/merge",
-      "sha": "b3b49c14e06cc2abe79325c7f1d5a62337bea61f",
-      "timestamp": "2026-11-06T06:55:07.299Z",
-      "commits": [
-        {
-          "sha": "b3b49c14e06cc2abe79325c7f1d5a62337bea61f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:52:43Z",
-          "message": "Merge 1c2f2be2484ab841687b1e035432ec6fbea3a377 into d579241dad7483b9be74996fb69c690f6ebcdbb0\n"
-        },
-        {
-          "sha": "1c2f2be2484ab841687b1e035432ec6fbea3a377",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T23:52:33-07:00",
-          "message": "Review: the word joiner reaches a terminal only, a mark after any Prepend is kept, and a control waits with the Prepend for the text after it (rich-control-codes-xh4n.qmw)\n"
-        },
-        {
-          "sha": "01c62f85d70e3aa57cfcf5ccb9ed960bc03ae984",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T23:37:22-07:00",
-          "message": "Review: a Prepend ends before anything taking a cell and before a control, and isPrepend is private (rich-control-codes-xh4n.qmw)\n"
-        },
-        {
-          "sha": "fe9cb7b435efbeb7052ed7db59c091f2331d131b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T23:30:00-07:00",
-          "message": "Review: a Prepend ends its cluster only before a base, the end slot keeps its own clusters, and a write ending on a Prepend ends it (rich-control-codes-xh4n.qmw)\n"
-        },
-        {
-          "sha": "c427436c9b0363791db5e033a24066569ea53b81",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T23:05:09-07:00",
-          "message": "A Prepend character is its own cluster, and sealed writes a word joiner after it so a clustering terminal agrees (rich-control-codes-xh4n.qmw)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d579241dad7483b9be74996fb69c690f6ebcdbb0",
-      "timestamp": "2026-11-06T05:54:49.093Z",
+      "sha": "14220a72e7e7a74b2276294c29774383f30cafd4",
+      "timestamp": "2026-11-06T07:05:45.580Z",
       "commits": [
         {
-          "sha": "d579241dad7483b9be74996fb69c690f6ebcdbb0",
+          "sha": "14220a72e7e7a74b2276294c29774383f30cafd4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T22:52:40-07:00",
-          "message": "Under logical, a step walks the stops the terminal shows on the whole painted line: the caret's end blank keeps a right-to-left row's level when a neighbour's text follows it (rich-control-codes-xh4n.bx4) (#570)\n\n* Under logical, a step walks the stops the terminal shows on the whole painted line: the caret's end blank keeps a right-to-left row's level when a neighbour's text follows it (rich-control-codes-xh4n.bx4)\n\n* A key and a press carry the frame they were heard on, and a step cuts the line at the row that frame drew (rich-control-codes-xh4n.bx4)\n\nReview of #570: the focused-only framePainted push left a blurred field, a\nrender between paints and a cursor moved before a repaint reading a frame\nother than the one on screen, behind a layout-identity guard. WidgetKeyEvent\nand WidgetMouseEvent now hold the frame; the field keeps none.\n\n* One Frame type for what an event carries, a press orders the line only when it lands past the row, and docs/widgets.md names an event's frame (rich-control-codes-xh4n.bx4)"
+          "timestamp": "2026-11-06T00:03:16-07:00",
+          "message": "A Prepend character is its own cluster, and sealed writes a word joiner after it so a clustering terminal agrees (rich-control-codes-xh4n.qmw) (#571)\n\n* A Prepend character is its own cluster, and sealed writes a word joiner after it so a clustering terminal agrees (rich-control-codes-xh4n.qmw)\n\n* Review: a Prepend ends its cluster only before a base, the end slot keeps its own clusters, and a write ending on a Prepend ends it (rich-control-codes-xh4n.qmw)\n\n* Review: a Prepend ends before anything taking a cell and before a control, and isPrepend is private (rich-control-codes-xh4n.qmw)\n\n* Review: the word joiner reaches a terminal only, a mark after any Prepend is kept, and a control waits with the Prepend for the text after it (rich-control-codes-xh4n.qmw)"
         }
       ]
     }
