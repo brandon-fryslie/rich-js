@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-573",
+      "ref": "refs/pull/573/merge",
+      "sha": "5b132c7c90def7230ca7465f1fe90a46f35b369d",
+      "timestamp": "2026-11-06T08:03:43.193Z",
+      "commits": [
+        {
+          "sha": "5b132c7c90def7230ca7465f1fe90a46f35b369d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T01:01:14-07:00",
+          "message": "Merge 7ed95c0a54d90d92f2232129f52b69449a427607 into b9e25db7fb558c55741ee1805a4255b4788a1264\n"
+        },
+        {
+          "sha": "7ed95c0a54d90d92f2232129f52b69449a427607",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T01:00:54-07:00",
+          "message": "decodeAnsi reads the 8-bit C1 introducers as the sequences they start (rich-control-codes-xh4n.187)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b9e25db7fb558c55741ee1805a4255b4788a1264",
