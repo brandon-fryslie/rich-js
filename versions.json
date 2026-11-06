@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-567",
-      "ref": "refs/pull/567/merge",
-      "sha": "4f46eaa62555856646027af3ce03e716323f86aa",
-      "timestamp": "2026-11-06T01:59:53.257Z",
-      "commits": [
-        {
-          "sha": "4f46eaa62555856646027af3ce03e716323f86aa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T01:57:27Z",
-          "message": "Merge 688948f550443f86df6bac91cf223b6be15f3481 into 40add431b708b04ca01ed0593bc03a2c2601e613\n"
-        },
-        {
-          "sha": "688948f550443f86df6bac91cf223b6be15f3481",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:57:15-07:00",
-          "message": "A press past a row's cells lands on the stop shown beside it; the right-to-left page no longer lists pointer hits as a logical limit; press tests drive one router per input over one render, logical included in the direct press test (review of #567)\n"
-        },
-        {
-          "sha": "b6b0ee3a4bc27d89e56c3e80f0be982942222a1e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:43:50-07:00",
-          "message": "Under logical a press reads the column the terminal reports, which is the frame's (VTE's vis2log): drop the router's screen-to-frame mapping, keep TextInput's press on its frame-order stops, and model the terminal's report in the tests (review of #567)\n"
-        },
-        {
-          "sha": "d934a1a036d0aa3bfd53d8e202c8f1eeda866bbe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:34:47-07:00",
-          "message": "App.frameColumn owns the screen-to-frame column map, cached per painted line; the router asks it once per event; controls stay out of what UAX #9 orders; logical press tests drive the router (review of #567)\n"
-        },
-        {
-          "sha": "5df6bf34b61d71cd936339a7041abbe73b5169a9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:20:43-07:00",
-          "message": "Under logical, the router maps a pointer's column through the whole composed line to the frame's (writtenColumn), so a press inside a Panel lands where the terminal shows it; TextInput reads presses off the frame's order and steps off the shown one (rich-control-codes-xh4n.wk5)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "40add431b708b04ca01ed0593bc03a2c2601e613",
-      "timestamp": "2026-11-06T01:04:39.970Z",
+      "sha": "e10e52e187beaa25544769690371364ed04439a3",
+      "timestamp": "2026-11-06T02:14:30.310Z",
       "commits": [
         {
-          "sha": "40add431b708b04ca01ed0593bc03a2c2601e613",
+          "sha": "e10e52e187beaa25544769690371364ed04439a3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T18:02:51-07:00",
-          "message": "A focused Dropdown's filter is the terminal's own cursor (rich-control-codes-xh4n.okr) (#566)\n\n* A focused Dropdown's filter is the terminal's own cursor: where the painter shows it, the caret is a blank cell marked caretMark(\"bar\"), its side set by ordering; labeled takes its label as segments so the mark survives ordering (rich-control-codes-xh4n.okr)\n\n* Dropdown: the caret cell survives a header too narrow for its gutter; labeled keeps an empty frame-styled segment unoriented; docs no longer tie the filter's caret shape to TextInput's (review of rich-control-codes-xh4n.okr)\n\n* Dropdown: a filter too long for the header shows its tail, so the caret stays at the editing point; docs name Live beside an app (review of rich-control-codes-xh4n.okr)\n\n* Dropdown: the query's tail through cellFitEnd, its last glyph before the gutter; docs and module header say a long query shows its end (review of rich-control-codes-xh4n.okr)"
+          "timestamp": "2026-11-05T19:12:38-07:00",
+          "message": "Under logical, TextInput reads a press in the frame's order, the column the terminal reports (rich-control-codes-xh4n.wk5) (#567)\n\n* Under logical, the router maps a pointer's column through the whole composed line to the frame's (writtenColumn), so a press inside a Panel lands where the terminal shows it; TextInput reads presses off the frame's order and steps off the shown one (rich-control-codes-xh4n.wk5)\n\n* App.frameColumn owns the screen-to-frame column map, cached per painted line; the router asks it once per event; controls stay out of what UAX #9 orders; logical press tests drive the router (review of #567)\n\n* Under logical a press reads the column the terminal reports, which is the frame's (VTE's vis2log): drop the router's screen-to-frame mapping, keep TextInput's press on its frame-order stops, and model the terminal's report in the tests (review of #567)\n\n* A press past a row's cells lands on the stop shown beside it; the right-to-left page no longer lists pointer hits as a logical limit; press tests drive one router per input over one render, logical included in the direct press test (review of #567)"
         }
       ]
     }
