@@ -4,15 +4,22 @@
     {
       "version": "pr-574",
       "ref": "refs/pull/574/merge",
-      "sha": "d48c430b28968b51f509133dc5de92b36095559b",
-      "timestamp": "2026-11-06T09:17:37.596Z",
+      "sha": "3bfa6eece412312c77ab3f1a71bc278e8cd10e7b",
+      "timestamp": "2026-11-06T09:30:58.907Z",
       "commits": [
         {
-          "sha": "d48c430b28968b51f509133dc5de92b36095559b",
+          "sha": "3bfa6eece412312c77ab3f1a71bc278e8cd10e7b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T02:15:50-07:00",
-          "message": "Merge 5b434281a9803f54dfbe07b11eb2bffa3dbd78cf into 8d57b1ba27053e83cf02807bd2efa0fa43afb9aa\n"
+          "timestamp": "2026-11-06T09:29:07Z",
+          "message": "Merge 74458d9a98754798893a88202565e0321b7acd70 into 8d57b1ba27053e83cf02807bd2efa0fa43afb9aa\n"
+        },
+        {
+          "sha": "74458d9a98754798893a88202565e0321b7acd70",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T02:28:56-07:00",
+          "message": "Unset justify places nothing again; Console.print asks for the paragraph's edge with \"default\" (rich-control-codes-xh4n.3k9)\n\nReview: an unjustified right-to-left row padded to the width inside Strip,\nSyntax, Pretty and soft-wrapped prints. \"default\" is now the start edge\nwithout filling, and the start level is read off the raw line, as reorder reads it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "5b434281a9803f54dfbe07b11eb2bffa3dbd78cf",
