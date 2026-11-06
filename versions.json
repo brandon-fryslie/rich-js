@@ -4,15 +4,22 @@
     {
       "version": "pr-576",
       "ref": "refs/pull/576/merge",
-      "sha": "c4ade7b152f16386000259d37143511f96799422",
-      "timestamp": "2026-11-06T10:38:39.690Z",
+      "sha": "1ad391648bd4ff6682b6f7f3c68ee9e34cfe2c4e",
+      "timestamp": "2026-11-06T10:46:11.737Z",
       "commits": [
         {
-          "sha": "c4ade7b152f16386000259d37143511f96799422",
+          "sha": "1ad391648bd4ff6682b6f7f3c68ee9e34cfe2c4e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T03:37:01-07:00",
-          "message": "Merge f2c75ee70e3ec973f19b5187ed54b5e99b9c9bf7 into e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd\n"
+          "timestamp": "2026-11-06T10:43:50Z",
+          "message": "Merge 33c590da9b0231e1b676c76f036d101198d40ad6 into e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd\n"
+        },
+        {
+          "sha": "33c590da9b0231e1b676c76f036d101198d40ad6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T03:43:39-07:00",
+          "message": "decodeAnsi bounds a motion count, reads a move's first parameter, and moves on CHT, CBT and HPB (rich-control-codes-xh4n.9pb review)\n"
         },
         {
           "sha": "f2c75ee70e3ec973f19b5187ed54b5e99b9c9bf7",
