@@ -696,6 +696,9 @@ console.notify("Deploy finished", "4 of 4 hosts up");
 console.bell();
 ```
 
+`setPointerShape` throws a `TypeError` for a name outside `PointerShape`, even
+when it would write nothing, because OSC 22 carries the name as it is.
+
 `notify` writes the protocol the terminal reads: kitty's OSC 99, OSC 777 for foot
 and Ghostty, and OSC 9 everywhere else, which iTerm2 and WezTerm read. Behind tmux,
 screen, zellij or an editor's terminal, the terminal past it cannot be seen, so

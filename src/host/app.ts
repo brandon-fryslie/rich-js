@@ -558,8 +558,8 @@ export class App implements FrameHost {
   }
 
   set pointerShape(value: PointerShape) {
-    const shape = pointerShape(value);
     if (this._phase === "stopped") throw new Error("App.pointerShape: a stopped app has handed its terminal back for good");
+    const shape = pointerShape(value);
     if (shape === this.pointer) return;
     this.pointer = shape;
     // Before the run or while suspended, the shape waits for the take that shows it.

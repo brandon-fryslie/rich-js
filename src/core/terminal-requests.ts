@@ -41,7 +41,8 @@ const POINTER_SHAPES = [
  */
 export function pointerShape(value: string): PointerShape {
   if ((POINTER_SHAPES as readonly string[]).includes(value)) return value as PointerShape;
-  throw new TypeError(`${JSON.stringify(value)} is not a pointer shape: one of ${POINTER_SHAPES.join(", ")}`);
+  const named = typeof value === "string" ? JSON.stringify(value) : `a ${typeof value}`;
+  throw new TypeError(`${named} is not a pointer shape: one of ${POINTER_SHAPES.join(", ")}`);
 }
 
 /**
