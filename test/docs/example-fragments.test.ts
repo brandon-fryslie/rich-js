@@ -107,6 +107,12 @@ describe("scanEscapes", () => {
     expect(scanEscapes("\x1b\x1b[31mx").dropped).toBeNull();
     expect(scanEscapes(`\x1b${osc8Open("https://example.com")}x${OSC8_CLOSE}`).dropped).toBeNull();
     expect(scanEscapes("\x1b\x01").dropped).toBe("\x1b");
+    expect(scanEscapes("a\x1b\x18b").dropped).toBeNull();
+    expect(scanEscapes("a\x1b\x1ab").dropped).toBeNull();
+  });
+
+  it.each(["\x1bE", "\x85", "\x1b[E"])("passes an ESC cancelled by %j, the line break after it", (escape) => {
+    expect(scanEscapes(`a\x1b${escape}b`).dropped).toBeNull();
   });
 
   it.each([

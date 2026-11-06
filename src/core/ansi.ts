@@ -239,11 +239,15 @@ const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 // CNL after its introducer. On a terminal it passes `count` rows, or none on
 // the bottom row, where it does not scroll; the decoder holds no cursor row and
 // no screen height, so no count has an answer it could give, and CNL decodes as
-// NEL does: what follows is on a line of its own.
-const CNL = "[0-9;]*E";
+// NEL does: what follows is on a line of its own. Its count (`rows`) is read
+// once, by the same match.
+const CNL = "(?<rows>[0-9]*)(?:;[0-9;]*)?E";
 
-/** Everything `decode` ends a line at, `\n`, C1 forms and line-break controls included. */
-const LINE_ENDS = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`;
+/**
+ * Everything `decode` ends a line at, `\n`, C1 forms and the census's
+ * line-break controls (`census`) included.
+ */
+const LINE_ENDS = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|(?<census>${controlClass((disposition) => disposition === "line-break")})`;
 
 // A string escape goes first so a line break its payload holds stays in it.
 const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "gu");
@@ -261,11 +265,11 @@ const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${CSI}[0-?]*[ -/]*|${either
  * `next` the character after it: a C1 control, which some terminals do, and an
  * ESC no escape here begins. A VT500 parser stays in its escape state past such
  * an ESC, running a C0 control and ignoring DEL there, and takes a later byte as
- * the escape's final, which the decoder draws as text. Only the next ESC or C1
- * control cancels it, and then a terminal drops it as the decoder does.
+ * the escape's final, which the decoder draws as text. Only the next ESC, CAN,
+ * SUB or C1 control cancels it, and then a terminal drops it as the decoder does.
  */
 const performed = (control: string, next: string): boolean =>
-  isC1(control.charCodeAt(0)) || (control === "\x1b" && next !== "\x1b" && !isC1(next.charCodeAt(0)));
+  isC1(control.charCodeAt(0)) || (control === "\x1b" && !/^[\x1b\x18\x1a]/.test(next) && !isC1(next.charCodeAt(0)));
 
 /** `bytes`, and `following`, the character after them in their line, which an ESC at their end comes before. */
 function* escapeTokens(bytes: string, following: string): Generator<Token> {
@@ -298,14 +302,15 @@ function* escapeTokens(bytes: string, following: string): Generator<Token> {
 // [LAW:one-source-of-truth] OSC 8 is read by the reader `osc8.ts` owns, so
 // the terminators a link may end with cannot differ between writing and
 // reading it back.
-function* tokens(line: string): Generator<Token> {
+/** `line`, and `following`, what comes after it in the bytes: the break that ends it, or nothing. */
+function* tokens(line: string, following: string): Generator<Token> {
   let at = 0;
   for (const sequence of osc8Sequences(line)) {
     yield* escapeTokens(line.slice(at, sequence.index), line[sequence.index]!);
     yield { kind: "link", uri: sequence.uri };
     at = sequence.index + sequence.length;
   }
-  yield* escapeTokens(line.slice(at), "");
+  yield* escapeTokens(line.slice(at), following.charAt(0));
 }
 
 /**
@@ -620,7 +625,9 @@ export class AnsiDecoder {
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
     const { ended, last } = linesOf(ansi);
-    return [...ended.map(({ line }) => line), ...(last === "" ? [] : [last])].map((line) => this.decodeLine(line));
+    const lines = ended.map(({ line, end }) => drawLine(this.stream, line, LINE_START, end));
+    if (last !== "") lines.push(drawLine(this.stream, last, LINE_START, ""));
+    return lines.map(({ cells }) => assembled(cells));
   }
 
   /**
@@ -628,7 +635,7 @@ export class AnsiDecoder {
    * it: `\r` returns to the first column, and text overwrites from there.
    */
   decodeLine(line: string): RichText {
-    return assembled(drawLine(this.stream, line, LINE_START).cells);
+    return assembled(drawLine(this.stream, line, LINE_START, "").cells);
   }
 }
 
@@ -653,16 +660,32 @@ function streamOf(width: number): Stream {
  * [LAW:one-source-of-truth] Each line of `ansi` as `decode` draws it and the
  * break that ends it, the last line ended by none; a break inside a string
  * escape's payload ends nothing. `decode` and `scanUndrawn` both split here.
+ *
+ * Each break also says whether a terminal performs it as the decoder does, CR
+ * LF (`relocates`). LF does, as a terminal's output translation writes it,
+ * and so do NEL, which is CR LF, and a CNL of one row. VT and FF go down a row
+ * and keep the column, LS and PS move nothing, and a CNL of more rows passes
+ * rows the decoder, ending its line once, never draws.
  */
-function linesOf(ansi: string): { readonly ended: readonly { readonly line: string; readonly end: string }[]; readonly last: string } {
-  const ended: { line: string; end: string }[] = [];
+function linesOf(ansi: string): { readonly ended: readonly EndedLine[]; readonly last: string } {
+  const ended: EndedLine[] = [];
   let start = 0;
   for (const found of ansi.matchAll(lineBreaks())) {
     if (found[1] !== undefined) continue;
-    ended.push({ line: ansi.slice(start, found.index), end: found[0] });
+    const { census, rows } = found.groups!;
+    const relocates = (census !== undefined && census !== "\x85") || Number(rows) > 1;
+    ended.push({ line: ansi.slice(start, found.index), end: found[0], relocates });
     start = found.index + found[0].length;
   }
   return { ended, last: ansi.slice(start) };
+}
+
+/** A line and the break that ends it. */
+interface EndedLine {
+  readonly line: string;
+  readonly end: string;
+  /** Whether a terminal performs `end` other than as CR LF, where the decoder starts the next line. */
+  readonly relocates: boolean;
 }
 
 /**
@@ -671,7 +694,7 @@ function linesOf(ansi: string): { readonly ended: readonly { readonly line: stri
  * whether a terminal does the same, so the gate that reads `undrawn` reads
  * the decoder's own rule (`scanUndrawn`).
  */
-function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
+function drawLine(stream: Stream, line: string, start: LineState, following: string): DrawnLine {
   const cells: Cell[] = [ORIGIN];
   let column = start.column;
   // A column saved on this line; a save on another names a row this one is not.
@@ -684,27 +707,23 @@ function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
   const report = (escape: string): void => {
     undrawn ??= escape;
   };
-  for (const token of tokens(line)) {
+  for (const token of tokens(line, following)) {
     const preceding = last;
     last = undefined;
     switch (token.kind) {
       case "text": {
         const style = stream.sgr.withLink(stream.link);
         const text = drawnIn(stream.sets[stream.shifted], token.text);
-        last = preceding;
-        for (const cluster of graphemes(text)) {
-          column += draw(cells, column, cluster, style);
-          // A mark the segmenter joins to the cluster drawn before it finishes
-          // that cluster, even one an earlier write drew; whatever it does not
-          // join, a ZWSP or a variation selector after a space, is no graphic
-          // character of its own.
-          last =
-            last !== undefined && cellLen(cluster) === 0 && graphemes(last[0] + cluster).length === 1
-              ? [last[0] + cluster, last[1]]
-              : repeatable(cluster)
-                ? [cluster, style]
-                : undefined;
-        }
+        const clusters = graphemes(text);
+        for (const cluster of clusters) column += draw(cells, column, cluster, style);
+        // Within the text the segmenter has joined all it can. A mark it joins
+        // to the cluster an earlier write drew finishes that cluster; whatever
+        // it does not join, a ZWSP or a variation selector after a space, is no
+        // graphic character of its own.
+        const final = clusters.at(-1)!;
+        if (clusters.length === 1 && preceding !== undefined && cellLen(final) === 0 && graphemes(preceding[0] + final).length === 1) {
+          last = [preceding[0] + final, preceding[1]];
+        } else if (repeatable(final)) last = [final, style];
         break;
       }
       case "repeat": {
@@ -832,29 +851,15 @@ export function scanUndrawn(bytes: string, before: LineState = LINE_START, width
   let state = before;
   // The first line continues the one `before` ended on, and each after it starts fresh.
   const { ended, last } = linesOf(complete);
-  for (const { line, end } of ended) {
-    undrawn ??= drawLine(stream, line, state).undrawn;
-    if (RELOCATING_BREAK.test(end) || Number(CNL_COUNT.exec(end)?.[1]) > 1) undrawn ??= end;
+  for (const { line, end, relocates } of ended) {
+    undrawn ??= drawLine(stream, line, state, end).undrawn;
+    if (relocates) undrawn ??= end;
     state = LINE_START;
   }
-  const drawn = drawLine(stream, last, state);
+  // What follows the last line is the escape left unread, if any.
+  const drawn = drawLine(stream, last, state, bytes.slice(unread));
   return { undrawn: undrawn ?? drawn.undrawn ?? null, unread, after: drawn.end };
 }
-
-/**
- * A line break of the census's a terminal does not perform as CR LF: VT and FF
- * go down a row and keep the column, and LS and PS move nothing. The decoder
- * ends the line at each, so what follows starts at the first column of a new
- * one. LF does too, as a terminal's output translation writes it, and so does
- * NEL, which is CR LF.
- */
-const RELOCATING_BREAK = pattern(new RegExp(`^(?![\\n\\x85])${controlClass((disposition) => disposition === "line-break")}$`, "u"));
-
-/**
- * CNL's count. Once is CR LF off the bottom row; more passes rows the decoder,
- * ending its line once, never draws.
- */
-const CNL_COUNT = pattern(new RegExp(`^${CSI}([0-9]*)(?:;[0-9;]*)?E$`, "u"));
 
 /**
  * `ansi` as one `RichText`, its lines joined by `\n` — Rich's
