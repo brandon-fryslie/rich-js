@@ -205,7 +205,19 @@ const pressOn = (frame: Segment[][], input: TextInput, x: number): WidgetMouseEv
   ({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
 
 describe("a press reads the frame it lands on", () => {
-  it.each(["plain", "visual", "words"] as const)("puts the cursor on the stop whose caret the pressed cell drew, under %s, wherever the cursor went since", (order) => {
+  it("lands a press past a wrapped right-to-left row's cells on the stop shown beside it, under logical as under visual", () => {
+    const landed = (order: TextOrder): number => {
+      const input = new TextInput({ value: "אבגדהו", multiline: true, wrap: () => [{ start: asCodePoint(0), end: asCodePoint(3) }, { start: asCodePoint(3), end: asCodePoint(6) }] });
+      input.focus(0);
+      input.cursorPosition = asCodeUnit(6);
+      const frame = Segment.splitLines(render(input, { maxWidth: 8, textOrder: order }));
+      input.handleMouse(pressOn(frame, input, 7));
+      return input.cursorPosition;
+    };
+    expect(landed("logical")).toBe(landed("visual"));
+  });
+
+  it.each(["plain", "logical", "visual", "words"] as const)("puts the cursor on the stop whose caret the pressed cell drew, under %s, wherever the cursor went since", (order) => {
     for (const multiline of [false, true]) {
       for (const value of BIDI_VALUES) {
         const input = new TextInput({ value, multiline });
@@ -307,17 +319,28 @@ function reported(frame: readonly (readonly Segment[])[], order: TextOrder, x: n
   return columns[x] ?? x;
 }
 
-// A left press and release where the user points at screen column `x` of row
-// `y` of the painted `frame`, reported as the terminal reports it, through an
-// app's router.
-function pressOnScreen(input: TextInput, frame: readonly (readonly Segment[])[], order: TextOrder, x: number, y: number): void {
+// A terminal showing `input`, alone or in a container, through one app router:
+// `paint` draws a frame once, as its rows and the bytes written for them, and
+// `press` is a left press and release where the user points at screen column
+// `x` of row `y` of the last frame painted, reported as the terminal reports it.
+function screenOf(input: TextInput, order: TextOrder) {
+  let frame: Segment[][] = [];
   const focusManager = new DefaultFocusManager({ mounted: () => [input], onScreen: () => [input], frameTime: () => 0 });
   const router = parserFor(new EventRouter({
-    source: { focusManager, frame, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
+    source: { focusManager, get frame() { return frame; }, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
     focusOnClick: false,
   }));
-  const at = reported(frame, order, x, y);
-  router.feed(`\x1b[<0;${at + 1};${y + 1}M\x1b[<0;${at + 1};${y + 1}m`);
+  return {
+    paint(drawn: RenderOptions, view: TextInput | Panel = input): { frame: Segment[][]; bytes: string } {
+      const segments = [...render(view, drawn)];
+      frame = Segment.splitLines(segments);
+      return { frame, bytes: segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: order }) };
+    },
+    press(x: number, y: number): void {
+      const at = reported(frame, order, x, y);
+      router.feed(`\x1b[<0;${at + 1};${y + 1}M\x1b[<0;${at + 1};${y + 1}m`);
+    },
+  };
 }
 
 // The caret's row, and the code unit it starts at in what a terminal keeps of that row.
@@ -338,20 +361,20 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
         input.cursorStyleOverride = Style.parse("bold reverse");
         input.focus(0);
         const drawn: RenderOptions = { maxWidth: 8, textOrder: order };
+        const screen = screenOf(input, order);
         for (const stop of stops(value)) {
           const what = `${JSON.stringify(value)} at ${stop}, multiline ${multiline}`;
           input.cursorPosition = asCodeUnit(stop);
-          const frame = Segment.splitLines(render(input, drawn));
+          const { frame, bytes } = screen.paint(drawn);
           const at = caretIn(frame);
           expect(at, what).toBeDefined();
           // Under logical the terminal orders the row, so the caret is pressed where it shows it.
           if (order === "logical") {
-            const bytes = segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: order });
             const { y, unit } = caretUnit(bytes);
             at!.x = screenColumn(rows(bytes)[y]!, unit);
           }
           input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
-          pressOnScreen(input, frame, order, at!.x, at!.y);
+          screen.press(at!.x, at!.y);
           expect(input.cursorPosition, what).toBe(stop);
           for (const step of ["left", "right"]) {
             input.cursorPosition = asCodeUnit(stop);
@@ -417,28 +440,26 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
   });
 
   it.each(["plain", "logical", "visual", "words"] as const)("steps onto the stop the screen shows beside the caret, under %s", (order) => {
-    const bytesOf = (input: TextInput, drawn: RenderOptions): string =>
-      segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: order });
     for (const value of [...BIDI_VALUES, ...LONE_MARKS, "אבג\nabc", "abc אבג\nדהו"]) {
       const input = new TextInput({ value, multiline: true });
       input.cursorStyleOverride = Style.parse("bold reverse");
       input.focus(0);
       const drawn: RenderOptions = { maxWidth: 8, textOrder: order };
+      const screen = screenOf(input, order);
       for (const stop of stops(value)) {
         // In the frame that draws the caret at `stop`: where a terminal shows
         // it, and the glyphs drawn beside it, read by pressing them.
         input.cursorPosition = asCodeUnit(stop);
-        const frame = Segment.splitLines(render(input, drawn));
+        const { frame, bytes } = screen.paint(drawn);
         const at = caretIn(frame)!;
         if (order === "logical") {
-          const bytes = bytesOf(input, drawn);
           const { y, unit } = caretUnit(bytes);
           at.x = screenColumn(rows(bytes)[y]!, unit);
         }
         const drawnTo = Math.max(...frame[at.y]!.flatMap((segment, index) =>
           segment.text.trim() !== "" || segment.style?.reverse === true ? [Segment.getLineLength(frame[at.y]!.slice(0, index + 1))] : []));
         const pressed = (screenX: number): number => {
-          pressOnScreen(input, frame, order, screenX, at.y);
+          screen.press(screenX, at.y);
           return input.cursorPosition;
         };
         for (const [name, side] of [["left", -1], ["right", 1]] as const) {
@@ -478,14 +499,14 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
     input.cursorStyleOverride = Style.parse("bold reverse");
     input.focus(0);
     const drawn: RenderOptions = { maxWidth: 12, textOrder: "logical" };
+    const screen = screenOf(input, "logical");
     for (const stop of [4, 5, 6, 7]) {
       input.cursorPosition = asCodeUnit(stop);
-      const frame = Segment.splitLines(render(input, drawn));
-      const bytes = segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "logical" });
+      const { bytes } = screen.paint(drawn);
       const { y, unit } = caretUnit(bytes);
       expect(rows(bytes)[y]).toContain("▼");
       input.cursorPosition = asCodeUnit(0);
-      pressOnScreen(input, frame, "logical", screenColumn(rows(bytes)[y]!, unit), y);
+      screen.press(screenColumn(rows(bytes)[y]!, unit), y);
       expect(input.cursorPosition, `at ${stop}`).toBe(stop);
     }
   });
@@ -534,24 +555,16 @@ describe("under logical, a press reads the column the terminal reports", () => {
     input.cursorStyleOverride = Style.parse("bold reverse");
     const panel = new Panel(input);
     const drawn: RenderOptions = { maxWidth: 12, textOrder: "logical" };
-    const fm = new DefaultFocusManager({ mounted: () => [input], onScreen: () => [input], frameTime: () => 0 });
-    fm.settle();
-    fm.focus(input);
+    input.focus(0);
     // The frame on screen is the one painted with the caret at the stop; the
     // press reads that one, as an app's router does, not a frame drawn after.
-    let painted: Segment[][] = [];
-    const router = parserFor(new EventRouter({
-      source: { focusManager: fm, get frame() { return painted; }, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
-      focusOnClick: false,
-    }));
+    const screen = screenOf(input, "logical");
     for (const stop of stops(value)) {
       input.cursorPosition = asCodeUnit(stop);
-      painted = Segment.splitLines(render(panel, drawn));
-      const bytes = segmentsToString(render(panel, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "logical" });
+      const { bytes } = screen.paint(drawn, panel);
       const { y, unit } = caretUnit(bytes);
-      const x = reported(painted, "logical", screenColumn(rows(bytes)[y]!, unit), y);
       input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
-      router.feed(`\x1b[<0;${x + 1};${y + 1}M\x1b[<0;${x + 1};${y + 1}m`);
+      screen.press(screenColumn(rows(bytes)[y]!, unit), y);
       expect(input.cursorPosition, `at ${stop}`).toBe(stop);
     }
   });

@@ -308,18 +308,20 @@ class Laid {
 }
 
 /**
- * The stop under column `col` of a row's stops, in the frame's order: the
- * router hands a press the frame's column. Past its cells it is the end the
- * frame drew no cell for, where there is one, and the last stop otherwise, so
- * every stop a step reaches a press reaches too.
+ * The stop under column `col` of a row, which a press reads in the frame's
+ * order (`Stops.framed`): the column a terminal reports. Past its cells — the
+ * padding, which every order shows at the row's right — it is the end the
+ * frame drew no cell for, where there is one, and otherwise the stop the
+ * terminal shows rightmost, beside the pointer, so every stop a step reaches a
+ * press reaches too.
  */
-function offsetAtCell(screen: readonly Seen[], col: CellCol): CodePoint {
+function offsetAtCell(stops: Stops, col: CellCol): CodePoint {
   let cells = 0;
-  for (const seen of screen) {
+  for (const seen of stops.framed) {
     cells += seen.cells;
     if (cells > col) return asCodePoint(seen.at);
   }
-  return asCodePoint((screen.find((seen) => seen.cells === 0) ?? screen.at(-1))?.at ?? 0);
+  return asCodePoint((stops.shown.find((seen) => seen.cells === 0) ?? stops.shown.at(-1))?.at ?? 0);
 }
 
 /** The layout stamped on the cell `anchor` names, at whatever depth. */
@@ -803,12 +805,12 @@ export class TextInput extends ThemedWidget {
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
       const stops = layout.screens.get(rawRowIdx);
       if (stops === undefined) throw new Error(`TextInput: a press landed on row ${rawRowIdx}, which its frame did not draw`);
-      this.cursorPosition = asCodeUnit(row.valueStart + offsetAtCell(stops.framed, relX));
+      this.cursorPosition = asCodeUnit(row.valueStart + offsetAtCell(stops, relX));
     } else {
       // [LAW:types-are-the-program] relX is a column of the window the
       // clicked frame holds, past the bracket.
       const relX = asCellCol(Math.max(0, event.x - 1));
-      this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen.framed, relX));
+      this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen, relX));
     }
     this._preferredColumn.set(null);
   }

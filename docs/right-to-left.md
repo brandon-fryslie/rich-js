@@ -144,9 +144,10 @@ const rows = Segment.splitLines(render(line, { maxWidth: 12, textOrder: "visual"
   land differently than under `visual`.
 - **A terminal on `plain` that reorders.** Right-to-left text behaves as it always
   has: two adjacent right-to-left table cells swap, and controls have no effect.
-- **Pointer hits and crops.** A cell's offset is not its screen column in a
-  logical right-to-left row, so a pointer hit or a mid-row crop there lands on
-  different cells than the terminal shows. A row split by an overlay reopens what
+- **Crops.** A cell's offset is not its screen column in a logical
+  right-to-left row, so a mid-row crop there lands on different cells than the
+  terminal shows. A pointer hit does not: the terminal reports the column of
+  what it was written, so a press reads the cell it shows. A row split by an overlay reopens what
   was open at its start, so a control in the middle of the row stops acting past
   the split.
 - **`TextInput`.** Up and Down keep a column counted through the text, not across the screen, so on a right-to-left row they land where the text's order puts that column.
