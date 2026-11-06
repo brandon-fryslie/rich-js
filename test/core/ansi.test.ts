@@ -207,6 +207,24 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("\x9b2Cz").plain).toBe("  z");
     // A wide character half overwritten leaves a blank, as text drawn there does.
     expect(decodeAnsi("日本\x1b[2Gz").plain).toBe(" z本");
+    // A move with further parameters reads its first, as a terminal does.
+    expect(decodeAnsi("ab\x1b[2;5Gz").plain).toBe("az");
+    expect(decodeAnsi("abc\x1b[1;Dz").plain).toBe("abz");
+    // Back one cell, and by tab stops forward and back.
+    expect(decodeAnsi("abc\x1b[jz").plain).toBe("abz");
+    expect(decodeAnsi("abc\x1b[Iz").plain).toBe("abc     z");
+    expect(decodeAnsi("abc\x1b[2Iz").plain).toBe(`abc${" ".repeat(13)}z`);
+    expect(decodeAnsi("abcdefghij\x1b[Zz").plain).toBe("abcdefghzj");
+    expect(decodeAnsi("abc\x1b[Zz").plain).toBe("zbc");
+    // The gap a forward move leaves is unstyled, as a terminal leaves it.
+    const gap = decodeAnsi("\x1b[44mab\x1b[3Cz");
+    expect(styleAt(gap, 3).bgcolor).toBeUndefined();
+    expect(styleAt(gap, 5).bgcolor).toEqual(styleAt(gap, 0).bgcolor);
+    // A mark past the drawn end sits on the blank before it, as on a terminal.
+    expect(decodeAnsi("a\x1b[Ć").plain).toBe("a ́");
+    // A count is bounded, so a short escape cannot pad a line without end.
+    expect(decodeAnsi(`\x1b[${"9".repeat(400)}Cz`).plain.length).toBe(9999);
+    expect(decodeAnsi("\x1b[4294967295Gz").plain.length).toBe(9999);
     // Vertical motion stays dropped.
     expect(decodeAnsi("ab\x1b[1Ac\x1b[2Bd\x1b[Ee").plain).toBe("abcde");
   });

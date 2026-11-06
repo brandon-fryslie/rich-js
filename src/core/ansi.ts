@@ -43,7 +43,7 @@
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator: movement along the line —
- * CUB, CUF, CHA, and ECMA-48's HPR and HPA — moves the column as `\r` and a
+ * CUB, CUF, CHA, CHT, CBT, and ECMA-48's HPB, HPR and HPA — moves the column as `\r` and a
  * backspace do, since a redraw writes `\x1b[2D` as readily as two backspaces,
  * and every other cursor movement is dropped, not performed.
  *
@@ -65,7 +65,7 @@ type Token =
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
   | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
-  | { readonly kind: "move"; readonly to: (column: number) => number }
+  | { readonly kind: "move"; readonly motion: Motion; readonly count: number }
   | { readonly kind: "erase"; readonly mode: EraseMode };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
@@ -115,7 +115,7 @@ const ESC_LINE_BREAKS = hex(
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|${CSI}(?<count>[0-9]*)(?<motion>[CDGa\x60])|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
+  String.raw`\r|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?<motion>[CDGIZaj\x60])|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -127,31 +127,51 @@ const lineBreaks = (): RegExp =>
   new RegExp(`(${STRING_ESCAPE})|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 
 /**
- * ECMA-48's moves along the line, by final byte, for a count of at least 1, as
- * an absent or zero parameter is: back (CUB), forward (CUF, and HPR's `a`), and
- * to a column (CHA, and HPA's backquote). Back stops at the first column, as on
- * a terminal; forward has no right margin, because a captured line has none.
+ * The last column a move reaches. A captured line has no right margin, so this
+ * is DEC's parameter ceiling, 9999: a 15-byte `\x1b[4294967295C` then pads a
+ * line by ten thousand cells, not four billion.
  */
-const MOTIONS: Readonly<Record<string, (count: number) => (column: number) => number>> = {
-  D: (count) => (column) => Math.max(1, column - count),
-  C: (count) => (column) => column + count,
-  a: (count) => (column) => column + count,
-  G: (count) => () => count,
-  "`": (count) => () => count,
-};
+const LAST_COLUMN = 9999;
+
+const tabStop = (index: number): number => index * TAB_STOP + 1;
+
+/**
+ * ECMA-48's moves along the line, by final byte, for a count of at least 1, as
+ * an absent or zero parameter is: back (CUB, and HPB's `j`), forward (CUF, and
+ * HPR's `a`), to a column (CHA, and HPA's backquote), and forward and back by
+ * tab stops (CHT, CBT). Back stops at the first column, as on a terminal, and
+ * forward at `LAST_COLUMN`. `\r` is CHA 1 and a backspace CUB 1.
+ */
+const MOTIONS = {
+  D: (column: number, count: number) => column - count,
+  j: (column: number, count: number) => column - count,
+  C: (column: number, count: number) => column + count,
+  a: (column: number, count: number) => column + count,
+  G: (_column: number, count: number) => count,
+  "`": (_column: number, count: number) => count,
+  I: (column: number, count: number) => tabStop(Math.floor((column - 1) / TAB_STOP) + count),
+  Z: (column: number, count: number) => tabStop(Math.ceil((column - 1) / TAB_STOP) - count),
+} as const;
+
+type Motion = keyof typeof MOTIONS;
+
+const moved = (column: number, motion: Motion, count: number): number =>
+  Math.min(LAST_COLUMN, Math.max(1, MOTIONS[motion](column, count)));
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
     const { count, motion, sgr, mode, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
-    if (match[0] === "\r") yield { kind: "move", to: () => 1 };
-    if (motion !== undefined) yield { kind: "move", to: MOTIONS[motion]!(Math.max(1, Number(count))) };
+    if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
+    if (motion !== undefined) {
+      yield { kind: "move", motion: motion as Motion, count: Math.min(LAST_COLUMN, Math.max(1, Number(count))) };
+    }
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
     if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
     if (struck !== undefined) yield { kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED };
     if (underlined !== undefined) yield { kind: "overstrike", character: underlined, emphasis: UNDERLINED };
-    if (match[0] === "\b") yield { kind: "move", to: (column) => Math.max(1, column - 1) };
+    if (match[0] === "\b") yield { kind: "move", motion: "D", count: 1 };
     at = match.index + match[0].length;
   }
   if (at < bytes.length) yield { kind: "text", text: bytes.slice(at) };
@@ -330,7 +350,9 @@ function splitWide(cells: Cell[], column: number): void {
 
 /** `cluster` drawn at `column`, and the columns the cursor moves. */
 function draw(cells: Cell[], column: number, cluster: string, style: Style): number {
-  // A cursor moved past the drawn end leaves blank cells behind it.
+  // A cursor moved past the drawn end leaves blank cells behind it, and a mark
+  // drawn there sits on the blank before it, in that blank's style, as on a
+  // terminal.
   while (cells.length < column) cells.push(BLANK);
   const width = cluster === "\t" ? TAB_STOP - ((column - 1) % TAB_STOP) : cellLen(cluster);
   if (width === 0) {
@@ -396,7 +418,7 @@ export class AnsiDecoder {
           column += draw(cells, column, token.character, this.sgr.add(token.emphasis).withLink(this.link));
           break;
         case "move":
-          column = token.to(column);
+          column = moved(column, token.motion, token.count);
           break;
         case "erase":
           erase(cells, column, token.mode);
