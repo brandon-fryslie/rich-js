@@ -12,9 +12,8 @@
  */
 import { Segment, decodeAnsi } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
-import { OSC8 } from "../../src/core/osc8.js";
-import { CURSOR_RESTORE, CURSOR_SAVE, LINE_BREAK_ESCAPES, LINE_ENDS, LINE_FINALS, REPEAT_FINAL, repeatable } from "../../src/core/ansi.js";
-import { graphemes } from "../../src/core/cells.js";
+import { LINE_START, scanUndrawn } from "../../src/core/ansi.js";
+import type { LineState } from "../../src/core/ansi.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
 
 /**
@@ -27,47 +26,6 @@ export interface Drawn {
   readonly dark: string;
   readonly columns: number;
 }
-
-/**
- * Every complete escape sequence, cut as `decodeAnsi` (src/core/ansi.ts) cuts
- * them: a CSI; a string escape (OSC, DCS, APC, PM, SOS) run to its
- * terminator; any other escape, ECMA-48's intermediates and one final byte,
- * which after an intermediate may be a string escape's introducer.
- */
-const ESCAPE = /\x1b(?:\[[0-?]*[ -/]*[@-~]|[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c)|[ -/]+[0-~]|[0-OQ-WYZ\\`-~])/g;
-
-const LINE = [...LINE_FINALS].map((final) => `\\x${final.charCodeAt(0).toString(16)}`).join("");
-
-/**
- * The escapes `decodeAnsi` draws: SGR, erase in line, a move along the line or
- * an edit of it (`LINE_FINALS`), a line break (`LINE_BREAK_ESCAPES`), a G0 or G1 designation, a soft reset
- * (DECSTR), and an OSC 8 link. It drops every other, RIS among them: the decoder
- * resets its state there too, but a terminal also clears its screen. A save and a
- * restore are `SAVE`'s and `RESTORE`'s, and REP is `REPEAT`'s, since whether a
- * restore or a REP is drawn depends on what came before it.
- */
-const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|${LINE_BREAK_ESCAPES}|\\x1b[()][0-~]|\\x1b\\[!p|${OSC8.source})$`);
-
-/**
- * A cursor restore (`CURSOR_RESTORE`), drawn only back to a save on its own
- * line: with nothing saved a terminal homes the cursor, and from a later line
- * it goes up to the saved row, and the decoder holds no row to do either.
- * `RESTORE_SPAN` is what ends a save's line or forgets it: whatever the decoder
- * ends a line at (`LINE_ENDS`), and DECSTR.
- */
-const RESTORE = new RegExp(`^(?:${CURSOR_RESTORE})$`);
-const SAVE = new RegExp(`^(?:${CURSOR_SAVE})$`);
-/** REP, drawn only where a graphic character stands just before it (`repeatsAt`). */
-const REPEAT = new RegExp(`^\\x1b\\[[0-9]*(?:;[0-9;]*)?${REPEAT_FINAL}$`);
-const RESTORE_SPAN = new RegExp(`${LINE_ENDS}|\\x1b\\[!p`, "u");
-
-/**
- * The start of an escape `DRAWN` may yet match once the rest of it is written:
- * a CSI so far all parameters or DECSTR's `!`, a designation short of its set,
- * or an OSC 8 link short of its terminator. The link's parts exclude `OSC8`'s
- * terminators (src/core/osc8.ts).
- */
-const DRAWN_START = /^\x1b(?:\[[0-9;:]*|\[!|[()]|\]8?|\]8;[^;\x1b\x07\x9c]*(?:;[^\x1b\x07\x9c]*\x1b?)?)?$/;
 
 /**
  * The most an escape may hold before it is complete. VTE takes a link's URI up
@@ -84,59 +42,26 @@ export interface EscapeScan {
    * Null when there is none.
    */
   readonly dropped: string | null;
-  /** Where an escape starts that may yet be drawn once the rest of it is written; the length of the bytes when none does. */
+  /** Where an escape starts that is not yet complete; the length of the bytes when none does. */
   readonly unread: number;
-  /** Whether a cursor save stands on the line the bytes end on, for a restore in the next write to return to. */
-  readonly saved: boolean;
-  /** Whether the bytes end on a graphic character, for a REP at the start of the next write to repeat. */
-  readonly repeatable: boolean;
+  /** What the line the bytes end on holds for the next write. */
+  readonly after: LineState;
 }
-
-/** What one write leaves the line holding for the next: `EscapeScan`'s `saved` and `repeatable`. */
-export type Carried = Pick<EscapeScan, "saved" | "repeatable">;
 
 /**
  * [LAW:one-source-of-truth] Whether bytes written so far are ones
- * `drawOutput` draws whole: an escape it drops, or one begun that can no
- * longer become one it draws, is dropped. The page's static run reads each
- * write by this as it comes (theme/static-run.ts); `undrawnEscape` reads a
- * program's whole output by it.
+ * `drawOutput` draws whole, as the decoder that draws them reports it
+ * (`scanUndrawn`); an escape still open past any a terminal takes is dropped
+ * too. The page's static run reads each write by this as it comes
+ * (theme/static-run.ts), `before` what the last one left the line holding;
+ * `undrawnEscape` reads a program's whole output by it.
  */
-export function scanEscapes(bytes: string, before: Carried = { saved: false, repeatable: false }): EscapeScan {
-  let read = 0;
-  let saved: number | undefined = before.saved ? 0 : undefined;
-  for (const match of bytes.matchAll(ESCAPE)) {
-    // An escape begun before this one and never finished: an escape inside it ends any chance of drawing it.
-    const open = bytes.indexOf("\x1b", read);
-    if (open < match.index) return { dropped: bytes.slice(open, match.index), unread: open, saved: false, repeatable: false };
-    if (SAVE.test(match[0])) saved = match.index + match[0].length;
-    else if (!drawnAt(bytes, match, read, saved, before.repeatable)) return { dropped: match[0], unread: match.index, saved: false, repeatable: false };
-    read = match.index + match[0].length;
-  }
-  const open = bytes.indexOf("\x1b", read);
-  const end = open === -1 ? bytes.length : open;
-  const scan = { unread: end, saved: standing(bytes, saved, end), repeatable: repeatsAt(bytes, read, end, before.repeatable) };
-  if (open === -1) return { dropped: null, ...scan };
-  const rest = bytes.slice(open);
-  return DRAWN_START.test(rest) && rest.length <= LONGEST_OPEN_ESCAPE ? { dropped: null, ...scan } : { dropped: rest, unread: open, saved: false, repeatable: false };
+export function scanEscapes(bytes: string, before: LineState = LINE_START, columns: number = EXAMPLE_TERMINAL.columns): EscapeScan {
+  // At the width `drawOutput` draws them at, so a rule that reads the margin agrees with the drawing.
+  const { undrawn, unread, after } = scanUndrawn(bytes, before, columns);
+  const open = bytes.slice(unread);
+  return { dropped: undrawn ?? (open.length > LONGEST_OPEN_ESCAPE ? open : null), unread, after };
 }
-
-/** Whether the escape `match`, after an earlier one ended at `read`, is one a drawing draws, a save aside. */
-const drawnAt = (bytes: string, match: RegExpExecArray, read: number, saved: number | undefined, carried: boolean): boolean =>
-  RESTORE.test(match[0]) ? standing(bytes, saved, match.index) : REPEAT.test(match[0]) ? repeatsAt(bytes, read, match.index, carried) : DRAWN.test(match[0]);
-
-/**
- * Whether a REP at `at` has a graphic character to repeat: the bytes since the
- * last escape, which ended at `from`, end on one the decoder repeats
- * (`repeatable`). Directly after an escape there is none, as the decoder has
- * none after any control function; at the start of a write, what the last write
- * ended on.
- */
-const repeatsAt = (bytes: string, from: number, at: number, carried: boolean): boolean =>
-  at === from ? from === 0 && carried : repeatable([...graphemes(bytes.slice(from, at))].at(-1)!);
-
-/** Whether a save made at `saved` still stands at `at`: made, and on the same line. */
-const standing = (bytes: string, saved: number | undefined, at: number): boolean => saved !== undefined && !RESTORE_SPAN.test(bytes.slice(saved, at));
 
 /**
  * The first escape in a program's whole output that a drawing of it drops,
@@ -144,8 +69,8 @@ const standing = (bytes: string, saved: number | undefined, at: number): boolean
  * build holds a static block to this (example-runner.ts), and the page's
  * static run a program that has ended (theme/static-run.ts).
  */
-export function undrawnEscape(output: string): string | null {
-  const { dropped, unread } = scanEscapes(output);
+export function undrawnEscape(output: string, columns: number = EXAMPLE_TERMINAL.columns): string | null {
+  const { dropped, unread } = scanEscapes(output, LINE_START, columns);
   return dropped ?? (unread < output.length ? output.slice(unread) : null);
 }
 
