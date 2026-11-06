@@ -41,6 +41,12 @@ describe("osc8Sequences", () => {
     }
   });
 
+  it("reads no sequence a CAN or SUB aborts before its terminator", () => {
+    for (const abort of ["\x18", "\x1a"]) {
+      expect(osc8Sequences(`\x1b]8;;http://a${abort}visible\x07x`)).toEqual([]);
+    }
+  });
+
   it("stops the uri only at bytes stripOscControls removes", () => {
     for (const t of ["\x1b", "\x07", "\x9c"]) {
       expect(stripOscControls(`a${t}b`)).toBe("ab");

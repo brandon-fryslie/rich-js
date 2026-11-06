@@ -31,6 +31,10 @@ describe("scanEscapes", () => {
     expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
   });
 
+  it.each(["\x18", "\x1a"])("finds only the string a %j aborts, not the text a terminal draws after it", (abort) => {
+    expect(scanEscapes(`\x1b]8;;http://a${abort}visible\x07x`).dropped).toBe("\x1b]8;;http://a");
+  });
+
   it.each(["\x1b[3E", "\x9b2E"])("finds %j, a CNL past rows the drawing never draws", (escape) => {
     expect(scanEscapes(`a${escape}b`).dropped).toBe(escape);
   });

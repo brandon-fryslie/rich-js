@@ -160,6 +160,14 @@ describe("decodeAnsi links", () => {
     expect(styleAt(text, 6).link).toBeUndefined();
   });
 
+  it("draws what follows a CAN or SUB that aborts a link's open, as a terminal does", () => {
+    for (const abort of ["\x18", "\x1a"]) {
+      const text = decodeAnsi(`\x1b]8;;http://a${abort}visible\x07x`);
+      expect(text.plain).toBe("visiblex");
+      expect(styleAt(text, 0).link).toBeUndefined();
+    }
+  });
+
   it("keeps a link open across an SGR reset, as a terminal does", () => {
     const text = decodeAnsi("\x1b]8;;https://x.test\x1b\\\x1b[1mbold\x1b[0m plain\x1b]8;;\x1b\\");
     expect(styleAt(text, 0).bold).toBe(true);

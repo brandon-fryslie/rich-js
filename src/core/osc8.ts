@@ -38,9 +38,11 @@ import { pattern } from "./pattern.js";
  * What ends a string escape's payload, as a regex class body: ESC (`\x1b`,
  * which begins ST `ESC \` or any other escape), BEL (`\x07`), and every C1
  * control, the 8-bit ST (`\x9c`) and each introducer of a sequence of its own
- * among them. OSC 8 and `decodeAnsi`'s other string escapes both stop here.
+ * among them — and CAN (`\x18`) and SUB (`\x1a`), at which a VT500 parser
+ * aborts the string and draws what follows. OSC 8 and `decodeAnsi`'s other
+ * string escapes both stop here.
  */
-export const STRING_STOPS = "\\x1b\\x07\\x80-\\x9f";
+export const STRING_STOPS = "\\x1b\\x07\\x18\\x1a\\x80-\\x9f";
 
 /**
  * `text` an OSC carries — a link's address, a title, a notification — without a

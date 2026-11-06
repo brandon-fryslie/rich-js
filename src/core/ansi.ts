@@ -129,7 +129,8 @@ const either = (introducers: string): string => {
 const CSI = either("[");
 // OSC, DCS, APC, PM, SOS. As the VT500 parser C1-reading terminals follow, the
 // payload ends at a terminator, which it takes, or before an ESC or any C1
-// control, NEL among them, which then acts as itself. The parser ignores the
+// control, NEL among them, which then acts as itself, or before a CAN or SUB,
+// which aborts it so what follows draws. The parser ignores the
 // other C0 controls there, so a form feed stays in the payload; a line feed ends
 // it, the cut a capture's line makes. A stray C1 byte that is windows-1252 read
 // as Latin-1 decodes as such a terminal shows it; no rule local to the byte can
