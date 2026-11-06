@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-577",
+      "ref": "refs/pull/577/merge",
+      "sha": "64950d7dd996c7b296ba1953d3d1f919e07edd24",
+      "timestamp": "2026-11-06T11:03:04.498Z",
+      "commits": [
+        {
+          "sha": "64950d7dd996c7b296ba1953d3d1f919e07edd24",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T04:00:37-07:00",
+          "message": "Merge 1ce916697288f393a795a3a0cc94982f62dad6a2 into e8ee9d2d00559fb249809ef4103d270a9269551c\n"
+        },
+        {
+          "sha": "1ce916697288f393a795a3a0cc94982f62dad6a2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T04:00:27-07:00",
+          "message": "decodeAnsi draws the designated character set: DEC Special Graphics in G0 or G1, shifted by SO and SI (rich-control-codes-xh4n.hdm)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e8ee9d2d00559fb249809ef4103d270a9269551c",
