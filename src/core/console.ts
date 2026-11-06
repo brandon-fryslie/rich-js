@@ -36,7 +36,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { activePass, isRenderable, measure, render, type HostFrame, type Pass } from "./protocol.js";
+import { activePass, isRenderable, measure, render, type HostFrame, type Justify, type Pass } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
 import { ListState, State, refuseRenderWrite } from "./state.js";
 
@@ -189,7 +189,7 @@ export interface PrintOptions {
    * decided; absent, the print is drawn for no moment, 0 (`frameTimeOf`).
    */
   frame?: HostFrame;
-  justify?: "default" | "left" | "center" | "right" | "full";
+  justify?: Justify;
   overflow?: OverflowMethod;
   highlight?: boolean;
   markup?: boolean;
@@ -234,12 +234,14 @@ function logTime(time: Date): string {
   return `[${two(time.getHours())}:${two(time.getMinutes())}:${two(time.getSeconds())}] `;
 }
 
-// Three of the five justify methods place what a print draws as a block, the
-// way Rich's `print` wraps each renderable in `Align`. The other two leave it
-// where it was drawn: `"default"` asks for no placement, and `"full"` is a way
-// of setting a paragraph's words, which only text can do.
-const PLACED_BY: Record<NonNullable<PrintOptions["justify"]>, Alignment | undefined> = {
+// Three of the six justify methods place what a print draws as a block, the
+// way Rich's `print` wraps each renderable in `Align`. The other three leave it
+// where it was drawn: `"default"` and `"start"` name an edge each paragraph
+// finds for itself, and `"full"` is a way of setting a paragraph's words, all
+// of which only text can do.
+const PLACED_BY: Record<Justify, Alignment | undefined> = {
   default: undefined,
+  start: undefined,
   full: undefined,
   left: "left",
   center: "center",
@@ -656,7 +658,7 @@ export class Console {
       ...options,
       ...strings,
       frame: opts.frame,
-      justify: opts.justify === "default" ? undefined : opts.justify,
+      justify: opts.justify ?? "default",
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
     };

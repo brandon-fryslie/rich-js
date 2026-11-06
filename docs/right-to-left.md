@@ -124,8 +124,14 @@ output.print(table);
 
 `justify: "start"` names this edge and fills the rest of the width. It is what a
 `Table` column and `Markdown` use unless told otherwise, so a right-to-left cell
-sits at its cell's right. `"left"` and `"right"` mean those edges whatever the
+sits at its cell's right. `justify: "default"` names the same edge without
+filling the width, so a left-to-right line keeps its natural width; it is what
+`Console.print` asks for. `"left"` and `"right"` mean those edges whatever the
 direction, and a stated `direction` decides the edge as it decides the order.
+
+A text with no `justify` at all is not placed. Containers that set a line down
+at its own width — a `Strip` item, a `Syntax` line, a soft-wrapped print — rely
+on that, and a right-to-left line in one keeps its own cells.
 
 Under `plain`, rich-js writes logical order. There a line's start is its first
 character, so padding goes after the text, as it always has. The terminal's own

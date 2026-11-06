@@ -11,6 +11,7 @@ import { Console } from "../../src/core/console.js";
 import { renderToString, segmentToString, segmentsToString } from "../../src/core/render.js";
 import { ColorDepth, resolveOutputTarget } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
+import { SEPARATOR_STYLES, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
@@ -184,7 +185,7 @@ describe("plain is today's bytes", () => {
 describe("reading on a terminal that reorders", () => {
   test("Arabic in a Text and in a Table cell, under logical", () => {
     const bytes = plainBytes(new RichText(ARABIC, { end: "" }), "logical");
-    expect(rows(bytes).map(implicit).map((row) => row.trimStart())).toEqual([[...ARABIC].reverse().join("")]);
+    expect(rows(bytes).map(implicit)).toEqual([[...ARABIC].reverse().join("")]);
   });
 
   test("two adjacent right-to-left cells stay in their columns", () => {
@@ -207,15 +208,10 @@ describe("reading on a terminal that reorders", () => {
     expect(row.indexOf("א")).toBeGreaterThan(row.indexOf("ד"));
   });
 
-  test("at column 0 VTE discards the initiator, so a full-width sentence's full stop is where it is today", () => {
-    const bytes = plainBytes(new RichText("שלום.", { end: "" }), "logical", 5);
+  test("at column 0 VTE discards the initiator, so a sentence's full stop is where it is today", () => {
+    const bytes = plainBytes(new RichText("שלום.", { end: "" }), "logical");
     expect(implicit(rows(bytes)[0]!)).toBe(".םולש");
     expect(implicitVte(rows(bytes)[0]!)).toBe("םולש.");
-  });
-
-  test("a narrower sentence starts past column 0, so VTE keeps its isolate", () => {
-    const bytes = plainBytes(new RichText("שלום.", { end: "" }), "logical");
-    expect(implicitVte(rows(bytes)[0]!).trimStart()).toBe(".םולש");
   });
 
   test("a mixed line wrapped at a neutral: a terminal cannot see the paragraph", () => {
@@ -249,7 +245,7 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
 
   test("writes each word's letters in the order kitty turns back", () => {
     const [row] = rows(plainBytes(new RichText(HEBREW, { end: "" }), "words"));
-    expect(row!.trimStart()).toBe("עולם שלום");
+    expect(row).toBe("עולם שלום");
   });
 
   test("shows a wrapped table of right-to-left cells as visual order does", () => {
@@ -265,7 +261,7 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
 
   test("turns back each face of a word apart, as kitty shapes each face alone", () => {
     const [row] = rows(renderToString(renderMarkup("[bold]של[/]ום עולם"), { width: 40, textOrder: "words", colorSystem: "none" }));
-    expect(row!.trim()).toBe("עולם וםשל");
+    expect(row!.trimEnd()).toBe("עולם וםשל");
   });
 
   test("ends a run at a box-drawing cell, where kitty ends one", () => {
@@ -287,11 +283,11 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
 
   test("keeps a style on the cell it was laid out in, which kitty does not move", () => {
     const bytes = renderToString(renderMarkup("[red]א[/]ב"), { width: 10, textOrder: "words", colorSystem: "ansi" });
-    expect(bytes.trimStart()).toMatch(/^א\x1b\[31mב/);
+    expect(bytes).toMatch(/^א\x1b\[31mב/);
   });
 
   test("ends a run at an emoji, which kitty draws from its own font", () => {
-    expect(plainBytes(new RichText("אב😀גד", { end: "" }), "words").trimStart()).toBe("גד😀אב");
+    expect(plainBytes(new RichText("אב😀גד", { end: "" }), "words")).toBe("גד😀אב");
   });
 
   test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {
@@ -303,13 +299,13 @@ describe("reading on a terminal that does not reorder", () => {
   test("visual order is what a reordering terminal shows, and needs no controls", () => {
     const bytes = plainBytes(new RichText(ARABIC, { end: "" }), "visual");
     expect(bytes).not.toMatch(/[\u202a-\u202e\u2066-\u2069]/);
-    expect(read(bytes).trimStart()).toBe(read(implicit(ARABIC)));
+    expect(read(bytes)).toBe(read(implicit(ARABIC)));
   });
 
   test("Hebrew, wrapped: each row reads from its own right edge, first words first", () => {
     const shown = rows(plainBytes(new RichText("אב גד הו", { end: "" }), "visual", 5)).map(none);
-    expect(shown[0]!.trim()).toBe("דג בא");
-    expect(shown[1]!.trim()).toBe("וה");
+    expect(shown[0]!.trimEnd()).toBe("דג בא");
+    expect(shown[1]!.trimEnd()).toBe("וה");
   });
 
   test("truncation keeps the start of the sentence, which is its right side", () => {
@@ -328,20 +324,20 @@ describe("reading on a terminal that does not reorder", () => {
   test("a span edge inside a cluster leaves it whole, so a mark stays on its letter", () => {
     const text = new RichText("\u05d0\u05b0\u05d1", { end: "" }).stylize("bold", 1, 2);
     const shown = [...text.render({ maxWidth: 40, textOrder: "visual" })].map((segment) => segment.text).join("");
-    expect(shown.trimStart()).toBe("\u05d1\u05d0\u05b0");
+    expect(shown).toBe("\u05d1\u05d0\u05b0");
   });
 
-  test("a wrapped right-to-left row starts at its right edge, the wrap's space off it", () => {
+  test("a wrapped right-to-left row starts at its edge, and pads to the width", () => {
     const sentence = "\u05d0\u05d1\u05d2 \u05d3\u05d4\u05d5 \u05d6";
-    for (const [order, show] of [["visual", none], ["words", kitty]] as const) {
-      const shown = rows(plainBytes(new RichText(sentence, { end: "" }), order, 5)).map(show);
-      expect(shown[0]).toBe("  \u05d2\u05d1\u05d0");
-    }
-    expect(implicit(rows(plainBytes(new RichText(sentence, { end: "" }), "logical", 5))[0]!)).toBe("  \u05d2\u05d1\u05d0");
+    const shown = rows(plainBytes(new RichText(sentence, { end: "" }), "visual", 5));
+    expect(shown[0]!.startsWith(" ")).toBe(false);
+    expect(implicit(rows(plainBytes(new RichText(sentence, { end: "" }), "logical", 5))[0]!).startsWith(" ")).toBe(false);
+    const padded = rows(plainBytes(new RichText(sentence, { end: "", justify: "left" }), "visual", 5));
+    expect(cellLen(padded[0]!)).toBe(5);
   });
 
-  test("an explicit left still pads on the right, and keeps the spaces the author wrote", () => {
-    expect(plainBytes(new RichText("\u05d0\u05d1 ", { end: "", justify: "left" }), "visual", 5)).toBe(" \u05d1\u05d0  ");
+  test("the last row keeps the spaces the author wrote", () => {
+    expect(plainBytes(new RichText("\u05d0\u05d1 ", { end: "" }), "visual")).toBe(" \u05d1\u05d0");
   });
 
   test("a Text's edge is a cell it draws, never a control", () => {
@@ -365,11 +361,11 @@ describe("reading on a terminal that does not reorder", () => {
   });
 
   test("a mixed line keeps the left-to-right word forwards", () => {
-    expect(plainBytes(new RichText("אב abc גד", { end: "" }), "visual").trimStart()).toBe("דג abc בא");
+    expect(plainBytes(new RichText("אב abc גד", { end: "" }), "visual")).toBe("דג abc בא");
   });
 
   test("L4: brackets mirror in a right-to-left run", () => {
-    expect(plainBytes(new RichText("א (ב) «ג» <ד>", { end: "" }), "visual").trimStart()).toBe("<ד> «ג» (ב) א");
+    expect(plainBytes(new RichText("א (ב) «ג» <ד>", { end: "" }), "visual")).toBe("<ד> «ג» (ב) א");
   });
 
   test("the mirror table is an involution over the engine's own Bidi_Mirrored", () => {
@@ -385,7 +381,7 @@ describe("reading on a terminal that does not reorder", () => {
 
   test("a line's cells do not change with order, a joiner emoji included", () => {
     const widths = (text: string): number[] =>
-      (["plain", "logical", "visual", "words"] as const).map((order) => cellLen(rows(plainBytes(new RichText(text, { end: "", justify: "start" }), order, 60)).join("")));
+      (["plain", "logical", "visual", "words"] as const).map((order) => cellLen(rows(plainBytes(new RichText(text, { end: "" }), order, 60)).join("")));
     for (const text of [ARABIC, HEBREW, "لا إله إلا الله", "مَرْحَبًا", "سلام 👨\u200d👩\u200d👧 عليكم"]) {
       expect(new Set(widths(text)).size).toBe(1);
     }
@@ -403,7 +399,7 @@ describe("a paragraph starts at its own edge", () => {
     row.startsWith(" ") ? "left" : row.endsWith(" ") ? "right" : "none";
 
   test.each(laidOut)("a wrapped right-to-left paragraph is ragged on its left, under %s", (order) => {
-    const lines = shown(new RichText(SENTENCE, { end: "" }), order, 12);
+    const lines = shown(new RichText(SENTENCE, { end: "", justify: "default" }), order, 12);
     expect(lines.length).toBeGreaterThan(1);
     for (const line of lines) {
       expect(cellLen(line)).toBe(12);
@@ -429,12 +425,12 @@ describe("a paragraph starts at its own edge", () => {
   test.each(laidOut)("start is the left edge of a left-to-right paragraph and the right of a stated rtl one, under %s", (order) => {
     expect(padded(shown(new RichText("abc", { end: "", justify: "start" }), order, 20)[0]!)).toBe("right");
     expect(padded(shown(new RichText("abc", { end: "", justify: "start", direction: "rtl" }), order, 20)[0]!)).toBe("left");
-    // Unjustified, a left-to-right line is still left at its natural width.
-    expect(shown(new RichText("abc", { end: "" }), order, 20)[0]).toBe("abc");
+    // At the default edge, a left-to-right line is still left at its natural width.
+    expect(shown(new RichText("abc", { end: "", justify: "default" }), order, 20)[0]).toBe("abc");
   });
 
   test("each line of a text takes its own paragraph's edge", () => {
-    const lines = shown(new RichText(`abc\n${HEBREW}`, { end: "" }), "visual", 20);
+    const lines = shown(new RichText(`abc\n${HEBREW}`, { end: "", justify: "default" }), "visual", 20);
     expect(lines[0]).toBe("abc");
     expect(padded(lines[1]!)).toBe("left");
   });
@@ -459,6 +455,33 @@ describe("a paragraph starts at its own edge", () => {
     table.addColumn("", { width: 12 });
     table.addRow(HEBREW);
     expect(plainBytes(table, "plain").split("\n")[0]).toBe(`${HEBREW}   `);
+  });
+
+  // Absent, justify places nothing, so what sets a line down at its natural
+  // width keeps it there whatever the script and the order.
+  test.each(laidOut)("unjustified, a right-to-left line keeps its natural width, under %s", (order) => {
+    expect(plainBytes(new RichText(HEBREW, { end: "" }), order, 30)).toBe(plainBytes(new RichText(HEBREW, { end: "" }), order, cellLen(HEBREW)));
+  });
+
+  test("a Strip item in Hebrew takes its own cells, not the row", () => {
+    const strip = new Strip([new RichText("שלום"), new RichText("x")], SEPARATOR_STYLES.powerline);
+    expect(cellLen(rows(plainBytes(strip, "visual", 20))[0]!.trimEnd())).toBe(cellLen(rows(plainBytes(strip, "plain", 20))[0]!.trimEnd()));
+  });
+
+  test("a soft-wrapped print of Hebrew is not padded", () => {
+    const recording = new Console({ width: 20, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(new RichText("שלום"), { softWrap: true });
+    expect(recording.exportText()).toBe("םולש\n");
+  });
+
+  test("a Hebrew comment in Syntax is its own cells, not set against the block's right edge", () => {
+    const [, comment] = rows(plainBytes(new Syntax("def f():\n    # שלום\n    return 1", "python"), "visual", 30));
+    expect(comment).toBe("םולש #    ");
+  });
+
+  test("a leading RLM decides the edge under visual, as it decides the order", () => {
+    const [row] = rows(plainBytes(new RichText("\u200Fhello", { end: "", justify: "start" }), "visual", 20));
+    expect(padded(row!)).toBe("left");
   });
 });
 
@@ -513,15 +536,14 @@ describe("the grid on a real emulator", () => {
   });
 
   test("logical bytes advance further here, which is why xterm.js is not on the logical list", async () => {
-    // Narrower than the terminal, so the row's padding leaves the cursor room to overshoot.
-    const bytes = plainBytes(new RichText(HEBREW, { end: "" }), "logical", 40);
+    const bytes = text(HEBREW, "logical");
     expect(await cursorAfter(bytes)).toBeGreaterThan(cellLen(bytes));
   });
 });
 
 describe("crops and splices, below every drawing", () => {
   const destination = { ...resolveOutputTarget(null, { isTTY: false }), textOrder: "logical" as const };
-  const logicalRow = (content: string): Segment[] => [...new RichText(content, { end: "" }).render({ maxWidth: cellLen(content), textOrder: "logical" })];
+  const logicalRow = (content: string): Segment[] => [...new RichText(content, { end: "" }).render({ maxWidth: 40, textOrder: "logical" })];
 
   test("two cells merged side by side are two isolates", () => {
     const lines = (content: string): Segment[][] => [logicalRow(content)];

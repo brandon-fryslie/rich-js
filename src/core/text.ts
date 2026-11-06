@@ -1028,7 +1028,9 @@ export class RichText implements Renderable, Measurable {
       // the bytes are logical, where a line starts at its first character and
       // padding after it is already at its start, wherever the destination
       // shows that: it is the destination's own bidi, if any, that turns it.
-      const startLevel = order !== "plain" && directed ? paragraphLevelOf(line.text, stated) : 0;
+      // Read off the raw line, as `reorder` reads its level: a mark `without`
+      // took out under `visual` still decided the paragraph.
+      const startLevel = order !== "plain" && directed ? paragraphLevelOf(raw.text, stated) : 0;
       const openersAt = openersAlong(line.text);
 
       divided(line, ranges).forEach((cut, index) => {
@@ -1240,19 +1242,21 @@ function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
 }
 
 /**
- * The edge a row is placed against. `"start"` is the paragraph's own edge, and so
- * is no justify at all for a right-to-left row: unpadded, it would be drawn at
- * the left, the edge its reader ends at. A `full` row's gaps are already in
- * its text, so only its last row is placed, as no justify places one.
+ * The edge a row is placed against. `"start"` and `"default"` are the
+ * paragraph's own edge: a right-to-left row unpadded would be drawn at the
+ * left, the edge its reader ends at. A `full` row's gaps are already in its
+ * text, so its last row is placed as no justify places one: not at all.
  */
 function edgeOf(justify: Justify | undefined, level: ParagraphLevel): "left" | "center" | "right" | undefined {
   const rightToLeft = level === 1;
   switch (justify) {
     case "start":
       return rightToLeft ? "right" : "left";
+    case "default":
+      return rightToLeft ? "right" : undefined;
     case "full":
     case undefined:
-      return rightToLeft ? "right" : undefined;
+      return undefined;
     default:
       return justify;
   }
