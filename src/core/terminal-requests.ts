@@ -37,19 +37,24 @@ const POINTER_SHAPES = [
  * a TypeScript caller, and OSC 22 carries the name raw, so a BEL in a cast
  * string would end it and start a sequence of the caller's choosing. Every road
  * a shape takes to the terminal parses it here first, whether or not anything
- * is then written.
+ * is then written; `pointerSequence` takes only what this returns.
  */
-export function pointerShape(value: string): PointerShape {
-  if ((POINTER_SHAPES as readonly string[]).includes(value)) return value as PointerShape;
+export function pointerShape(value: unknown): ParsedPointerShape {
+  if ((POINTER_SHAPES as readonly unknown[]).includes(value)) return value as ParsedPointerShape;
   const named = typeof value === "string" ? JSON.stringify(value) : `a ${typeof value}`;
   throw new TypeError(`${named} is not a pointer shape: one of ${POINTER_SHAPES.join(", ")}`);
 }
+
+declare const parsed: unique symbol;
+
+/** A `PointerShape` that `pointerShape` has checked at runtime. */
+export type ParsedPointerShape = PointerShape & { readonly [parsed]: true };
 
 /**
  * OSC 22: the mouse pointer's shape over the terminal. A terminal without it
  * ignores the sequence, as it does any OSC it does not know.
  */
-export function pointerSequence(shape: PointerShape): string {
+export function pointerSequence(shape: ParsedPointerShape): string {
   return `${OSC}22;${shape}${ST}`;
 }
 

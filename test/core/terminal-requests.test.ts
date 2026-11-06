@@ -213,6 +213,6 @@ describe("a pointer shape", () => {
 
   it("names a value that is not a string by its type", () => {
     const { console } = terminal(KITTY);
-    expect(() => console.setPointerShape(1n as unknown as "text")).toThrow(/^a bigint is not a pointer shape/);
+    expect(() => console.setPointerShape(1n as never)).toThrow(/^a bigint is not a pointer shape/);
   });
 });
