@@ -467,9 +467,27 @@ describe("a paragraph starts at its own edge", () => {
     expect(padded(shown(new Layout("abc"), order, 20)[0]!)).toBe("right");
   });
 
-  test("a renderable a Padding holds is handed no justify: a Strip in Hebrew keeps its own cells", () => {
-    const strip = (): Strip => new Strip([new RichText("שלום"), new RichText("x")], SEPARATOR_STYLES.powerline);
-    expect(rows(plainBytes(new Padding(strip(), 0), "visual", 20))[0]!.trimEnd()).toBe(rows(plainBytes(strip(), "visual", 20))[0]!.trimEnd());
+  test("a renderable a Padding holds is handed no justify", () => {
+    const handed: unknown[] = [];
+    const probe = { render: (options: { justify?: unknown }) => (handed.push(options.justify), [new Segment("x")]) };
+    plainBytes(new Padding(probe, 0), "visual", 20);
+    expect(handed).toEqual([undefined]);
+  });
+
+  // The pad that sets a body at its edge is the container's fill, which is
+  // unstyled for a Latin body: a styled body's style stays on its glyphs.
+  test("a styled text body in a Padding keeps its style on its glyphs, right-to-left and Latin alike", () => {
+    const bytes = (content: string): string =>
+      renderToString(new Padding(new RichText(content, { style: "underline" }), 0), { width: 20, textOrder: "visual", colorSystem: "truecolor" });
+    expect(bytes(HEBREW)).toMatch(/^ {11}\x1b\[4m/);
+    expect(bytes("abc")).toMatch(/^\x1b\[4mabc\x1b\[0m {17}/);
+  });
+
+  test("a justify the Padding is handed still places its right-to-left body: a Table column's", () => {
+    const table = new Table({ showHeader: false, box: undefined, showEdge: false, padding: 0 });
+    table.addColumn("", { width: 12, justify: "left" });
+    table.addRow(HEBREW);
+    expect(padded(rows(plainBytes(table, "visual"))[0]!)).toBe("right");
   });
 
   test("plain writes logical order, whose start is the line's first character: today's bytes", () => {

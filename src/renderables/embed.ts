@@ -117,7 +117,9 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
 
 /**
  * A body drawn by a container that pads every row of it to the container's
- * width — a `Padding`, so a `Panel`, and a leaf `Layout`. There the container
+ * width — a `Padding`, so a `Panel` and every `Table` cell (whose column
+ * always names a justify, so never reaches the default here), and a leaf
+ * `Layout`. There the container
  * places the row, so text starts at its paragraph's own edge, as the text a
  * `Console.print` sets itself does: a right-to-left body sits at the right
  * inner edge rather than wherever the padding happens to fall. Any other

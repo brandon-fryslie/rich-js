@@ -1087,20 +1087,19 @@ const NEVER_FREE = (): boolean => false;
  * line without padding it at all. That distinction is what lets a soft-wrapped
  * `Console.print` leave its lines at their natural width.
  *
- * The padding is drawn in the text's base style, as the reference pads
- * inside the `Text` it justifies: a title "on red" fills its row in red.
+ * The padding is drawn in `padStyle`, which `padStyleOf` chooses.
  */
 function* placed(
   { segments: line, free, orient }: WrappedLine,
   maxWidth: number,
-  base: Style,
+  padStyle: Style,
   // [LAW:types-are-the-program] `full` is absent rather than ignored: it
   // needs the lines either side of this one, so the type refuses it here
   // instead of a branch quietly rendering it as `left`, which is the bug
   // this signature replaces (rich-justify-0cr.1).
   justify?: "left" | "center" | "right",
 ): Iterable<Segment> {
-  const padStyle = base.isNull ? undefined : base;
+  const style = padStyle.isNull ? undefined : padStyle;
   switch (justify) {
     case "center":
     case "right": {
@@ -1112,12 +1111,12 @@ function* placed(
       );
       const gap = Math.max(maxWidth - Segment.getLineLength(body), 0);
       const leftPad = justify === "center" ? Math.floor(gap / 2) : gap;
-      yield* padded(orient(body), free, leftPad, gap - leftPad, padStyle);
+      yield* padded(orient(body), free, leftPad, gap - leftPad, style);
       break;
     }
     case "left": {
       const row = orient(line);
-      yield* padded(row, free, 0, Math.max(maxWidth - Segment.getLineLength(row), 0), padStyle);
+      yield* padded(row, free, 0, Math.max(maxWidth - Segment.getLineLength(row), 0), style);
       break;
     }
     default:
@@ -1239,7 +1238,20 @@ function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
   // An oriented row's cells are not where `free` counted them, and a pad
   // joined to one would land inside its isolate.
   const free = oriented ? NEVER_FREE : spanFree(segments, covered);
-  return [...placed({ segments: [...line], free, orient }, layout.maxWidth, layout.base, edgeOf(layout.justify, row.startLevel))];
+  return [...placed({ segments: [...line], free, orient }, layout.maxWidth, padStyleOf(layout), edgeOf(layout.justify, row.startLevel))];
+}
+
+/**
+ * The style a row's padding is drawn in. A justify the caller named pads
+ * inside the text, as the reference's does, so in its base style. Under
+ * `"default"` and `full`'s last row the reference pads nothing, and the
+ * container fills the row unstyled; a right-to-left row placed at its own
+ * edge there is padded only to stand where that fill would leave it, so its
+ * pad is the container's, and drawn in no style — else a body "on red"
+ * would fill its row red in Hebrew and not in English.
+ */
+function padStyleOf({ justify, base }: Layout): Style {
+  return justify === "default" || justify === "full" ? Style.null() : base;
 }
 
 /**
