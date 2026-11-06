@@ -4,15 +4,22 @@
     {
       "version": "pr-580",
       "ref": "refs/pull/580/merge",
-      "sha": "bccf672f4bc4cdabc7649d2787c3e99602c978f3",
-      "timestamp": "2026-11-06T12:44:34.436Z",
+      "sha": "9d9d47b9dc6392fd6e6d2cb43e78f4623e7d7963",
+      "timestamp": "2026-11-06T12:52:30.173Z",
       "commits": [
         {
-          "sha": "bccf672f4bc4cdabc7649d2787c3e99602c978f3",
+          "sha": "9d9d47b9dc6392fd6e6d2cb43e78f4623e7d7963",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:42:08-07:00",
-          "message": "Merge 2c8103ca8f0f62bfe1b6fb7bbf502573f6a07e7c into 4c703f46a6759a75eb8bb866936709e8e35f2020\n"
+          "timestamp": "2026-11-06T12:50:11Z",
+          "message": "Merge ab40e7b2726437286a66926a2ab27e23f5938659 into 4c703f46a6759a75eb8bb866936709e8e35f2020\n"
+        },
+        {
+          "sha": "ab40e7b2726437286a66926a2ab27e23f5938659",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T05:49:56-07:00",
+          "message": "A right-to-left row placed at its own edge is padded unstyled, as the fill beside a Latin one is; tests pin a handed justify, a styled body and what a Padding hands a renderable (review of #580)\n"
         },
         {
           "sha": "2c8103ca8f0f62bfe1b6fb7bbf502573f6a07e7c",
