@@ -185,10 +185,55 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(new AnsiDecoder().decodeLine("\x1b[32mok\r").plain).toBe("ok");
   });
 
-  it("drops cursor movement, titles, charset designations and other escapes", () => {
-    const text = decodeAnsi("\x1b[2K\x1b[1Aa\x1b]0;title\x07b\x1b(Bc\x1b7d\x1b[?25le\x1bcf\x1b)0g\x1b#8h\x1b%Gi");
+  it("drops cursor movement, titles and other escapes, and draws nothing for a designation", () => {
+    const text = decodeAnsi("\x1b[2K\x1b[1Aa\x1b]0;title\x07b\x1b(Bc\x1b7d\x1b[?25lef\x1b)0g\x1b#8h\x1b%Gi");
     expect(text.plain).toBe("abcdefghi");
     expect(text.spans).toEqual([]);
+  });
+
+  it("draws DEC Special Graphics while G0 holds it, as a terminal does", () => {
+    expect(decodeAnsi("\x1b(0qx\x1b(Bq").plain).toBe("─│q");
+    expect(decodeAnsi("\x1b(0lqqk\x1b(B").plain).toBe("┌──┐");
+    expect(decodeAnsi("\x1b(0`afgjkmnotuvwxyz{|}~_\x1b(B").plain).toBe("◆▒°±┘┐└┼⎺├┤┴┬│≤≥π≠£· ");
+    // Outside the mapped range, and with its letters upper case, text is itself.
+    expect(decodeAnsi("\x1b(0ABC 123\x1b(B").plain).toBe("ABC 123");
+    // The set carries across lines and calls, as the SGR style does.
+    expect(decodeAnsi("\x1b(0q\nq\x1b(B\nq").plain).toBe("─\n─\nq");
+    const decoder = new AnsiDecoder();
+    decoder.decode("\x1b(0");
+    expect(decoder.decode("x")[0]!.plain).toBe("│");
+    // The United Kingdom set draws # as £; any other set is ASCII.
+    expect(decodeAnsi("\x1b(A#\x1b(B#").plain).toBe("£#");
+    expect(decodeAnsi("\x1b(Kq").plain).toBe("q");
+    // An overstruck character is drawn in the set too, overwritten rather than
+    // emphasized: overstrike is nroff's, and nroff writes ASCII.
+    const struck = decodeAnsi("\x1b(0x\bx_\bx");
+    expect(struck.plain).toBe("││");
+    expect(struck.spans).toEqual([]);
+  });
+
+  it("keeps overstrike's emphasis on a character the set leaves ASCII", () => {
+    expect(decodeAnsi("\x1b(0A\bA").spans).not.toEqual([]);
+    expect(decodeAnsi("\x1b(Ax\bx").spans).not.toEqual([]);
+  });
+
+  it("puts ASCII back in G0 and G1 at a soft reset, with the style, and keeps the link", () => {
+    expect(decodeAnsi("\x1b)0\x0eq\x1b[!pq").plain).toBe("─q");
+    const reset = decodeAnsi("\x1b[1ma\x1b[!pb");
+    expect(reset.spans.map((span) => [span.start, span.end])).toEqual([[0, 1]]);
+    const linked = decodeAnsi("\x1b]8;;http://x\x1b\\a\x1b[!pb\x1b]8;;\x1b\\");
+    expect(styleAt(linked, 1).link).toBe("http://x");
+  });
+
+  it("clears the line and every state at a full reset, as a terminal clears its screen", () => {
+    expect(decodeAnsi("\x1b(0q\x1bcq").plain).toBe("q");
+    expect(decodeAnsi("\x1b(0qq\nq\x1bcq").plain).toBe("──\nq");
+  });
+
+  it("shifts G1 in at SO and G0 back at SI", () => {
+    expect(decodeAnsi("\x1b)0a\x0eqqq\x0fq").plain).toBe("a───q");
+    // SO with G1 unset draws ASCII, and shifting does not touch G0's designation.
+    expect(decodeAnsi("\x0eq\x0f\x1b(0q").plain).toBe("q─");
   });
 
   it("erases, deletes and inserts cells at the cursor for ECH, DCH and ICH", () => {

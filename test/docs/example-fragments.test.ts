@@ -33,6 +33,12 @@ describe("scanEscapes", () => {
     const whole = `${first.slice(scan.unread)}${link.slice(20)}y`;
     expect(scanEscapes(whole)).toEqual({ dropped: null, unread: whole.length });
     expect(scanEscapes("\x1b[2").unread).toBe(0);
+    expect(scanEscapes("x\x1b(")).toEqual({ dropped: null, unread: 1 });
+    expect(scanEscapes("\x1b(0q\x1b[!p")).toEqual({ dropped: null, unread: 8 });
+  });
+
+  it("cuts a designation of any final, a string escape's introducer included", () => {
+    expect(scanEscapes("\x1b(_q")).toEqual({ dropped: null, unread: 4 });
   });
 
   it.each([
