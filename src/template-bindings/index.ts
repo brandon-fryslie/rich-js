@@ -48,7 +48,7 @@ import { render } from "../core/protocol.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
 import { colorFuncs, type DrawnAt } from "./color-funcs.js";
 
-export { paletteFuncs } from "./palette-funcs.js";
+export { paletteFuncs, type TextPlace } from "./palette-funcs.js";
 export { colorFuncs, ensureContrastFunc, type DrawnAt } from "./color-funcs.js";
 export { withAnimation, templateFrame, type AnimationOptions, type TemplateFrame } from "./animation-funcs.js";
 

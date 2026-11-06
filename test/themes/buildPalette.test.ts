@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
+import { contrastFor } from "../../src/themes/colorMath.js";
 
 const TEST_BASE = {
   primary: new ColorRgba(0, 111, 184),
@@ -31,15 +32,16 @@ describe("buildPalette", () => {
   });
 
   it("draws a translucent base color onto the background before deriving from it", () => {
-    // 10% black on white is a pale grey, which wants black text; over the
-    // terminal's black it would be black and want white.
+    // 10% black on white is a pale grey, which wants dark text — a cursor's
+    // text is dark exactly when white is what contrasts with it; over the
+    // terminal's black it would be black and want white text.
     const white = new ColorRgba(255, 255, 255);
     const p = buildPalette("light", false, { ...TEST_BASE, background: white, primary: new ColorRgba(0, 0, 0, 0.1) });
     expect(p.get("primary")).toEqual(new ColorRgba(230, 230, 230));
-    expect(p.get("on-primary")).toEqual(new ColorRgba(0, 0, 0));
+    expect(contrastFor(p.get("block-cursor-foreground"))).toEqual(new ColorRgba(255, 255, 255));
   });
 
-  it("refuses a fully transparent base color: there is no color to derive on-*, *-muted or text-* from", () => {
+  it("refuses a fully transparent base color: there is no color to derive *-muted or text-* from", () => {
     const white = new ColorRgba(255, 255, 255);
     expect(() => buildPalette("light", false, { ...TEST_BASE, background: white, primary: new ColorRgba(0, 0, 0, 0) }))
       .toThrow(/primary is fully transparent/);
@@ -96,44 +98,6 @@ describe("buildPalette", () => {
     for (const key of accents) {
       expect(p.get(`${key}-muted`)).toBeDefined();
       expect(p.get(`text-${key}`)).toBeDefined();
-      expect(p.get(`on-${key}`)).toBeDefined();
     }
-  });
-
-  describe("on-${accent} contrast keys", () => {
-    it("on-${accent} is pure black or pure white per WCAG luminance", () => {
-      const p = buildPalette("test", true, TEST_BASE);
-      const accents = ["primary", "secondary", "accent", "success", "warning", "error"];
-      for (const key of accents) {
-        const c = p.get(`on-${key}`)!;
-        const isBlack = c.red === 0 && c.green === 0 && c.blue === 0;
-        const isWhite = c.red === 255 && c.green === 255 && c.blue === 255;
-        expect(isBlack || isWhite).toBe(true);
-      }
-    });
-
-    it("on-warning picks black when warning is high-luminance (yellow)", () => {
-      const base = { ...TEST_BASE, warning: new ColorRgba(255, 215, 0) };
-      const p = buildPalette("test", true, base);
-      expect(p.get("on-warning")).toEqual(new ColorRgba(0, 0, 0));
-    });
-
-    it("on-error picks white when error is low-luminance (dark red)", () => {
-      const base = { ...TEST_BASE, error: new ColorRgba(128, 0, 0) };
-      const p = buildPalette("test", true, base);
-      expect(p.get("on-error")).toEqual(new ColorRgba(255, 255, 255));
-    });
-
-    it("contrast choice depends on the accent itself, not the theme background", () => {
-      // Same accent (mid-blue) on dark and light themes → same on- value.
-      const dark = buildPalette("dark", true, TEST_BASE);
-      const lightBase = {
-        ...TEST_BASE,
-        background: new ColorRgba(255, 255, 255),
-        foreground: new ColorRgba(0, 0, 0),
-      };
-      const light = buildPalette("light", false, lightBase);
-      expect(dark.get("on-primary")).toEqual(light.get("on-primary"));
-    });
   });
 });

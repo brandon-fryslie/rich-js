@@ -50,6 +50,9 @@ export type { AccentRole, BaseRole, PaletteRole, PaletteRoles, ShadedRole } from
 // variable name or a `#RRGGBB` literal — into a color. [LAW:parse-dont-validate]
 export { resolveColorRef, ColorRefError } from "./themes/colorRef.js";
 export { buildPalette } from "./themes/buildPalette.js";
+// Text on a ground: Textual's text roles drawn on the background they sit on.
+export { textOn, readsOn, isTextIntent, slide, named, tinted, TEXT_FITS, TEXT_INTENTS, TRUECOLOR } from "./themes/text-on.js";
+export type { TextIntent, TextFit, TextRequest, DrawnAt } from "./themes/text-on.js";
 export type { BaseColors, StatedRoles } from "./themes/buildPalette.js";
 export {
   DEFAULT_TERMINAL_THEME,

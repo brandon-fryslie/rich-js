@@ -22,6 +22,7 @@ import {
   layered,
   ensureContrast,
   onColors,
+  textOn,
   type Effect,
   type Loop,
   type Measurable,
@@ -77,14 +78,17 @@ export function paletteRgba(theme: TerminalTheme, key: string): ColorRgba {
 
 /**
  * The style of the strip's `i`th cell. The second lap round the palette takes
- * each color's muted shade, so a dozen neighbours are a dozen colors.
+ * each color's muted shade, so a dozen neighbours are a dozen colors. Each is
+ * lettered in Textual's pairing for its ground: `text` on a full accent, the
+ * accent's own `text-*` on its muted shade.
  */
 function stripStyle(theme: TerminalTheme, i: number): Style {
-  const color = (key: string): ColorSpec => ColorSpec.fromRgba(paletteRgba(theme, key));
   const key = STRIP_KEYS[i % STRIP_KEYS.length]!;
-  return Math.floor(i / STRIP_KEYS.length) === 0
-    ? Style.fromColor(color(`on-${key}`), color(key))
-    : Style.fromColor(color("foreground"), color(`${key}-muted`));
+  const [text, ground] = Math.floor(i / STRIP_KEYS.length) === 0
+    ? (["text", key] as const)
+    : ([`text-${key}`, `${key}-muted`] as const);
+  const fill = paletteRgba(theme, ground);
+  return Style.fromColor(ColorSpec.fromRgba(textOn(theme.palette, text, fill)), ColorSpec.fromRgba(fill));
 }
 
 /** The labels of the strip's cells a pulse breathes: the rest of the screen does not. */

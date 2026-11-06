@@ -51,7 +51,6 @@ describe("every palette has the same roles", () => {
   it("the roles the cc-candybar bar asked for are on an authored theme", () => {
     const tokyo = getThemePalette("tokyo-night");
     expect(tokyo.get("background-muted")).toBeInstanceOf(ColorRgba);
-    expect(tokyo.get("on-primary")).toBeInstanceOf(ColorRgba);
   });
 });
 

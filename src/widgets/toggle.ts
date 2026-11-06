@@ -19,12 +19,11 @@ import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import type { PaletteRole } from "../themes/palette.js";
 import { ThemedWidget } from "./themed-widget.js";
-import { ink } from "./ink.js";
+import { ink, VARIANT_INK, type InkVariant } from "./ink.js";
 import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
-export type ToggleVariant = "default" | "primary" | "success" | "warning" | "danger";
+export type ToggleVariant = InkVariant;
 
 export interface ToggleOptions {
   label: string;
@@ -34,22 +33,6 @@ export interface ToggleOptions {
   theme?: TerminalTheme;
   variant?: ToggleVariant;
 }
-
-// onFg uses on-${accent} (WCAG-correct contrast, picked once at palette
-// build time) so the ON state stays readable on a full accent bg. Earlier
-// versions used text-${accent} here, which is mostly-accent and clashed
-// with the same accent as background. offFg keeps text-${accent} because
-// offBg is mostly-bg-tinted and the contrast holds.
-const VARIANT_KEYS: Record<
-  ToggleVariant,
-  { onBg: PaletteRole; onFg: PaletteRole; offBg: PaletteRole; offFg: PaletteRole }
-> = {
-  default: { onBg: "primary", onFg: "on-primary", offBg: "surface",       offFg: "foreground" },
-  primary: { onBg: "primary", onFg: "on-primary", offBg: "primary-muted", offFg: "text-primary" },
-  success: { onBg: "success", onFg: "on-success", offBg: "success-muted", offFg: "text-success" },
-  warning: { onBg: "warning", onFg: "on-warning", offBg: "warning-muted", offFg: "text-warning" },
-  danger:  { onBg: "error",   onFg: "on-error",   offBg: "error-muted",   offFg: "text-error" },
-};
 
 export class Toggle extends ThemedWidget {
   readonly id: string;
@@ -106,8 +89,8 @@ export class Toggle extends ThemedWidget {
       return drawn(new Style(this.disabledInk));
     }
 
-    const keys = VARIANT_KEYS[this.variant];
-    const colors = this.on ? ink(this.theme, keys.onFg, keys.onBg) : ink(this.theme, keys.offFg, keys.offBg);
+    const pairs = VARIANT_INK[this.variant];
+    const colors = ink(this.theme, ...(this.on ? pairs.lit : pairs.quiet));
 
     return drawn(new Style({ ...colors, underline: this.focused }));
   }

@@ -432,12 +432,12 @@ const PUSH_TMPL =
 {{- $branch := "italic on #2d2d2d bold" -}}
 {{- $hot    := "underline #00d9ff bold" -}}
 {{- $linkfx := "underline cyan" -}}
-{{- $who    := color "primary" -}}
-{{- $topic  := color "accent" -}}
-{{- $flaky  := color "warning-muted" -}}
+{{- $who    := color "text-primary" -}}
+{{- $topic  := color "text-accent" -}}
+{{- $flaky  := color "text-warning" -}}
 {{ "abc1234" | style $sha }}  {{ "2026-05-13 21:42" | style $when }}  {{ "bmf" | fg $who | bold }}
   {{ " feat/sunrise " | style $branch }} → {{ "rework demo into three scenes" | fg $topic }}
-  {{ "ci " | dim }}{{ "✓ 1458 passed" | fg (color "success") }}  ·  {{ "△ 1 flaky" | fg $flaky }}  ·  {{ "open run" | style $linkfx | link "https://example.com/run/42" }}
+  {{ "ci " | dim }}{{ "✓ 1458 passed" | fg (color "text-success") }}  ·  {{ "△ 1 flaky" | fg $flaky }}  ·  {{ "open run" | style $linkfx | link "https://example.com/run/42" }}
   {{ "deploy " | dim }}{{ "preview.app/sunrise" | style $hot }}
 {{ "e8c19d2" | style $sha }}  {{ "2026-05-13 21:38" | style $when }}  {{ "alice" | fg $who | bold }}
   {{ " feat/measurements " | style $branch }} → {{ "tighten widget measure() contract" | fg $topic }}
@@ -476,8 +476,8 @@ const NOTICE_TMPL =
 `{{- $bg     := "#1a1a2e" -}}
 {{- $badge  := "bold" -}}
 {{- $linkfx := "underline" -}}
-{{ " ⚠ HEADS UP " | fg (contrastOn $bg) | bg $bg }}  {{ "deploy paused" | fg (color "warning") | style $badge }}  {{ "30s ago" | dim }}
-{{ "  retries exhausted — " | fg (color "warning-muted") }}{{ "see incident" | fg (color "accent") | style $linkfx | link "https://example.com/incident/8" }}`;
+{{ " ⚠ HEADS UP " | fg (contrastOn $bg) | bg $bg }}  {{ "deploy paused" | fg (color "text-warning") | style $badge }}  {{ "30s ago" | dim }}
+{{ "  retries exhausted — " | fg (color "foreground-muted") }}{{ "see incident" | fg (color "text-accent") | style $linkfx | link "https://example.com/incident/8" }}`;
 
 const noticeRow = makeDemoRow("edit $bg → ink and bg both shift", NOTICE_TMPL, GALLERY_THEMES[0]![1]);
 

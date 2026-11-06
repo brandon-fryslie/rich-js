@@ -141,7 +141,7 @@ The resulting palette's `dark` flag is derived from the **actual lightness of th
 
 ## Semantic anchors — meaning that survives adjustment
 
-Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **hue-locked** — their hue is fixed while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling). The family goes with them: `error-muted`, and the `text-error` and `on-error` drawn on it.
+Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **hue-locked** — their hue is fixed while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling). The family goes with them: `error-muted`, and the `text-error` drawn on it.
 
 ```typescript
 import { isHueLocked, HUE_LOCKED_ROOTS } from "@promptctl/rich-js";

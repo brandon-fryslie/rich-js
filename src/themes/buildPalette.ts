@@ -1,6 +1,7 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
 import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
 import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
+import { neutralText, type NeutralIntent } from "./text-on.js";
 
 /**
  * Base colors required to build a full semantic palette.
@@ -27,16 +28,15 @@ const PANEL_TINT = 0.1;
 const BACKGROUND_TINT = 0.15;
 const BACKGROUND_TINT_LIFT = 0.15;
 const BOOST_ALPHA = 0.04;
-const TEXT_FULL_ALPHA = 0.87;
-const TEXT_MUTED_ALPHA = 0.6;
 const DISABLED_ALPHA = 0.38;
 const BLURRED_CURSOR_ALPHA = 0.3;
 const HOVER_ALPHA = 0.1;
 const SELECTION_ALPHA = 0.4;
 const SCROLLBAR_ALPHA = 0.4;
 const SCROLLBAR_HOVER_ALPHA = 0.5;
-// WCAG AA for body text: `text-*` is the label drawn on `*-muted`.
-const TEXT_ON_MUTED = 4.5;
+// WCAG AA for body text, and AA-large for text meant to recede.
+const TEXT_FLOOR = 4.5;
+const MUTED_TEXT_FLOOR = 3;
 
 const ACCENT_KEYS: readonly AccentRole[] = ["primary", "secondary", "accent", "success", "warning", "error"];
 
@@ -53,7 +53,8 @@ const WHITE = new ColorRgba(255, 255, 255);
 const withAlpha = (color: ColorRgba, alpha: number): ColorRgba =>
   new ColorRgba(color.red, color.green, color.blue, alpha);
 
-const textOn = (alpha: number): Rule => (at) => withAlpha(contrastFor(at("background")), alpha);
+/** A component's text: Textual's ground-relative rule (`text-on.ts`) on the ground that component is drawn on. */
+const textOver = (intent: NeutralIntent, ground: PaletteRole): Rule => (at) => neutralText(intent, at(ground));
 
 // [LAW:one-type-per-behavior] The roles naming another role's color outright.
 const same = (role: PaletteRole): Rule => (at) => at(role);
@@ -87,9 +88,8 @@ function accentRules<A extends AccentRole>(accent: A) {
   return {
     ...lightness(accent),
     [`${accent}-muted`]: ((at) => blendRgb(at(accent), at("background"), MUTED_BLEND)) as Rule,
-    [`on-${accent}`]: ((at) => contrastFor(at(accent))) as Rule,
     [`text-${accent}`]: ((at) => alphaBlend(at(accent), contrastFor(at("background")), TEXT_ALPHA)) as Rule,
-  } as Record<`${A}${Shade}` | `${A}-muted` | `on-${A}` | `text-${A}`, Rule>;
+  } as Record<`${A}${Shade}` | `${A}-muted` | `text-${A}`, Rule>;
 }
 
 /**
@@ -103,13 +103,10 @@ function accentRules<A extends AccentRole>(accent: A) {
  *               `foreground-muted` is opaque here where Textual's is translucent,
  *               drawing structural text at reduced weight without a
  *               terminal-support-dependent SGR attribute.
- * - `text-*`   = contrast text tinted 66% with the accent, the foreground for
- *               a `*-muted` ground; `buildPalette` then holds it to that ground
- * - `on-*`     = WCAG-correct contrast color (black or white) for use as
- *               foreground when the FULL accent is the background. Picked by
- *               relative luminance — single source of truth so widgets never
- *               need to invert fg/bg to get readable text. `contrastFor` is
- *               the only place that decides black-vs-white.
+ * - `text-*`   = contrast text tinted 66% with the accent; `buildPalette` then
+ *               holds it to read on its `*-muted` and on the three grounds
+ * - text on a component (`block-cursor-foreground`, `link-color`, …) = Textual's
+ *               ground-relative `$text` rule run on that component's ground
  * - `surface`  = background blended 5% toward foreground, a subtle lift
  * - `*-darken-N` / `*-lighten-N` = the root moved 7.5% of CIE L* per rung
  * - the component roles (`footer-*`, `markdown-*`, …) name the base role
@@ -139,7 +136,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
 
   surface: (at) => blendRgb(at("background"), at("foreground"), SURFACE_LIFT),
   "surface-active": (at) => shiftLightness(at("surface"), SURFACE_ACTIVE_LIFT),
-  boost: textOn(BOOST_ALPHA),
+  boost: (at) => withAlpha(contrastFor(at("background")), BOOST_ALPHA),
   panel: (at, dark) => {
     const tinted = blendRgb(at("surface"), at("primary"), PANEL_TINT);
     return dark ? at("boost").compositeOver(tinted) : tinted;
@@ -147,21 +144,17 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "primary-background": accentBackground("primary", 0),
   "secondary-background": accentBackground("secondary", 0),
 
-  text: textOn(TEXT_FULL_ALPHA),
-  "text-muted": textOn(TEXT_MUTED_ALPHA),
-  "text-disabled": textOn(DISABLED_ALPHA),
-
   border: same("primary"),
   "border-blurred": (at) => shiftLightness(at("surface"), -BORDER_BLUR_DROP),
 
   "block-cursor-background": same("primary"),
-  "block-cursor-foreground": same("on-primary"),
+  "block-cursor-foreground": textOver("text", "primary"),
   "block-cursor-blurred-background": (at) => withAlpha(at("primary"), BLURRED_CURSOR_ALPHA),
   "block-cursor-blurred-foreground": same("foreground"),
   "block-hover-background": (at) => withAlpha(at("boost"), HOVER_ALPHA),
 
   "button-foreground": same("foreground"),
-  "button-color-foreground": same("on-primary"),
+  "button-color-foreground": textOver("text", "primary"),
 
   "footer-background": same("panel"),
   "footer-foreground": same("foreground"),
@@ -177,8 +170,8 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
 
   "link-background": none,
   "link-background-hover": same("primary"),
-  "link-color": same("text"),
-  "link-color-hover": same("on-primary"),
+  "link-color": textOver("text", "background"),
+  "link-color-hover": textOver("text", "link-background-hover"),
 
   "markdown-h1-background": none,
   "markdown-h1-color": same("primary"),
@@ -191,7 +184,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "markdown-h5-background": none,
   "markdown-h5-color": same("foreground"),
   "markdown-h6-background": none,
-  "markdown-h6-color": same("text-muted"),
+  "markdown-h6-color": textOver("text-muted", "background"),
 
   scrollbar: (at) => alphaBlend(at("primary"), at("background-darken-1"), SCROLLBAR_ALPHA),
   "scrollbar-active": same("primary"),
@@ -211,13 +204,13 @@ const ROLE_NAMES: ReadonlySet<string> = new Set(PALETTE_ROLES);
 /**
  * Build a full semantic palette from its base colors and any other role it
  * states: a stated role keeps its color, and everything derived from it
- * follows it, but for `text-*`, which is held to read on its `*-muted`. An
- * authored theme is this with roles stated; see `RULES` for what a role
- * not stated becomes.
+ * follows it, but for `text-*` and `foreground-muted`, which are held to read
+ * on the grounds Textual promises them (`heldOn`). An authored theme is this
+ * with roles stated; see `RULES` for what a role not stated becomes.
  *
  * A translucent color is drawn onto `background` before anything is derived
- * from it, so `on-*` is chosen against the color the accent is drawn as.
- * `boost` alone stays a layer: it is what `panel` composites.
+ * from it, so a component's text is chosen against the color its ground is
+ * drawn as. `boost` alone stays a layer: it is what `panel` composites.
  */
 export function buildPalette(name: string, dark: boolean, given: StatedRoles): Palette {
   const known = statedRoles(name, given);
@@ -230,14 +223,17 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
     return color;
   };
 
-  // [LAW:single-enforcer] Stated and derived `text-*` alike: the tint is the
-  // palette's, whether it reads is decided here. A stated tint stays translucent
-  // because it composites on its `*-muted`, and a `*-muted` that draws nothing
-  // leaves it on `background`.
+  // [LAW:single-enforcer] Stated and derived alike: the color is the palette's,
+  // whether it reads is decided here. A stated tint stays translucent because
+  // it composites on each ground it is held to, and a `*-muted` that draws
+  // nothing leaves it on `background`.
+  const grounds = (["background", "surface", "panel"] as const).map((role) => at(role).compositeOver(at("background")));
+  const side = contrastFor(at("background"));
   for (const key of ACCENT_KEYS) {
-    const ground = at(`${key}-muted`).compositeOver(at("background"));
-    known.set(`text-${key}`, accentText(given[`text-${key}`] ?? at(`text-${key}`), ground, at("background")));
+    const muted = at(`${key}-muted`).compositeOver(at("background"));
+    known.set(`text-${key}`, heldOn(given[`text-${key}`] ?? at(`text-${key}`), [...grounds, muted], TEXT_FLOOR, side));
   }
+  known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, MUTED_TEXT_FLOOR, side));
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
 }
 
@@ -270,16 +266,17 @@ function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRg
 }
 
 /**
- * A palette's `text-*`: its tint held to WCAG AA on `*-muted`, moved toward
- * the palette's own text side so it also reads on `background`, where widgets
- * draw it too. The muted floor is the promise: where no lightness on the text
- * side clears it, the color that does is on the other side, and the
- * background pair is the one given up. Every bundled palette clears both
- * (test/themes/text-on-muted.test.ts).
+ * Text Textual promises legible on several grounds: `color` moved in lightness
+ * toward the palette's own text side until it clears `floor` on each, in turn.
+ * The grounds of one palette sit on one side of its text, so a step that clears
+ * a later ground loses none of the earlier ones. The last ground is the
+ * promise: where no lightness on the text side clears it, the color that does
+ * is on the other side, and the earlier grounds are the ones given up. Every
+ * bundled palette clears all of them (test/themes/text-on-grounds.test.ts).
  *
- * [LAW:single-enforcer] The one rule for the pair, for the palettes derived
- * from a tint and the authored ones alike.
+ * [LAW:single-enforcer] The one rule for a palette's fixed text, for the
+ * palettes derived from a tint and the authored ones alike.
  */
-function accentText(tint: ColorRgba, muted: ColorRgba, background: ColorRgba): ColorRgba {
-  return ensureContrastToward(tint, muted, TEXT_ON_MUTED, contrastFor(background));
+function heldOn(color: ColorRgba, grounds: readonly ColorRgba[], floor: number, side: ColorRgba): ColorRgba {
+  return grounds.reduce((held, ground) => ensureContrastToward(held, ground, floor, side), color);
 }

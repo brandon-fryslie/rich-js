@@ -389,7 +389,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
       : isHighlighted
         ? new Style(ink(this.theme, "text-primary", "primary-muted"))
         : isSelected
-          ? new Style(ink(this.theme, "on-primary", "primary"))
+          ? new Style(ink(this.theme, "text", "primary"))
           : new Style(ink(this.theme, "foreground", "surface"));
 
     return [

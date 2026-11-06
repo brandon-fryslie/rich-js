@@ -10,20 +10,20 @@ export type Shade = `-${"darken" | "lighten"}-${1 | 2 | 3}`;
  * statement of the set: `buildPalette`'s rules are a total map over it, so a
  * role added here does not compile until it can be derived, and the runtime
  * list is read off those rules.
+ *
+ * Textual's `$text`, `$text-muted` and `$text-disabled` are not here: they are
+ * rules over the ground the text sits on, not colors, and a palette holding one
+ * would hold it for a single ground. `textOn` in `text-on.ts` draws them.
  */
 export type PaletteRole =
   | ShadedRole
   | `${ShadedRole}${Shade}`
   | `${AccentRole}-muted`
   | `text-${AccentRole}`
-  | `on-${AccentRole}`
   | "background-muted"
   | "foreground-muted"
   | "foreground-disabled"
   | "surface-active"
-  | "text"
-  | "text-muted"
-  | "text-disabled"
   | "border"
   | "border-blurred"
   | "block-cursor-background"

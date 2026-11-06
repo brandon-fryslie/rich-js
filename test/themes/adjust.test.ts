@@ -147,13 +147,8 @@ describe("adjustPalette — anchor hue is locked", () => {
   it.each(Object.entries(TURN) as [AccentRole, number][])("what is drawn on %s turns %d°", (role, turn) => {
     // Unlike any accent, and far enough from grey that its hue survives the round trip.
     const magenta = new ColorRgba(200, 60, 160);
-    const after = adjustPalette(
-      syntheticPalette({ [`text-${role}`]: magenta, [`on-${role}`]: magenta }),
-      ROTATE_60,
-    );
-    for (const drawn of [`text-${role}`, `on-${role}`] as const) {
-      expect(hueDelta(Oklch.fromRgba(after.get(drawn)).h, Oklch.fromRgba(magenta).h + turn)).toBeLessThan(2);
-    }
+    const after = adjustPalette(syntheticPalette({ [`text-${role}`]: magenta }), ROTATE_60);
+    expect(hueDelta(Oklch.fromRgba(after.get(`text-${role}`)).h, Oklch.fromRgba(magenta).h + turn)).toBeLessThan(2);
   });
 });
 

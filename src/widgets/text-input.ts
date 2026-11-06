@@ -1530,7 +1530,7 @@ export class TextInput extends ThemedWidget {
       ? new Style({ ...ink(this.theme, "foreground", "background"), dim: true })
       : this.ground;
 
-    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
+    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "text", "primary"));
 
     const caret = this.focused && !this.disabled
       ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
@@ -1592,7 +1592,7 @@ export class TextInput extends ThemedWidget {
     const arrows = this._drawsArrows(total);
     const contentStyle = this.ground;
     const markerStyle = new Style({ ...ink(this.theme, "foreground", "background"), dim: true });
-    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
+    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "text", "primary"));
     const caret = this.focused && !this.disabled
       ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
       : undefined;

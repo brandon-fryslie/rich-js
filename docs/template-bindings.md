@@ -3,7 +3,7 @@
 rich-js can hand its entire styling vocabulary to a template engine, so styled text is authored as a template instead of assembled in code. Colors, attributes, and links become ordinary template functions:
 
 ```handlebars
-{{ "deploy paused" | fg (color "warning") | bold }}
+{{ "deploy paused" | fg (color "text-warning") | bold }}
 ```
 
 There is no second markup grammar here. The syntax is standard [Go template](https://pkg.go.dev/text/template) syntax, parsed by [`@promptctl/go-template-js`](https://www.npmjs.com/package/@promptctl/go-template-js) — one parser, one AST, one error dialect. This module contributes only the styling functions. The engine is a peer dependency rather than a bundled one, so you install it alongside rich-js — `npm install @promptctl/rich-js @promptctl/go-template-js` — before reaching for this subpath. Without it, the import itself fails with `ERR_MODULE_NOT_FOUND`; the main entry point is unaffected.
@@ -140,6 +140,7 @@ A color that can be held is a color that can be composed. `color` names one, the
 | `darken c n` / `lighten c n` | slide HSL lightness by `n` 10% levels (`n` a whole number) |
 | `mix a b pct` | blend `a` toward `b` by `pct`% (0 → `a`, 100 → `b`) |
 | `contrastOn bg` | black or white, whichever is readable on `bg` |
+| `textOn intent bg` | a theme's text on `bg` — `"text"`, `"text-muted"`, `"text-error"`, … ([Text on a ground](/text-on)); registered by `paletteFuncs` |
 | `ensureContrast fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |
 | `shiftHue c deg` | rotate hue in OKLCH |
 | `scaleChroma c f` | multiply chroma (0 → gray, 1 → identity) |
@@ -235,13 +236,15 @@ const engine = createEngine<RichText>({
 });
 
 const source = `{{- $who := color "primary" -}}
-{{- $topic := color "accent" -}}
-{{ " bmf " | fg (contrastOn $who) | bg $who | bold }} → {{ " rework the demo " | fg (contrastOn $topic) | bg $topic }}
-{{ " alice " | fg (contrastOn $who) | bg $who | bold }} → {{ " tighten measure() " | fg (contrastOn $topic) | bg $topic }}`;
+{{- $topic := color "accent-muted" -}}
+{{ " bmf " | fg (textOn "text" $who) | bg $who | bold }} → {{ " rework the demo " | fg (textOn "text-accent" $topic) | bg $topic }}
+{{ " alice " | fg (textOn "text" $who) | bg $who | bold }} → {{ " tighten measure() " | fg (textOn "text-accent" $topic) | bg $topic }}`;
 
 const compiled = engine.compile(source);
 console.print(RichText.fromFragments(compiled({})));
 ```
+
+A theme's accent is a fill or a border, never text: text on a full `primary` is `text` on it, and an accent's own text is `text-accent`, drawn on its muted form. `textOn "intent" ground` is the color a theme's text draws in on any ground, in the pairings Textual draws its widgets in; [Text on a ground](/text-on) lists the intents and what happens on a ground the text does not read on. `contrastOn` stays for a ground no theme named.
 
 An unknown name throws, carrying near-miss suggestions drawn from the live palette. In a template that surfaces as an evaluation error at the exact call site — the signal an author, or an agent editing a config file, needs in order to fix it.
 

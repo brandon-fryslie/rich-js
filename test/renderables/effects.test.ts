@@ -70,6 +70,7 @@ import {
   type LoopName,
 } from "../../src/renderables/effects.js";
 import { inFrame } from "./in-frame.js";
+import { textOn } from "../../src/themes/text-on.js";
 
 const curve = (seconds: number, swing: number): Curve => ({ seconds, ease: EASES.linear, swing });
 
@@ -926,7 +927,7 @@ describe("a cell under light still reads", () => {
   const grey = new ColorRgba(160, 160, 160);
   const cases: [string, Pair[]][] = [
     ["pale lettering on Mocha's muted fills", ["primary", "secondary", "accent", "success", "warning", "error"].map((k) => pair(palette(CATPPUCCIN_MOCHA, "foreground"), palette(CATPPUCCIN_MOCHA, `${k}-muted`)))],
-    ["white lettering on Latte's fills", (["primary", "error"] as const).map((k) => pair(palette(CATPPUCCIN_LATTE, `on-${k}`), palette(CATPPUCCIN_LATTE, k)))],
+    ["white lettering on Latte's fills", (["primary", "error"] as const).map((k) => pair(textOn(CATPPUCCIN_LATTE.palette, "text", palette(CATPPUCCIN_LATTE, k)), palette(CATPPUCCIN_LATTE, k)))],
     ["dark ink on Latte's own ground", [pair(latteInk, CATPPUCCIN_LATTE.backgroundColor, onTerminalGround)]],
     // The fill moves and the terminal's ground of the same hex holds still: the ink is settled against both.
     // Settled as if that ground brightened with the fill, the ink would take light the still ground cannot spare.
@@ -973,7 +974,7 @@ describe("a loop lit on what Effected draws", () => {
   const items = keys.map(
     (key) =>
       new RichText(` ${key} `, {
-        style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get(`on-${key}`)!), ColorSpec.fromRgba(theme.palette.get(key)!)),
+        style: Style.fromColor(ColorSpec.fromRgba(textOn(theme.palette, "text", theme.palette.get(key)!)), ColorSpec.fromRgba(theme.palette.get(key)!)),
         end: "",
         noWrap: true,
       }),
@@ -1011,9 +1012,9 @@ describe("a loop lit on what Effected draws", () => {
   });
 
   it("a lit fill no word sits on lights whole: a frame drawing it only under blanks draws", () => {
-    const words = new RichText(" hi ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-primary")!), ColorSpec.fromRgba(theme.palette.get("primary")!)), end: "", noWrap: true });
+    const words = new RichText(" hi ", { style: Style.fromColor(ColorSpec.fromRgba(textOn(theme.palette, "text", theme.palette.get("primary")!)), ColorSpec.fromRgba(theme.palette.get("primary")!)), end: "", noWrap: true });
     const fill = theme.palette.get("secondary")!;
-    const blank = new RichText("   ", { style: Style.fromColor(ColorSpec.fromRgba(theme.palette.get("on-secondary")!), ColorSpec.fromRgba(fill)), end: "", noWrap: true });
+    const blank = new RichText("   ", { style: Style.fromColor(ColorSpec.fromRgba(textOn(theme.palette, "text", theme.palette.get("secondary")!)), ColorSpec.fromRgba(fill)), end: "", noWrap: true });
     const bare = new Strip([words, blank], SEPARATOR_STYLES.powerline);
     const lit = onColors({ touch: light(sun), field: () => () => 1 }, new Set([fill.hex]));
     const cells = [...new Effected(bare, lit, { key: "bare" }).at(0).render(options)].flatMap((segment) =>
@@ -1112,7 +1113,7 @@ describe("every loop keeps its words legible at every depth, the whole of its pe
     ["dark ink on a mid blue", new RichText(" menu ", { style: Style.parse("#1a1b26 on #648ee1"), end: "", noWrap: true })],
     // One fill under a lighter ink and a darker one, each resting under AA: the fill may move neither way.
     ["a fill between its inks", new RichText(" ab ", { style: Style.parse("#d0b080 on #7a5ea8"), end: "", noWrap: true }).append(" cd ", Style.parse("#1e2a1a on #7a5ea8"))],
-    ["a powerline strip", new Strip(["primary", "secondary", "accent", "success"].map((key) => new RichText(` ${key} `, { style: Style.fromColor(mocha(`on-${key}`), mocha(key)), end: "", noWrap: true })), SEPARATOR_STYLES.powerline)],
+    ["a powerline strip", new Strip(["primary", "secondary", "accent", "success"].map((key) => new RichText(` ${key} `, { style: Style.fromColor(ColorSpec.fromRgba(textOn(CATPPUCCIN_MOCHA.palette, "text", CATPPUCCIN_MOCHA.palette.get(key)!)), mocha(key)), end: "", noWrap: true })), SEPARATOR_STYLES.powerline)],
     ...words(12).map((style, i): [string, Renderable] => [`words ${i}`, new RichText(" ab ", { style, end: "", noWrap: true })]),
   ];
 

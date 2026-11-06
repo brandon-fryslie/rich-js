@@ -309,7 +309,7 @@ describe("the palette is read at evaluate time, not at registration", () => {
     // `ramp` are the same two names regardless of palette contents.
     const names = Object.keys(paletteFuncs(() => GRUVBOX.palette));
     expect(names).toEqual(Object.keys(paletteFuncs(() => DRACULA.palette)));
-    expect(names).toEqual(["color", "ramp"]);
+    expect(names).toEqual(["color", "ramp", "textOn"]);
   });
 });
 

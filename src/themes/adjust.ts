@@ -19,7 +19,7 @@
  * [LAW:one-source-of-truth] Anchor classification lives only in
  * `HUE_LOCKED_ROOTS` below. Every variant of a semantic root carries the root
  * as its first hyphen segment (`error`, `error-darken-1`, `error-muted`, ...)
- * or after a `text-` or `on-` that draws on it (`text-error`, `on-error`), so
+ * or after the `text-` that draws on it (`text-error`), so
  * one set covers the whole family.
  *
  * [LAW:one-way-deps] Imports flow `core/oklch → themes/adjust`;
@@ -47,7 +47,7 @@ export const HUE_LOCKED_ROOTS: ReadonlySet<string> = new Set([
   "warning",
 ]);
 
-const DRAWN_ON = pattern(/^(?:text|on)-/);
+const DRAWN_ON = pattern(/^text-/);
 
 function rootOf(varName: string): string {
   const role = varName.replace(DRAWN_ON, "");

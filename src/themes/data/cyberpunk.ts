@@ -200,11 +200,8 @@ const theme: ThemePaletteData = {
     "markdown-h6-color":              "#E2E2FF99",
 
     // ── Semantic text roles ────────────────────────────────────────────────
-    "text":                           "#E2E2FFDD",
     "text-accent":                    "#F4FF66CC",
-    "text-disabled":                  "#E2E2FF60",
     "text-error":                     "#FF6677BF",
-    "text-muted":                     "#E2E2FF99",
     "text-primary":                   "#66F0FFD9",
     "text-secondary":                 "#FF80B0CC",
     "text-success":                   "#80FF55BF",

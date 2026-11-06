@@ -95,6 +95,7 @@ export const guideSidebar: SidebarGroup[] = [
     items: [
       { text: 'Theme Adjustment', link: '/adjust' },
       { text: 'Contrast & Accessibility', link: '/contrast' },
+      { text: 'Text on a Ground', link: '/text-on' },
     ],
   },
   {
