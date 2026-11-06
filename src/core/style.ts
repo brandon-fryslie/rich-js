@@ -151,6 +151,7 @@ export interface StyleOptions {
   boxFrame?: object;
   bidi?: BidiStamp;
   caret?: CaretMark;
+  textEnd?: true;
   /**
    * The validity interval the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
@@ -236,6 +237,15 @@ export class Style {
    */
   readonly caret: CaretMark | undefined;
   /**
+   * These cells hold no character: they are the insertion point past the
+   * text's end, a blank a field adds there, whether a caret stands on it or
+   * not. Ordering a row stands them at the level of the character before
+   * them, beside the last one typed, where UAX #9 would send a neutral to the
+   * paragraph's end (`./orient.ts`). A typed space is a character, so it is
+   * never one. It draws nothing.
+   */
+  readonly textEnd: true | undefined;
+  /**
    * The validity interval this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`validFrom`), and
    * when it next changes (`validUntil`) — both `t` for a cell drawn by
@@ -284,6 +294,7 @@ export class Style {
     this.boxFrame = options.boxFrame;
     this.bidi = options.bidi;
     this.caret = options.caret;
+    this.textEnd = options.textEnd;
   }
 
   get isNull(): boolean {
@@ -309,6 +320,7 @@ export class Style {
       this.boxFrame === undefined &&
       this.bidi === undefined &&
       this.caret === undefined &&
+      this.textEnd === undefined &&
       this.validity.validUntil === Number.POSITIVE_INFINITY &&
       this.validity.validFrom === Number.NEGATIVE_INFINITY
     );
@@ -371,6 +383,11 @@ export class Style {
   /** The same look, the terminal's cursor standing on its cells as `caret` marks it, or not. */
   withCaret(caret: CaretMark | undefined): Style {
     return this.with({ caret });
+  }
+
+  /** The same look, its cells the insertion point past the text's end (`textEnd`). */
+  get asTextEnd(): Style {
+    return this.with({ textEnd: true });
   }
 
   /** The style's text attributes, each as it sets it. */
@@ -439,6 +456,7 @@ export class Style {
       boxFrame: other.boxFrame ?? this.boxFrame,
       bidi: other.bidi ?? this.bidi,
       caret: other.caret ?? this.caret,
+      textEnd: other.textEnd ?? this.textEnd,
       // Cells under both change when either does.
       validity: intersection(this.validity, other.validity),
     });
@@ -467,6 +485,7 @@ export class Style {
       this.boxFrame === other.boxFrame &&
       this.bidi === other.bidi &&
       this.caret === other.caret &&
+      this.textEnd === other.textEnd &&
       this.validity.validUntil === other.validity.validUntil &&
       this.validity.validFrom === other.validity.validFrom
     );
@@ -526,7 +545,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colors, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `caret`, `validity` —
+   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `caret`, `textEnd`, `validity` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */

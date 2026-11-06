@@ -572,6 +572,17 @@ describe("Style.equals", () => {
     expect(new Style({ boxFrame: under }).add(bold).boxFrame).toBe(under);
     expect(new Style({ boxFrame: under }).add(new Style({ boxFrame: over })).boxFrame).toBe(over);
   });
+
+  it("tells a text end apart, draws nothing for it, and keeps it under what is laid over it", () => {
+    const red = Style.parse("red");
+    expect(red.asTextEnd.textEnd).toBe(true);
+    expect(red.asTextEnd.equals(red.asTextEnd)).toBe(true);
+    expect(red.asTextEnd.equals(red)).toBe(false);
+    expect(red.asTextEnd.toSgrCodes(ColorDepth.TRUECOLOR)).toBe(red.toSgrCodes(ColorDepth.TRUECOLOR));
+    expect(Style.null().asTextEnd.isNull).toBe(false);
+    expect(red.asTextEnd.add(Style.parse("bold")).textEnd).toBe(true);
+    expect(Style.parse("bold").add(red.asTextEnd).textEnd).toBe(true);
+  });
 });
 
 // --- What a style draws on the wire ---
