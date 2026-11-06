@@ -191,8 +191,23 @@ const ESCAPES = [
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
 // A string escape goes first so a line break its payload holds stays in it.
+// CNL (`count`) is NEL `count` times: column 1 of a row that far down, with the
+// rows it passes blank in a capture. CPL goes up, where a capture holds no line
+// to return to, so it is dropped as the other vertical motions are.
 const lineBreaks = (): RegExp =>
-  new RegExp(`(${STRING_ESCAPE})|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`, "gu");
+  new RegExp(
+    `(?<escape>${STRING_ESCAPE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?E|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`,
+    "gu",
+  );
+
+/** A move down by more rows than this is one this far: no terminal is taller, and a count cannot make the decoder allocate without bound. */
+const MOST_ROWS_DOWN = 255;
+
+const lineBreak = (...match: unknown[]): string => {
+  const { escape, count } = match.at(-1) as Record<string, string | undefined>;
+  if (escape !== undefined) return escape;
+  return "\n".repeat(count === undefined ? 1 : Math.min(MOST_ROWS_DOWN, Number(count) || 1));
+};
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -512,7 +527,7 @@ export class AnsiDecoder {
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    const lined = ansi.replace(lineBreaks(), (_found, escape?: string) => escape ?? "\n");
+    const lined = ansi.replace(lineBreaks(), lineBreak);
     return (lined.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
       this.decodeLine(line.replace(/\r?\n$/, "")),
     );

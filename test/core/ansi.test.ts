@@ -294,8 +294,18 @@ describe("decodeAnsi lines and other escapes", () => {
     const long = "x".repeat(12000);
     expect(decodeAnsi(`${long}\bz`).plain).toBe(`${"x".repeat(11999)}z`);
     expect(decodeAnsi(`${long}\x1b[Cz`).plain).toBe(`${long}z`);
-    // Vertical motion stays dropped.
-    expect(decodeAnsi("ab\x1b[1Ac\x1b[2Bd\x1b[Ee").plain).toBe("abcde");
+    // Vertical motion stays dropped, CPL's upward move included.
+    expect(decodeAnsi("ab\x1b[1Ac\x1b[2Bd\x1b[Fe").plain).toBe("abcde");
+  });
+
+  it("ends a line at CNL as at NEL, once per row it moves down", () => {
+    expect(decodeAnsi("a\x1b[Eb").plain).toBe("a\nb");
+    expect(decodeAnsi("a\x9b0Eb").plain).toBe("a\nb");
+    expect(decodeAnsi("a\x1b[3Eb").plain).toBe("a\n\n\nb");
+    // The style carries across, as across any line break.
+    expect(decodeAnsi("\x1b[1ma\x1b[Eb").spans).toHaveLength(2);
+    // A count past any terminal's height moves as far as one could.
+    expect(decodeAnsi("a\x1b[99999999Eb").plain.split("\n")).toHaveLength(256);
   });
 
   it("erases within the line from the cursor, up to it, or all of it", () => {
