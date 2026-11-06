@@ -4,15 +4,22 @@
     {
       "version": "pr-571",
       "ref": "refs/pull/571/merge",
-      "sha": "d238da274485c67c02137194ebf4f8f34645c435",
-      "timestamp": "2026-11-06T06:39:35.319Z",
+      "sha": "b3b49c14e06cc2abe79325c7f1d5a62337bea61f",
+      "timestamp": "2026-11-06T06:55:07.299Z",
       "commits": [
         {
-          "sha": "d238da274485c67c02137194ebf4f8f34645c435",
+          "sha": "b3b49c14e06cc2abe79325c7f1d5a62337bea61f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:37:34Z",
-          "message": "Merge 01c62f85d70e3aa57cfcf5ccb9ed960bc03ae984 into d579241dad7483b9be74996fb69c690f6ebcdbb0\n"
+          "timestamp": "2026-11-06T06:52:43Z",
+          "message": "Merge 1c2f2be2484ab841687b1e035432ec6fbea3a377 into d579241dad7483b9be74996fb69c690f6ebcdbb0\n"
+        },
+        {
+          "sha": "1c2f2be2484ab841687b1e035432ec6fbea3a377",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T23:52:33-07:00",
+          "message": "Review: the word joiner reaches a terminal only, a mark after any Prepend is kept, and a control waits with the Prepend for the text after it (rich-control-codes-xh4n.qmw)\n"
         },
         {
           "sha": "01c62f85d70e3aa57cfcf5ccb9ed960bc03ae984",
