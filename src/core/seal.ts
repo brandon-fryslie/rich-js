@@ -108,8 +108,9 @@ function* prependsEnded(segments: Iterable<Segment>): Iterable<Segment> {
   };
   for (const segment of segments) {
     if (segment.isControl) {
-      // A control moves the cursor or draws no cell, so nothing joins across it.
-      yield* release("");
+      // Some controls leave the cursor where it is (hiding it, a bell, a
+      // title), so text after one may continue the line.
+      yield* release(undefined);
       yield segment;
     } else if (segment.text === "") {
       held.push(segment);

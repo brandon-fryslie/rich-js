@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cellLen, graphemes } from "../../src/core/cells.js";
 import { reorder } from "../../src/core/orient.js";
 import { sealed } from "../../src/core/seal.js";
-import { Segment } from "../../src/core/segment.js";
+import { ControlType, Segment } from "../../src/core/segment.js";
 import { caretMark, NULL_STYLE, Style } from "../../src/core/style.js";
 import type { TextOrder } from "../../src/core/text-order.js";
 
@@ -80,6 +80,16 @@ describe("a Prepend character's cluster ends at itself", () => {
   it.each(["visual", "words"] as const)("leaves the blank after it its own bidi level under %s", (order) => {
     const reordered = reorder([new Segment("א؀ b")], order);
     expect(text(reordered.orient(reordered.line, 0, "א؀ b"))).toBe("b ؀א");
+  });
+
+  it("ends a Prepend before a halfwidth sound mark, which takes a cell of its own", () => {
+    expect(graphemes("؀ﾞ")).toEqual(["؀", "ﾞ"]);
+    expect(terminalCells(text(wire([new Segment("؀ﾞ")], "plain"))).length).toBe(cellLen("؀ﾞ"));
+  });
+
+  it("ends a Prepend before a control that leaves the cursor in place", () => {
+    const written = text([...sealed([new Segment("a؀"), new Segment("", undefined, [[ControlType.HIDE_CURSOR]]), new Segment("b")], "plain")]);
+    expect(written.startsWith(`a؀${WORD_JOINER}`)).toBe(true);
   });
 
   it("keeps a mark opening the next segment, which joins it as one cell", () => {

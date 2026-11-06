@@ -29,7 +29,7 @@ const prependMemo = new Memo<boolean>();
  * whatever follows it. Asked of the segmenter itself — nothing but GB9b joins a
  * character to a following letter — so the set split below is the set it joins.
  */
-export function isPrepend(character: string): boolean {
+function isPrepend(character: string): boolean {
   return prependMemo.get(character, (c) => SEGMENTER.segment(c + "a").containing(0)!.segment.length > c.length);
 }
 
@@ -38,16 +38,14 @@ interface Cluster {
   readonly segment: string;
 }
 
-const AN_EXTENDER = pattern(new RegExp(`^${EXTENDER}$`, "u"));
-
 /**
  * Whether the Prepend `character`, before `next`, ends its cluster where the
- * library does: before a base, which a segmenter joins to it and Rich counts
- * apart. Before an extender it does not — Prepend and mark are one cell to both
- * — and before a control or nothing, nothing joins it.
+ * library does: before anything taking a cell, which a segmenter joins to it
+ * and Rich counts apart. Before a mark of no cells it does not — Prepend and
+ * mark are one cell to both — and before a control or nothing, nothing joins it.
  */
 function standsAlone(character: string, next: string): boolean {
-  return next !== "" && isPrepend(character) && !AN_EXTENDER.test(next) && SEGMENTER.segment(character + next).containing(0)!.segment.length > character.length;
+  return next !== "" && isPrepend(character) && cellLen(next) > 0 && SEGMENTER.segment(character + next).containing(0)!.segment.length > character.length;
 }
 
 /**
@@ -98,6 +96,9 @@ function clusterContaining(segments: Intl.Segments, at: number): Cluster | undef
  */
 export function endedPrepends(text: string, after: string | undefined): string {
   if (PRINTABLE_ASCII.test(text)) return text;
+  let any = false;
+  for (const character of text) if ((any = isPrepend(character))) break;
+  if (!any) return text;
   const characters = Array.from(text);
   let out: string | undefined;
   for (const [index, character] of characters.entries()) {

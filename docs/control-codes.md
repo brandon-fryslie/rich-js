@@ -102,8 +102,8 @@ base character the library does too: it is its own cluster to every cut, caret s
 and reordering, and a WORD JOINER (U+2060), which takes no cell and ends a cluster, is
 written after it there and wherever a write ends on it, since the next write may
 continue the line. A number sign typed before a caret, a blank or a letter in another
-style keeps its cell, and the row its width. A mark on a Prepend stays in its cluster,
-one cell to both.
+style keeps its cell, and the row its width. A mark of no cells on a Prepend stays in
+its cluster, one cell to both.
 
 ## Wrapping
 
