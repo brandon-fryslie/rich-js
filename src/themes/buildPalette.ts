@@ -1,5 +1,5 @@
-import { ColorRgba, blendRgb } from "../core/color.js";
-import { alphaBlend, contrastFor, ensureContrast, ensureContrastToward, shiftLightness } from "./colorMath.js";
+import { ColorRgba, blendRgb, contrastRatio, relativeLuminance } from "../core/color.js";
+import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
 import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
 import { groundRelativeHint, neutralAlpha, neutralText, textFloor, withAlpha, type NeutralIntent } from "./text-on.js";
 
@@ -45,6 +45,7 @@ type Rule = (at: At, dark: boolean) => ColorRgba;
 
 const TRANSPARENT = new ColorRgba(0, 0, 0, 0);
 const WHITE = new ColorRgba(255, 255, 255);
+const BLACK = new ColorRgba(0, 0, 0);
 
 /**
  * Text a component draws on a ground of its own: the ground, and what the text
@@ -52,10 +53,11 @@ const WHITE = new ColorRgba(255, 255, 255);
  * Textual draws a footer key in `accent`. [LAW:one-source-of-truth] The one
  * place a component's text is paired with its ground: the text is derived on
  * it, a stated tint composites on it, and both are held to their floor there.
+ * A ground that itself sits on another surface names it in `GROUND`.
  */
 type ComponentText = { readonly ground: PaletteRole } & ({ readonly intent: NeutralIntent } | { readonly color: PaletteRole });
 
-const COMPONENT_TEXT = {
+export const COMPONENT_TEXT = {
   "block-cursor-foreground": { ground: "block-cursor-background", intent: "text" },
   "block-cursor-blurred-foreground": { ground: "block-cursor-blurred-background", color: "foreground" },
   "button-color-foreground": { ground: "primary", intent: "text" },
@@ -76,16 +78,27 @@ const COMPONENT_TEXT = {
 type ComponentTextRole = keyof typeof COMPONENT_TEXT;
 const isComponentText = (role: PaletteRole): role is ComponentTextRole => Object.hasOwn(COMPONENT_TEXT, role);
 
-/** A component's ground as it is drawn: on `background`, so a transparent one is the background. */
-const groundOf = (role: ComponentTextRole, at: At): ColorRgba => at(COMPONENT_TEXT[role].ground).compositeOver(at("background"));
+/** `role` as it is drawn: on what `GROUND` says it sits on, down to `background`. */
+const drawnAs = (role: PaletteRole, at: At): ColorRgba =>
+  role === "background" ? at(role) : at(role).compositeOver(drawnAs(GROUND[role] ?? "background", at));
+
+/** A component's ground as it is drawn, so a transparent one is the surface under it. */
+const groundOf = (role: ComponentTextRole, at: At): ColorRgba => drawnAs(COMPONENT_TEXT[role].ground, at);
 
 /** The floor a component's text is held to: its weight's, or body text's for a role's color. */
 const componentFloor = (text: ComponentText): number => textFloor("intent" in text ? text.intent : "foreground");
 
-/** `color` drawn on the component's ground and held to its floor there. */
+/**
+ * `color` drawn on the component's ground and held to its floor there: moved
+ * in lightness on its own side of the ground — light text stays light — and
+ * to the other side only where its own cannot reach the floor.
+ */
 const heldOnGround = (role: ComponentTextRole, color: ColorRgba, at: At): ColorRgba => {
   const ground = groundOf(role, at);
-  return ensureContrast(color.compositeOver(ground), ground, componentFloor(COMPONENT_TEXT[role]));
+  const floor = componentFloor(COMPONENT_TEXT[role]);
+  const drawn = color.compositeOver(ground);
+  const own = relativeLuminance(drawn) >= relativeLuminance(ground) ? WHITE : BLACK;
+  return ensureContrastToward(drawn, ground, floor, contrastRatio(own, ground) >= floor ? own : contrastFor(ground));
 };
 
 /** A component's text as derived: its weight on its ground, or its role's color held there. */
@@ -234,7 +247,9 @@ const ROLE_NAMES: ReadonlySet<string> = new Set(PALETTE_ROLES);
  * Build a full semantic palette from its base colors and any other role it
  * states: a stated role keeps its color, and everything derived from it
  * follows it, but for `text-*` and `foreground-muted`, which are held to read
- * on the grounds Textual promises them (`heldOn`). An authored theme is this
+ * on the grounds Textual promises them (`heldOn`), and a component's text,
+ * held on its own ground (`COMPONENT_TEXT`) when the author's color misses
+ * its floor there. An authored theme is this
  * with roles stated; see `RULES` for what a role not stated becomes.
  *
  * A stated translucent color is drawn onto its ground before anything is
@@ -268,27 +283,34 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
 }
 
 /**
- * The role each text role is drawn on, where that is not `background`: a
- * stated translucent text composites there, as Textual draws it, so a cursor's
- * `#000000DD` is the color it shows on the cursor. [LAW:one-source-of-truth]
+ * The role each role is drawn on, where that is not `background`: a text on
+ * its ground, and a ground on the surface under it, as Textual stacks them —
+ * a footer key on its footer item on the footer bar. A stated translucent
+ * color composites there, so a cursor's `#000000DD` is the color it shows on
+ * the cursor. [LAW:one-source-of-truth]
  */
 const GROUND: { readonly [R in PaletteRole]?: PaletteRole } = {
   ...Object.fromEntries(ACCENT_KEYS.map((key) => [`text-${key}`, `${key}-muted`])),
   ...Object.fromEntries(Object.entries(COMPONENT_TEXT).map(([role, { ground }]) => [role, ground])),
+  "footer-key-background": "footer-item-background",
+  "footer-description-background": "footer-item-background",
+  "footer-item-background": "footer-background",
 };
 
 /**
  * A stated role as it is drawn: on its ground (`GROUND`), itself drawn on
  * `background`. `boost` alone stays a layer: it is what `panel` composites,
  * and a fully transparent color draws nothing anywhere. A component's stated
- * tint is Textual writing a rule rather than a color, so it is held to its
- * floor on its ground as the derived text is; a stated opaque color is the
- * author's choice and kept.
+ * text, tint or opaque, is held to its floor on its ground as the derived
+ * text is: an author's color that reads there is kept as given, and one that
+ * does not moves in lightness (`heldOnGround`), keeping its hue and its side
+ * of the ground where those can reach the floor.
  */
 function drawnOnGround(role: PaletteRole, color: ColorRgba | undefined, at: At): ColorRgba | undefined {
-  if (color === undefined || role === "boost" || color.alpha === 0 || color.alpha === 1) return color;
+  if (color === undefined || role === "boost" || color.alpha === 0) return color;
   if (isComponentText(role)) return heldOnGround(role, color, at);
-  return color.compositeOver(at(GROUND[role] ?? "background").compositeOver(at("background")));
+  if (color.alpha === 1) return color;
+  return color.compositeOver(drawnAs(GROUND[role] ?? "background", at));
 }
 
 /**

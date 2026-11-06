@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba, TerminalTheme, blendRgb, contrastRatio, parseHexColor, relativeLuminance } from "../../src/core/color.js";
-import { ensureContrast } from "../../src/themes/colorMath.js";
 import { resolveColorRef } from "../../src/themes/colorRef.js";
 import { THEMES } from "../../src/themes/data/index.js";
-import { IDENTITY } from "../../src/core/oklch.js";
-import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
+import { IDENTITY, Oklch } from "../../src/core/oklch.js";
+import { BASE_KEYS, COMPONENT_TEXT, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
 import type { Palette, PaletteRole, ShadedRole } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
@@ -148,8 +147,11 @@ describe("what buildPalette is given", () => {
   it.each(drawnOnItsGround)("$name draws $text on $ground, held to its floor there", ({ name, text, ground, stated }) => {
     const palette = getThemePalette(name);
     const on = palette.get(ground).compositeOver(palette.get("background"));
-    expect(palette.get(text).hex).toBe(ensureContrast(parseHexColor(stated).compositeOver(on), on, 4.5).hex);
+    const drawn = parseHexColor(stated).compositeOver(on);
+    const light = (c: ColorRgba): boolean => relativeLuminance(c) >= relativeLuminance(on);
+    const pole = light(drawn) ? new ColorRgba(255, 255, 255) : new ColorRgba(0, 0, 0);
     expect(contrastRatio(palette.get(text), on)).toBeGreaterThanOrEqual(4.5);
+    if (contrastRatio(pole, on) >= 4.5) expect(light(palette.get(text)), "stays on its side of the ground").toBe(light(drawn));
   });
 
   // Every component's text is chosen on its own ground, derived or stated as a tint.
@@ -176,9 +178,31 @@ describe("what buildPalette is given", () => {
     const palette = buildPalette("t", true, { ...dark, [ground]: new ColorRgba(255, 255, 255, 0.9), [text]: new ColorRgba(255, 255, 255, 0.5) });
     expect(contrastRatio(palette.get(text), palette.get(ground))).toBeGreaterThanOrEqual(floor);
   });
-  it("a stated opaque component text is the author's, kept", () => {
-    const chosen = new ColorRgba(250, 250, 250);
+  it("a stated opaque component text that reads is the author's, kept", () => {
+    const chosen = new ColorRgba(20, 20, 20);
     expect(buildPalette("t", true, { ...dark, "link-background": paleGround, "link-color": chosen }).get("link-color")).toEqual(chosen);
+  });
+  it("a stated opaque component text that does not read is held, keeping its hue", () => {
+    const chosen = new ColorRgba(120, 160, 230);
+    const held = buildPalette("t", true, { ...dark, "link-background": paleGround, "link-color": chosen }).get("link-color");
+    expect(contrastRatio(held, paleGround)).toBeGreaterThanOrEqual(4.5);
+    const turn = Math.abs(Oklch.fromRgba(held).h - Oklch.fromRgba(chosen).h) % 360;
+    expect(Math.min(turn, 360 - turn)).toBeLessThan(10);
+  });
+  it("a stated text whose side cannot read crosses to the other, keeping its hue", () => {
+    const lavender = new ColorRgba(187, 154, 247);
+    const chosen = new ColorRgba(200, 170, 255);
+    const held = buildPalette("t", true, { ...dark, "link-background": lavender, "link-color": chosen }).get("link-color");
+    expect(contrastRatio(held, lavender)).toBeGreaterThanOrEqual(4.5);
+    expect(relativeLuminance(held)).toBeLessThan(relativeLuminance(lavender));
+    const turn = Math.abs(Oklch.fromRgba(held).h - Oklch.fromRgba(chosen).h) % 360;
+    expect(Math.min(turn, 360 - turn)).toBeLessThan(10);
+  });
+  it("a stated light text on a mid ground stays light where light can read", () => {
+    const mid = new ColorRgba(40, 90, 160);
+    const held = buildPalette("t", true, { ...dark, "link-background": mid, "link-color": new ColorRgba(150, 170, 200) }).get("link-color");
+    expect(contrastRatio(held, mid)).toBeGreaterThanOrEqual(4.5);
+    expect(relativeLuminance(held)).toBeGreaterThan(relativeLuminance(mid));
   });
 });
 
@@ -219,15 +243,28 @@ describe("what a role is drawn on decides it", () => {
     expect(light.get("panel")).toEqual(blendRgb(light.get("surface"), light.get("primary"), 0.1));
   });
 
-  it.each(derived.map((palette) => [palette.name, palette] as const))("%s: the pairs on primary read", (_name, palette) => {
-    const ground = palette.get("primary");
-    for (const role of ["block-cursor-foreground", "link-color-hover", "button-color-foreground"] as const) {
-      expect(contrastRatio(palette.get(role), ground), role).toBeGreaterThanOrEqual(3);
+  // Stated here, not read off buildPalette: how Textual stacks a footer.
+  const under: Partial<Record<PaletteRole, PaletteRole>> = {
+    "footer-key-background": "footer-item-background",
+    "footer-description-background": "footer-item-background",
+    "footer-item-background": "footer-background",
+  };
+  const drawnOn = (palette: Palette, role: PaletteRole): ColorRgba =>
+    palette.get(role).compositeOver(role === "background" ? palette.get("background") : drawnOn(palette, under[role] ?? "background"));
+  // Body text's floor, and the muted weight's for the smallest heading.
+  const floor = (role: PaletteRole): number => (role === "markdown-h6-color" ? 3 : 4.5);
+  it.each([...authored, ...derived].map((palette) => [palette.name, palette] as const))("%s: every component's text reads on its ground", (_name, palette) => {
+    for (const [text, { ground }] of Object.entries(COMPONENT_TEXT) as [PaletteRole, { ground: PaletteRole }][]) {
+      const on = drawnOn(palette, ground);
+      expect(contrastRatio(palette.get(text), on), `${text} on ${ground}`).toBeGreaterThanOrEqual(floor(text));
     }
   });
 
-  it.each(derived.map((palette) => [palette.name, palette] as const))("%s: the smallest heading reads", (_name, palette) => {
-    expect(contrastRatio(palette.get("markdown-h6-color"), palette.get("background"))).toBeGreaterThanOrEqual(3);
+  it.each(authored.map((palette) => [palette.name, palette] as const))("%s: the footer key reads on its item on the footer bar", (_name, palette) => {
+    for (const role of ["footer-key", "footer-description"] as const) {
+      const on = drawnOn(palette, `${role}-background`);
+      expect(contrastRatio(palette.get(`${role}-foreground`), on), role).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 
