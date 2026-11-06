@@ -320,8 +320,7 @@ function ordered(text: string, direction: ParagraphLevel | undefined): number[] 
  */
 export function labeled(before: string, label: readonly Segment[], after: string, style: Style | undefined, order: TextOrder | undefined): Segment[] {
   const { line, oriented, orient } = reorder(label, order ?? "plain");
-  const framed = (shown: readonly Segment[]): Segment[] =>
-    [new Segment(before, style), ...shown, new Segment(after, style)].filter((segment) => segment.text !== "");
+  const framed = (shown: readonly Segment[]): Segment[] => [new Segment(before, style), ...shown, new Segment(after, style)];
   if (!oriented) return [...Segment.simplify(framed(line))];
-  return framed(orient(line, 0, Segment.plainOf(line)));
+  return framed(orient(line, 0, Segment.plainOf(line))).filter((segment) => segment.text !== "");
 }

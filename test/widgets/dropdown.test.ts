@@ -611,6 +611,15 @@ describe("Dropdown filter on the terminal's own cursor", () => {
     expect(segs.map((s) => s.text).join("")).toContain("│");
   });
 
+  it("keeps the caret cell when the header has room for nothing else", () => {
+    const d = new Dropdown({ options: ["a"] });
+    d.focus(0);
+    typed(d, "x");
+    const segs = header(d, { caret: true });
+    expect(segs.filter((s) => s.style?.caret !== undefined).map((s) => s.text)).toEqual([" "]);
+    expect(cellLen(segs.map((s) => s.text).join(""))).toBe(d.measure(RENDER).maximum);
+  });
+
   it("stands the bar on the right edge of its cell after a right-to-left query", () => {
     const d = new Dropdown({ options: ["שלום", "עולם"] });
     d.focus(0);

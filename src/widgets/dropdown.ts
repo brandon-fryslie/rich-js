@@ -312,11 +312,14 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
       return [new Segment(" ".repeat(left) + raw + " ".repeat(right), style)];
     }
     // Leading space gives the filter input a small gutter from the [ chrome,
-    // matching the visual breathing room of the centered label.
-    const caretCells = caret === undefined ? 0 : cellLen(caret.text);
-    const filterRoom = Math.max(0, maxLabelLen - caretCells - 1);
+    // matching the visual breathing room of the centered label. The caret is
+    // fitted first and the gutter only where a cell is left for it: a cropped
+    // caret cell would take the terminal's cursor off the field.
+    const caretCells = caret?.cellLength ?? 0;
+    const gutter = maxLabelLen - caretCells >= 1 ? " " : "";
+    const filterRoom = Math.max(0, maxLabelLen - caretCells - gutter.length);
     const [filterText] = splitText(this.filter, asCellCol(filterRoom));
-    const query = [new Segment(" " + filterText, style), ...(caret === undefined ? [] : [caret])];
+    const query = [new Segment(gutter + filterText, style), ...(caret === undefined ? [] : [caret])];
     return Segment.adjustLineLength(query, maxLabelLen, style);
   }
 
