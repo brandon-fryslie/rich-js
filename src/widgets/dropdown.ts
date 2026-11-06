@@ -19,7 +19,7 @@
  * mutation.
  *
  * Width invariant: measure() always returns maxLabelLen(options) + 4
- * regardless of filter state — the query is right-clipped, never wider
+ * regardless of filter state — a long query shows its end, never wider
  * than the header. See docs/widgets.md → Dropdown.
  */
 
@@ -28,8 +28,8 @@ import type { TextOrder } from "../core/text-order.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
-import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
+import { Style, caretMark } from "../core/style.js";
+import { cellLen, cellFitEnd, setCellSize, asCellCol } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import { moveSelection } from "../core/selection.js";
 import type { TerminalTheme } from "../core/color.js";
@@ -263,9 +263,6 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     // 1 row regardless of `expanded`/`filter`. Option rows live in
     // renderOverlay. Width invariant: maxLabelLen + 4.
     const arrowChar = drawable(options, "▾", "v");
-    // [LAW:one-source-of-truth] Both glyphs are resolved here, once, and flow
-    // into headerText as data rather than headerText re-reading the options.
-    const caret = this.focused ? drawable(options, "│", "|") : "";
     const maxLabelLen = this.maxLabelLen();
 
     const baseStyle = this.disabled
@@ -275,10 +272,22 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
           underline: this.focused,
         });
 
-    const headerLabel = this.headerText(maxLabelLen, caret);
+    // [LAW:one-source-of-truth] The caret is resolved here, once, and flows
+    // into headerText as data rather than headerText re-reading the options.
+    // Where the painter shows the terminal's cursor (`RenderOptions.caret`)
+    // the caret is a blank cell marked for it, its shape only — ordering the
+    // row sets which edge of the cell the bar stands on — so an IME's
+    // candidate window and a screen reader follow the filter's editing point.
+    // Elsewhere it is a drawn glyph. One cell either way.
+    const caret = !this.focused
+      ? undefined
+      : options.caret === true
+        ? new Segment(" ", baseStyle.withCaret(caretMark("bar")))
+        : new Segment(drawable(options, "│", "|"), baseStyle);
+
     return [
       new Segment("[", baseStyle),
-      ...labeled("", headerLabel, ` ${arrowChar}`, baseStyle, options.textOrder),
+      ...labeled("", this.headerText(maxLabelLen, caret, baseStyle), ` ${arrowChar}`, baseStyle, options.textOrder),
       new Segment("]", baseStyle),
     ];
   }
@@ -290,23 +299,36 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   // doesn't jitter horizontally while typing.
   //
   // [LAW:one-source-of-truth] All width math is in terminal cells via
-  // cellLen / setCellSize / splitText — plain `.length` would miscount
+  // cellLen / setCellSize / cellFitEnd — plain `.length` would miscount
   // wide / emoji characters and break the width invariant.
-  private headerText(maxLabelLen: number, caret: string): string {
+  private headerText(maxLabelLen: number, caret: Segment | undefined, style: Style): Segment[] {
     if (this.filter === "") {
       const raw = this.options[this.selectedIndex] ?? "";
       const w = cellLen(raw);
-      if (w >= maxLabelLen) return setCellSize(raw, asCellCol(maxLabelLen));
+      if (w >= maxLabelLen) return [new Segment(setCellSize(raw, asCellCol(maxLabelLen)), style)];
       const pad = maxLabelLen - w;
       const left = Math.floor(pad / 2);
       const right = pad - left;
-      return " ".repeat(left) + raw + " ".repeat(right);
+      return [new Segment(" ".repeat(left) + raw + " ".repeat(right), style)];
     }
     // Leading space gives the filter input a small gutter from the [ chrome,
-    // matching the visual breathing room of the centered label.
-    const filterRoom = Math.max(0, maxLabelLen - cellLen(caret) - 1);
-    const [filterText] = splitText(this.filter, asCellCol(filterRoom));
-    return setCellSize(" " + filterText + caret, asCellCol(maxLabelLen));
+    // matching the visual breathing room of the centered label. The caret is
+    // fitted first, then the query's last glyph, and the gutter only where a cell is left after both: a cropped
+    // caret cell would take the terminal's cursor off the field. A query wider
+    // than its room shows its tail, so the caret stays at the editing point.
+    const caretCells = caret?.cellLength ?? 0;
+    const gutter = maxLabelLen - caretCells >= 2 ? " " : "";
+    const filterRoom = Math.max(0, maxLabelLen - caretCells - gutter.length);
+    const filterText = this.filterTail(filterRoom);
+    const query = [new Segment(gutter + filterText, style), ...(caret === undefined ? [] : [caret])];
+    return Segment.adjustLineLength(query, maxLabelLen, style);
+  }
+
+  // The end of the filter that fits `room` cells, padded on its left where a
+  // wide glyph at the cut fits neither side, so its last glyph meets the caret.
+  private filterTail(room: number): string {
+    const tail = cellFitEnd(this.filter, asCellCol(room));
+    return tail === this.filter ? tail : " ".repeat(room - cellLen(tail)) + tail;
   }
 
   renderOverlay(options: RenderOptions): Iterable<Segment> | null {
@@ -369,7 +391,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
 
     return [
       new Segment(" ", rowStyle),
-      ...labeled("", inner, "", rowStyle, order),
+      ...labeled("", [new Segment(inner, rowStyle)], "", rowStyle, order),
       new Segment(" ", rowStyle),
     ];
   }

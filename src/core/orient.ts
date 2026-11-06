@@ -314,11 +314,13 @@ function ordered(text: string, direction: ParagraphLevel | undefined): number[] 
  * A label set between `before` and `after`, which are frame and stay where they
  * are, for a row drawn with no `RichText`: only the label is oriented, or a
  * button's brackets would be mirrored around it. A label `directed` leaves alone
- * is one segment with its frame, as it always was.
+ * is joined to its frame, so a label of the frame's style is one segment with
+ * it. Each label segment keeps its style through the ordering — a cell marked
+ * for the caret (`Style.caret`) among them.
  */
-export function labeled(before: string, label: string, after: string, style: Style | undefined, order: TextOrder | undefined): Segment[] {
-  const { line, oriented, orient } = reorder([new Segment(label, style)], order ?? "plain");
-  const text = Segment.plainOf(line);
-  if (!oriented) return [new Segment(before + text + after, style)];
-  return [new Segment(before, style), ...orient(line, 0, text), new Segment(after, style)].filter((segment) => segment.text !== "");
+export function labeled(before: string, label: readonly Segment[], after: string, style: Style | undefined, order: TextOrder | undefined): Segment[] {
+  const { line, oriented, orient } = reorder(label, order ?? "plain");
+  const framed = (shown: readonly Segment[]): Segment[] => [new Segment(before, style), ...shown, new Segment(after, style)];
+  if (!oriented) return [...Segment.simplify(framed(line))];
+  return framed(orient(line, 0, Segment.plainOf(line))).filter((segment) => segment.text !== "");
 }
