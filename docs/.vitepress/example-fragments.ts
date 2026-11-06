@@ -13,7 +13,8 @@
 import { Segment, decodeAnsi } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
 import { OSC8 } from "../../src/core/osc8.js";
-import { CURSOR_RESTORE, CURSOR_SAVE, LINE_BREAK_ESCAPES, LINE_ENDS, LINE_FINALS } from "../../src/core/ansi.js";
+import { CURSOR_RESTORE, CURSOR_SAVE, LINE_BREAK_ESCAPES, LINE_ENDS, LINE_FINALS, REPEAT_FINAL, repeatable } from "../../src/core/ansi.js";
+import { graphemes } from "../../src/core/cells.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
 
 /**
@@ -42,8 +43,8 @@ const LINE = [...LINE_FINALS].map((final) => `\\x${final.charCodeAt(0).toString(
  * an edit of it (`LINE_FINALS`), a line break (`LINE_BREAK_ESCAPES`), a G0 or G1 designation, a soft reset
  * (DECSTR), and an OSC 8 link. It drops every other, RIS among them: the decoder
  * resets its state there too, but a terminal also clears its screen. A save and a
- * restore are `SAVE`'s and `RESTORE`'s, since whether a restore is drawn depends
- * on what came before it.
+ * restore are `SAVE`'s and `RESTORE`'s, and REP is `REPEAT`'s, since whether a
+ * restore or a REP is drawn depends on what came before it.
  */
 const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|${LINE_BREAK_ESCAPES}|\\x1b[()][0-~]|\\x1b\\[!p|${OSC8.source})$`);
 
@@ -56,6 +57,8 @@ const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?
  */
 const RESTORE = new RegExp(`^(?:${CURSOR_RESTORE})$`);
 const SAVE = new RegExp(`^(?:${CURSOR_SAVE})$`);
+/** REP, drawn only where a graphic character stands just before it (`repeatsAt`). */
+const REPEAT = new RegExp(`^\\x1b\\[[0-9]*(?:;[0-9;]*)?${REPEAT_FINAL}$`);
 const RESTORE_SPAN = new RegExp(`${LINE_ENDS}|\\x1b\\[!p`, "u");
 
 /**
@@ -85,7 +88,12 @@ export interface EscapeScan {
   readonly unread: number;
   /** Whether a cursor save stands on the line the bytes end on, for a restore in the next write to return to. */
   readonly saved: boolean;
+  /** Whether the bytes end on a graphic character, for a REP at the start of the next write to repeat. */
+  readonly repeatable: boolean;
 }
+
+/** What one write leaves the line holding for the next: `EscapeScan`'s `saved` and `repeatable`. */
+export type Carried = Pick<EscapeScan, "saved" | "repeatable">;
 
 /**
  * [LAW:one-source-of-truth] Whether bytes written so far are ones
@@ -94,22 +102,38 @@ export interface EscapeScan {
  * write by this as it comes (theme/static-run.ts); `undrawnEscape` reads a
  * program's whole output by it.
  */
-export function scanEscapes(bytes: string, savedBefore = false): EscapeScan {
+export function scanEscapes(bytes: string, before: Carried = { saved: false, repeatable: false }): EscapeScan {
   let read = 0;
-  let saved: number | undefined = savedBefore ? 0 : undefined;
+  let saved: number | undefined = before.saved ? 0 : undefined;
   for (const match of bytes.matchAll(ESCAPE)) {
     // An escape begun before this one and never finished: an escape inside it ends any chance of drawing it.
     const open = bytes.indexOf("\x1b", read);
-    if (open < match.index) return { dropped: bytes.slice(open, match.index), unread: open, saved: false };
+    if (open < match.index) return { dropped: bytes.slice(open, match.index), unread: open, saved: false, repeatable: false };
     if (SAVE.test(match[0])) saved = match.index + match[0].length;
-    else if (RESTORE.test(match[0]) ? !standing(bytes, saved, match.index) : !DRAWN.test(match[0])) return { dropped: match[0], unread: match.index, saved: false };
+    else if (!drawnAt(bytes, match, read, saved, before.repeatable)) return { dropped: match[0], unread: match.index, saved: false, repeatable: false };
     read = match.index + match[0].length;
   }
   const open = bytes.indexOf("\x1b", read);
-  if (open === -1) return { dropped: null, unread: bytes.length, saved: standing(bytes, saved, bytes.length) };
+  const end = open === -1 ? bytes.length : open;
+  const scan = { unread: end, saved: standing(bytes, saved, end), repeatable: repeatsAt(bytes, read, end, before.repeatable) };
+  if (open === -1) return { dropped: null, ...scan };
   const rest = bytes.slice(open);
-  return DRAWN_START.test(rest) && rest.length <= LONGEST_OPEN_ESCAPE ? { dropped: null, unread: open, saved: standing(bytes, saved, open) } : { dropped: rest, unread: open, saved: false };
+  return DRAWN_START.test(rest) && rest.length <= LONGEST_OPEN_ESCAPE ? { dropped: null, ...scan } : { dropped: rest, unread: open, saved: false, repeatable: false };
 }
+
+/** Whether the escape `match`, after an earlier one ended at `read`, is one a drawing draws, a save aside. */
+const drawnAt = (bytes: string, match: RegExpExecArray, read: number, saved: number | undefined, carried: boolean): boolean =>
+  RESTORE.test(match[0]) ? standing(bytes, saved, match.index) : REPEAT.test(match[0]) ? repeatsAt(bytes, read, match.index, carried) : DRAWN.test(match[0]);
+
+/**
+ * Whether a REP at `at` has a graphic character to repeat: the bytes since the
+ * last escape, which ended at `from`, end on one the decoder repeats
+ * (`repeatable`). Directly after an escape there is none, as the decoder has
+ * none after any control function; at the start of a write, what the last write
+ * ended on.
+ */
+const repeatsAt = (bytes: string, from: number, at: number, carried: boolean): boolean =>
+  at === from ? from === 0 && carried : repeatable([...graphemes(bytes.slice(from, at))].at(-1)!);
 
 /** Whether a save made at `saved` still stands at `at`: made, and on the same line. */
 const standing = (bytes: string, saved: number | undefined, at: number): boolean => saved !== undefined && !RESTORE_SPAN.test(bytes.slice(saved, at));
@@ -130,10 +154,10 @@ export function undrawnEscape(output: string): string | null {
  * draws as one that printed a blank line, so the bytes, not the drawing, say
  * which it was.
  */
-export function drawOutput(bytes: string): Drawn | null {
+export function drawOutput(bytes: string, columns: number = EXAMPLE_TERMINAL.columns): Drawn | null {
   if (bytes === "") return null;
-  const text = decodeAnsi(bytes, { noWrap: true });
-  const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, asciiOnly: false })];
-  const [columns] = Segment.getShape(Segment.splitLines(segments));
-  return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark), columns };
+  const text = decodeAnsi(bytes, { noWrap: true, width: columns });
+  const segments: Segment[] = [...text.render({ maxWidth: columns, isTerminal: false, asciiOnly: false })];
+  const [widest] = Segment.getShape(Segment.splitLines(segments));
+  return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark), columns: widest };
 }

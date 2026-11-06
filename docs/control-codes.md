@@ -33,7 +33,10 @@ conceal text with no caller having asked.
 terminal or a printer would make of them. A CR returns to the first column, and a cursor move along
 the line (CUB, CUF, CHA, CHT, CBT, HPB, HPR, HPA) moves the column as a terminal
 does, up to the decoder's `width`, and erase, delete and insert of cells (ECH,
-DCH, ICH) edit the line there. nroff's overstrike, which `man` writes, becomes styles, and a backspace that is no
+DCH, ICH) edit the line there. REP (`\x1b[nb`), which ncurses writes for a run
+of one character, draws the graphic character just before it `n` more times, up
+to `width` since the decoder wraps nothing, and nothing when a control came
+between. nroff's overstrike, which `man` writes, becomes styles, and a backspace that is no
 overstrike moves back a column so what follows draws over what was there:
 
 ```typescript

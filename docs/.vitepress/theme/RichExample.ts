@@ -315,10 +315,11 @@ function staticRuns(program: CardProgram, root: Ref<HTMLElement | null>, rest: S
       }
       const made = await statics();
       if (!current()) return SHOWN;
+      const terminal = { ...made.terminal, ...program.terminal };
       running = made.runStatic(root.value!, {
         runtime: made.runtime,
         script: made.playgroundScript(programFiles(withCodes(program, codes)), made.library),
-        terminal: { ...made.terminal, ...program.terminal },
+        terminal,
         limitMs: made.limitMs,
         limitChars: OUTPUT_LIMIT_CHARS,
       });
@@ -326,7 +327,7 @@ function staticRuns(program: CardProgram, root: Ref<HTMLElement | null>, rest: S
       if (!current() || end.kind === "stopped") return SHOWN;
       // A program that exits 0 has ended as one that finished, as in Node.
       if (end.kind === "finished" || (end.kind === "exited" && end.code === 0)) {
-        drawn.value = { codes, output: made.drawOutput(bytes), caption: RAN };
+        drawn.value = { codes, output: made.drawOutput(bytes, terminal.columns), caption: RAN };
         return SHOWN;
       }
       return staticEnded(end, made.thrownAt, namesOf(program));

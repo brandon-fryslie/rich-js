@@ -59,6 +59,13 @@
  * was saved on: on a later one it names a row the decoder no longer holds, as
  * CPL does.
  *
+ * REP is the eighth. Rich drops `\x1b[3b`, which ncurses writes for a run of one
+ * character, so a box's border comes out short. Here it draws the graphic
+ * character just before it that many more times, up to the right margin as a
+ * move forward stops there; after any control function, REP included, there is
+ * no preceding graphic character and it draws nothing, as ECMA-48 reads it
+ * (`repeatable`).
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator: movement along the line
@@ -93,7 +100,11 @@ type Token =
   | { readonly kind: "edit"; readonly edit: Edit; readonly count: number }
   | { readonly kind: "erase"; readonly mode: EraseMode }
   /** DECSC or SCOSC (`save`), DECRC or SCORC (not). */
-  | { readonly kind: "cursor"; readonly save: boolean };
+  | { readonly kind: "cursor"; readonly save: boolean }
+  /** REP: the graphic character drawn just before it, `count` more times. */
+  | { readonly kind: "repeat"; readonly count: number }
+  /** An escape or control the decoder draws nothing for; it still comes between a character and a REP. */
+  | { readonly kind: "silent" };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
 type EraseMode = "0" | "1" | "2";
@@ -191,27 +202,38 @@ const finalClass = (table: object): string => `[${hex(finals(Object.keys(table).
  */
 export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(EDITS).join("");
 
+/** REP's CSI final byte, which the docs' output gate reads too. */
+export const REPEAT_FINAL = "b";
+
+/**
+ * Whether REP repeats `cluster`, the last one drawn before it with no control
+ * function between: a graphic character, so one that takes a cell. A tab moves
+ * the cursor, and a mark with nothing under it takes none. The docs' output
+ * gate asks this of the bytes it reads, so the two cannot disagree on it.
+ */
+export const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.test(cluster) && cellLen(cluster) > 0;
+
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
  * order — each CSI and string escape in its `ESC` form or its C1 one — a
  * carriage return; a cursor save (`save`) or restore (`restore`), ahead of the
  * "any other" CSI and escape that would otherwise take them; a move along the line (`motion`) or an edit of it (`edit`),
- * reading the first parameter (`count`) as a terminal does; an SGR sequence (`sgr`, its parameters — a private
+ * or REP (`repeat`), each reading the first parameter (`count`) as a terminal does; an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
- * (`mode`); a soft reset, DECSTR (`reset`); any other CSI sequence; any other
- * string escape — OSC, DCS, APC, PM, SOS — run to a terminator or cut off where
- * `STRING_ESCAPE` says; a G0 or G1 designation (`designate`, its `charset`, such
- * as `\x1b(B` or `\x1b)0`); a full reset, RIS (`reset`); any other escape,
- * ECMA-48's intermediates and one final byte (`\x1b#8`, `\x1b(%5`); a character struck over itself (`struck`), over an
+ * (`mode`); a soft reset, DECSTR, or a full reset, RIS (`reset`); a G0 or G1
+ * designation (`designate`, its `charset`, such as `\x1b(B` or `\x1b)0`); the
+ * silent escapes (`silent`) — any other CSI sequence, any other string escape
+ * (OSC, DCS, APC, PM, SOS) run to a terminator or cut off where `STRING_ESCAPE`
+ * says, and any other escape, ECMA-48's intermediates and one final byte
+ * (`\x1b#8`, `\x1b(%5`); a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
- * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line may not hold or a
- * terminal draws nothing for. The silent ones are the two "any other" escapes and
- * that last class.
+ * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line
+ * may not hold or a terminal draws nothing for (`control`), silent too.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<silent>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
-  controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
+  `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
 
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
@@ -241,12 +263,14 @@ const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { save, restore, count, motion, edit, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
+    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, silent, control, shift, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
+    if (silent !== undefined || control !== undefined) yield { kind: "silent" };
     if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
+    if (repeat !== undefined) yield { kind: "repeat", count: Number(count) || 1 };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
     if (reset !== undefined) yield { kind: "reset", soft: reset !== "\x1bc" };
     if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charsetOf(charset!) };
@@ -541,7 +565,8 @@ export interface AnsiDecoderOptions {
   /**
    * The terminal's width in cells, its right margin: a move forward stops there,
    * so `\x1b[999C` reaches the right edge as it does on a terminal. Text runs
-   * past it, since a captured line has not been wrapped. Default 80.
+   * past it, since a captured line has not been wrapped. A positive whole
+   * number, since a REP draws up to it; default 80.
    */
   readonly width?: number;
 }
@@ -565,6 +590,7 @@ export class AnsiDecoder {
 
   constructor(options: AnsiDecoderOptions = {}) {
     this.width = options.width ?? DEFAULT_WIDTH;
+    if (!Number.isInteger(this.width) || this.width < 1) throw new RangeError(`AnsiDecoder width must be a positive whole number of cells, got ${this.width}`);
   }
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
@@ -584,12 +610,33 @@ export class AnsiDecoder {
     let column = 1;
     // A column saved on this line; a save on another names a row this one is not.
     let savedColumn: number | undefined = undefined;
+    // The graphic character drawn last and its style, while nothing has come
+    // after it: ECMA-48's REP repeats "the preceding graphic character", and a
+    // control function in between leaves it none.
+    let last: Cell | undefined = undefined;
     for (const token of tokens(line)) {
+      const preceding = last;
+      last = undefined;
       switch (token.kind) {
         case "text": {
           const style = this.sgr.withLink(this.link);
           const text = drawnIn(this.sets[this.shifted], token.text);
-          for (const cluster of graphemes(text)) column += draw(cells, column, cluster, style);
+          let final = "";
+          for (const cluster of graphemes(text)) {
+            column += draw(cells, column, cluster, style);
+            final = cluster;
+          }
+          if (repeatable(final)) last = [final, style];
+          break;
+        }
+        case "repeat": {
+          if (preceding === undefined) break;
+          const width = cellLen(preceding[0]);
+          // A terminal wraps what passes the right margin onto the next row; the
+          // decoder holds one row, so the repeats stop at the margin, or where
+          // the cursor already stands past it, as a move forward does.
+          const room = Math.floor(Math.max(0, this.width - (column - 1)) / width);
+          for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding);
           break;
         }
         case "overstrike": {
@@ -598,6 +645,8 @@ export class AnsiDecoder {
           const character = drawnIn(this.sets[this.shifted], token.character);
           const emphasis = character === token.character ? token.emphasis : NULL_STYLE;
           column += draw(cells, column, character, this.sgr.add(emphasis).withLink(this.link));
+          // The emphasis is this decoder's reading of the overstrike; a terminal repeats the character in the SGR style.
+          if (repeatable(character)) last = [character, this.sgr.withLink(this.link)];
           break;
         }
         case "reset":
@@ -646,6 +695,8 @@ export class AnsiDecoder {
           break;
         case "link":
           this.link = token.uri === "" ? undefined : token.uri;
+          break;
+        case "silent":
           break;
       }
     }
