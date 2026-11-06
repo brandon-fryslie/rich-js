@@ -47,7 +47,7 @@
 
 import { cellLen, graphemes } from "./cells.js";
 import { ColorSpec } from "./color.js";
-import { controlClass } from "./control-codes.js";
+import { CONTROL_CODES, controlClass } from "./control-codes.js";
 import { osc8Sequences } from "./osc8.js";
 import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
 import type { StyleOptions } from "./style.js";
@@ -74,12 +74,17 @@ const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
 // terminal that reads C1 reads it as that ESC form (`docs/control-codes.md`).
 const c1 = (finals: string): string => [...finals].map((final) => `\\x${(final.charCodeAt(0) + 0x40).toString(16)}`).join("");
 const CSI = String.raw`(?:\x1b\[|${c1("[")})`;
-// OSC, DCS, APC, PM, SOS. The ESC form is cut off by the end of its line; a C1
-// form must reach its terminator, because a lone one is far likelier a
-// windows-1252 byte read as Latin-1 (`ž` is U+009E) than a sequence, and as one
-// it would hide the rest of the line.
+// OSC, DCS, APC, PM, SOS, in either form run to a terminator or cut off by the
+// end of the line. A stray C1 byte that is windows-1252 read as Latin-1 decodes
+// as a terminal reading C1 shows it; no rule local to the byte can tell the two
+// apart, so repairing it is the caller's.
 const STRING_FINALS = "]P_^X";
-const STRING_ESCAPE = String.raw`\x1b[${STRING_FINALS.replace("]", "\\]")}][^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)|[${c1(STRING_FINALS)}][^\n]*?(?:\x07|\x1b\\|\x9c)`;
+const STRING_ESCAPE = String.raw`(?:\x1b[${STRING_FINALS.replace("]", "\\]")}]|[${c1(STRING_FINALS)}])[^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
+
+// The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
+const ESC_LINE_BREAKS = CONTROL_CODES.filter((row) => row.disposition === "line-break" && row.first >= 0x80 && row.last <= 0x9f)
+  .flatMap((row) => Array.from({ length: row.last - row.first + 1 }, (_, at) => String.fromCharCode(row.first + at - 0x40)))
+  .join("");
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
@@ -104,9 +109,8 @@ const ESCAPES = [
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
 // A string escape goes first so a line break in its payload stays in the payload.
-// `ESC E` is NEL in its 7-bit form, so it ends a line as U+0085 does.
 const lineBreaks = (): RegExp =>
-  new RegExp(`(${STRING_ESCAPE})|\\x1bE|${controlClass((disposition) => disposition === "line-break")}`, "gu");
+  new RegExp(`(${STRING_ESCAPE})|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;

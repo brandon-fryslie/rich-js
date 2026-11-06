@@ -36,9 +36,10 @@ import { pattern } from "./pattern.js";
 
 /**
  * The bytes that prematurely terminate an OSC 8 sequence: ESC (`\x1b`, which
- * begins ST `ESC \`), BEL (`\x07`), and the 8-bit ST (`\x9c`).
+ * begins ST `ESC \` or any other escape), BEL (`\x07`), the 8-bit ST (`\x9c`),
+ * and the 8-bit OSC (`\x9d`), which starts a sequence of its own as `ESC ]` does.
  */
-const TERMINATORS = "\\x1b\\x07\\x9c";
+const TERMINATORS = "\\x1b\\x07\\x9c\\x9d";
 
 /**
  * `text` an OSC carries — a link's address, a title, a notification — without a

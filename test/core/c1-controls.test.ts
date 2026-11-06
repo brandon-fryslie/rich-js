@@ -61,9 +61,14 @@ describe("each C1 control in content", () => {
     expect(decodeAnsi("a\u009d8;;http://x\u009clink\u009d8;;\u009cb").plain).toBe("alinkb");
   });
 
-  it("drops one unterminated 8-bit string introducer rather than the line after it", () => {
-    expect(decodeAnsi("Slavoj \u008ei\u009eek is here").plain).toBe("Slavoj iek is here");
-    expect(decodeAnsi("\u009fes here\nnext").plain).toBe("es here\nnext");
+  it("cuts an unterminated 8-bit string escape at its line's end, as the ESC form", () => {
+    expect(decodeAnsi("a\u009d0;window title\nnext").plain).toBe(decodeAnsi("a\u001b]0;window title\nnext").plain);
+  });
+
+  it("ends a link's URI at an 8-bit OSC, which starts a sequence of its own", () => {
+    expect(decodeAnsi("\u001b]8;;http://a\u009d8;;http://b\u009cx").spans.map((span) => String(span.style))).toEqual([
+      "link http://b",
+    ]);
   });
 
   it("ends a captured line at ESC E, the 7-bit NEL", () => {
