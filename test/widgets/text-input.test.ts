@@ -13,10 +13,12 @@ import { Padding } from "../../src/renderables/padding.js";
 import { ASCII } from "../../src/core/box.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { textOn } from "../../src/themes/text-on.js";
 import { expectLinearTime } from "../suite/linear-time.js";
 
 // What every widget draws a disabled cell in.
-const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
+// Disabled text is the theme's foreground at Textual's disabled weight, on the ground it is drawn on.
+const DISABLED = ColorSpec.fromRgba(textOn(DEFAULT_TERMINAL_THEME.palette, "foreground-disabled", DEFAULT_TERMINAL_THEME.palette.get("background")));
 
 // Factories — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string, character = ""): WidgetKeyEvent => new WidgetKeyEvent({

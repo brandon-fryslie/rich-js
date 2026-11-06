@@ -8,7 +8,7 @@ import { ColorDepth, ColorRgba } from "../../src/core/color.js";
 import { contrastRatio } from "../../src/themes/colorMath.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
 import { getThemePalette, listThemePalettes, type ThemeName } from "../../src/themes/registry.js";
-import { named, readsOn, slide, textFloor, textOn, tinted, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
+import { named, neutralAlpha, readsOn, slide, textFloor, textOn, tinted, withAlpha, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
 
 const FLOOR: Readonly<Record<TextIntent, number>> = {
   foreground: 4.5,
@@ -60,6 +60,22 @@ describe("textOn — Textual's ground-relative text", () => {
     for (const ground of ["background", "surface", "panel", "primary-muted"] as const) {
       expect(textOn(palette, "text-primary", palette.get(ground))).toEqual(palette.get("text-primary").compositeOver(palette.get(ground)));
     }
+  });
+
+  // The palette's `foreground-disabled` is its tint already drawn on
+  // `background`; on dracula's `secondary` that grey is 1.07:1, invisible.
+  it("draws disabled text as a tint of the foreground on the ground it is on", () => {
+    const dracula = getThemePalette("dracula");
+    const ground = dracula.get("secondary");
+    const disabled = textOn(dracula, "foreground-disabled", ground);
+    expect(disabled).toEqual(withAlpha(dracula.get("foreground"), neutralAlpha("text-disabled")).compositeOver(ground));
+    expect(contrastRatio(disabled, ground)).toBeGreaterThan(contrastRatio(dracula.get("foreground-disabled"), ground));
+  });
+
+  it("draws foreground-disabled and text-disabled alike where the foreground is the ground's pole", () => {
+    const light = buildPalette("light", false, { ...BASE, background: new ColorRgba(250, 250, 250), foreground: new ColorRgba(0, 0, 0) });
+    const white = new ColorRgba(255, 255, 255);
+    expect(textOn(light, "foreground-disabled", white)).toEqual(textOn(light, "text-disabled", white));
   });
 });
 

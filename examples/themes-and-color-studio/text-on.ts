@@ -54,7 +54,9 @@ const FITS: ReadonlyArray<readonly [string, TextFit]> = [...Object.entries(TEXT_
  * `npm run themes-and-color-studio` reads `TEXT_ON_INTENTS`.
  */
 export function comparedIntents(setting = "text-error"): readonly TextIntent[] {
-  return setting.split(/\s+/).filter((name) => name !== "").map((name) => {
+  const names = setting.split(/\s+/).filter((name) => name !== "");
+  if (names.length === 0) throw new Error(`TEXT_ON_INTENTS: ${JSON.stringify(setting)} names no intent; name one or more of ${TEXT_INTENTS.join(", ")}`);
+  return names.map((name) => {
     if (!isTextIntent(name)) throw new Error(`TEXT_ON_INTENTS: ${JSON.stringify(name)} is not one of ${TEXT_INTENTS.join(", ")}`);
     return name;
   });

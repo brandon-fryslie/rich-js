@@ -135,7 +135,27 @@ const RELATIVE: Readonly<Record<NeutralIntent, { readonly alpha: number; readonl
   "text-disabled": { alpha: 0.38, floor: EXEMPT },
 };
 
-const withAlpha = (color: ColorRgba, alpha: number): ColorRgba => new ColorRgba(color.red, color.green, color.blue, alpha);
+/** `color` at `alpha`, its channels kept. */
+export const withAlpha = (color: ColorRgba, alpha: number): ColorRgba => new ColorRgba(color.red, color.green, color.blue, alpha);
+
+/** Textual's ground-relative weights, by name. */
+export const NEUTRAL_INTENTS = Object.keys(RELATIVE) as readonly NeutralIntent[];
+
+/** The alpha Textual draws a ground-relative weight at. */
+export function neutralAlpha(intent: NeutralIntent): number {
+  return RELATIVE[intent].alpha;
+}
+
+/**
+ * Why `name` is no palette color, where it names text drawn relative to its
+ * ground — Textual's `text`, `text-muted`, `text-disabled` and every `on-*` —
+ * and the empty string otherwise. What every lookup that misses one says, so a
+ * theme stating one and a template reading one are pointed at the same place.
+ */
+export function groundRelativeHint(name: string): string {
+  const relative = (NEUTRAL_INTENTS as readonly string[]).includes(name) || name.startsWith("on-");
+  return relative ? " — text drawn relative to its ground is `textOn(palette, intent, ground)`, not a palette color" : "";
+}
 
 /**
  * A ground-relative weight on an opaque ground with no palette: the contrast
@@ -183,6 +203,21 @@ const neutralShades = (palette: Palette, ground: ColorRgba, own: readonly Palett
   ...ladder(palette, "background", ground),
 ];
 
+/**
+ * Disabled text in the theme's own foreground: Textual's translucent
+ * foreground, composited on this ground. The palette's `foreground-disabled` is
+ * that tint already drawn on `background`, so on any other ground it is the
+ * wrong color — the very defect this module removes — and under a floor of
+ * none nothing would catch it.
+ */
+const disabled = (own: readonly PaletteRole[]): IntentRule => ({
+  floor: RELATIVE["text-disabled"].floor,
+  on: (palette, ground) => ({
+    candidate: withAlpha(palette.get("foreground"), RELATIVE["text-disabled"].alpha),
+    miss: () => ({ tint: palette.get("foreground"), shades: neutralShades(palette, ground, own) }),
+  }),
+});
+
 /** A palette's fixed text color: drawn as the theme names it. */
 const fixed = (role: PaletteRole, floor: number, own: readonly PaletteRole[]): IntentRule => ({
   floor,
@@ -220,7 +255,7 @@ const accent = (role: AccentRole): IntentRule => ({
 const INTENTS = {
   foreground: fixed("foreground", BODY, []),
   "foreground-muted": fixed("foreground-muted", RECEDING, ["foreground-muted", "background-muted"]),
-  "foreground-disabled": fixed("foreground-disabled", EXEMPT, ["foreground-disabled"]),
+  "foreground-disabled": disabled(["foreground-disabled"]),
   text: relative("text", []),
   "text-muted": relative("text-muted", ["foreground-muted", "background-muted"]),
   "text-disabled": relative("text-disabled", ["foreground-disabled"]),

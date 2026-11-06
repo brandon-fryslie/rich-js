@@ -1,7 +1,7 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
-import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
+import { alphaBlend, contrastFor, ensureContrast, ensureContrastToward, shiftLightness } from "./colorMath.js";
 import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
-import { neutralText, textFloor, type NeutralIntent } from "./text-on.js";
+import { groundRelativeHint, neutralAlpha, neutralText, textFloor, withAlpha, type NeutralIntent } from "./text-on.js";
 
 /**
  * Base colors required to build a full semantic palette.
@@ -28,7 +28,6 @@ const PANEL_TINT = 0.1;
 const BACKGROUND_TINT = 0.15;
 const BACKGROUND_TINT_LIFT = 0.15;
 const BOOST_ALPHA = 0.04;
-const DISABLED_ALPHA = 0.38;
 const BLURRED_CURSOR_ALPHA = 0.3;
 const HOVER_ALPHA = 0.1;
 const SELECTION_ALPHA = 0.4;
@@ -47,11 +46,57 @@ type Rule = (at: At, dark: boolean) => ColorRgba;
 const TRANSPARENT = new ColorRgba(0, 0, 0, 0);
 const WHITE = new ColorRgba(255, 255, 255);
 
-const withAlpha = (color: ColorRgba, alpha: number): ColorRgba =>
-  new ColorRgba(color.red, color.green, color.blue, alpha);
+/**
+ * Text a component draws on a ground of its own: the ground, and what the text
+ * is — one of Textual's ground-relative weights, or a role's color, the way
+ * Textual draws a footer key in `accent`. [LAW:one-source-of-truth] The one
+ * place a component's text is paired with its ground: the text is derived on
+ * it, a stated tint composites on it, and both are held to their floor there.
+ */
+type ComponentText = { readonly ground: PaletteRole } & ({ readonly intent: NeutralIntent } | { readonly color: PaletteRole });
 
-/** A component's text: Textual's ground-relative rule (`text-on.ts`) on the ground that component is drawn on. */
-const textOver = (intent: NeutralIntent, ground: PaletteRole): Rule => (at) => neutralText(intent, at(ground));
+const COMPONENT_TEXT = {
+  "block-cursor-foreground": { ground: "block-cursor-background", intent: "text" },
+  "block-cursor-blurred-foreground": { ground: "block-cursor-blurred-background", color: "foreground" },
+  "button-color-foreground": { ground: "primary", intent: "text" },
+  "footer-foreground": { ground: "footer-background", color: "foreground" },
+  "footer-description-foreground": { ground: "footer-description-background", color: "foreground" },
+  "footer-key-foreground": { ground: "footer-key-background", color: "accent" },
+  "input-cursor-foreground": { ground: "input-cursor-background", color: "background" },
+  "link-color": { ground: "link-background", intent: "text" },
+  "link-color-hover": { ground: "link-background-hover", intent: "text" },
+  "markdown-h1-color": { ground: "markdown-h1-background", color: "primary" },
+  "markdown-h2-color": { ground: "markdown-h2-background", color: "primary" },
+  "markdown-h3-color": { ground: "markdown-h3-background", color: "primary" },
+  "markdown-h4-color": { ground: "markdown-h4-background", color: "foreground" },
+  "markdown-h5-color": { ground: "markdown-h5-background", color: "foreground" },
+  "markdown-h6-color": { ground: "markdown-h6-background", intent: "text-muted" },
+} as const satisfies { readonly [R in PaletteRole]?: ComponentText };
+
+type ComponentTextRole = keyof typeof COMPONENT_TEXT;
+const isComponentText = (role: PaletteRole): role is ComponentTextRole => Object.hasOwn(COMPONENT_TEXT, role);
+
+/** A component's ground as it is drawn: on `background`, so a transparent one is the background. */
+const groundOf = (role: ComponentTextRole, at: At): ColorRgba => at(COMPONENT_TEXT[role].ground).compositeOver(at("background"));
+
+/** The floor a component's text is held to: its weight's, or body text's for a role's color. */
+const componentFloor = (text: ComponentText): number => textFloor("intent" in text ? text.intent : "foreground");
+
+/** `color` drawn on the component's ground and held to its floor there. */
+const heldOnGround = (role: ComponentTextRole, color: ColorRgba, at: At): ColorRgba => {
+  const ground = groundOf(role, at);
+  return ensureContrast(color.compositeOver(ground), ground, componentFloor(COMPONENT_TEXT[role]));
+};
+
+/** A component's text as derived: its weight on its ground, or its role's color held there. */
+const componentRule = (role: ComponentTextRole): Rule => (at) => {
+  const text: ComponentText = COMPONENT_TEXT[role];
+  return "intent" in text ? neutralText(text.intent, groundOf(role, at)) : heldOnGround(role, at(text.color), at);
+};
+
+const componentRules = Object.fromEntries(
+  (Object.keys(COMPONENT_TEXT) as ComponentTextRole[]).map((role) => [role, componentRule(role)]),
+) as Record<ComponentTextRole, Rule>;
 
 // [LAW:one-type-per-behavior] The roles naming another role's color outright.
 const same = (role: PaletteRole): Rule => (at) => at(role);
@@ -103,16 +148,18 @@ function accentRules<A extends AccentRole>(accent: A) {
  * - `text-*`   = contrast text tinted 66% with the accent; `buildPalette` then
  *               holds it to read on its `*-muted` and on the three grounds
  * - text on a component (`block-cursor-foreground`, `link-color`, …) = Textual's
- *               ground-relative `$text` rule run on that component's ground
+ *               ground-relative weight, or the role Textual draws it in, held
+ *               to its floor on that component's ground (`COMPONENT_TEXT`)
  * - `surface`  = background blended 5% toward foreground, a subtle lift
  * - `*-darken-N` / `*-lighten-N` = the root moved 7.5% of CIE L* per rung
- * - the component roles (`footer-*`, `markdown-*`, …) name the base role
+ * - the other component roles (`footer-*`, `markdown-*`, …) name the base role
  *   Textual draws that component in
  *
  * [LAW:types-are-the-program] Total over every role but the eight given, so a
  * palette cannot lack one and a role cannot exist without a way to derive it.
  */
 const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
+  ...componentRules,
   ...accentRules("primary"),
   ...accentRules("secondary"),
   ...accentRules("accent"),
@@ -129,7 +176,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
 
   "background-muted": (at) => blendRgb(at("background"), at("foreground"), MUTED_BLEND),
   "foreground-muted": (at) => blendRgb(at("foreground"), at("background"), MUTED_BLEND),
-  "foreground-disabled": (at) => withAlpha(at("foreground"), DISABLED_ALPHA),
+  "foreground-disabled": (at) => withAlpha(at("foreground"), neutralAlpha("text-disabled")),
 
   surface: (at) => blendRgb(at("background"), at("foreground"), SURFACE_LIFT),
   "surface-active": (at) => shiftLightness(at("surface"), SURFACE_ACTIVE_LIFT),
@@ -145,43 +192,28 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "border-blurred": (at) => shiftLightness(at("surface"), -BORDER_BLUR_DROP),
 
   "block-cursor-background": same("primary"),
-  "block-cursor-foreground": textOver("text", "block-cursor-background"),
   "block-cursor-blurred-background": (at) => withAlpha(at("primary"), BLURRED_CURSOR_ALPHA),
-  "block-cursor-blurred-foreground": same("foreground"),
   "block-hover-background": (at) => withAlpha(at("boost"), HOVER_ALPHA),
 
   "button-foreground": same("foreground"),
-  "button-color-foreground": textOver("text", "primary"),
 
   "footer-background": same("panel"),
-  "footer-foreground": same("foreground"),
   "footer-description-background": none,
-  "footer-description-foreground": same("foreground"),
   "footer-item-background": none,
   "footer-key-background": none,
-  "footer-key-foreground": same("accent"),
 
   "input-cursor-background": same("foreground"),
-  "input-cursor-foreground": same("background"),
   "input-selection-background": (at) => withAlpha(at("primary-lighten-1"), SELECTION_ALPHA),
 
   "link-background": none,
   "link-background-hover": same("primary"),
-  "link-color": textOver("text", "background"),
-  "link-color-hover": textOver("text", "link-background-hover"),
 
   "markdown-h1-background": none,
-  "markdown-h1-color": same("primary"),
   "markdown-h2-background": none,
-  "markdown-h2-color": same("primary"),
   "markdown-h3-background": none,
-  "markdown-h3-color": same("primary"),
   "markdown-h4-background": none,
-  "markdown-h4-color": same("foreground"),
   "markdown-h5-background": none,
-  "markdown-h5-color": same("foreground"),
   "markdown-h6-background": none,
-  "markdown-h6-color": textOver("text-muted", "background"),
 
   scrollbar: (at) => alphaBlend(at("primary"), at("background-darken-1"), SCROLLBAR_ALPHA),
   "scrollbar-active": same("primary"),
@@ -197,9 +229,6 @@ export const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "fo
 /** Every role of every palette, read off the rules. */
 export const PALETTE_ROLES: readonly PaletteRole[] = [...BASE_KEYS, ...(Object.keys(RULES) as PaletteRole[])];
 const ROLE_NAMES: ReadonlySet<string> = new Set(PALETTE_ROLES);
-// Textual's ground-relative text, which a theme ported from it may state as a role.
-const NEUTRAL_INTENTS: ReadonlySet<string> = new Set<NeutralIntent>(["text", "text-muted", "text-disabled"]);
-const groundRelative = (role: string): boolean => NEUTRAL_INTENTS.has(role) || role.startsWith("on-");
 
 /**
  * Build a full semantic palette from its base colors and any other role it
@@ -245,25 +274,20 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
  */
 const GROUND: { readonly [R in PaletteRole]?: PaletteRole } = {
   ...Object.fromEntries(ACCENT_KEYS.map((key) => [`text-${key}`, `${key}-muted`])),
-  "block-cursor-foreground": "block-cursor-background",
-  "block-cursor-blurred-foreground": "block-cursor-blurred-background",
-  "button-color-foreground": "primary",
-  "footer-foreground": "footer-background",
-  "footer-description-foreground": "footer-description-background",
-  "footer-key-foreground": "footer-key-background",
-  "input-cursor-foreground": "input-cursor-background",
-  "link-color": "link-background",
-  "link-color-hover": "link-background-hover",
-  ...Object.fromEntries(([1, 2, 3, 4, 5, 6] as const).map((n) => [`markdown-h${n}-color`, `markdown-h${n}-background`])),
+  ...Object.fromEntries(Object.entries(COMPONENT_TEXT).map(([role, { ground }]) => [role, ground])),
 };
 
 /**
  * A stated role as it is drawn: on its ground (`GROUND`), itself drawn on
  * `background`. `boost` alone stays a layer: it is what `panel` composites,
- * and a fully transparent color draws nothing anywhere.
+ * and a fully transparent color draws nothing anywhere. A component's stated
+ * tint is Textual writing a rule rather than a color, so it is held to its
+ * floor on its ground as the derived text is; a stated opaque color is the
+ * author's choice and kept.
  */
 function drawnOnGround(role: PaletteRole, color: ColorRgba | undefined, at: At): ColorRgba | undefined {
   if (color === undefined || role === "boost" || color.alpha === 0 || color.alpha === 1) return color;
+  if (isComponentText(role)) return heldOnGround(role, color, at);
   return color.compositeOver(at(GROUND[role] ?? "background").compositeOver(at("background")));
 }
 
@@ -274,7 +298,7 @@ function drawnOnGround(role: PaletteRole, color: ColorRgba | undefined, at: At):
  */
 function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRgba> {
   const stated = Object.entries(given).flatMap(([role, color]: [string, ColorRgba | undefined]): [PaletteRole, ColorRgba][] => {
-    if (!ROLE_NAMES.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role${groundRelative(role) ? ` — text drawn relative to its ground is \`textOn(palette, intent, ground)\`, not a palette color` : ""}`);
+    if (!ROLE_NAMES.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role${groundRelativeHint(role)}`);
     return color === undefined ? [] : [[role as PaletteRole, color]];
   });
   // Every base color is derived from, and a fully transparent one draws no
