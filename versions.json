@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-569",
+      "ref": "refs/pull/569/merge",
+      "sha": "02eaa45bb34a45e894e65382aa0e12f4dfd866b2",
+      "timestamp": "2026-11-06T03:36:48.408Z",
+      "commits": [
+        {
+          "sha": "02eaa45bb34a45e894e65382aa0e12f4dfd866b2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T20:35:11-07:00",
+          "message": "Merge 5891e3a726a257c1308694ed315b22f89e707a1a into 12789fcb9cb12d5a4e1655a5699413d3fec64dca\n"
+        },
+        {
+          "sha": "5891e3a726a257c1308694ed315b22f89e707a1a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T20:35:02-07:00",
+          "message": "The end slot past the text never joins a Prepend character's cluster, so under visual order the caret after U+0600-U+0605 keeps its cell (rich-control-codes-xh4n.q87)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "12789fcb9cb12d5a4e1655a5699413d3fec64dca",
