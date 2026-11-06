@@ -54,4 +54,19 @@ describe("each C1 control in content", () => {
       expect(decodeAnsi(`a${introducer}0;x\u0007b`).plain).toBe("ab");
     },
   );
+
+  it("reads an 8-bit OSC 8 as the 7-bit link", () => {
+    const spans = (ansi: string) => decodeAnsi(ansi).spans.map((span) => [span.start, span.end, String(span.style)]);
+    expect(spans("a\u009d8;;http://x\u009clink\u009d8;;\u009cb")).toEqual(spans("a\u001b]8;;http://x\u001b\\link\u001b]8;;\u001b\\b"));
+    expect(decodeAnsi("a\u009d8;;http://x\u009clink\u009d8;;\u009cb").plain).toBe("alinkb");
+  });
+
+  it("drops one unterminated 8-bit string introducer rather than the line after it", () => {
+    expect(decodeAnsi("Slavoj \u008ei\u009eek is here").plain).toBe("Slavoj iek is here");
+    expect(decodeAnsi("\u009fes here\nnext").plain).toBe("es here\nnext");
+  });
+
+  it("ends a captured line at ESC E, the 7-bit NEL", () => {
+    expect(decodeAnsi("a\u001bEb").plain).toBe(decodeAnsi("a\u0085b").plain);
+  });
 });

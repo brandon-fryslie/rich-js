@@ -72,13 +72,14 @@ export function osc8Open(url: string): string {
 export const OSC8_CLOSE = "\x1b]8;;\x1b\\";
 
 /**
- * Matches one OSC 8 sequence — an open or a close — terminated by `ESC \`,
+ * Matches one OSC 8 sequence — an open or a close, introduced by `ESC ]` or
+ * the 8-bit OSC — terminated by `ESC \`,
  * BEL, or the 8-bit ST. Group 1 is the params, group 2 the URI; both are empty
  * on a close. To read bytes back use `osc8Sequences`; this pattern is exported
  * for composing into a larger one (a width measure's zero-width alternation).
  */
 export const OSC8 = pattern(new RegExp(
-  `\\x1b\\]8;([^;${TERMINATORS}]*);([^${TERMINATORS}]*)(?:\\x1b\\\\|\\x07|\\x9c)`,
+  `(?:\\x1b\\]|\\x9d)8;([^;${TERMINATORS}]*);([^${TERMINATORS}]*)(?:\\x1b\\\\|\\x07|\\x9c)`,
 ));
 
 /** One OSC 8 sequence found in rendered bytes. A close has `uri === ""`. */

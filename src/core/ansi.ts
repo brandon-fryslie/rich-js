@@ -70,14 +70,21 @@ const BOLD = new Style({ bold: true });
 const UNDERLINED = new Style({ underline: true });
 const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
 
-// Each introducer in its 7-bit and its C1 form, as VTE, WezTerm and xterm.js read
-// both (`control-codes.ts`): CSI, then OSC, DCS, APC, PM and SOS.
-const CSI = String.raw`(?:\x1b\[|\x9b)`;
-const STRING_ESCAPE = String.raw`(?:\x1b[\]P_^X]|[\x9d\x90\x9f\x9e\x98])[^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
+// A C1 introducer is its ESC form's final byte plus 0x40 (ECMA-48 §5.3), and a
+// terminal that reads C1 reads it as that ESC form (`docs/control-codes.md`).
+const c1 = (finals: string): string => [...finals].map((final) => `\\x${(final.charCodeAt(0) + 0x40).toString(16)}`).join("");
+const CSI = String.raw`(?:\x1b\[|${c1("[")})`;
+// OSC, DCS, APC, PM, SOS. The ESC form is cut off by the end of its line; a C1
+// form must reach its terminator, because a lone one is far likelier a
+// windows-1252 byte read as Latin-1 (`ž` is U+009E) than a sequence, and as one
+// it would hide the rest of the line.
+const STRING_FINALS = "]P_^X";
+const STRING_ESCAPE = String.raw`\x1b[${STRING_FINALS.replace("]", "\\]")}][^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)|[${c1(STRING_FINALS)}][^\n]*?(?:\x07|\x1b\\|\x9c)`;
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
- * order: a carriage return; an SGR sequence (`sgr`, its parameters — a private
+ * order — each CSI and string escape in its `ESC` form or its C1 one — a
+ * carriage return; an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
  * (`mode`); any other CSI sequence; any other string escape — OSC, DCS, APC, PM,
  * SOS — run to the terminators OSC 8 accepts or cut off by the end of the line;
@@ -97,8 +104,9 @@ const ESCAPES = [
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
 // A string escape goes first so a line break in its payload stays in the payload.
+// `ESC E` is NEL in its 7-bit form, so it ends a line as U+0085 does.
 const lineBreaks = (): RegExp =>
-  new RegExp(`(?<escape>${STRING_ESCAPE})|${controlClass((disposition) => disposition === "line-break")}`, "gu");
+  new RegExp(`(${STRING_ESCAPE})|\\x1bE|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -281,7 +289,7 @@ export class AnsiDecoder {
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    const lined = ansi.replace(lineBreaks(), (...match) => ((match.at(-1) as { escape?: string }).escape ?? "\n"));
+    const lined = ansi.replace(lineBreaks(), (_found, escape?: string) => escape ?? "\n");
     return (lined.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
       this.decodeLine(line.replace(/\r?\n$/, "")),
     );
