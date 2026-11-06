@@ -81,7 +81,7 @@
 import { cellLen, graphemes } from "./cells.js";
 import { ColorSpec } from "./color.js";
 import { CONTROL_CODES, controlClass } from "./control-codes.js";
-import { osc8Sequences, STRING_STOPS } from "./osc8.js";
+import { ABORTS, osc8Sequences, STRING_STOPS } from "./osc8.js";
 import { pattern } from "./pattern.js";
 import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
 import type { StyleOptions } from "./style.js";
@@ -222,7 +222,8 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * undrawn escapes (`undrawn`) — any other CSI sequence, any other string escape
  * (OSC, DCS, APC, PM, SOS) run to a terminator or cut off where `STRING_ESCAPE`
  * says, and any other escape, ECMA-48's intermediates and one final byte
- * (`\x1b#8`, `\x1b(%5`); a character struck over itself (`struck`), over an
+ * (`\x1b#8`, `\x1b(%5`); a CSI or an escape cut off by one of `ABORTS`
+ * (`aborted`), silent with its abort as on a terminal, so what follows draws; a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
  * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line
  * may not hold or a terminal draws nothing for (`control`): undrawn when it is an
@@ -230,7 +231,7 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * otherwise.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<aborted>(?:${CSI}[0-?]*|\x1b)[ -/]*[${ABORTS}])|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
@@ -266,22 +267,23 @@ const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${CSI}[0-?]*[ -/]*|${either
  * `next` the character after it: a C1 control, which some terminals do, and an
  * ESC no escape here begins. A VT500 parser stays in its escape state past such
  * an ESC, running a C0 control and ignoring DEL there, and takes a later byte as
- * the escape's final, which the decoder draws as text. Only the next ESC, CAN,
- * SUB or C1 control cancels it, and then a terminal drops it as the decoder does.
+ * the escape's final, which the decoder draws as text. Only the next ESC or C1
+ * control cancels it, and then a terminal drops it as the decoder does; an
+ * abort after it is the aborted escape `ESCAPES` takes whole.
  */
 const performed = (control: string, next: string): boolean =>
-  isC1(control.charCodeAt(0)) || (control === "\x1b" && !/^[\x1b\x18\x1a]/.test(next) && !isC1(next.charCodeAt(0)));
+  isC1(control.charCodeAt(0)) || (control === "\x1b" && next !== "\x1b" && !isC1(next.charCodeAt(0)));
 
 /** `bytes`, and `following`, the character after them in their line, which an ESC at their end comes before. */
 function* escapeTokens(bytes: string, following: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
+    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, aborted, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
     const escape = match[0];
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     const next = bytes[match.index + escape.length] ?? following;
     if (undrawn !== undefined || (control !== undefined && performed(control, next))) yield { kind: "undrawn", escape };
-    else if (control !== undefined) yield { kind: "silent" };
+    else if (control !== undefined || aborted !== undefined) yield { kind: "silent" };
     if (escape === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined, escape };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };

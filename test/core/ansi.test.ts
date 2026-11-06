@@ -168,6 +168,16 @@ describe("decodeAnsi links", () => {
     }
   });
 
+  it("drops a CSI or an escape a CAN or SUB aborts and draws what follows", () => {
+    for (const abort of ["\x18", "\x1a"]) {
+      expect(decodeAnsi(`\x1b[31${abort}mx`).plain).toBe("mx");
+      expect(decodeAnsi(`\x9b31${abort}mx`).plain).toBe("mx");
+      expect(decodeAnsi(`a\x1b(${abort}Bc`).plain).toBe("aBc");
+      expect(decodeAnsi(`a\x1b${abort}Bc`).plain).toBe("aBc");
+      expect(styleAt(decodeAnsi(`\x1b[31${abort}mx`), 1).color).toBeUndefined();
+    }
+  });
+
   it("keeps a link open across an SGR reset, as a terminal does", () => {
     const text = decodeAnsi("\x1b]8;;https://x.test\x1b\\\x1b[1mbold\x1b[0m plain\x1b]8;;\x1b\\");
     expect(styleAt(text, 0).bold).toBe(true);

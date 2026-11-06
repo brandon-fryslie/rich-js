@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { OSC8_CLOSE, osc8Open, osc8Sequences, stripOscControls } from "../../src/core/osc8.js";
+import { OSC8_CLOSE, osc8Open, osc8Sequences, STRING_STOPS, stripOscControls } from "../../src/core/osc8.js";
 
 // [LAW:behavior-not-structure] The wire grammar's contracts, read off bytes.
 // Expected ids are standard FNV-1a-32 over the URL's UTF-8 bytes, computed
@@ -48,9 +48,10 @@ describe("osc8Sequences", () => {
   });
 
   it("stops the uri only at bytes stripOscControls removes", () => {
-    for (const t of ["\x1b", "\x07", "\x9c"]) {
-      expect(stripOscControls(`a${t}b`)).toBe("ab");
-    }
+    const stop = new RegExp(`[${STRING_STOPS}]`, "u");
+    const stops = Array.from({ length: 0x100 }, (_, code) => String.fromCharCode(code)).filter((c) => stop.test(c));
+    expect(stops).toContain("\x1a");
+    for (const t of stops) expect(stripOscControls(`a${t}b`)).toBe("ab");
   });
 
   it("removes what could break the wrap or reorder the address", () => {
