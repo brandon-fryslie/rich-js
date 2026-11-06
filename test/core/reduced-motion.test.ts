@@ -39,7 +39,7 @@ const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 const FULL: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 const REDUCED: RenderOptions = { ...FULL, reducedMotion: true };
 const bytes = (renderable: Renderable, options: RenderOptions): string =>
-  segmentsToString([...render(renderable, options)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: options.reducedMotion ?? false, textOrder: "plain" });
+  segmentsToString([...render(renderable, options)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: options.reducedMotion ?? false, textOrder: "plain" });
 const plain = (renderable: Renderable, options: RenderOptions = FULL): string => [...render(renderable, options)].map((s) => s.text).join("");
 
 /** Host times sampled once a second and sixty times a second over ten seconds, and one far out. */
@@ -163,7 +163,7 @@ function builtForTheTime(t: number): Renderable {
 
 describe("a host under reduced motion", () => {
   const text = (drawn: { lines: Segment[][] }): string =>
-    segmentsToString(drawn.lines.flat(), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false, textOrder: "plain" });
+    segmentsToString(drawn.lines.flat(), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
 
   // Reduced is not held: only a paused timeline holds a frame, and a host
   // cannot tell an animation from any other renderable it is handed.

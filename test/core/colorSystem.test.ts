@@ -300,11 +300,11 @@ describe("resolveOutputTarget (spec → color depth + hyperlinks)", () => {
     ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: true }, null, true],
     ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: false }, null, false],
   ] as const)("%s %j → %s, links %s", (spec, opts, colorSystem, hyperlinks) => {
-    expect(resolveOutputTarget(spec, opts)).toEqual({ colorSystem, hyperlinks, reducedMotion: false, textOrder: "plain" });
+    expect(resolveOutputTarget(spec, opts)).toEqual({ colorSystem, hyperlinks, reducedMotion: false, textOrder: "plain", isTerminal: opts.isTTY });
   });
 
   it("an explicit null or enum depth keeps links", () => {
-    expect(resolveOutputTarget(null, { isTTY: false })).toEqual({ colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain" });
+    expect(resolveOutputTarget(null, { isTTY: false })).toEqual({ colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain", isTerminal: false });
     expect(resolveOutputTarget("auto", { reducedMotion: true }).reducedMotion).toBe(true);
     expect(resolveOutputTarget(ColorDepth.STANDARD).hyperlinks).toBe(true);
   });

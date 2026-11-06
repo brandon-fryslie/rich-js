@@ -19,7 +19,7 @@ const SHOW = "\x1b[?25h";
 const BAR = "\x1b[5 q";
 const screen = { rows: 4, cols: 20 };
 
-const target = (textOrder: TextOrder = "plain"): OutputTarget => ({ colorSystem: null, hyperlinks: false, reducedMotion: false, textOrder });
+const target = (textOrder: TextOrder = "plain"): OutputTarget => ({ colorSystem: null, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder });
 
 const field = (before: Segment[] = []): Segment[][] => [[...before, new Segment("ab"), new Segment(" ", Style.null().withCaret(caretMark("bar")))], [new Segment("status")]];
 

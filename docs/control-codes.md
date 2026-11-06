@@ -99,9 +99,11 @@ U+070F, the Malayalam dot reph U+0D4E, the rest of Unicode's grapheme-break clas
 joins whatever follows it into one cluster, and a terminal that clusters draws that
 cluster in one cell. Rich's width gives the Prepend a cell of its own, so before a
 base character the library does too: it is its own cluster to every cut, caret step
-and reordering, and a WORD JOINER (U+2060), which takes no cell and ends a cluster, is
-written after it there and wherever a write ends on it, since the next write may
-continue the line. A number sign typed before a caret, a blank or a letter in another
+and reordering. On a terminal a WORD JOINER (U+2060), which takes no cell and ends a
+cluster, is written after it there and wherever a write ends on it, since the next
+write may continue the line. Off one — a pipe, a file, `exportText`, `exportHtml`,
+`exportSvg`, `renderToString` — nothing is added, since those bytes are text a reader
+keeps. A number sign typed before a caret, a blank or a letter in another
 style keeps its cell, and the row its width. A mark of no cells on a Prepend stays in
 its cluster, one cell to both.
 

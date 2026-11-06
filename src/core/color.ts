@@ -442,6 +442,14 @@ export interface OutputTarget {
   readonly reducedMotion: boolean;
   /** What the destination does with direction; `./text-order.ts` owns the three. */
   readonly textOrder: TextOrder;
+  /**
+   * A terminal may draw what it is sent, and one that clusters it (kitty,
+   * WezTerm, Ghostty) draws a Prepend and the base after it in one cell, so the
+   * library writes a word joiner between them (`sealed`). Off a terminal — a
+   * pipe, a file, an export — the bytes are text a reader keeps, and carry only
+   * what was written.
+   */
+  readonly isTerminal: boolean;
 }
 
 /**
@@ -473,12 +481,14 @@ export function resolveOutputTarget(
   const reducedMotion = options.reducedMotion ?? false;
   // Ahead of both arms: a color spec says nothing about order.
   const textOrder = options.textOrder ?? detectTextOrder(envOf(options), isTTYOf(options));
+  const isTerminal = isTTYOf(options);
   if (spec !== "auto") {
     return {
       colorSystem: typeof spec === "string" ? resolveColorSystem(spec) : spec,
       hyperlinks: true,
       reducedMotion,
       textOrder,
+      isTerminal,
     };
   }
   return {
@@ -488,6 +498,7 @@ export function resolveOutputTarget(
       terminalColorSystem(options) !== null,
     reducedMotion,
     textOrder,
+    isTerminal,
   };
 }
 

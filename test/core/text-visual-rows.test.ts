@@ -21,7 +21,7 @@ const RLI = "⁧";
 const PDI = "⁩";
 
 const destination = (textOrder: TextOrder) =>
-  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false, textOrder }) as const;
+  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder }) as const;
 
 /** Each text under the default `end`, so the render ends its last row in a break as it does every other. */
 function texts(): RichText[] {

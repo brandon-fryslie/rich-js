@@ -465,7 +465,7 @@ describe("the edge of a text with a tab", () => {
 });
 
 describe("a span edge inside a sequence", () => {
-  const TRUECOLOR = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false, textOrder: "plain" } as const;
+  const TRUECOLOR = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" } as const;
   const SGR = /\x1b\[[0-9;]*m/g;
   // The first row the wire holds, its styling taken off: what the terminal lays out.
   const drawn = (bytes: string): string => bytes.replace(SGR, "").split("\n")[0]!;

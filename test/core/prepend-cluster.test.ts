@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Console } from "../../src/core/console.js";
 import { cellLen, graphemes } from "../../src/core/cells.js";
 import { reorder } from "../../src/core/orient.js";
 import { sealed } from "../../src/core/seal.js";
@@ -14,7 +15,7 @@ const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 /** `line` as `sealed` writes it for `order`: the segments that reach the wire. */
 function wire(line: Segment[], order: TextOrder): Segment[] {
   const reordered = reorder(line, order);
-  return [...sealed(reordered.orient(reordered.line, 0, Segment.plainOf(line)), order)];
+  return [...sealed(reordered.orient(reordered.line, 0, Segment.plainOf(line)), order, true)];
 }
 
 /**
@@ -88,8 +89,27 @@ describe("a Prepend character's cluster ends at itself", () => {
   });
 
   it("ends a Prepend before a control that leaves the cursor in place", () => {
-    const written = text([...sealed([new Segment("a؀"), new Segment("", undefined, [[ControlType.HIDE_CURSOR]]), new Segment("b")], "plain")]);
+    const written = text([...sealed([new Segment("a؀"), new Segment("", undefined, [[ControlType.HIDE_CURSOR]]), new Segment("b")], "plain", true)]);
     expect(written.startsWith(`a؀${WORD_JOINER}`)).toBe(true);
+  });
+
+  it("writes no joiner off a terminal: a pipe or an export is text a reader keeps", () => {
+    expect(text([...sealed([new Segment("a؀"), new Segment("١")], "plain", false)])).toBe("a؀١");
+    const console = new Console({ record: true, forceTerminal: false, file: { write: () => {} } });
+    console.print("؀١٢ x");
+    expect(console.exportText()).not.toContain(WORD_JOINER);
+  });
+
+  it.each([
+    ["U+0600, a format character", "؀"],
+    ["U+0D4E, a letter", "ൎ"],
+  ])("keeps a mark opening the next segment after any Prepend: %s", (_name, prepend) => {
+    expect(text(wire([new Segment(`a${prepend}`), new Segment("́b")], "plain"))).toBe(`a${prepend}́b`);
+  });
+
+  it("writes no joiner between a Prepend and a mark past a control, which would strand the mark", () => {
+    const written = text([...sealed([new Segment("a؀"), new Segment("", undefined, [[ControlType.HIDE_CURSOR]]), new Segment("́b")], "plain", true)]);
+    expect(written).toBe("a؀́b");
   });
 
   it("keeps a mark opening the next segment, which joins it as one cell", () => {

@@ -16,7 +16,7 @@ const DRAWN = Style.parse("reverse").asTextEnd;
 function endSlots(line: Segment[], order: "visual" | "words"): [number, boolean][] {
   const reordered = reorder(line, order);
   const shown = reordered.orient(reordered.line, 0, Segment.plainOf(line));
-  return [...sealed(shown, order)]
+  return [...sealed(shown, order, true)]
     .filter((segment) => segment.style?.textEnd === true)
     .map((segment) => [cellLen(segment.text), segment.style?.caret !== undefined]);
 }

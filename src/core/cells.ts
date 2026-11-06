@@ -42,11 +42,20 @@ interface Cluster {
  * Whether the Prepend `character`, before `next`, ends its cluster where the
  * library does: before anything taking a cell, which a segmenter joins to it
  * and Rich counts apart. Before a mark of no cells it does not — Prepend and
- * mark are one cell to both — and before a control or nothing, nothing joins it.
+ * mark are one cell to both — and before nothing, nothing joins it. Only a
+ * control breaks before GB9b's join, and a control takes no cell, so no
+ * segmentation is asked.
  */
 function standsAlone(character: string, next: string): boolean {
-  return next !== "" && isPrepend(character) && cellLen(next) > 0 && SEGMENTER.segment(character + next).containing(0)!.segment.length > character.length;
+  return next !== "" && isPrepend(character) && cellLen(next) > 0;
 }
+
+/** Whether `text` ends on a Prepend, whose cluster a mark after it extends. */
+export function endsOnPrepend(text: string): boolean {
+  const last = LAST_CHARACTER.exec(text)?.[0];
+  return last !== undefined && isPrepend(last);
+}
+const LAST_CHARACTER = pattern(/[\s\S]$/u);
 
 /**
  * A segmenter cluster with each Prepend leading it that stands before a base

@@ -21,7 +21,7 @@
  */
 
 import { advance, closersOf, lineLevels, mirroredCluster, opened, paragraph, visualOrder, withoutExplicit, type Open } from "./bidi.js";
-import { cellLen, endedPrepends, EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
+import { cellLen, endedPrepends, endsOnPrepend, EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { rowClusters, Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
@@ -34,7 +34,9 @@ const STARTS_EXTENDED = pattern(new RegExp(`^${EXTENDER}`, "u"));
 const AN_EXTENDER = pattern(new RegExp(`^${EXTENDER}$`, "u"));
 const TRAILING_JOINERS = pattern(new RegExp(`${ZWJ_CHARACTER}+$`, "u"));
 // What ends a cluster for whatever follows it (UAX #29 GB4): a control, a line
-// or paragraph separator, a format character — a bidi control included.
+// or paragraph separator, a format character — a bidi control included. A
+// Prepend is beside it (`endsOnPrepend`): a mark after one sits on it, one cell
+// with it to Rich and to a terminal, so it is kept whatever its category.
 const ENDS_CLUSTER = pattern(/[\p{Cc}\p{Zl}\p{Zp}\p{Cf}]$/u);
 
 /**
@@ -85,38 +87,39 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
  * on the text as it is written, so a control the order removes cannot hide a
  * joiner from them.
  */
-export function sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
+export function sealed(segments: Iterable<Segment>, order: TextOrder, terminal: boolean): Iterable<Segment> {
   const edges = withEdges(contained(segments, order));
-  return prependsEnded(order === "words" ? turnedBack(edges) : edges);
+  const written = order === "words" ? turnedBack(edges) : edges;
+  return terminal ? prependsEnded(written) : written;
 }
 
 /**
  * `segments` with each Prepend character's cluster ended on the wire where the
- * library ends it (`endedPrepends`). It runs last, on the bytes in the order they
- * are written, because a terminal clusters what it is sent before it reorders.
+ * library ends it (`endedPrepends`), for a terminal, which may cluster what it
+ * is sent. It runs last, on the bytes in the order they are written, because a
+ * terminal clusters what it is sent before it reorders.
  */
 function* prependsEnded(segments: Iterable<Segment>): Iterable<Segment> {
-  // The last segment with text, held until what follows it is known, and the
-  // empty ones after it, which join nothing.
-  let held: Segment[] = [];
+  // The last segment with text, held until the text after it is known, and the
+  // empty ones and controls after it, which write no character. A control may
+  // leave the cursor where it is (hiding it, a bell, a title), so the text after
+  // it may continue the line, and a mark there still sits on the Prepend.
+  let last: Segment | undefined;
+  let between: Segment[] = [];
   const release = (after: string | undefined): Segment[] => {
-    const [last, ...empty] = held;
-    held = [];
-    if (last === undefined) return empty;
-    const text = endedPrepends(last.text, after);
-    return [text === last.text ? last : new Segment(text, last.style, last.control), ...empty];
+    const text = last === undefined ? "" : endedPrepends(last.text, after);
+    const out = last === undefined ? between : [text === last.text ? last : new Segment(text, last.style, last.control), ...between];
+    last = undefined;
+    between = [];
+    return out;
   };
   for (const segment of segments) {
-    if (segment.isControl) {
-      // Some controls leave the cursor where it is (hiding it, a bell, a
-      // title), so text after one may continue the line.
-      yield* release(undefined);
-      yield segment;
-    } else if (segment.text === "") {
-      held.push(segment);
+    if (segment.isControl || segment.text === "") {
+      if (last === undefined) yield segment;
+      else between.push(segment);
     } else {
       yield* release(String.fromCodePoint(segment.text.codePointAt(0)!));
-      held.push(segment);
+      last = segment;
     }
   }
   // The next write may continue this line.
@@ -135,7 +138,7 @@ function* prependsEnded(segments: Iterable<Segment>): Iterable<Segment> {
  */
 export function shownWritten(line: readonly Segment[]): number[] {
   const owners = line.map(() => ({}));
-  const written = [...sealed(line.map((segment, index) => Segment.anchorLines([[segment]], owners[index]!)[0]![0]!), "logical")];
+  const written = [...sealed(line.map((segment, index) => Segment.anchorLines([[segment]], owners[index]!)[0]![0]!), "logical", false)];
   const indexOf = new Map(owners.map((owner, index) => [owner, index]));
   const units: (number | undefined)[] = [];
   for (const segment of written) {
@@ -163,7 +166,7 @@ function* withEdges(segments: Iterable<Segment>): Iterable<Segment> {
       continue;
     }
     const text = edged(segment.text, reaches);
-    if (text !== "") reaches = !ENDS_CLUSTER.test(text);
+    if (text !== "") reaches = !ENDS_CLUSTER.test(text) && !endsOnPrepend(text);
     yield text === segment.text ? segment : new Segment(text, segment.style, segment.control);
   }
 }
