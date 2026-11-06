@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-571",
+      "ref": "refs/pull/571/merge",
+      "sha": "24bcff3171799c977fc66050f8c040f30e133285",
+      "timestamp": "2026-11-06T06:13:18.996Z",
+      "commits": [
+        {
+          "sha": "24bcff3171799c977fc66050f8c040f30e133285",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T23:10:52-07:00",
+          "message": "Merge c427436c9b0363791db5e033a24066569ea53b81 into d579241dad7483b9be74996fb69c690f6ebcdbb0\n"
+        },
+        {
+          "sha": "c427436c9b0363791db5e033a24066569ea53b81",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T23:05:09-07:00",
+          "message": "A Prepend character is its own cluster, and sealed writes a word joiner after it so a clustering terminal agrees (rich-control-codes-xh4n.qmw)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d579241dad7483b9be74996fb69c690f6ebcdbb0",
