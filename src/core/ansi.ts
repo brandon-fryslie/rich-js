@@ -222,7 +222,7 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * undrawn escapes (`undrawn`) — any other CSI sequence, any other string escape
  * (OSC, DCS, APC, PM, SOS) run to a terminator or cut off where `STRING_ESCAPE`
  * says, and any other escape, ECMA-48's intermediates and one final byte
- * (`\x1b#8`, `\x1b(%5`); a CSI or an escape cut off by one of `ABORTS`
+ * (`\x1b#8`, `\x1b(%5`); a CSI, string escape or escape cut off by one of `ABORTS`
  * (`aborted`), silent with its abort as on a terminal, so what follows draws; a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
  * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line
@@ -231,7 +231,7 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * otherwise.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<aborted>(?:${CSI}[0-?]*|\x1b)[ -/]*[${ABORTS}])|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<aborted>(?:(?:${CSI}[0-?]*|\x1b)[ -/]*|${either("]P_^X")}[^${STRING_STOPS}\n]*)[${ABORTS}])|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");

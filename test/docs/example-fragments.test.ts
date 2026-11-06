@@ -31,8 +31,10 @@ describe("scanEscapes", () => {
     expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
   });
 
-  it.each(["\x18", "\x1a"])("finds only the string a %j aborts, not the text a terminal draws after it", (abort) => {
-    expect(scanEscapes(`\x1b]8;;http://a${abort}visible\x07x`).dropped).toBe("\x1b]8;;http://a");
+  it.each(["\x18", "\x1a"])("passes a string, a CSI or an escape a %j aborts, which a terminal drops as the drawing does", (abort) => {
+    for (const bytes of [`\x1b]8;;http://a${abort}visible\x07x`, `\x1b]0;title${abort}rest`, `x\x1bP${abort}y`, `\x1b[31${abort}mx`]) {
+      expect(scanEscapes(bytes).dropped).toBeNull();
+    }
   });
 
   it.each(["\x1b[3E", "\x9b2E"])("finds %j, a CNL past rows the drawing never draws", (escape) => {
