@@ -191,6 +191,26 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(text.spans).toEqual([]);
   });
 
+  it("moves along the line for CUB, CUF, CHA, HPR and HPA as it does for a backspace", () => {
+    expect(decodeAnsi("abc\x1b[2D\x1b[Kz").plain).toBe("az");
+    expect(decodeAnsi("abc\x1b[Dz").plain).toBe("abz");
+    expect(decodeAnsi("abc\x1b[0Dz").plain).toBe("abz");
+    expect(decodeAnsi("ab\x1b[9Dz").plain).toBe("zb");
+    expect(decodeAnsi("abcd\x1b[2Gz").plain).toBe("azcd");
+    expect(decodeAnsi("abcd\x1b[Gz").plain).toBe("zbcd");
+    expect(decodeAnsi("abcd\x1b[3`z").plain).toBe("abzd");
+    expect(decodeAnsi("abcd\r\x1b[2Cz").plain).toBe("abzd");
+    expect(decodeAnsi("ab\x1b[3Cz").plain).toBe("ab   z");
+    expect(decodeAnsi("ab\x1b[2az").plain).toBe("ab  z");
+    expect(decodeAnsi("ab\x1b[6Gz").plain).toBe("ab   z");
+    expect(decodeAnsi("ab\x1b[3C").plain).toBe("ab");
+    expect(decodeAnsi("\x9b2Cz").plain).toBe("  z");
+    // A wide character half overwritten leaves a blank, as text drawn there does.
+    expect(decodeAnsi("日本\x1b[2Gz").plain).toBe(" z本");
+    // Vertical motion stays dropped.
+    expect(decodeAnsi("ab\x1b[1Ac\x1b[2Bd\x1b[Ee").plain).toBe("abcde");
+  });
+
   it("erases within the line from the cursor, up to it, or all of it", () => {
     expect(decodeAnsi("Downloading 100%\r\x1b[KDone").plain).toBe("Done");
     expect(decodeAnsi("Downloading\r\x1b[2KDone").plain).toBe("Done");

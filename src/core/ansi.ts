@@ -42,8 +42,10 @@
  *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
- * draws nothing for. It is not a terminal emulator — any other cursor movement is
- * dropped, not performed.
+ * draws nothing for. It is not a terminal emulator: movement along the line —
+ * CUB, CUF, CHA, and ECMA-48's HPR and HPA — moves the column as `\r` and a
+ * backspace do, since a redraw writes `\x1b[2D` as readily as two backspaces,
+ * and every other cursor movement is dropped, not performed.
  *
  * Tier 5 of `src/core/`: it builds `RichText`, so it sits above `text`, and
  * `RichText` cannot offer a `fromAnsi` static without importing upward.
@@ -63,8 +65,7 @@ type Token =
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
   | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
-  | { readonly kind: "return" }
-  | { readonly kind: "backspace" }
+  | { readonly kind: "move"; readonly to: (column: number) => number }
   | { readonly kind: "erase"; readonly mode: EraseMode };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
@@ -102,7 +103,7 @@ const ESC_LINE_BREAKS = hex(
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
  * order — each CSI and string escape in its `ESC` form or its C1 one — a
- * carriage return; an SGR sequence (`sgr`, its parameters — a private
+ * carriage return; a cursor motion along the line (`motion`, its `count`); an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
  * (`mode`); any other CSI sequence; any other string escape — OSC, DCS, APC, PM,
  * SOS — run to a terminator or cut off where `STRING_ESCAPE` says;
@@ -114,7 +115,7 @@ const ESC_LINE_BREAKS = hex(
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
+  String.raw`\r|${CSI}(?<count>[0-9]*)(?<motion>[CDGa\x60])|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -125,17 +126,32 @@ const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 const lineBreaks = (): RegExp =>
   new RegExp(`(${STRING_ESCAPE})|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 
+/**
+ * ECMA-48's moves along the line, by final byte, for a count of at least 1, as
+ * an absent or zero parameter is: back (CUB), forward (CUF, and HPR's `a`), and
+ * to a column (CHA, and HPA's backquote). Back stops at the first column, as on
+ * a terminal; forward has no right margin, because a captured line has none.
+ */
+const MOTIONS: Readonly<Record<string, (count: number) => (column: number) => number>> = {
+  D: (count) => (column) => Math.max(1, column - count),
+  C: (count) => (column) => column + count,
+  a: (count) => (column) => column + count,
+  G: (count) => () => count,
+  "`": (count) => () => count,
+};
+
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { sgr, mode, underscore, struck, underlined } = match.groups!;
+    const { count, motion, sgr, mode, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
-    if (match[0] === "\r") yield { kind: "return" };
+    if (match[0] === "\r") yield { kind: "move", to: () => 1 };
+    if (motion !== undefined) yield { kind: "move", to: MOTIONS[motion]!(Math.max(1, Number(count))) };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
     if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
     if (struck !== undefined) yield { kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED };
     if (underlined !== undefined) yield { kind: "overstrike", character: underlined, emphasis: UNDERLINED };
-    if (match[0] === "\b") yield { kind: "backspace" };
+    if (match[0] === "\b") yield { kind: "move", to: (column) => Math.max(1, column - 1) };
     at = match.index + match[0].length;
   }
   if (at < bytes.length) yield { kind: "text", text: bytes.slice(at) };
@@ -314,6 +330,8 @@ function splitWide(cells: Cell[], column: number): void {
 
 /** `cluster` drawn at `column`, and the columns the cursor moves. */
 function draw(cells: Cell[], column: number, cluster: string, style: Style): number {
+  // A cursor moved past the drawn end leaves blank cells behind it.
+  while (cells.length < column) cells.push(BLANK);
   const width = cluster === "\t" ? TAB_STOP - ((column - 1) % TAB_STOP) : cellLen(cluster);
   if (width === 0) {
     const lead = leadOf(cells, column - 1);
@@ -377,11 +395,8 @@ export class AnsiDecoder {
         case "overstrike":
           column += draw(cells, column, token.character, this.sgr.add(token.emphasis).withLink(this.link));
           break;
-        case "return":
-          column = 1;
-          break;
-        case "backspace":
-          column = Math.max(1, column - 1);
+        case "move":
+          column = token.to(column);
           break;
         case "erase":
           erase(cells, column, token.mode);
