@@ -4,15 +4,22 @@
     {
       "version": "pr-575",
       "ref": "refs/pull/575/merge",
-      "sha": "a2e87eebd70fe1e5ba72abb86180f320bc266205",
-      "timestamp": "2026-11-06T09:58:02.794Z",
+      "sha": "331061b79873d31d87b2913697a67c6bb89685bf",
+      "timestamp": "2026-11-06T10:07:00.151Z",
       "commits": [
         {
-          "sha": "a2e87eebd70fe1e5ba72abb86180f320bc266205",
+          "sha": "331061b79873d31d87b2913697a67c6bb89685bf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T02:56:17-07:00",
-          "message": "Merge b823d6f5af7ab93148a9e256aa6e87ae3ae65be1 into 38f4a235b102533a1af99fe942c56d71a2659ff7\n"
+          "timestamp": "2026-11-06T10:04:53Z",
+          "message": "Merge 8af3b1285080c579e87d8a959fd747306fb2cd08 into 38f4a235b102533a1af99fe942c56d71a2659ff7\n"
+        },
+        {
+          "sha": "8af3b1285080c579e87d8a959fd747306fb2cd08",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T03:04:34-07:00",
+          "message": "Colon groups apply through SGR_OPS: 4:n replaces the underline kind, an empty colour-space slot is read before it becomes 0 (rich-control-codes-xh4n.qx1)\n"
         },
         {
           "sha": "b823d6f5af7ab93148a9e256aa6e87ae3ae65be1",
