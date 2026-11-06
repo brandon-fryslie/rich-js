@@ -99,17 +99,11 @@ export type CaretShape = "block" | "underline" | "bar";
  * edge (`caretMark`) and only ordering a row turns it (`caretMarkOn`, from
  * `orient`): the side is read off the level the glyph is shown at, so no caller
  * states a physical edge for it to disagree with. A mark stands on one cell.
- * One value per triple, so two styles holding the same mark compare equal.
- *
- * `after` says the cell holds no character: it is the insertion point past the
- * text's end, a blank the widget added. Ordering stands it at the level of the
- * character before it, beside the last one typed, where UAX #9 would send a
- * neutral to the paragraph's end. A caret on a typed space is on a character.
+ * One value per pair, so two styles holding the same mark compare equal.
  */
 export interface CaretMark {
   readonly shape: CaretShape;
   readonly side: "left" | "right";
-  readonly after: boolean;
   // [LAW:types-are-the-program] Only `caretMark` makes one, so a literal that
   // would compare unequal to its twin does not type-check.
   readonly [caretMarkBrand]: true;
@@ -117,31 +111,22 @@ export interface CaretMark {
 
 declare const caretMarkBrand: unique symbol;
 
-type Sided = Readonly<Record<CaretMark["side"], CaretMark>>;
+const mark = (shape: CaretShape, side: CaretMark["side"]): CaretMark => Object.freeze({ shape, side }) as CaretMark;
 
-const sides = (shape: CaretShape, after: boolean): Sided => ({
-  left: Object.freeze({ shape, side: "left", after }) as CaretMark,
-  right: Object.freeze({ shape, side: "right", after }) as CaretMark,
-});
-
-const CARET_MARKS: Readonly<Record<CaretShape, Readonly<Record<"on" | "after", Sided>>>> = {
-  block: { on: sides("block", false), after: sides("block", true) },
-  underline: { on: sides("underline", false), after: sides("underline", true) },
-  bar: { on: sides("bar", false), after: sides("bar", true) },
+const CARET_MARKS: Readonly<Record<CaretShape, Readonly<Record<CaretMark["side"], CaretMark>>>> = {
+  block: { left: mark("block", "left"), right: mark("block", "right") },
+  underline: { left: mark("underline", "left"), right: mark("underline", "right") },
+  bar: { left: mark("bar", "left"), right: mark("bar", "right") },
 };
 
-/**
- * The caret in `shape` on the glyph the next character goes before, at its
- * leading edge once the row is ordered — or, `after`, on the blank past the
- * text's end.
- */
-export function caretMark(shape: CaretShape, after = false): CaretMark {
-  return CARET_MARKS[shape][after ? "after" : "on"].left;
+/** The caret in `shape` on the glyph the next character goes before, at its leading edge once the row is ordered. */
+export function caretMark(shape: CaretShape): CaretMark {
+  return CARET_MARKS[shape].left;
 }
 
-/** `mark` turned to `side`: what ordering a row sets, at the level its glyph is shown at. */
-export function caretMarkOn(mark: CaretMark, side: CaretMark["side"]): CaretMark {
-  return CARET_MARKS[mark.shape][mark.after ? "after" : "on"][side];
+/** The one `CaretMark` for `shape` on `side`: what ordering a row sets, at the level its glyph is shown at. */
+export function caretMarkOn(shape: CaretShape, side: CaretMark["side"]): CaretMark {
+  return CARET_MARKS[shape][side];
 }
 
 export interface StyleOptions {
@@ -166,6 +151,7 @@ export interface StyleOptions {
   boxFrame?: object;
   bidi?: BidiStamp;
   caret?: CaretMark;
+  textEnd?: true;
   /**
    * The validity interval the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
@@ -251,6 +237,15 @@ export class Style {
    */
   readonly caret: CaretMark | undefined;
   /**
+   * These cells hold no character: they are the insertion point past the
+   * text's end, a blank a field adds there, whether a caret stands on it or
+   * not. Ordering a row stands them at the level of the character before
+   * them, beside the last one typed, where UAX #9 would send a neutral to the
+   * paragraph's end (`./orient.ts`). A typed space is a character, so it is
+   * never one. It draws nothing.
+   */
+  readonly textEnd: true | undefined;
+  /**
    * The validity interval this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`validFrom`), and
    * when it next changes (`validUntil`) — both `t` for a cell drawn by
@@ -299,6 +294,7 @@ export class Style {
     this.boxFrame = options.boxFrame;
     this.bidi = options.bidi;
     this.caret = options.caret;
+    this.textEnd = options.textEnd;
   }
 
   get isNull(): boolean {
@@ -324,6 +320,7 @@ export class Style {
       this.boxFrame === undefined &&
       this.bidi === undefined &&
       this.caret === undefined &&
+      this.textEnd === undefined &&
       this.validity.validUntil === Number.POSITIVE_INFINITY &&
       this.validity.validFrom === Number.NEGATIVE_INFINITY
     );
@@ -386,6 +383,11 @@ export class Style {
   /** The same look, the terminal's cursor standing on its cells as `caret` marks it, or not. */
   withCaret(caret: CaretMark | undefined): Style {
     return this.with({ caret });
+  }
+
+  /** The same look, its cells the insertion point past the text's end (`textEnd`). */
+  get asTextEnd(): Style {
+    return this.with({ textEnd: true });
   }
 
   /** The style's text attributes, each as it sets it. */
@@ -454,6 +456,7 @@ export class Style {
       boxFrame: other.boxFrame ?? this.boxFrame,
       bidi: other.bidi ?? this.bidi,
       caret: other.caret ?? this.caret,
+      textEnd: other.textEnd ?? this.textEnd,
       // Cells under both change when either does.
       validity: intersection(this.validity, other.validity),
     });
@@ -482,6 +485,7 @@ export class Style {
       this.boxFrame === other.boxFrame &&
       this.bidi === other.bidi &&
       this.caret === other.caret &&
+      this.textEnd === other.textEnd &&
       this.validity.validUntil === other.validity.validUntil &&
       this.validity.validFrom === other.validity.validFrom
     );
@@ -541,7 +545,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colors, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `caret`, `validity` —
+   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `caret`, `textEnd`, `validity` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */

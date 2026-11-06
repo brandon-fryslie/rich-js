@@ -278,12 +278,15 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     // the caret is a blank cell marked for it, its shape only — ordering the
     // row sets which edge of the cell the bar stands on — so an IME's
     // candidate window and a screen reader follow the filter's editing point.
-    // Elsewhere it is a drawn glyph. One cell either way.
+    // Elsewhere it is a drawn glyph. One cell either way, past the query's
+    // end and holding none of it (`Style.textEnd`), so ordering stands it
+    // beside the character typed last, drawn or the terminal's.
+    const atEnd = baseStyle.asTextEnd;
     const caret = !this.focused
       ? undefined
       : options.caret === true
-        ? new Segment(" ", baseStyle.withCaret(caretMark("bar", true)))
-        : new Segment(drawable(options, "│", "|"), baseStyle);
+        ? new Segment(" ", atEnd.withCaret(caretMark("bar")))
+        : new Segment(drawable(options, "│", "|"), atEnd);
 
     return [
       new Segment("[", baseStyle),

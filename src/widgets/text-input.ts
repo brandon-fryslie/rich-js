@@ -194,7 +194,7 @@ interface Seen {
  */
 interface Caret {
   readonly at: CodePoint;
-  readonly draw: (glyph: string, after?: boolean) => Iterable<Segment>;
+  readonly draw: (glyph: string) => Iterable<Segment>;
 }
 
 /**
@@ -274,9 +274,9 @@ type Layout = { readonly drawn: Drawn } & (
  * reports a pointer at the column of what it was written, not where it shows
  * it — the BiDi recommendation's "the reported column is the model's column",
  * VTE's `vis2log` — so a press is already in the frame's order. Off `logical`
- * the two are one.
+ * the two are one. `end` is the stop past the row's end, where the row has one.
  */
-type Stops = { readonly shown: readonly Seen[]; readonly framed: readonly Seen[] };
+type Stops = { readonly shown: readonly Seen[]; readonly framed: readonly Seen[]; readonly end: number | undefined };
 
 /**
  * [LAW:one-source-of-truth] The offset into its row of the glyph a cell
@@ -310,10 +310,9 @@ class Laid {
 /**
  * The stop under column `col` of a row, which a press reads in the frame's
  * order (`Stops.framed`): the column a terminal reports. Past its cells — the
- * padding, which every order shows at the row's right — it is the end the
- * frame drew no cell for, where there is one, and otherwise the stop the
- * terminal shows rightmost, beside the pointer, so every stop a step reaches a
- * press reaches too.
+ * padding, which every order shows at the row's right — it is the row's end,
+ * where the row has one, as a press past a line's text is in any editor, and
+ * otherwise the stop the terminal shows rightmost, beside the pointer.
  */
 function offsetAtCell(stops: Stops, col: CellCol): CodePoint {
   let cells = 0;
@@ -321,7 +320,7 @@ function offsetAtCell(stops: Stops, col: CellCol): CodePoint {
     cells += seen.cells;
     if (cells > col) return asCodePoint(seen.at);
   }
-  return asCodePoint((stops.shown.find((seen) => seen.cells === 0) ?? stops.shown.at(-1))?.at ?? 0);
+  return asCodePoint(stops.end ?? stops.shown.at(-1)?.at ?? 0);
 }
 
 /** The layout stamped on the cell `anchor` names, at whatever depth. */
@@ -1174,15 +1173,18 @@ export class TextInput extends ThemedWidget {
       pieces.push({ at, segments: caretAt === at ? [...caret!.draw(shown)] : [new Segment(shown, contentStyle)] });
       at += glyph.length;
     }
-    // The end the frame draws no cell for is ordered as the caret's blank, a
-    // probe the frame drops: [LAW:one-source-of-truth] the order places that
-    // end, as it places the blank, never a rule beside it.
+    // The end is one blank holding no character (`Style.textEnd`), the caret's
+    // when it is there, and a probe the frame drops when the frame draws no
+    // cell for it: [LAW:one-source-of-truth] the order places that end, with a
+    // caret or without, never a rule beside it.
     let probe: Segment | undefined;
     if (row.endSlot) {
-      const end: Segment[] = caretAt === at ? [...caret!.draw(" ", true)] : [];
+      const caretHere = caretAt === at;
+      const end = (caretHere ? [...caret!.draw(" ")] : [new Segment(" ", contentStyle)])
+        .map((segment) => new Segment(segment.text, (segment.style ?? Style.null()).asTextEnd));
+      if (!caretHere && endCells < 1) probe = end[0];
       const pad = endCells - Segment.getLineLength(end);
       if (pad > 0) end.push(new Segment(" ".repeat(pad), contentStyle));
-      if (end.length === 0) end.push(probe = new Segment(" ", contentStyle));
       pieces.push({ at, segments: end });
     }
     const cell = (at: number, segment: Segment, style: Style | undefined, isProbe: boolean): Cell =>
@@ -1220,9 +1222,10 @@ export class TextInput extends ThemedWidget {
       return screen;
     };
     const framed = stops(ordered.map((_, index) => index));
-    if (drawn.textOrder !== "logical") return { shown: framed, framed };
+    const end = ordered.find((cell) => cell.style?.textEnd === true)?.at;
+    if (drawn.textOrder !== "logical") return { shown: framed, framed, end };
     const shown = shownWritten([...ordered.map((cell) => new Segment(cell.text, cell.style)), ...after]).filter((index) => index < ordered.length);
-    return { shown: stops(shown), framed };
+    return { shown: stops(shown), framed, end };
   }
 
   /**
@@ -1246,8 +1249,10 @@ export class TextInput extends ThemedWidget {
       const { window, endCells } = this._singleLineWindow(drawn);
       return { row: window, screen: this._orderedRow(window, drawn, this.ground, caret, endCells).screen([new Segment(CLOSE)]).shown };
     }
-    const row = this._screenRow(drawn);
-    return { row, screen: this._orderedRow(row, drawn, this.ground, caret).screen([]).shown };
+    const rows = this._rows(drawn);
+    const index = cursorRowIn(rows, this.cursorPosition);
+    const row = this._screenRowAt(rows, index, drawn);
+    return { row, screen: this._orderedRow(row, drawn, this.ground, caret, this._endCells(rows[index]!, drawn)).screen([]).shown };
   }
 
   // The stretch of the value a one-line frame's window showed, `width` cells from
@@ -1271,6 +1276,14 @@ export class TextInput extends ThemedWidget {
     const { startCell, contentWidth } = this._singleLine(drawn);
     const window = this._windowOf(this.value, startCell, contentWidth, drawn);
     return { window, contentWidth, endCells: Math.max(0, contentWidth - cellLen(this._shown(window.text, drawn))) };
+  }
+
+  // The cells the slot past a wrapped row's end is drawn in: one where the row
+  // has room, so the end is a cell the order places and a press lands on, the
+  // same with the caret there or not; none on a full row, where it is a probe.
+  private _endCells(row: VisualRow, drawn: Drawn): number {
+    const room = drawn.maxWidth - (row.isContinuation ? this._markerWidth : 0) - cellLen(this._shown(row.content, drawn));
+    return Math.min(1, Math.max(0, room));
   }
 
   // The row the caret is drawn in, under `drawn`: on one line the window a frame
@@ -1463,7 +1476,7 @@ export class TextInput extends ThemedWidget {
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
 
     const caret = this.focused && !this.disabled
-      ? { at: this.cursorPosition, draw: (glyph: string, after?: boolean) => this._caret(glyph, cursorStyle, contentStyle, options, after) }
+      ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
       : undefined;
     // [LAW:one-source-of-truth] The window is a row of the value drawn as every
     // row is, so the stops a press reads are the cells the frame holds; a
@@ -1496,7 +1509,7 @@ export class TextInput extends ThemedWidget {
       : [...caret.draw(first || " "), ...(display.length > first.length ? [new Segment(display.slice(first.length), contentStyle)] : [])];
     const segments = this._oriented(content, drawn.textOrder, paragraphLevelOf(display, undefined));
     const stops = [{ at: 0, cells: Segment.getLineLength(segments) }];
-    return { segments, screen: () => ({ shown: stops, framed: stops }) };
+    return { segments, screen: () => ({ shown: stops, framed: stops, end: undefined }) };
   }
 
   // A row's content in the order the frame shows it, as a button's label is
@@ -1523,7 +1536,7 @@ export class TextInput extends ThemedWidget {
     const markerStyle = new Style({ ...ink(this.theme, "foreground", "background"), dim: true });
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
     const caret = this.focused && !this.disabled
-      ? { at: this.cursorPosition, draw: (glyph: string, after?: boolean) => this._caret(glyph, cursorStyle, contentStyle, options, after) }
+      ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
       : undefined;
     // One visual row as drawn: its continuation marker, then its content, the
     // caret on the cursor's row, and its stops once what follows it on its
@@ -1547,7 +1560,7 @@ export class TextInput extends ThemedWidget {
       }
       const shown = this._screenRowAt(visualRows, rowIdx, drawn, levelOf);
       const onRow = rowIdx === cursorRow ? caret : undefined;
-      const { segments, screen } = this._drawnRow(shown, drawn, contentStyle, onRow);
+      const { segments, screen } = this._drawnRow(shown, drawn, contentStyle, onRow, this._endCells(row, drawn));
       line.push(...segments);
       return { line, screen };
     };
@@ -1633,8 +1646,8 @@ export class TextInput extends ThemedWidget {
   // terminal's cursor, the cell is the text's, marked for it: the terminal
   // blinks its own, and an IME's candidate window and a screen reader follow
   // it to the editing point.
-  private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions, after = false): Iterable<Segment> {
-    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape, after)))];
+  private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
+    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape)))];
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 

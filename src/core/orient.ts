@@ -136,7 +136,7 @@ function sided(style: Style | undefined, level: number, turned: Map<Style, Style
   const mark = style?.caret;
   if (mark?.shape !== "bar" || !(level & 1)) return style;
   let right = turned.get(style!);
-  if (right === undefined) turned.set(style!, right = style!.withCaret(caretMarkOn(mark, "right")));
+  if (right === undefined) turned.set(style!, right = style!.withCaret(caretMarkOn(mark.shape, "right")));
   return right;
 }
 
@@ -148,14 +148,11 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   // place to cut it: reversed apart, a mark lands on another letter.
   const styles = shown.flatMap((segment) => new Array<Style | undefined>(segment.text.length).fill(segment.style));
   const glyphs = graphemes(text);
-  const levelOf = clusterLevels(glyphs, finished, paragraphLevel);
+  const levelOf = clusterLevels(glyphs, finished, paragraphLevel, (unit) => styles[unit]?.textEnd === true);
   const clusters: Cluster[] = [];
   const turned = new Map<Style, Style>();
   let unit = 0;
   for (const [index, cluster] of glyphs.entries()) {
-    // The insertion point past the text is no character (`CaretMark.after`):
-    // it stands beside the one before it, the paragraph's level when none is.
-    if (styles[unit]?.caret?.after === true) levelOf[index] = index > 0 ? levelOf[index - 1]! : paragraphLevel;
     clusters.push({ text: cluster, style: sided(styles[unit], levelOf[index]!, turned), level: levelOf[index]! });
     unit += cluster.length;
   }
@@ -181,14 +178,21 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
 /**
  * The level each of `clusters` is shown at, given its text's finished levels: its
  * first unit's. A cluster of what X9 removes holds no level of its own, and stays
- * where the text put it, at the level before it.
+ * where the text put it, at the level before it; so does one that holds no
+ * character at all (`Style.textEnd`, a unit `noCharacter` names), the insertion
+ * point past the text, which stands beside the character typed last.
  */
-function clusterLevels(clusters: readonly string[], finished: readonly number[], paragraphLevel: ParagraphLevel): number[] {
+function clusterLevels(
+  clusters: readonly string[],
+  finished: readonly number[],
+  paragraphLevel: ParagraphLevel,
+  noCharacter: (unit: number) => boolean,
+): number[] {
   const out: number[] = [];
   let unit = 0;
   let previous: number = paragraphLevel;
   for (const cluster of clusters) {
-    previous = finished[unit] === REMOVED ? previous : finished[unit]!;
+    previous = finished[unit] === REMOVED || noCharacter(unit) ? previous : finished[unit]!;
     out.push(previous);
     unit += cluster.length;
   }
@@ -305,7 +309,7 @@ export function shownOrder(glyphs: readonly string[], order: TextOrder, directio
   const text = glyphs.join("");
   if (order === "plain" || (direction === undefined && !isBidi(text))) return glyphs.map((_, index) => index);
   const { level, levels } = paragraph(text, direction);
-  return visualOrder(clusterLevels(glyphs, lineLevels(text, levels, level), level));
+  return visualOrder(clusterLevels(glyphs, lineLevels(text, levels, level), level, () => false));
 }
 
 function ordered(text: string, direction: ParagraphLevel | undefined): number[] {

@@ -69,7 +69,7 @@ describe("the terminal's cursor on a painted frame", () => {
   ] as const)("puts a %s marked on its cell's right side where that shape stands (DECSCUSR %i)", (shape, code, to) => {
     const { renderer, out } = painter();
     // A two-cell glyph at column 2: a bar stands past it, a block covers it.
-    const row = [[new Segment("ab"), new Segment("日", Style.null().withCaret(caretMarkOn(caretMark(shape), "right")))], [new Segment("status")]];
+    const row = [[new Segment("ab"), new Segment("日", Style.null().withCaret(caretMarkOn(shape, "right")))], [new Segment("status")]];
     renderer.paint(() => row, screen, target("visual"));
     expect(out()).toContain(`\x1b[1A\r${to}\x1b[${code} q${SHOW}`);
   });

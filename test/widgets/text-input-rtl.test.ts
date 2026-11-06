@@ -119,11 +119,17 @@ describe("TextInput with right-to-left text", () => {
   });
 
   it("moves across a line break shown on one row as the row shows it", () => {
+    // Shown "abc⏎" then the end beside ג, then "גבא": from א, the rightmost
+    // cell, Left walks the run to the end.
     const input = field("abc\nאבג");
     render(input, options("visual"));
     input.cursorPosition = asCodeUnit(4);
-    input.handleKey(key("right"));
-    expect(input.cursorPosition).toBe(7);
+    for (const to of [5, 6, 7]) {
+      input.handleKey(key("left"));
+      expect(input.cursorPosition).toBe(to);
+    }
+    input.handleKey(key("left"));
+    expect(input.cursorPosition).toBe(3);
   });
 
   it("keeps the slot past the end beside a prepended mark", () => {
@@ -472,7 +478,12 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
           input.cursorPosition = asCodeUnit(stop);
           render(input, drawn);
           input.handleKey(key(name));
-          expect(input.cursorPosition, `${JSON.stringify(value)} from ${stop}, ${name}`).toBe(beside);
+          const stepped = input.cursorPosition;
+          // A row wider than the offer draws no cell for its end, which stands,
+          // with no cells, beside the character typed last: a step reaches it
+          // and no press does, so the screen names no stop to compare it with.
+          if (stepped !== beside && !Array.from({ length: drawnTo }, (_, x) => pressed(x)).includes(stepped)) continue;
+          expect(stepped, `${JSON.stringify(value)} from ${stop}, ${name}`).toBe(beside);
         }
       }
     }
@@ -570,31 +581,67 @@ describe("under logical, a press reads the column the terminal reports", () => {
   });
 });
 
-describe("the caret on the terminal's own cursor, under visual order", () => {
-  // The row's cells and the index of the one marked for the terminal's cursor.
-  function marked(input: TextInput): { row: Segment[]; at: number } {
-    const [row] = Segment.splitLines(render(input, { ...options("visual"), caret: true }));
-    return { row: row!, at: row!.findIndex((segment) => segment.style?.caret !== undefined) };
+describe("the insertion point past the text, under visual order", () => {
+  // The row's cells and the index of the one the caret stands on, on the
+  // terminal's cursor or drawn by the field.
+  function marked(input: TextInput, onTerminal: boolean): { row: Segment[]; at: number } {
+    const [row] = Segment.splitLines(render(input, { ...options("visual"), caret: onTerminal }));
+    const at = row!.findIndex((segment) => onTerminal ? segment.style?.caret !== undefined : segment.style?.reverse === true);
+    return { row: row!, at };
   }
 
-  it("past a right-to-left run in a left-to-right line, stands beside the character typed last", () => {
-    const { row, at } = marked(field("abc של"));
-    expect(row[at]!.style!.caret).toMatchObject({ after: true, side: "right" });
-    expect(row.slice(at + 1).map((segment) => segment.text).join("")).toMatch(/^ל/);
+  describe.each([["on the terminal's cursor", true], ["drawn by the field", false]] as const)("%s", (_name, onTerminal) => {
+    it("past a right-to-left run in a left-to-right line, stands beside the character typed last", () => {
+      const { row, at } = marked(field("abc של"), onTerminal);
+      expect(row.slice(0, at).map((segment) => segment.text).join("")).toMatch(/abc $/);
+      expect(row.slice(at + 1).map((segment) => segment.text).join("")).toMatch(/^ל/);
+      if (onTerminal) expect(row[at]!.style!.caret!.side).toBe("right");
+    });
+
+    it("past a left-to-right run in a right-to-left line, stands beside the character typed last", () => {
+      const { row, at } = marked(field("של abc"), onTerminal);
+      expect(row.slice(0, at).map((segment) => segment.text).join("")).toMatch(/c$/);
+      if (onTerminal) expect(row[at]!.style!.caret!.side).toBe("left");
+    });
+
+    it("on a typed trailing space, is on a character, which keeps the level its text gives it", () => {
+      const input = field("abc של ");
+      input.cursorPosition = asCodeUnit(6);
+      const { row, at } = marked(input, onTerminal);
+      expect(row[at]!.text).toBe(" ");
+      expect(row.slice(0, at).map((segment) => segment.text).join("")).toMatch(/ש$/);
+    });
   });
 
-  it("past a left-to-right run in a right-to-left line, stands beside the character typed last", () => {
-    const { row, at } = marked(field("של abc"));
-    expect(row[at]!.style!.caret).toMatchObject({ after: true, side: "left" });
-    expect(row.slice(0, at).map((segment) => segment.text).join("")).toMatch(/c$/);
+  // From the end of "abc של", shown "abc ␣לש" with the end beside ל: Left
+  // crosses to the space, Right to ל.
+  it.each([
+    ["left", 3],
+    ["right", 5],
+  ] as const)("steps %s from the end to the same stop whether or not a frame showed the cursor there", (name, to) => {
+    for (const onTerminal of [true, false]) {
+      const painted = field("abc של");
+      marked(painted, onTerminal);
+      painted.handleKey(key(name));
+      expect(painted.cursorPosition).toBe(to);
+
+      const unpainted = field("abc של");
+      unpainted.cursorPosition = asCodeUnit(4);
+      marked(unpainted, onTerminal);
+      unpainted.cursorPosition = asCodeUnit(6);
+      unpainted.handleKey(key(name));
+      expect(unpainted.cursorPosition).toBe(to);
+    }
   });
 
-  it("on a typed trailing space, is on a character, which keeps the level its text gives it", () => {
-    const input = field("abc של ");
-    input.cursorPosition = asCodeUnit(6);
-    const { row, at } = marked(input);
-    expect(row[at]!.style!.caret).toMatchObject({ after: false, side: "left" });
-    expect(row[at]!.text).toBe(" ");
-    expect(row.slice(0, at).map((segment) => segment.text).join("")).toMatch(/ש$/);
+  it("puts the end stop where the caret stands there, from anywhere in the text", () => {
+    const input = field("abc של");
+    input.cursorPosition = asCodeUnit(4);
+    marked(input, true);
+    // From ש, the rightmost cell, Left crosses ל to the end beside it.
+    input.handleKey(key("left"));
+    expect(input.cursorPosition).toBe(5);
+    input.handleKey(key("left"));
+    expect(input.cursorPosition).toBe(6);
   });
 });
