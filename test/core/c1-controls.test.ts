@@ -36,4 +36,22 @@ describe("each C1 control in content", () => {
   it("ends a captured line at NEL, as a terminal moves to the next one", () => {
     expect(decodeAnsi("one\u0085two\u009b").plain).toBe("one\ntwo");
   });
+
+  // A terminal that reads C1 (VTE, WezTerm, xterm.js) reads each introducer as
+  // its ESC form does, so a capture decodes the same either way.
+  it("reads an 8-bit CSI as the 7-bit one", () => {
+    const capture = (csi: string): string => `${csi}31mred${csi}0m ${csi}0Kplain ${csi}?25lend`;
+    const spans = (ansi: string) => decodeAnsi(ansi).spans.map((span) => [span.start, span.end, String(span.style)]);
+    expect(decodeAnsi(capture("\u009b")).plain).toBe(decodeAnsi(capture("\u001b[")).plain);
+    expect(spans(capture("\u009b"))).toEqual(spans(capture("\u001b[")));
+    expect(spans(capture("\u009b"))).not.toEqual([]);
+  });
+
+  it.each([["OSC", "\u009d"], ["DCS", "\u0090"], ["APC", "\u009f"], ["PM", "\u009e"], ["SOS", "\u0098"]])(
+    "reads an 8-bit %s string as silent, its payload line breaks included",
+    (_name, introducer) => {
+      expect(decodeAnsi(`a${introducer}0;x\u0085y\u009cb`).plain).toBe("ab");
+      expect(decodeAnsi(`a${introducer}0;x\u0007b`).plain).toBe("ab");
+    },
+  );
 });

@@ -70,7 +70,10 @@ const BOLD = new Style({ bold: true });
 const UNDERLINED = new Style({ underline: true });
 const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
 
-const STRING_ESCAPE = String.raw`\x1b[\]P_^X][^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
+// Each introducer in its 7-bit and its C1 form, as VTE, WezTerm and xterm.js read
+// both (`control-codes.ts`): CSI, then OSC, DCS, APC, PM and SOS.
+const CSI = String.raw`(?:\x1b\[|\x9b)`;
+const STRING_ESCAPE = String.raw`(?:\x1b[\]P_^X]|[\x9d\x90\x9f\x9e\x98])[^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
@@ -86,7 +89,7 @@ const STRING_ESCAPE = String.raw`\x1b[\]P_^X][^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|\x1b\[(?<sgr>[0-9;:]*)m|\x1b\[(?<mode>[012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
+  String.raw`\r|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -94,7 +97,8 @@ const ESCAPES = [
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
 // A string escape goes first so a line break in its payload stays in the payload.
-const lineBreaks = (): RegExp => new RegExp(`${STRING_ESCAPE}|${controlClass((disposition) => disposition === "line-break")}`, "gu");
+const lineBreaks = (): RegExp =>
+  new RegExp(`(?<escape>${STRING_ESCAPE})|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -277,7 +281,7 @@ export class AnsiDecoder {
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    const lined = ansi.replace(lineBreaks(), (found) => (found.startsWith("\x1b") ? found : "\n"));
+    const lined = ansi.replace(lineBreaks(), (...match) => ((match.at(-1) as { escape?: string }).escape ?? "\n"));
     return (lined.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
       this.decodeLine(line.replace(/\r?\n$/, "")),
     );

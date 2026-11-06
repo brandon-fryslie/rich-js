@@ -64,6 +64,10 @@ no pictures for C1, so each one shows as U+2426, the symbol for a substituted
 character: one cell and one code unit like the C0 pictures, and never mistaken
 for the replacement character a decoding error leaves.
 
+`decodeAnsi` reads output the way those terminals do: an 8-bit CSI styles, erases
+and moves as `ESC [` does, and an 8-bit string escape is as silent as its `ESC`
+form, payload and all.
+
 A C1 control in text is often a Windows-1252 byte decoded as Latin-1: `\x85` was
 meant as `…`. Telling that from a planted sequence takes the whole string, so
 repairing it is the caller's to do before the text reaches `RichText`.
