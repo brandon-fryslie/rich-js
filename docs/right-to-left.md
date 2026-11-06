@@ -130,9 +130,9 @@ filling the width, so a left-to-right line keeps its natural width; it is what
 or `App` view is drawn with. A container that pads every row of its body to
 its width — a `Panel`, a `Padding`, a `Layout` pane, a `Viewport`, a `scroll` —
 hands its body `"default"` the same way, so a right-to-left body sits at its
-right inner edge. That default reaches text, and what passes its options on, a
-`Group` or a `Constrain`, hands it on, so a text inside one is placed as it
-would be held bare. Any other renderable — a `Tree`, a `Pretty` value, JSON, an
+right inner edge. That default reaches text, and what passes its options on —
+a `Group`, a `Constrain`, an animation or effect, a view handed as a function —
+hands it on, so a text inside one starts at its edge of the width it is given. Any other renderable — a `Tree`, a `Pretty` value, JSON, an
 `Align` — sets its own lines and is not handed it, so its indent stays put; a
 `justify` the print named still reaches it. `"left"` and `"right"` mean those edges whatever the
 direction, and a stated `direction` decides the edge as it decides the order.

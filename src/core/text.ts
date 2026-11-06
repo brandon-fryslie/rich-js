@@ -213,7 +213,10 @@ interface TextFormat {
 }
 
 export class RichText implements Renderable, Measurable {
-  readonly [PASSES_EDGE] = true;
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   // Rich's `Text` is changed in place — appended to, stylized, padded — so its
   // characters, spans and format are state, and a write to one while
   // something is drawn throws. Four holders rather than one per field: a

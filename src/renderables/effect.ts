@@ -77,7 +77,7 @@ import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, 
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { PASSES_EDGE, renderPassing } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, joinedCell, type EdgeMove, type JoinedCell } from "../core/strip.js";
 import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes, type ValidityInterval } from "../core/style.js";
@@ -263,6 +263,10 @@ export function validityOver(anyCell: boolean, shown: Shown<unknown>, t: number)
  * carries that onto the frame's and stamps it. [LAW:one-type-per-behavior]
  */
 export class Recolored implements Renderable, Measurable {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   private readonly _t: number;
   readonly key: string;
 
@@ -276,7 +280,7 @@ export class Recolored implements Renderable, Measurable {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    const segments = render(this.renderable, options);
+    const segments = renderPassing(this.renderable, options);
     // With no color output nothing the effect does is written, so the child
     // is what is shown, and it changes when the child says it does.
     if (options.colorSystem === null) {
@@ -465,6 +469,10 @@ export class Recolored implements Renderable, Measurable {
  * never changes there and the host sleeps.
  */
 export class Effected implements Animation<Renderable> {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   readonly key: string;
 
   constructor(

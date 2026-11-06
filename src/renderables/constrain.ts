@@ -12,7 +12,10 @@ import type {
 import { PASSES_EDGE, renderPassing } from "../core/protocol.js";
 
 export class Constrain implements Renderable, Measurable {
-  readonly [PASSES_EDGE] = true;
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   readonly renderable: Renderable;
   readonly width: number | undefined;
 

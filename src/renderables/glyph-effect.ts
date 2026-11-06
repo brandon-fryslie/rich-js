@@ -56,7 +56,7 @@ import { Animation, placedRender, shownAt, type Reads } from "../core/animation.
 import { cellLen, graphemes } from "../core/cells.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { PASSES_EDGE, renderPassing } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { finiteTime } from "../core/easing.js";
 import { sanitized, type RichText } from "../core/text.js";
@@ -111,6 +111,10 @@ export interface GlyphEffectedOptions {
  * (`RenderOptions.onReads`, `./effect.ts`). [LAW:one-type-per-behavior]
  */
 export class Reglyphed implements Renderable, Measurable {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   private readonly _t: number;
   readonly key: string;
 
@@ -124,7 +128,7 @@ export class Reglyphed implements Renderable, Measurable {
   }
 
   render(options: RenderOptions): Iterable<Segment> {
-    const segments = [...render(this.renderable, options)];
+    const segments = [...renderPassing(this.renderable, options)];
     const { placed, cells } = placeGlyphs(segments, this.key);
     const animation = this.effect({ cells, asciiOnly: options.asciiOnly === true });
     const frame = shownAt(animation, this._t, options);
@@ -146,6 +150,10 @@ export class Reglyphed implements Renderable, Measurable {
  * frame's drawing told (`Reads`).
  */
 export class GlyphEffected implements Animation<Renderable> {
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   readonly key: string;
 
   constructor(

@@ -15,6 +15,7 @@ import { SEPARATOR_STYLES, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
+import { Animation } from "../../src/core/animation.js";
 import { render, type Renderable } from "../../src/core/protocol.js";
 import { Align } from "../../src/renderables/align.js";
 import { Traceback } from "../../src/renderables/traceback.js";
@@ -596,6 +597,28 @@ describe("a paragraph starts at its own edge", () => {
     live.stop();
     const row = chunks.join("").slice(before).replace(/\x1b\[[0-9;?]*[A-Za-z]|\r/g, "").split("\n")[0]!;
     expect(row).toBe(" ".repeat(20 - cellLen(HEBREW)) + printed(new RichText(HEBREW), 20)[0]!.trimStart());
+  });
+
+  test("a view handed as a function, and an animated text, are placed as the text they draw", () => {
+    const live = (view: ConstructorParameters<typeof Live>[0]): string => {
+      const chunks: string[] = [];
+      const console = new Console({ width: 20, height: 2, textOrder: "visual", colorSystem: null, forceTerminal: true, file: { write: (s: string) => void chunks.push(s) } });
+      const host = new Live(view, { console, autoRefresh: false, altScreen: true });
+      host.start();
+      const before = chunks.join("").length;
+      host.refresh();
+      host.stop();
+      return chunks.join("").slice(before).replace(/\x1b\[[0-9;?]*[A-Za-z]|\r/g, "").split("\n")[0]!;
+    };
+    const text = (): RichText => new RichText(HEBREW, { end: "" });
+    expect(live(() => text())).toBe(live(text()));
+    expect(shown(new Padding(Animation.constant(text()), 0), "visual", 20)).toEqual(shown(new Padding(text(), 0), "visual", 20));
+  });
+
+  test("a renderable a print leaves its line open after is not placed", () => {
+    const recording = new Console({ width: 20, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(new Group(new RichText("שלום")), { end: " | " });
+    expect(recording.exportText().split("\n")[0]).toBe("םולש");
   });
 
   test("a printed value, data or block that sets its own lines keeps them where it set them", () => {

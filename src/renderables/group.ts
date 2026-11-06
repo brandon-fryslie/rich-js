@@ -13,7 +13,10 @@ import type {
 import { PASSES_EDGE, renderPassing, stackedHeight } from "../core/protocol.js";
 
 export class Group implements Renderable, Measurable {
-  readonly [PASSES_EDGE] = true;
+  get [PASSES_EDGE](): true {
+    return true;
+  }
+
   readonly renderables: readonly Renderable[];
 
   constructor(...renderables: Renderable[]) {
