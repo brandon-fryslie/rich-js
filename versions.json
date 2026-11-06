@@ -4,15 +4,22 @@
     {
       "version": "pr-574",
       "ref": "refs/pull/574/merge",
-      "sha": "3bfa6eece412312c77ab3f1a71bc278e8cd10e7b",
-      "timestamp": "2026-11-06T09:30:58.907Z",
+      "sha": "dfc75aa785a2d607b50612e1de60aa5d82dd023b",
+      "timestamp": "2026-11-06T09:38:26.113Z",
       "commits": [
         {
-          "sha": "3bfa6eece412312c77ab3f1a71bc278e8cd10e7b",
+          "sha": "dfc75aa785a2d607b50612e1de60aa5d82dd023b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T09:29:07Z",
-          "message": "Merge 74458d9a98754798893a88202565e0321b7acd70 into 8d57b1ba27053e83cf02807bd2efa0fa43afb9aa\n"
+          "timestamp": "2026-11-06T09:36:22Z",
+          "message": "Merge b994497e1e383a7eea12ee781231a45565f43c7b into 8d57b1ba27053e83cf02807bd2efa0fa43afb9aa\n"
+        },
+        {
+          "sha": "b994497e1e383a7eea12ee781231a45565f43c7b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T02:36:11-07:00",
+          "message": "print hands \"default\" only to the text it sets itself; a full paragraph's last row takes its start edge (rich-control-codes-xh4n.3k9)\n\nReview: \"default\" in RenderOptions reached FlexStrip and Tree children and\npadded right-to-left items to the width. The paragraph level is read once per line.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "74458d9a98754798893a88202565e0321b7acd70",
