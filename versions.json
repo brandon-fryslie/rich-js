@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "38f4a235b102533a1af99fe942c56d71a2659ff7",
-      "timestamp": "2026-11-06T09:52:10.985Z",
+      "sha": "e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd",
+      "timestamp": "2026-11-06T10:31:57.273Z",
       "commits": [
         {
-          "sha": "38f4a235b102533a1af99fe942c56d71a2659ff7",
+          "sha": "e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T02:49:41-07:00",
-          "message": "A right-to-left paragraph starts at its right edge by default (rich-control-codes-xh4n.3k9) (#574)\n\n* A right-to-left paragraph starts at its right edge by default, in text, table cells and Markdown (rich-control-codes-xh4n.3k9)\n\njustify gains \"start\", the paragraph's own edge; Column and Markdown default\nto it, and an unjustified right-to-left row is placed right. plain keeps its\nbytes: logical order's start is the line's first character.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Unset justify places nothing again; Console.print asks for the paragraph's edge with \"default\" (rich-control-codes-xh4n.3k9)\n\nReview: an unjustified right-to-left row padded to the width inside Strip,\nSyntax, Pretty and soft-wrapped prints. \"default\" is now the start edge\nwithout filling, and the start level is read off the raw line, as reorder reads it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* print hands \"default\" only to the text it sets itself; a full paragraph's last row takes its start edge (rich-control-codes-xh4n.3k9)\n\nReview: \"default\" in RenderOptions reached FlexStrip and Tree children and\npadded right-to-left items to the width. The paragraph level is read once per line.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A print that leaves its line open is not placed; FlexStrip hands its pieces no justify; console.md's justify table names start (rich-control-codes-xh4n.3k9)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-11-06T03:29:50-07:00",
+          "message": "decodeAnsi reads colon-form SGR sub-parameters: 4:n underlines, 38:/48: colors, each group its own code (rich-control-codes-xh4n.qx1) (#575)\n\n* decodeAnsi reads colon-form SGR sub-parameters: 4:n underlines, 38:/48: colors, each group its own code (rich-control-codes-xh4n.qx1)\n\n* Colon groups apply through SGR_OPS: 4:n replaces the underline kind, an empty colour-space slot is read before it becomes 0 (rich-control-codes-xh4n.qx1)\n\n* Plain 4 and 21 replace each other's underline; the colour-space slot is told by the kind's value with trailing empties trimmed; docs/text.md names colon decoding (rich-control-codes-xh4n.qx1)"
         }
       ]
     }
