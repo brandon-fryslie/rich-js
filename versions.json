@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-570",
-      "ref": "refs/pull/570/merge",
-      "sha": "6ad0d16656f83ef981aaa3e023fb986214dc026c",
-      "timestamp": "2026-11-06T05:39:31.077Z",
-      "commits": [
-        {
-          "sha": "6ad0d16656f83ef981aaa3e023fb986214dc026c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:37:10Z",
-          "message": "Merge 0024ddbee0d8a03a6b9c17bfa298548982382ba7 into f197d9cf43c2ffb1cb1189b7cbc42038e2250062\n"
-        },
-        {
-          "sha": "0024ddbee0d8a03a6b9c17bfa298548982382ba7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T22:36:59-07:00",
-          "message": "One Frame type for what an event carries, a press orders the line only when it lands past the row, and docs/widgets.md names an event's frame (rich-control-codes-xh4n.bx4)\n"
-        },
-        {
-          "sha": "f6d861903e2ced8387612e4a7844eb8e5e344b24",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T22:14:28-07:00",
-          "message": "A key and a press carry the frame they were heard on, and a step cuts the line at the row that frame drew (rich-control-codes-xh4n.bx4)\n\nReview of #570: the focused-only framePainted push left a blurred field, a\nrender between paints and a cursor moved before a repaint reading a frame\nother than the one on screen, behind a layout-identity guard. WidgetKeyEvent\nand WidgetMouseEvent now hold the frame; the field keeps none.\n"
-        },
-        {
-          "sha": "dfc1a698e6da8228b2fe54a8e8cd8f1a79fb8744",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T21:43:15-07:00",
-          "message": "Under logical, a step walks the stops the terminal shows on the whole painted line: the caret's end blank keeps a right-to-left row's level when a neighbour's text follows it (rich-control-codes-xh4n.bx4)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f197d9cf43c2ffb1cb1189b7cbc42038e2250062",
-      "timestamp": "2026-11-06T04:16:28.000Z",
+      "sha": "d579241dad7483b9be74996fb69c690f6ebcdbb0",
+      "timestamp": "2026-11-06T05:54:49.093Z",
       "commits": [
         {
-          "sha": "f197d9cf43c2ffb1cb1189b7cbc42038e2250062",
+          "sha": "d579241dad7483b9be74996fb69c690f6ebcdbb0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T21:14:42-07:00",
-          "message": "The end slot past the text never joins a Prepend character's cluster, so under visual order the caret after U+0600-U+0605 keeps its cell (rich-control-codes-xh4n.q87) (#569)\n\n* The end slot past the text never joins a Prepend character's cluster, so under visual order the caret after U+0600-U+0605 keeps its cell (rich-control-codes-xh4n.q87)\n\n* Cut the end slot only at its edges, so a glyph outside the BMP stays whole; pin Syriac Prepend and the drawn-cursor slot (review of #569)\n\n* Every row ordered by cluster asks rowClusters, so seal's kitty reversal keeps the end slot apart from a Prepend character too (medium review of #569)\n\n* The Syriac end slot under words order is an expected failure that goes green with qmw (second high review of #569)"
+          "timestamp": "2026-11-05T22:52:40-07:00",
+          "message": "Under logical, a step walks the stops the terminal shows on the whole painted line: the caret's end blank keeps a right-to-left row's level when a neighbour's text follows it (rich-control-codes-xh4n.bx4) (#570)\n\n* Under logical, a step walks the stops the terminal shows on the whole painted line: the caret's end blank keeps a right-to-left row's level when a neighbour's text follows it (rich-control-codes-xh4n.bx4)\n\n* A key and a press carry the frame they were heard on, and a step cuts the line at the row that frame drew (rich-control-codes-xh4n.bx4)\n\nReview of #570: the focused-only framePainted push left a blurred field, a\nrender between paints and a cursor moved before a repaint reading a frame\nother than the one on screen, behind a layout-identity guard. WidgetKeyEvent\nand WidgetMouseEvent now hold the frame; the field keeps none.\n\n* One Frame type for what an event carries, a press orders the line only when it lands past the row, and docs/widgets.md names an event's frame (rich-control-codes-xh4n.bx4)"
         }
       ]
     }
