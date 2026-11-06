@@ -38,42 +38,6 @@
       ]
     },
     {
-      "version": "pr-585",
-      "ref": "refs/pull/585/merge",
-      "sha": "2c6ec67fac3c8274363527eaefa69778a7fce023",
-      "timestamp": "2026-11-06T15:27:56.053Z",
-      "commits": [
-        {
-          "sha": "2c6ec67fac3c8274363527eaefa69778a7fce023",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:25:18Z",
-          "message": "Merge 602ae38d5386f0bbcf0d4443fae8cc7c790e202c into 0f0e2b67ec0449800b781c88e674866f6d824f9e\n"
-        },
-        {
-          "sha": "602ae38d5386f0bbcf0d4443fae8cc7c790e202c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:25:09-07:00",
-          "message": "A stated component text is held on its own side of its ground, on the footer item a footer key sits on; contrast page says so (rich-unfiled-791c.h35m)\n"
-        },
-        {
-          "sha": "bba4e636f931e7f989e4086256811a247a329ee5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:17:07-07:00",
-          "message": "A footer key's text is held on the footer bar its ground sits on; buildPalette's contract names held component text (rich-unfiled-791c.h35m)\n"
-        },
-        {
-          "sha": "24b0d487a2e620743139f208feadeb863bcd51ff",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:09:52-07:00",
-          "message": "A stated component text is held on its ground, opaque or tint: an author's color that reads is kept, one that does not keeps its hue (rich-unfiled-791c.h35m)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0f0e2b67ec0449800b781c88e674866f6d824f9e",
