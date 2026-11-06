@@ -4,15 +4,22 @@
     {
       "version": "pr-578",
       "ref": "refs/pull/578/merge",
-      "sha": "eec819293f3f2eb0ef2ccc0767f6c319cf032ec6",
-      "timestamp": "2026-11-06T11:40:20.913Z",
+      "sha": "5ec3a4534db4b9c13d2dc7c95d5debd24b1e2d55",
+      "timestamp": "2026-11-06T11:49:27.837Z",
       "commits": [
         {
-          "sha": "eec819293f3f2eb0ef2ccc0767f6c319cf032ec6",
+          "sha": "5ec3a4534db4b9c13d2dc7c95d5debd24b1e2d55",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:37:53-07:00",
-          "message": "Merge 328fb2b21bd42f71efb36214606e0e7fff24655d into a949c97513c1c182d3ddda4fa21cc4d6bde1e3df\n"
+          "timestamp": "2026-11-06T04:47:38-07:00",
+          "message": "Merge e5cd7a1a998f80202593868541ed3502bdc34a77 into a949c97513c1c182d3ddda4fa21cc4d6bde1e3df\n"
+        },
+        {
+          "sha": "e5cd7a1a998f80202593868541ed3502bdc34a77",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T04:47:21-07:00",
+          "message": "CNL ends a line once whatever its count; the docs gate counts CNL and ESC E as drawn (rich-control-codes-xh4n.llj)\n\nHigh review: a count invented rows no terminal draws (999E, a CPL/CNL redraw). With no screen height, a count is unknowable; one break is NEL's meaning.\n"
         },
         {
           "sha": "328fb2b21bd42f71efb36214606e0e7fff24655d",
