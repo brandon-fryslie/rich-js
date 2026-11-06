@@ -48,10 +48,16 @@ describe("each C1 control in content", () => {
   });
 
   it.each([["OSC", "\u009d"], ["DCS", "\u0090"], ["APC", "\u009f"], ["PM", "\u009e"], ["SOS", "\u0098"]])(
-    "reads an 8-bit %s string as silent, its payload line breaks included",
+    "reads an 8-bit %s string as silent, and ends it where a terminal does",
     (_name, introducer) => {
-      expect(decodeAnsi(`a${introducer}0;x\u0085y\u009cb`).plain).toBe("ab");
+      expect(decodeAnsi(`a${introducer}0;x\u009cb`).plain).toBe("ab");
       expect(decodeAnsi(`a${introducer}0;x\u0007b`).plain).toBe("ab");
+      // NEL, ESC E and a C1 CSI each abort the string and then act as themselves.
+      expect(decodeAnsi(`a${introducer}0;x\u0085next`).plain).toBe("a\nnext");
+      expect(decodeAnsi(`a${introducer}0;x\u001bEnext`).plain).toBe("a\nnext");
+      expect(decodeAnsi(`a${introducer}0;x\u009b31mred`).spans.map((span) => String(span.style))).toEqual(
+        decodeAnsi("a\u001b[31mred").spans.map((span) => String(span.style)),
+      );
     },
   );
 
@@ -69,6 +75,11 @@ describe("each C1 control in content", () => {
     expect(decodeAnsi("\u001b]8;;http://a\u009d8;;http://b\u009cx").spans.map((span) => String(span.style))).toEqual([
       "link http://b",
     ]);
+  });
+
+  it("keeps every C1 control out of a link's URI", () => {
+    const styles = decodeAnsi("\u001b]8;;http://a\u009b31mb\u001b\\link\u001b]8;;\u001b\\").spans.map((span) => String(span.style));
+    expect(styles.some((style) => /[\u0080-\u009f]/u.test(style))).toBe(false);
   });
 
   it("ends a captured line at ESC E, the 7-bit NEL", () => {

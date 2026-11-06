@@ -48,7 +48,7 @@
 import { cellLen, graphemes } from "./cells.js";
 import { ColorSpec } from "./color.js";
 import { CONTROL_CODES, controlClass } from "./control-codes.js";
-import { osc8Sequences } from "./osc8.js";
+import { osc8Sequences, STRING_STOPS } from "./osc8.js";
 import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
 import type { StyleOptions } from "./style.js";
 import { RichText } from "./text.js";
@@ -72,19 +72,28 @@ const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
 
 // A C1 introducer is its ESC form's final byte plus 0x40 (ECMA-48 §5.3), and a
 // terminal that reads C1 reads it as that ESC form (`docs/control-codes.md`).
-const c1 = (finals: string): string => [...finals].map((final) => `\\x${(final.charCodeAt(0) + 0x40).toString(16)}`).join("");
-const CSI = String.raw`(?:\x1b\[|${c1("[")})`;
-// OSC, DCS, APC, PM, SOS, in either form run to a terminator or cut off by the
-// end of the line. A stray C1 byte that is windows-1252 read as Latin-1 decodes
-// as a terminal reading C1 shows it; no rule local to the byte can tell the two
-// apart, so repairing it is the caller's.
-const STRING_FINALS = "]P_^X";
-const STRING_ESCAPE = String.raw`(?:\x1b[${STRING_FINALS.replace("]", "\\]")}]|[${c1(STRING_FINALS)}])[^\n]*?(?:\x07|\x1b\\|\x9c|\n|$)`;
+const hex = (codes: readonly number[]): string => codes.map((code) => `\\x${code.toString(16).padStart(2, "0")}`).join("");
+const finals = (introducers: string): number[] => [...introducers].map((final) => final.charCodeAt(0));
+const either = (introducers: string): string => {
+  const codes = finals(introducers);
+  return `(?:\\x1b[${hex(codes)}]|[${hex(codes.map((code) => code + 0x40))}])`;
+};
+const CSI = either("[");
+// OSC, DCS, APC, PM, SOS. As the VT500 parser C1-reading terminals follow, the
+// payload ends at a terminator, which it takes, or before an ESC or any C1
+// control, NEL among them, which then acts as itself. The parser ignores the
+// other C0 controls there, so a form feed stays in the payload; a line feed ends
+// it, the cut a capture's line makes. A stray C1 byte that is windows-1252 read
+// as Latin-1 decodes as such a terminal shows it; no rule local to the byte can
+// tell the two apart, so repairing it is the caller's.
+const STRING_ESCAPE = String.raw`${either("]P_^X")}[^${STRING_STOPS}\n]*(?:\x07|\x1b\\|\x9c)?`;
 
 // The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
-const ESC_LINE_BREAKS = CONTROL_CODES.filter((row) => row.disposition === "line-break" && row.first >= 0x80 && row.last <= 0x9f)
-  .flatMap((row) => Array.from({ length: row.last - row.first + 1 }, (_, at) => String.fromCharCode(row.first + at - 0x40)))
-  .join("");
+const ESC_LINE_BREAKS = hex(
+  CONTROL_CODES.filter((row) => row.disposition === "line-break").flatMap((row) =>
+    Array.from({ length: row.last - row.first + 1 }, (_, at) => row.first + at).filter((code) => code >= 0x80 && code <= 0x9f),
+  ).map((code) => code - 0x40),
+);
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
@@ -92,7 +101,7 @@ const ESC_LINE_BREAKS = CONTROL_CODES.filter((row) => row.disposition === "line-
  * carriage return; an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
  * (`mode`); any other CSI sequence; any other string escape — OSC, DCS, APC, PM,
- * SOS — run to the terminators OSC 8 accepts or cut off by the end of the line;
+ * SOS — run to a terminator or cut off where `STRING_ESCAPE` says;
  * any other escape, ECMA-48's intermediates and one final byte (`\x1b(B`,
  * `\x1b)0`, `\x1b#8`, `\x1bc`); a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
@@ -108,7 +117,7 @@ const ESCAPES = [
 
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
-// A string escape goes first so a line break in its payload stays in the payload.
+// A string escape goes first so a line break its payload holds stays in it.
 const lineBreaks = (): RegExp =>
   new RegExp(`(${STRING_ESCAPE})|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`, "gu");
 

@@ -35,11 +35,12 @@ import { fnv1a } from "./fnv1a.js";
 import { pattern } from "./pattern.js";
 
 /**
- * The bytes that prematurely terminate an OSC 8 sequence: ESC (`\x1b`, which
- * begins ST `ESC \` or any other escape), BEL (`\x07`), the 8-bit ST (`\x9c`),
- * and the 8-bit OSC (`\x9d`), which starts a sequence of its own as `ESC ]` does.
+ * What ends a string escape's payload, as a regex class body: ESC (`\x1b`,
+ * which begins ST `ESC \` or any other escape), BEL (`\x07`), and every C1
+ * control, the 8-bit ST (`\x9c`) and each introducer of a sequence of its own
+ * among them. OSC 8 and `decodeAnsi`'s other string escapes both stop here.
  */
-const TERMINATORS = "\\x1b\\x07\\x9c\\x9d";
+export const STRING_STOPS = "\\x1b\\x07\\x80-\\x9f";
 
 /**
  * `text` an OSC carries — a link's address, a title, a notification — without a
@@ -80,7 +81,7 @@ export const OSC8_CLOSE = "\x1b]8;;\x1b\\";
  * for composing into a larger one (a width measure's zero-width alternation).
  */
 export const OSC8 = pattern(new RegExp(
-  `(?:\\x1b\\]|\\x9d)8;([^;${TERMINATORS}]*);([^${TERMINATORS}]*)(?:\\x1b\\\\|\\x07|\\x9c)`,
+  `(?:\\x1b\\]|\\x9d)8;([^;${STRING_STOPS}]*);([^${STRING_STOPS}]*)(?:\\x1b\\\\|\\x07|\\x9c)`,
 ));
 
 /** One OSC 8 sequence found in rendered bytes. A close has `uri === ""`. */
