@@ -132,7 +132,7 @@ describe("what reaches the wire", () => {
   const payload = PAYLOADS.join("");
 
   it("holds none from a label a widget draws", () => {
-    expect(labeled("[ ", payload, " ]", undefined, "plain").map((segment) => written(raw(segment))).join("")).not.toMatch(DIRECTIVE);
+    expect(labeled("[ ", [new Segment(payload)], " ]", undefined, "plain").map((segment) => written(raw(segment))).join("")).not.toMatch(DIRECTIVE);
   });
 
   it("holds none from a text's end", () => {

@@ -100,7 +100,7 @@ export class Toggle extends ThemedWidget {
   protected draw(options: RenderOptions): Iterable<Segment> {
     // Both indicators are exactly 5 cells: "[ON] " and "[OFF]".
     const indicator = this.on ? "[ON] " : "[OFF]";
-    const drawn = (style: Style): Segment[] => labeled(`${indicator} `, this.label, "", style, options.textOrder);
+    const drawn = (style: Style): Segment[] => labeled(`${indicator} `, [new Segment(this.label, style)], "", style, options.textOrder);
 
     if (this.disabled) {
       return drawn(new Style(this.disabledInk));

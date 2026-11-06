@@ -5,6 +5,7 @@ import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/type
 import { Segment } from "../../src/core/segment.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { cellLen } from "../../src/core/cells.js";
 
 // What every widget draws a disabled cell in.
 const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
@@ -577,5 +578,45 @@ describe("Dropdown", () => {
       for (let i = 0; i < fLen + 5; i++) d.handleKey(downEvent());
       expect(d.highlightedIndex).toBe(fLen - 1);
     });
+  });
+});
+
+describe("Dropdown filter on the terminal's own cursor", () => {
+  const typed = (d: Dropdown, text: string): void => {
+    for (const ch of text) d.handleKey(new WidgetKeyEvent({ key: ch, character: ch, shift: false, ctrl: false, meta: false }, 0));
+  };
+  const header = (d: Dropdown, options: object): Segment[] => Segment.splitLines(d.render({ ...RENDER, ...options }))[0]!;
+  const caretAt = (segs: Segment[]): number => segs.findIndex((s) => s.style?.caret !== undefined);
+
+  it("marks the cell after the query for the cursor, a bar, and draws no caret glyph", () => {
+    const d = new Dropdown({ options: ["alpha", "beta"] });
+    d.focus(0);
+    typed(d, "al");
+    const segs = header(d, { caret: true });
+    const at = caretAt(segs);
+    expect(segs.filter((s) => s.style?.caret !== undefined).map((s) => s.text)).toEqual([" "]);
+    expect(segs[at]!.style!.caret!.shape).toBe("bar");
+    expect(segs.slice(0, at).map((s) => s.text).join("")).toBe("[ al");
+    const plain = segs.map((s) => s.text).join("");
+    expect(plain).not.toContain("│");
+    expect(cellLen(plain)).toBe(d.measure(RENDER).maximum);
+  });
+
+  it("draws the caret glyph and marks nothing where the painter shows no cursor", () => {
+    const d = new Dropdown({ options: ["alpha", "beta"] });
+    d.focus(0);
+    typed(d, "al");
+    const segs = header(d, {});
+    expect(caretAt(segs)).toBe(-1);
+    expect(segs.map((s) => s.text).join("")).toContain("│");
+  });
+
+  it("stands the bar on the right edge of its cell after a right-to-left query", () => {
+    const d = new Dropdown({ options: ["שלום", "עולם"] });
+    d.focus(0);
+    typed(d, "של");
+    const segs = header(d, { caret: true, textOrder: "visual" });
+    expect(segs.filter((s) => s.style?.caret !== undefined)).toHaveLength(1);
+    expect(segs[caretAt(segs)]!.style!.caret!.side).toBe("right");
   });
 });

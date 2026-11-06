@@ -77,7 +77,7 @@ export class Checkbox extends ThemedWidget {
 
   protected draw(options: RenderOptions): Iterable<Segment> {
     const indicator = this.checked ? drawable(options, "✓", "x") : " ";
-    const drawn = (style: Style): Segment[] => labeled(`[${indicator}] `, this.label, "", style, options.textOrder);
+    const drawn = (style: Style): Segment[] => labeled(`[${indicator}] `, [new Segment(this.label, style)], "", style, options.textOrder);
 
     if (this.disabled) {
       return drawn(new Style(this.disabledInk));

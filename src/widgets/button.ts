@@ -114,7 +114,7 @@ export class Button extends ThemedWidget {
     const focused = this.focused;
     const left = focused ? "[" : " ";
     const right = focused ? "]" : " ";
-    const drawn = (style: Style): Segment[] => labeled(`${left} `, this.label, ` ${right}`, style, options.textOrder);
+    const drawn = (style: Style): Segment[] => labeled(`${left} `, [new Segment(this.label, style)], ` ${right}`, style, options.textOrder);
 
     if (this.disabled) {
       return drawn(new Style(this.disabledInk));

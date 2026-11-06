@@ -369,7 +369,8 @@ export class Panel implements Renderable, Measurable {
     const corner = box.bottom.right.repeat(geometry.right);
     const [close, afterAccessory] = accessoryText === "" ? [corner, ""] : ["", corner];
     yield* borderRow(options, box.bottom, geometry, geometry.spanWidth - cellLen(accessoryText), this._subtitleLabel, subtitleStyle, border, close);
-    yield* labeled("", accessoryText, "", borderTextStyle(border, accessoryOwn), options.textOrder);
+    const accessoryStyle = borderTextStyle(border, accessoryOwn);
+    yield* labeled("", [new Segment(accessoryText, accessoryStyle)], "", accessoryStyle, options.textOrder);
     yield new Segment(afterAccessory, border);
     yield Segment.line();
   }
