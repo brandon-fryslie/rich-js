@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-581",
+      "ref": "refs/pull/581/merge",
+      "sha": "48adb0fea314b4f72aa2b98ca0c996e32e134147",
+      "timestamp": "2026-11-06T13:54:05.502Z",
+      "commits": [
+        {
+          "sha": "48adb0fea314b4f72aa2b98ca0c996e32e134147",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T13:51:29Z",
+          "message": "Merge 819a3118fa5cf45c4d6b0189c84b439718f47c21 into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
+        },
+        {
+          "sha": "819a3118fa5cf45c4d6b0189c84b439718f47c21",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:51:18-07:00",
+          "message": "Medium-review fixes: a stated role is drawn on its own ground, named walks nearest rungs first, TEXT_FITS is the one road to a fit (rich-palette-xovz.5rt)\n"
+        },
+        {
+          "sha": "ccc6ad216ffe17f5ba4d4737888af4fd4dc2835a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:39:01-07:00",
+          "message": "Review fixes: one floor per intent, shades built only on a miss, cursor text on the cursor, removed roles point at textOn (rich-palette-xovz.5rt)\n"
+        },
+        {
+          "sha": "11e8c622abc68d56d228cca74400bb48d21cf701",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:23:06-07:00",
+          "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-582",
       "ref": "refs/pull/582/merge",
       "sha": "7a2496abc28f37134cd65304978640515e0ba6bd",
@@ -34,35 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T06:27:13-07:00",
           "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-581",
-      "ref": "refs/pull/581/merge",
-      "sha": "020c2d7c696edcf360e2d91cc238c7be3d28153a",
-      "timestamp": "2026-11-06T13:41:57.213Z",
-      "commits": [
-        {
-          "sha": "020c2d7c696edcf360e2d91cc238c7be3d28153a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T13:39:27Z",
-          "message": "Merge ccc6ad216ffe17f5ba4d4737888af4fd4dc2835a into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
-        },
-        {
-          "sha": "ccc6ad216ffe17f5ba4d4737888af4fd4dc2835a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:39:01-07:00",
-          "message": "Review fixes: one floor per intent, shades built only on a miss, cursor text on the cursor, removed roles point at textOn (rich-palette-xovz.5rt)\n"
-        },
-        {
-          "sha": "11e8c622abc68d56d228cca74400bb48d21cf701",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:23:06-07:00",
-          "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
         }
       ]
     },
