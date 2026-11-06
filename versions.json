@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-576",
+      "ref": "refs/pull/576/merge",
+      "sha": "c4ade7b152f16386000259d37143511f96799422",
+      "timestamp": "2026-11-06T10:38:39.690Z",
+      "commits": [
+        {
+          "sha": "c4ade7b152f16386000259d37143511f96799422",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T03:37:01-07:00",
+          "message": "Merge f2c75ee70e3ec973f19b5187ed54b5e99b9c9bf7 into e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd\n"
+        },
+        {
+          "sha": "f2c75ee70e3ec973f19b5187ed54b5e99b9c9bf7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T03:36:48-07:00",
+          "message": "decodeAnsi moves along the line for CUB, CUF, CHA, HPR and HPA as it does for BS and CR (rich-control-codes-xh4n.9pb)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd",
