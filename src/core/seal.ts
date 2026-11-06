@@ -22,6 +22,7 @@
 
 import { advance, closersOf, lineLevels, mirroredCluster, opened, paragraph, visualOrder, withoutExplicit, type Open } from "./bidi.js";
 import { cellLen, EXTENDER, graphemes, wireText, ZWJ_CHARACTER } from "./cells.js";
+import { WeakMemo } from "./memo.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
@@ -122,31 +123,43 @@ export function shownWritten(line: readonly Segment[]): number[] {
 }
 
 /**
- * The column of `line`, one row of a frame, that a terminal which orders what
- * it is written (`logical`) shows at screen column `x`: a press reads the
- * frame there. The row is cut into its glyphs and ordered by `shownWritten`, so
- * the whole line — every container's frame cells with it — is what is ordered,
- * never one widget's row. Past the line's cells a column is its own.
+ * The column of row `y` of `frame` that the terminal shows at screen column
+ * `x`: a press reads the frame there. Off `logical` the two are one. Under it
+ * the terminal orders each line as a whole — every container's frame cells
+ * with it, never one widget's row — so the row is cut into its glyphs and
+ * ordered by `shownWritten`. A control takes no cell and is never shown as
+ * text, so it is left out of what is ordered. Past the line's cells, or off
+ * the frame, a column is its own.
  */
-export function writtenColumn(line: readonly Segment[], x: number): number {
+export function frameColumn(frame: readonly (readonly Segment[])[], order: TextOrder, x: number, y: number): number {
+  const line = frame[y];
+  if (order !== "logical" || line === undefined) return x;
+  return SCREEN_COLUMNS.get(line, screenColumns)[x] ?? x;
+}
+
+// A painted line never changes, so its map is read once however many pointer
+// reports land on it.
+const SCREEN_COLUMNS = new WeakMemo<readonly number[], readonly Segment[]>();
+
+// The frame column each screen column of `line` shows, under `logical`.
+function screenColumns(line: readonly Segment[]): readonly number[] {
   const pieces: Segment[] = [];
   const starts: number[] = [];
   let col = 0;
   for (const segment of line) {
-    for (const glyph of segment.isControl ? [segment.text] : graphemes(segment.text)) {
-      const piece = segment.isControl ? segment : new Segment(glyph, segment.style);
+    if (segment.isControl) continue;
+    for (const glyph of graphemes(segment.text)) {
+      const piece = new Segment(glyph, segment.style);
       pieces.push(piece);
       starts.push(col);
       col += piece.cellLength;
     }
   }
-  let screen = 0;
+  const columns: number[] = [];
   for (const index of shownWritten(pieces)) {
-    const cells = pieces[index]!.cellLength;
-    if (x < screen + cells) return starts[index]! + (x - screen);
-    screen += cells;
+    for (let cell = 0; cell < pieces[index]!.cellLength; cell++) columns.push(starts[index]! + cell);
   }
-  return x;
+  return columns;
 }
 
 /** `segments` with each one's edges judged on the text as laid out (`edged`). */

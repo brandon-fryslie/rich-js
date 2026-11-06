@@ -34,7 +34,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
-import type { TextOrder } from "../core/text-order.js";
+import { frameColumn } from "../core/seal.js";
 import type { PointerShape } from "../core/terminal-requests.js";
 import { Segment } from "../core/segment.js";
 import { SurfaceRenderer, type Surface } from "../core/paint.js";
@@ -378,16 +378,22 @@ export class App implements FrameHost {
   }
 
   /**
-   * The order the terminal is written in: under `logical` it orders each of
-   * `frame`'s lines itself, so a pointer's column is not the frame's.
+   * The rows on screen now, as painted: what a pointer event lands on. A
+   * pointer reports the screen's column, which `frameColumn` maps to this
+   * frame's.
    */
-  get textOrder(): TextOrder {
-    return this.console.destination.textOrder;
-  }
-
-  /** The rows on screen now, as painted: what a pointer event lands on. */
   get frame(): readonly (readonly Segment[])[] {
     return this._frame;
+  }
+
+  /**
+   * [LAW:single-enforcer] The column of `frame`'s row `y` the terminal shows
+   * at screen column `x`. Where the terminal orders what it is written
+   * (`logical`), it reorders each line as a whole, so the two differ;
+   * elsewhere they are one.
+   */
+  frameColumn(x: number, y: number): number {
+    return frameColumn(this._frame, this.console.destination.textOrder, x, y);
   }
 
   /**

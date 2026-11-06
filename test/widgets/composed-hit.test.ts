@@ -31,7 +31,7 @@ function composed(widget: InteractiveWidget): Layout {
 function routerOver(root: Layout): InputParser {
   const frame = (): Segment[][] => Segment.splitLines(root.render(OPTIONS));
   return parserFor(new EventRouter({
-    source: { focusManager: new DefaultFocusManager({ mounted: () => [], onScreen: () => [], frameTime: () => 0 }), get frame() { return frame(); }, textOrder: "plain", frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
+    source: { focusManager: new DefaultFocusManager({ mounted: () => [], onScreen: () => [], frameTime: () => 0 }), get frame() { return frame(); }, frameColumn: (x) => x, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
     focusOnClick: false,
   }));
 }

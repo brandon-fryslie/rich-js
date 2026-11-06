@@ -259,8 +259,8 @@ function shownRow(shown: readonly (readonly Segment[])[], owner: object): number
 
 /**
  * Where one frame laid a field's value out: on one line, the stops its window
- * showed, left to right on the screen; on rows, the visual rows, the first of
- * them it shows, and the stops of each row it drew.
+ * showed; on rows, the visual rows, the first of them it shows, and the stops
+ * of each row it drew. Stops are held both ways `Stops` names.
  */
 type Layout = { readonly drawn: Drawn } & (
   | { readonly kind: "line"; readonly start: CodePoint; readonly screen: Stops }
@@ -306,12 +306,12 @@ class Laid {
 }
 
 /**
- * The stop under screen column `col` of a row. Past its cells it is the end
- * the frame drew no cell for, where there is one — on a right-to-left row that
- * end stands at the left, with no cell to press — and the rightmost stop
- * otherwise, so every stop a step reaches a press reaches too.
+ * The stop under column `col` of a row's stops, in the frame's order: the
+ * router hands a press the frame's column. Past its cells it is the end the
+ * frame drew no cell for, where there is one, and the last stop otherwise, so
+ * every stop a step reaches a press reaches too.
  */
-function offsetAtScreenCell(screen: readonly Seen[], col: CellCol): CodePoint {
+function offsetAtCell(screen: readonly Seen[], col: CellCol): CodePoint {
   let cells = 0;
   for (const seen of screen) {
     cells += seen.cells;
@@ -801,12 +801,12 @@ export class TextInput extends ThemedWidget {
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
       const stops = layout.screens.get(rawRowIdx);
       if (stops === undefined) throw new Error(`TextInput: a press landed on row ${rawRowIdx}, which its frame did not draw`);
-      this.cursorPosition = asCodeUnit(row.valueStart + offsetAtScreenCell(stops.framed, relX));
+      this.cursorPosition = asCodeUnit(row.valueStart + offsetAtCell(stops.framed, relX));
     } else {
       // [LAW:types-are-the-program] relX is a column of the window the
       // clicked frame holds, past the bracket.
       const relX = asCellCol(Math.max(0, event.x - 1));
-      this.cursorPosition = asCodeUnit(layout.start + offsetAtScreenCell(layout.screen.framed, relX));
+      this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen.framed, relX));
     }
     this._preferredColumn.set(null);
   }
@@ -1125,7 +1125,7 @@ export class TextInput extends ThemedWidget {
    * its end, `endCells` wide (what pads the row; the caret's blank, when it is
    * there, is drawn beside them). Ordered at the row's line's direction, its
    * runs of one style merged so a frame still writes a row as a few runs, and
-   * returned with its stops left to right on the screen once what is drawn
+   * returned with its stops (`Stops`) once what is drawn
    * after it on its line is known (`_screenOf`).
    */
   private _drawnRow(
@@ -1148,7 +1148,7 @@ export class TextInput extends ThemedWidget {
 
   /**
    * `row`'s cells in the order the frame holds them, unmerged, and its stops
-   * left to right on the screen. Under `plain` the order is the row's own, so
+   * (`Stops`). Under `plain` the order is the row's own, so
    * each glyph's stop is where it was drawn. Elsewhere each glyph is stamped
    * with its offset into the row (a `Slot`) before the row is ordered, and the
    * stops are read off the stamps after: [LAW:one-source-of-truth] the order
@@ -1197,11 +1197,11 @@ export class TextInput extends ThemedWidget {
   }
 
   /**
-   * The stops of `row` left to right on the screen, read off `ordered`, its
-   * cells as `_orderedRow` stamped and ordered them, with `after` drawn past
-   * them on their line. Where the terminal orders the row itself (`logical`)
-   * the screen is the row as it is written (`shownWritten`); elsewhere it is
-   * the frame. The end the frame drew no cell for stands where its probe is
+   * The stops of `row` both ways (`Stops`), read off `ordered`, its cells as
+   * `_orderedRow` stamped and ordered them, with `after` drawn past them on
+   * their line. Where the terminal orders the row itself (`logical`) the
+   * shown order is the row as it is written (`shownWritten`); elsewhere it is
+   * the frame's. The end the frame drew no cell for stands where its probe is
    * shown, with no cells, so it is still a stop.
    */
   private _screenOf(ordered: readonly Cell[], drawn: Drawn, after: readonly Segment[]): Stops {

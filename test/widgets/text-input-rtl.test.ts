@@ -11,7 +11,7 @@ import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
 import type { TextOrder } from "../../src/core/text-order.js";
-import { writtenColumn } from "../../src/core/seal.js";
+import { frameColumn } from "../../src/core/seal.js";
 import { cellOf } from "../../src/widgets/hit.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { Panel } from "../../src/renderables/panel.js";
@@ -285,9 +285,16 @@ function screenColumn(row: string, unit: number): number {
   throw new Error(`unit ${unit} is not on the row`);
 }
 
-// The frame's column a press at screen column `x` of row `y` reaches, as the router maps it.
-const framedAt = (frame: readonly (readonly Segment[])[], x: number, y: number, order: TextOrder): number =>
-  order === "logical" ? writtenColumn(frame[y]!, x) : x;
+// A left press and release at screen column `x` of row `y` of the painted
+// `frame`, through an app's router, which maps the screen to the frame.
+function pressOnScreen(input: TextInput, frame: readonly (readonly Segment[])[], order: TextOrder, x: number, y: number): void {
+  const focusManager = new DefaultFocusManager({ mounted: () => [input], onScreen: () => [input], frameTime: () => 0 });
+  const router = parserFor(new EventRouter({
+    source: { focusManager, frame, frameColumn: (sx, sy) => frameColumn(frame, order, sx, sy), frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
+    focusOnClick: false,
+  }));
+  router.feed(`\x1b[<0;${x + 1};${y + 1}M\x1b[<0;${x + 1};${y + 1}m`);
+}
 
 // The caret's row, and the code unit it starts at in what a terminal keeps of that row.
 function caretUnit(bytes: string): { y: number; unit: number } {
@@ -319,9 +326,8 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
             const { y, unit } = caretUnit(bytes);
             at!.x = screenColumn(rows(bytes)[y]!, unit);
           }
-          const x = framedAt(frame, at!.x, at!.y, order);
           input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
-          input.handleMouse({ type: "mouse_down", x, y: at!.y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, at!.y), time: 0 });
+          pressOnScreen(input, frame, order, at!.x, at!.y);
           expect(input.cursorPosition, what).toBe(stop);
           for (const step of ["left", "right"]) {
             input.cursorPosition = asCodeUnit(stop);
@@ -408,8 +414,7 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
         const drawnTo = Math.max(...frame[at.y]!.flatMap((segment, index) =>
           segment.text.trim() !== "" || segment.style?.reverse === true ? [Segment.getLineLength(frame[at.y]!.slice(0, index + 1))] : []));
         const pressed = (screenX: number): number => {
-          const x = framedAt(frame, screenX, at.y, order);
-          input.handleMouse({ type: "mouse_down", x, y: at.y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, at.y), time: 0 });
+          pressOnScreen(input, frame, order, screenX, at.y);
           return input.cursorPosition;
         };
         for (const [name, side] of [["left", -1], ["right", 1]] as const) {
@@ -455,9 +460,8 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
       const bytes = segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "logical" });
       const { y, unit } = caretUnit(bytes);
       expect(rows(bytes)[y]).toContain("▼");
-      const x = framedAt(frame, screenColumn(rows(bytes)[y]!, unit), y, "logical");
       input.cursorPosition = asCodeUnit(0);
-      input.handleMouse({ type: "mouse_down", x, y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, y), time: 0 });
+      pressOnScreen(input, frame, "logical", screenColumn(rows(bytes)[y]!, unit), y);
       expect(input.cursorPosition, `at ${stop}`).toBe(stop);
     }
   });
@@ -513,7 +517,7 @@ describe("under logical, a press reads the terminal's order of the whole compose
     // press reads that one, as an app's router does, not a frame drawn after.
     let painted: Segment[][] = [];
     const router = parserFor(new EventRouter({
-      source: { focusManager: fm, get frame() { return painted; }, textOrder: "logical", frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
+      source: { focusManager: fm, get frame() { return painted; }, frameColumn: (x, y) => frameColumn(painted, "logical", x, y), frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
       focusOnClick: false,
     }));
     for (const stop of stops(value)) {

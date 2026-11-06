@@ -9,7 +9,6 @@
 import type { HostFrame, Renderable, Measurable, RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import type { Anchor } from "../core/anchor.js";
-import type { TextOrder } from "../core/text-order.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { PointerShape } from "../core/terminal-requests.js";
 import type { KeyEvent, TerminalMouseEvent } from "../host/input.js";
@@ -176,8 +175,8 @@ export interface FocusManager {
 export interface FrameSource {
   readonly focusManager: FocusManager;
   readonly frame: readonly (readonly Segment[])[];
-  /** The order the terminal is written in; under `logical` it orders `frame`'s lines itself. */
-  readonly textOrder: TextOrder;
+  /** The column of `frame`'s row `y` shown at screen column `x` (`App.frameColumn`). */
+  frameColumn(x: number, y: number): number;
   frameNow(): HostFrame;
   refresh(): void;
 }

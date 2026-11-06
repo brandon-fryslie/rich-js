@@ -15,7 +15,6 @@ import type {
 } from "./types.js";
 import { cellOf, drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
-import { writtenColumn } from "../core/seal.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { KeyEvent } from "../host/input.js";
 import type { AppMouseEvent } from "../host/app.js";
@@ -96,7 +95,7 @@ export class EventRouter {
    * frame on screen, so it is re-read whenever either one changes.
    */
   framePainted(): void {
-    const hit = this.pointer && widgetAt(this.source.frame, this.framed(this.pointer.x, this.pointer.y), this.pointer.y);
+    const hit = this.pointer && widgetAt(this.source.frame, this.source.frameColumn(this.pointer.x, this.pointer.y), this.pointer.y);
     this.hover(hit ? hit.widget : null);
   }
 
@@ -153,8 +152,7 @@ export class EventRouter {
    * outward.
    */
   wheel({ x, y, lines }: WheelEvent): boolean {
-    this.point(x, y);
-    const target = scrollTargetAt(this.source.frame, this.framed(x, y), y, lines);
+    const target = scrollTargetAt(this.source.frame, this.point(x, y).x, y, lines);
     if (!target) return false;
     target.scrollBy(lines);
     this.source.refresh();
@@ -163,24 +161,16 @@ export class EventRouter {
 
   // --- Dispatch ---
 
-  // [LAW:single-enforcer] The one translation of a pointer's screen column to
-  // the frame's. A terminal that orders what it is written (`logical`) shows
-  // each line reordered as a whole — a container's border and every widget
-  // beside the one pressed included — so the column is mapped through the
-  // whole line, and everything past here reads the frame as it holds it.
-  private framed(x: number, y: number): number {
-    if (this.source.textOrder !== "logical") return x;
-    const line = this.source.frame[y];
-    return line === undefined ? x : writtenColumn(line, x);
-  }
-
   // [LAW:single-enforcer] Every pointer report, the wheel's included, says
   // where the pointer is, so hover is read again from wherever it last was.
-  private point(x: number, y: number): ReturnType<typeof widgetAt> {
-    const hit = widgetAt(this.source.frame, this.framed(x, y), y);
+  // The report is the screen's column; past here everything reads the frame's,
+  // which the host maps it to.
+  private point(x: number, y: number): { hit: ReturnType<typeof widgetAt>; x: number } {
+    const framed = this.source.frameColumn(x, y);
+    const hit = widgetAt(this.source.frame, framed, y);
     this.pointer = { x, y };
     this.hover(hit?.widget ?? null);
-    return hit;
+    return { hit, x: framed };
   }
 
   // [LAW:dataflow-not-control-flow] Three-stage walk; same shape every
@@ -219,8 +209,7 @@ export class EventRouter {
     for (const handler of this.mouseHandlers) handler(event);
 
     const frame = this.source.frame;
-    const hit = this.point(event.x, event.y);
-    const x = this.framed(event.x, event.y);
+    const { hit, x } = this.point(event.x, event.y);
 
     // After the program's handlers, so one that reads focus sees it as it was;
     // before delivery, so the pressed widget has focus when it hears the
