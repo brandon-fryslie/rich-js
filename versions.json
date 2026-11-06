@@ -4,15 +4,22 @@
     {
       "version": "pr-582",
       "ref": "refs/pull/582/merge",
-      "sha": "4259da53906e8f00b15765ebb41c275e5ece5b2c",
-      "timestamp": "2026-11-06T13:43:25.587Z",
+      "sha": "7a2496abc28f37134cd65304978640515e0ba6bd",
+      "timestamp": "2026-11-06T13:53:05.348Z",
       "commits": [
         {
-          "sha": "4259da53906e8f00b15765ebb41c275e5ece5b2c",
+          "sha": "7a2496abc28f37134cd65304978640515e0ba6bd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T13:41:38Z",
-          "message": "Merge 7068497a0e73cee770a63658fa3675a862282e74 into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
+          "timestamp": "2026-11-06T13:50:57Z",
+          "message": "Merge f3159d4c8da5cff98cf837bf554e07a772377218 into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
+        },
+        {
+          "sha": "f3159d4c8da5cff98cf837bf554e07a772377218",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:50:47-07:00",
+          "message": "The docs gate reads what ends a line from the decoder (LINE_ENDS), C1 NEL and CNL included; save and restore handled once in the scan; DECLRMM noted (rich-control-codes-xh4n.d9w review)\n"
         },
         {
           "sha": "7068497a0e73cee770a63658fa3675a862282e74",
