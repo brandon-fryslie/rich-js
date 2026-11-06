@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10",
-      "timestamp": "2026-11-06T22:48:07.676Z",
+      "sha": "f5cb509f1c072161a33d4f5deb776c9d4e56b2ff",
+      "timestamp": "2026-11-06T23:15:15.009Z",
       "commits": [
         {
-          "sha": "bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10",
+          "sha": "f5cb509f1c072161a33d4f5deb776c9d4e56b2ff",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:45:52-07:00",
-          "message": "The docs gate asks the decoder which escapes it drew as no terminal would (lyr) (#587)\n\n* The docs gate asks the decoder which escapes it drew as no terminal would (rich-control-codes-xh4n.lyr)\n\nThe gate kept a regex copy of decodeAnsi's rules, which missed C1 forms\n(a C1 restore off its line, a C1 vertical move) and ended a save's line at\na U+2028 inside a link URI. The decoder now reports the first escape it\nperforms other than a terminal does (scanUndrawn), from its own line\nbreaks and the branches that decide each escape, carrying its line state\nacross writes. The gate's mirror and the exports only it read are gone.\n\nA save does not hold the open OSC 8 link: DECSC saves position, SGR and\nthe character sets (DEC STD 070, Ghostty's DECSC reference).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Gate review: a mark finishes a cluster across writes, REP cut at the card margin, VT/FF/LS/PS and a cancelled ESC judged as a terminal draws them (rich-control-codes-xh4n.lyr)\n\n* Gate review (medium): the cursor column carries across writes, the scan judges at the card's own width, one line splitter, a mark joins only what the segmenter joins, a multi-row CNL is reported (rich-control-codes-xh4n.lyr)\n\n* Gate review (high, step 12): an ESC cancelled by CAN, SUB or the line break after it is silent; each break's verdict comes from the match that found it (rich-control-codes-xh4n.lyr)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-11-06T16:12:59-07:00",
+          "message": "A string escape's payload, an OSC 8 URI included, ends at CAN or SUB as a terminal's parser aborts it (rich-control-codes-xh4n.52p) (#588)\n\n* A string escape's payload, an OSC 8 URI included, ends at CAN or SUB as a terminal's parser aborts it (rich-control-codes-xh4n.52p)\n\n* CAN and SUB abort a CSI or an escape's intermediates as they do a string: one ABORTS set (rich-control-codes-xh4n.52p)\n\n* A string escape CAN or SUB aborts is silent, as an aborted CSI is (rich-control-codes-xh4n.52p)\n\n* An ST with no string to end is inert, as the one a CAN or SUB leaves; one prefix per sequence so far (rich-control-codes-xh4n.52p)\n\n* Say why performed never sees an abort from beyond its bytes (rich-control-codes-xh4n.52p)"
         }
       ]
     },
