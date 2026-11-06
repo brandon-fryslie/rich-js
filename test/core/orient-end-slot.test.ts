@@ -21,18 +21,26 @@ function endSlots(line: Segment[], order: "visual" | "words"): [number, boolean]
     .map((segment) => [cellLen(segment.text), segment.style?.caret !== undefined]);
 }
 
+// Syriac under `words` is the expected failure below.
+const PREPENDS: [string, string, readonly string[]][] = [
+  ["Arabic number sign U+0600", "\u0661\u0600", ["visual", "words"]],
+  ["Syriac abbreviation mark U+070F", "\u0710\u070F", ["visual"]],
+];
+
 // A Prepend character joins whatever follows it in Intl.Segmenter's clusters,
 // and the end slot past the text is no character for it to join.
 describe.each(["visual", "words"] as const)("the end slot past a row's text under %s order", (order) => {
-  // U+070F before a Syriac letter is a cluster two cells wide under `words`,
-  // which kitty's run reversal styles as one: rich-control-codes-xh4n.qmw.
-  const prepends: [string, string][] = [["Arabic number sign U+0600", "\u0661\u0600"]];
-  if (order === "visual") prepends.push(["Syriac abbreviation mark U+070F", "\u0710\u070F"]);
-  it.each(prepends)("keeps its own cell after a Prepend character: %s", (_name, text) => {
+  it.each(PREPENDS.filter(([, , orders]) => orders.includes(order)))("keeps its own cell after a Prepend character: %s", (_name, text, _orders) => {
     expect(endSlots([new Segment(text), new Segment(" ", CARET)], order)).toEqual([[1, true]]);
     expect(endSlots([new Segment(text), new Segment("|", CARET)], order)).toEqual([[1, true]]);
     expect(endSlots([new Segment(text), new Segment("|", DRAWN)], order)).toEqual([[1, false]]);
   });
+});
+
+// U+070F before a Syriac letter is a cluster two cells wide under `words`, which
+// kitty's run reversal styles as one; this goes green with rich-control-codes-xh4n.qmw.
+it.fails("keeps its own cell after U+070F under words order", () => {
+  expect(endSlots([new Segment("\u0710\u070F"), new Segment("|", CARET)], "words")).toEqual([[1, true]]);
 });
 
 it("keeps an end-slot glyph outside the BMP whole", () => {
