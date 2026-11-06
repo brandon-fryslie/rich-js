@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-579",
-      "ref": "refs/pull/579/merge",
-      "sha": "1d581445e4b9b4cbccdefa8b1a540630da012950",
-      "timestamp": "2026-11-06T12:26:30.490Z",
-      "commits": [
-        {
-          "sha": "1d581445e4b9b4cbccdefa8b1a540630da012950",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T12:24:19Z",
-          "message": "Merge 8722d2652f8fbe657705b852ca1b6f5a61b83c83 into 22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03\n"
-        },
-        {
-          "sha": "8722d2652f8fbe657705b852ca1b6f5a61b83c83",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:24:06-07:00",
-          "message": "Review: stopped-app error precedes the shape parse; a non-string is named by its type; App test moves to widgets; docs state the TypeError (rich-control-codes-xh4n.19b)\n"
-        },
-        {
-          "sha": "68a7c036ea3f70e26e7f2d3607022efd598830fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:19:06-07:00",
-          "message": "A pointer shape is parsed where it enters, so no caller writes a second OSC through OSC 22 (rich-control-codes-xh4n.19b)\n\nPointerShape is derived from one runtime list; Console.setPointerShape and the App.pointerShape setter parse first, attended or not, running or not.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03",
