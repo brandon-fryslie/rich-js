@@ -317,8 +317,10 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("é\x1b[1b").plain).toBe("éé");
     const red = decodeAnsi("\x1b[31m-\x1b[4b\x1b[0m");
     expect(red.spans.map((span) => [span.start, span.end, String(span.style)])).toEqual([[0, 5, "color(1)"]]);
-    // Overstrike is a graphic character drawn, so it repeats bold.
-    expect(String(decodeAnsi("x\bx\x1b[2b").spans[0]!.style)).toBe("bold");
+    // Overstrike's bold is the decoder's reading, so the repeats take the SGR style, as a terminal draws them.
+    const struck = decodeAnsi("x\bx\x1b[2b");
+    expect(struck.plain).toBe("xxx");
+    expect(struck.spans.map((span) => [span.start, span.end, String(span.style)])).toEqual([[0, 1, "bold"]]);
   });
 
   it.each([

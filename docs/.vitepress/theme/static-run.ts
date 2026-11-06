@@ -16,6 +16,7 @@
  * prints from then on is a drawing of what it does.
  */
 import { scanEscapes, undrawnEscape } from "../example-fragments.js";
+import type { Carried } from "../example-fragments.js";
 import { sandbox, type TerminalSpec } from "./sandbox.js";
 
 /** How a static run ended. */
@@ -69,8 +70,8 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
   let printed = 0;
   // An escape begun in one write and ended in a later one is read whole, once it is.
   let unread = "";
-  // Whether a cursor save stands on the line the bytes seen so far end on (`scanEscapes`).
-  let saved = false;
+  // What the line the bytes seen so far end on holds for the next write (`scanEscapes`).
+  let carried: Carried = { saved: false, repeatable: false };
   let finish: (end: StaticEnd) => void = () => {};
   const result = new Promise<StaticResult>((resolve) => {
     // [LAW:single-enforcer] Every way a run ends comes through here, once:
@@ -92,10 +93,10 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
         chunks.push(chunk);
         printed += chunk.length;
         const seen = `${unread}${chunk}`;
-        const scan = scanEscapes(seen, saved);
+        const scan = scanEscapes(seen, carried);
         if (scan.dropped !== null) return finish({ kind: "dropped" });
         unread = seen.slice(scan.unread);
-        saved = scan.saved;
+        carried = scan;
         return printed > options.limitChars ? finish({ kind: "overflowed", limitChars: options.limitChars }) : undefined;
       }
       case "listening":

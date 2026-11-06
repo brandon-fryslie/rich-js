@@ -10,7 +10,7 @@ import { OSC8_CLOSE, osc8Open } from "../../src/core/osc8.js";
 describe("scanEscapes", () => {
   it("passes what a drawing draws: SGR, erase in line, a carriage return and an OSC 8 link", () => {
     const bytes = `\x1b[1;31mred\x1b[0m\r\x1b[2K${osc8Open("https://example.com")}link${OSC8_CLOSE}`;
-    expect(scanEscapes(bytes)).toEqual({ dropped: null, unread: bytes.length, saved: false });
+    expect(scanEscapes(bytes)).toEqual({ dropped: null, unread: bytes.length, saved: false, repeatable: false });
   });
 
   it.each(["\x1b[E", "\x1b[3E", "\x1bE"])("passes %j, a line break the drawing draws", (escape) => {
@@ -36,8 +36,19 @@ describe("scanEscapes", () => {
   it("carries a save across writes, so a restore in the next one is drawn as it is in the whole output", () => {
     const first = scanEscapes("a\x1b7bc");
     expect(first).toMatchObject({ dropped: null, saved: true });
-    expect(scanEscapes("\x1b8d", first.saved).dropped).toBeNull();
-    expect(scanEscapes("\nx\x1b8d", first.saved).dropped).toBe("\x1b8");
+    expect(scanEscapes("\x1b8d", first).dropped).toBeNull();
+    expect(scanEscapes("\nx\x1b8d", first).dropped).toBe("\x1b8");
+  });
+
+  it("passes REP after a graphic character, carried across writes, and finds it where the drawing repeats nothing", () => {
+    expect(scanEscapes("a\x1b[3b").dropped).toBeNull();
+    expect(scanEscapes("\x1b[3b").dropped).toBe("\x1b[3b");
+    expect(scanEscapes("a\x1b[1m\x1b[3b").dropped).toBe("\x1b[3b");
+    expect(scanEscapes("a\n\x1b[3b").dropped).toBe("\x1b[3b");
+    const first = scanEscapes("ab");
+    expect(first.repeatable).toBe(true);
+    expect(scanEscapes("\x1b[3b", first).dropped).toBeNull();
+    expect(scanEscapes("\x1b[3b", scanEscapes("a\x1b[1m")).dropped).toBe("\x1b[3b");
   });
 
   it.each([
@@ -58,16 +69,16 @@ describe("scanEscapes", () => {
     const link = osc8Open("https://example.com/a/long/path/past/any/window");
     const first = `x${link.slice(0, 20)}`;
     const scan = scanEscapes(first);
-    expect(scan).toEqual({ dropped: null, unread: 1, saved: false });
+    expect(scan).toEqual({ dropped: null, unread: 1, saved: false, repeatable: true });
     const whole = `${first.slice(scan.unread)}${link.slice(20)}y`;
-    expect(scanEscapes(whole)).toEqual({ dropped: null, unread: whole.length, saved: false });
+    expect(scanEscapes(whole)).toEqual({ dropped: null, unread: whole.length, saved: false, repeatable: true });
     expect(scanEscapes("\x1b[2").unread).toBe(0);
-    expect(scanEscapes("x\x1b(")).toEqual({ dropped: null, unread: 1, saved: false });
-    expect(scanEscapes("\x1b(0q\x1b[!p")).toEqual({ dropped: null, unread: 8, saved: false });
+    expect(scanEscapes("x\x1b(")).toEqual({ dropped: null, unread: 1, saved: false, repeatable: true });
+    expect(scanEscapes("\x1b(0q\x1b[!p")).toEqual({ dropped: null, unread: 8, saved: false, repeatable: false });
   });
 
   it("cuts a designation of any final, a string escape's introducer included", () => {
-    expect(scanEscapes("\x1b(_q")).toEqual({ dropped: null, unread: 4, saved: false });
+    expect(scanEscapes("\x1b(_q")).toEqual({ dropped: null, unread: 4, saved: false, repeatable: true });
   });
 
   it.each([
