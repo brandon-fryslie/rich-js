@@ -93,7 +93,11 @@ type Token =
   | { readonly kind: "edit"; readonly edit: Edit; readonly count: number }
   | { readonly kind: "erase"; readonly mode: EraseMode }
   /** DECSC or SCOSC (`save`), DECRC or SCORC (not). */
-  | { readonly kind: "cursor"; readonly save: boolean };
+  | { readonly kind: "cursor"; readonly save: boolean }
+  /** REP: the graphic character drawn just before it, `count` more times. */
+  | { readonly kind: "repeat"; readonly count: number }
+  /** An escape or control the decoder draws nothing for; it still comes between a character and a REP. */
+  | { readonly kind: "silent" };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
 type EraseMode = "0" | "1" | "2";
@@ -186,17 +190,17 @@ const finalClass = (table: object): string => `[${hex(finals(Object.keys(table).
 
 /**
  * The CSI final bytes `decodeAnsi` performs on a line besides SGR's `m` and
- * erase in line's `K`: every move and every edit. The docs' output gate reads
- * this rather than a copy of it.
+ * erase in line's `K`: every move, every edit, and REP's `b`. The docs' output
+ * gate reads this rather than a copy of it.
  */
-export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(EDITS).join("");
+export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(EDITS).join("") + "b";
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
  * order — each CSI and string escape in its `ESC` form or its C1 one — a
  * carriage return; a cursor save (`save`) or restore (`restore`), ahead of the
  * "any other" CSI and escape that would otherwise take them; a move along the line (`motion`) or an edit of it (`edit`),
- * reading the first parameter (`count`) as a terminal does; an SGR sequence (`sgr`, its parameters — a private
+ * or REP (`repeat`), each reading the first parameter (`count`) as a terminal does; an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
  * (`mode`); a soft reset, DECSTR (`reset`); any other CSI sequence; any other
  * string escape — OSC, DCS, APC, PM, SOS — run to a terminator or cut off where
@@ -209,7 +213,7 @@ export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(E
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>b))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -241,12 +245,16 @@ const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { save, restore, count, motion, edit, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
+    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
+    if (Object.values(match.groups!).every((group) => group === undefined) && match[0] !== "\r" && match[0] !== "\b") {
+      yield { kind: "silent" };
+    }
     if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
+    if (repeat !== undefined) yield { kind: "repeat", count: Number(count) || 1 };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
     if (reset !== undefined) yield { kind: "reset", soft: reset !== "\x1bc" };
     if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charsetOf(charset!) };
@@ -584,12 +592,32 @@ export class AnsiDecoder {
     let column = 1;
     // A column saved on this line; a save on another names a row this one is not.
     let savedColumn: number | undefined = undefined;
+    // The graphic character drawn last and its style, while nothing has come
+    // after it: ECMA-48's REP repeats "the preceding graphic character", and a
+    // control function in between leaves it none.
+    let last: Cell | undefined = undefined;
     for (const token of tokens(line)) {
+      const preceding = last;
+      last = undefined;
       switch (token.kind) {
         case "text": {
           const style = this.sgr.withLink(this.link);
           const text = drawnIn(this.sets[this.shifted], token.text);
-          for (const cluster of graphemes(text)) column += draw(cells, column, cluster, style);
+          for (const cluster of graphemes(text)) {
+            column += draw(cells, column, cluster, style);
+            last = cluster === "\t" ? undefined : [cluster, style];
+          }
+          break;
+        }
+        case "repeat": {
+          // A mark with nothing under it takes no cell, and xterm repeats only what does.
+          const width = preceding === undefined ? 0 : cellLen(preceding[0]);
+          if (width === 0) break;
+          // A terminal wraps what passes the right margin onto the next row; the
+          // decoder holds one row, so the repeats stop at the margin, or where
+          // the cursor already stands past it, as a move forward does.
+          const room = Math.floor((Math.max(this.width, column - 1) - (column - 1)) / width);
+          for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding!);
           break;
         }
         case "overstrike": {
@@ -597,7 +625,9 @@ export class AnsiDecoder {
           // itself only overwrites the earlier, as on a terminal.
           const character = drawnIn(this.sets[this.shifted], token.character);
           const emphasis = character === token.character ? token.emphasis : NULL_STYLE;
-          column += draw(cells, column, character, this.sgr.add(emphasis).withLink(this.link));
+          const style = this.sgr.add(emphasis).withLink(this.link);
+          column += draw(cells, column, character, style);
+          last = [character, style];
           break;
         }
         case "reset":
@@ -646,6 +676,8 @@ export class AnsiDecoder {
           break;
         case "link":
           this.link = token.uri === "" ? undefined : token.uri;
+          break;
+        case "silent":
           break;
       }
     }

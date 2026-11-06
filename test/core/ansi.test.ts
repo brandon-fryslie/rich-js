@@ -309,6 +309,35 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("\x1b[1ma\x1b[Eb").spans).toHaveLength(2);
   });
 
+  it("draws REP as the preceding graphic character, count more times", () => {
+    expect(decodeAnsi("a\x1b[3b").plain).toBe("aaaa");
+    expect(decodeAnsi("a\x1b[bz\x9b0b").plain).toBe("aazz");
+    expect(decodeAnsi("─\x1b[2b┐").plain).toBe("───┐");
+    expect(decodeAnsi("字\x1b[2b").cellLength).toBe(6);
+    expect(decodeAnsi("é\x1b[1b").plain).toBe("éé");
+    const red = decodeAnsi("\x1b[31m-\x1b[4b\x1b[0m");
+    expect(red.spans.map((span) => [span.start, span.end, String(span.style)])).toEqual([[0, 5, "color(1)"]]);
+    // Overstrike is a graphic character drawn, so it repeats bold.
+    expect(String(decodeAnsi("x\bx\x1b[2b").spans[0]!.style)).toBe("bold");
+  });
+
+  it.each([
+    ["at the start of a line", "\x1b[3b", ""],
+    ["after an SGR", "a\x1b[1m\x1b[3b", "a"],
+    ["after a move", "ab\x1b[D\x1b[3b", "ab"],
+    ["after a dropped escape", "a\x1b[?25l\x1b[3b", "a"],
+    ["after a tab", "a\t\x1b[3b", "a\t"],
+    ["after a REP", "a\x1b[b\x1b[3b", "aa"],
+  ])("repeats nothing %s, with no graphic character just before it", (_, ansi, plain) => {
+    expect(decodeAnsi(ansi).plain).toBe(plain);
+  });
+
+  it("stops REP at the right margin, where a terminal would wrap", () => {
+    expect(decodeAnsi("a\x1b[999999999b").cellLength).toBe(80);
+    expect(decodeAnsi("字\x1b[99b", { width: 9 }).cellLength).toBe(8);
+    expect(decodeAnsi("abcdef\x1b[5b", { width: 4 }).plain).toBe("abcdef");
+  });
+
   it.each([
     ["DECSC and DECRC", "\x1b7", "\x1b8"],
     ["SCOSC and SCORC", "\x1b[s", "\x1b[u"],
