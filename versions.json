@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-586",
+      "ref": "refs/pull/586/merge",
+      "sha": "8f02a313a780f8008fdc5a6c7f483d89d7c9d402",
+      "timestamp": "2026-11-06T15:40:27.527Z",
+      "commits": [
+        {
+          "sha": "8f02a313a780f8008fdc5a6c7f483d89d7c9d402",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:38:38-07:00",
+          "message": "Merge 9040e524396b20e86b6ea693720aa982b93e4a77 into 80644906c32a0f0fac5b1a61d7aaa72b5f672677\n"
+        },
+        {
+          "sha": "9040e524396b20e86b6ea693720aa982b93e4a77",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:38:27-07:00",
+          "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-584",
       "ref": "refs/pull/584/merge",
       "sha": "6ccfe910bf8cd865a089f85312085b403d911d2f",
