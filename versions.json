@@ -4,15 +4,22 @@
     {
       "version": "pr-588",
       "ref": "refs/pull/588/merge",
-      "sha": "2ed1e7f9c9866fafad0eb4771080c60a9e5d8389",
-      "timestamp": "2026-11-06T22:52:17.867Z",
+      "sha": "4334eeb7392b4da3e5570edfdbbd068567dc5dac",
+      "timestamp": "2026-11-06T23:01:49.593Z",
       "commits": [
         {
-          "sha": "2ed1e7f9c9866fafad0eb4771080c60a9e5d8389",
+          "sha": "4334eeb7392b4da3e5570edfdbbd068567dc5dac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:49:42-07:00",
-          "message": "Merge bd471753c49d06140300e7e57ddbcfc6f17d678e into bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10\n"
+          "timestamp": "2026-11-06T22:59:19Z",
+          "message": "Merge dd4ddfc9b07ad8e1d65217261d8e032dba18b178 into bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10\n"
+        },
+        {
+          "sha": "dd4ddfc9b07ad8e1d65217261d8e032dba18b178",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T15:59:08-07:00",
+          "message": "CAN and SUB abort a CSI or an escape's intermediates as they do a string: one ABORTS set (rich-control-codes-xh4n.52p)\n"
         },
         {
           "sha": "bd471753c49d06140300e7e57ddbcfc6f17d678e",
