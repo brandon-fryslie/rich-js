@@ -558,16 +558,13 @@ const ASCII_ZERO_CELL_GLYPH = "?";
 
 // [LAW:one-source-of-truth] `glyph` as one line shows it beside `standIn`, the
 // one-cell stand-in a zero-cell glyph is drawn as: on it where the segmenter
-// would join it to the glyph before it — a mark the value holds alone — and
-// closed by it where it would join the glyph after — a Prepend the value
-// holds alone. Each glyph then stays one cluster of what is drawn whatever is
-// drawn beside it, so the segmenter decides it and no list of classes does.
+// would join it to the glyph before it — a mark the value holds alone. Each
+// glyph then stays one cluster of what is drawn whatever is drawn beside it, so
+// the segmenter decides it and no list of classes does. A Prepend needs no
+// stand-in: its cluster already ends at itself (`graphemes`).
 const ownClusters = new Memo<string>();
 function ownCluster(glyph: string, standIn: string): string {
-  return ownClusters.get(standIn + glyph, () => {
-    const opened = graphemes(standIn + glyph).length === 1 ? standIn + glyph : glyph;
-    return graphemes(opened + standIn).length === 1 ? opened + standIn : opened;
-  });
+  return ownClusters.get(standIn + glyph, () => (graphemes(standIn + glyph).length === 1 ? standIn + glyph : glyph));
 }
 
 // Text a key may insert: anything but the C0 controls, DEL and the C1

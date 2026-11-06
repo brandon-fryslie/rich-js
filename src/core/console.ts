@@ -854,7 +854,7 @@ export class Console {
   // --- Export (when record:true) ---
 
   exportText({ clear = true }: { clear?: boolean } = {}): string {
-    const text = [...sealed(this._recorded.get(), "plain")].map((s) => s.text).join("");
+    const text = [...sealed(this._recorded.get(), "plain", false)].map((s) => s.text).join("");
     if (clear) this._recorded.set([]);
     return text;
   }

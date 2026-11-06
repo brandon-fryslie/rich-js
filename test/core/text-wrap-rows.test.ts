@@ -46,7 +46,7 @@ function texts(): RichText[] {
 }
 
 const destination = (textOrder: "plain" | "logical") =>
-  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, reducedMotion: false, textOrder }) as const;
+  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder }) as const;
 
 /** The rows drawn one per line, as a host lays them out. */
 function drawnRows(rows: readonly RichText[], options: WrapOptions): Segment[] {

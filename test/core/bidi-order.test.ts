@@ -271,7 +271,7 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
   test("keeps each segment's edges, so a joiner at one is judged as in every order", () => {
     const style = Style.parse("bold");
     const bytes = (textOrder: TextOrder): string =>
-      segmentsToString([new Segment("\u{1f468}‍", style), new Segment("\u{1f469}", style)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder });
+      segmentsToString([new Segment("\u{1f468}‍", style), new Segment("\u{1f469}", style)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder });
     expect(bytes("words")).toBe(bytes("plain"));
   });
 
@@ -290,7 +290,7 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
   });
 
   test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {
-    expect(segmentsToString([new Segment(HEBREW)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "words" })).toBe(HEBREW);
+    expect(segmentsToString([new Segment(HEBREW)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder: "words" })).toBe(HEBREW);
   });
 });
 

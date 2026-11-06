@@ -213,7 +213,7 @@ export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
 export function exportLines(segments: Iterable<Segment>, theme?: TerminalTheme): ExportLine[] {
   const rows: ExportRun[][] = [[]];
   // A browser is a display that reorders and holds the controls at zero width.
-  for (const segment of sealed(segments, "logical")) {
+  for (const segment of sealed(segments, "logical", false)) {
     const style = segment.style ?? NULL_STYLE;
     const look = resolveLook(style, theme);
     const inVisualOrder = style.bidi?.order === "visual";

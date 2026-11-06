@@ -91,8 +91,21 @@ character keeps its tags and is drawn as one flag.
 Segments that meet on a row were each measured alone. A combining mark, selector or
 joiner of no cells that opens a segment after a glyph on its row would extend that
 glyph, and a joiner that ends one would join the next, so neither is written. A
-spacing mark, a Hangul vowel, a prepended mark or a virama's conjunct still forms
-against its neighbour, at the width each was measured.
+spacing mark, a Hangul vowel or a virama's conjunct still forms against its
+neighbour, at the width each was measured.
+
+A Prepend character — the Arabic number sign U+0600, the Syriac abbreviation mark
+U+070F, the Malayalam dot reph U+0D4E, the rest of Unicode's grapheme-break class —
+joins whatever follows it into one cluster, and a terminal that clusters draws that
+cluster in one cell. Rich's width gives the Prepend a cell of its own, so before a
+base character the library does too: it is its own cluster to every cut, caret step
+and reordering. On a terminal a WORD JOINER (U+2060), which takes no cell and ends a
+cluster, is written after it there and wherever a write ends on it, since the next
+write may continue the line. Off one — a pipe, a file, `exportText`, `exportHtml`,
+`exportSvg`, `renderToString` — nothing is added, since those bytes are text a reader
+keeps. A number sign typed before a caret, a blank or a letter in another
+style keeps its cell, and the row its width. A mark of no cells on a Prepend stays in
+its cluster, one cell to both.
 
 ## Wrapping
 

@@ -134,7 +134,7 @@ function encoded(segment: Segment, destination: OutputTarget): string {
  */
 export function segmentsToString(segments: Iterable<Segment>, destination: OutputTarget): string {
   const parts: string[] = [];
-  for (const segment of sealed(segments, destination.textOrder)) parts.push(encoded(segment, destination));
+  for (const segment of sealed(segments, destination.textOrder, destination.isTerminal)) parts.push(encoded(segment, destination));
   return parts.join("");
 }
 
@@ -164,6 +164,8 @@ export function renderToString(
     ...resolved,
     colorSystem: options?.noColor ? null : resolved.colorSystem,
     hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
+    // A string returned is text until the caller says where it goes.
+    isTerminal: options?.isTTY ?? false,
   };
   const renderOptions: RenderOptions = {
     maxWidth: width,

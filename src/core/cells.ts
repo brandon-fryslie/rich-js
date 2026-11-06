@@ -20,6 +20,104 @@ const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
 // even in 10k code units, and a cache of segmentations would hold native
 // memory for every string it kept.
 const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+const WORD_JOINER = "\u2060";
+
+const prependMemo = new Memo<boolean>();
+
+/**
+ * Whether `character` is a Prepend (UAX #29 GB9b), which a segmenter joins to
+ * whatever follows it. Asked of the segmenter itself — nothing but GB9b joins a
+ * character to a following letter — so the set split below is the set it joins.
+ */
+function isPrepend(character: string): boolean {
+  return prependMemo.get(character, (c) => SEGMENTER.segment(c + "a").containing(0)!.segment.length > c.length);
+}
+
+interface Cluster {
+  readonly index: number;
+  readonly segment: string;
+}
+
+/**
+ * Whether the Prepend `character`, before `next`, ends its cluster where the
+ * library does: before anything taking a cell, which a segmenter joins to it
+ * and Rich counts apart. Before a mark of no cells it does not — Prepend and
+ * mark are one cell to both — and before nothing, nothing joins it. Only a
+ * control breaks before GB9b's join, and a control takes no cell, so no
+ * segmentation is asked.
+ */
+function standsAlone(character: string, next: string): boolean {
+  return next !== "" && isPrepend(character) && cellLen(next) > 0;
+}
+
+/** Whether `text` ends on a Prepend, whose cluster a mark after it extends. */
+export function endsOnPrepend(text: string): boolean {
+  const last = LAST_CHARACTER.exec(text)?.[0];
+  return last !== undefined && isPrepend(last);
+}
+const LAST_CHARACTER = pattern(/[\s\S]$/u);
+
+/**
+ * A segmenter cluster with each Prepend leading it that stands before a base
+ * (`standsAlone`) cut off as a cluster of its own. [LAW:one-source-of-truth]
+ * This is where such a Prepend's cluster ends: at itself. `cellLen` counts its
+ * cell, as Rich does, so a cluster holding it with the base would be one glyph
+ * to a clustering terminal and the row a cell short; `endedPrepends` makes the
+ * wire agree.
+ */
+function* ownCells({ index, segment }: Cluster): Generator<Cluster> {
+  const characters = Array.from(segment);
+  let at = 0;
+  for (const [i, character] of characters.entries()) {
+    if (!standsAlone(character, characters[i + 1] ?? "")) break;
+    yield { index: index + at, segment: character };
+    at += character.length;
+  }
+  yield { index: index + at, segment: segment.slice(at) };
+}
+
+// Only a cluster a Prepend leads can be cut, so every other one passes as the
+// segmenter made it, with nothing allocated.
+const leadsWithPrepend = (segment: string): boolean => isPrepend(String.fromCodePoint(segment.codePointAt(0)!));
+
+function* clustersOf(text: string): Generator<Cluster> {
+  for (const cluster of SEGMENTER.segment(text)) {
+    if (leadsWithPrepend(cluster.segment)) yield* ownCells(cluster);
+    else yield cluster;
+  }
+}
+
+/** The cluster of `segments`, one segmentation of a text, holding code unit `at`. */
+function clusterContaining(segments: Intl.Segments, at: number): Cluster | undefined {
+  const raw = segments.containing(at);
+  if (raw === undefined || !leadsWithPrepend(raw.segment)) return raw;
+  for (const cluster of ownCells(raw)) if (at < cluster.index + cluster.segment.length) return cluster;
+  return undefined;
+}
+
+/**
+ * `text` as written before `after`, a WORD JOINER after each Prepend that
+ * stands alone (`standsAlone`). The joiner is a Control to UAX #29, so a
+ * clustering terminal ends the Prepend's cluster where `ownCells` does; it takes
+ * no cell, and stands in the Prepend's, where a terminal puts it. `after` is
+ * undefined where what follows is unknown — the next write may continue the
+ * line — so a Prepend that ends `text` there is ended too.
+ */
+export function endedPrepends(text: string, after: string | undefined): string {
+  if (PRINTABLE_ASCII.test(text)) return text;
+  let any = false;
+  for (const character of text) if ((any = isPrepend(character))) break;
+  if (!any) return text;
+  const characters = Array.from(text);
+  let out: string | undefined;
+  for (const [index, character] of characters.entries()) {
+    const next = characters[index + 1] ?? after;
+    const ends = next === undefined ? isPrepend(character) : standsAlone(character, next);
+    if (ends && out === undefined) out = characters.slice(0, index).join("");
+    if (out !== undefined) out += ends ? character + WORD_JOINER : character;
+  }
+  return out ?? text;
+}
 
 // The cells `codePoint` takes as what the census says is done with it. Exhaustive,
 // so a new `Disposition` does not compile until it says what it measures.
@@ -143,7 +241,7 @@ function measure(text: string): number {
   const drawn = wireText(text);
   if (!SEPARATOR_STYLES.test(drawn)) return richCells(drawn);
   let cells = 0;
-  for (const { segment } of SEGMENTER.segment(drawn)) cells += richCells(segment);
+  for (const { segment } of clustersOf(drawn)) cells += richCells(segment);
   return cells;
 }
 
@@ -395,7 +493,7 @@ export function graphemes(text: string): string[] {
  */
 export function* clustersFrom(text: string, start: CodePoint): Generator<string> {
   const segments = SEGMENTER.segment(text);
-  for (let at = start, s = segments.containing(at); s; s = segments.containing(at)) {
+  for (let at = start, s = clusterContaining(segments, at); s; s = clusterContaining(segments, at)) {
     const end = s.index + s.segment.length;
     yield text.slice(at, end);
     at = asCodePoint(end);
@@ -406,7 +504,7 @@ export function* clustersFrom(text: string, start: CodePoint): Generator<string>
 export function* clustersBefore(text: string, end: CodePoint): Generator<string> {
   const segments = SEGMENTER.segment(text);
   for (let at = end; at > 0; ) {
-    const { index } = segments.containing(at - 1)!;
+    const { index } = clusterContaining(segments, at - 1)!;
     yield text.slice(index, at);
     at = asCodePoint(index);
   }
@@ -494,7 +592,7 @@ export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
 
 /** The start of the grapheme cluster holding the code unit at `cu`. */
 export function clusterStart(s: string, cu: CodeUnit): CodePoint {
-  const cluster = SEGMENTER.segment(s).containing(cu);
+  const cluster = clusterContaining(SEGMENTER.segment(s), cu);
   return asCodePoint(cluster === undefined ? cu : cluster.index);
 }
 
@@ -506,7 +604,7 @@ export function graphemeBoundaries(s: string): (cu: CodeUnit) => CodePoint {
   return (cu) => {
     if (ascii && Number.isInteger(cu)) return asCodePoint(Math.min(cu, s.length));
     const at = Math.min(cu, s.length);
-    const cluster = clusters.containing(at);
+    const cluster = clusterContaining(clusters, at);
     return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
   };
 }
