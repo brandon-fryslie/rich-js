@@ -59,7 +59,7 @@ function field(value = ""): TextInput {
 
 const press = (input: TextInput, x: number, order: TextOrder): WidgetMouseEvent => {
   const frame = Segment.splitLines(render(input, options(order)));
-  return { type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 };
+  return { type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 };
 };
 
 describe("TextInput with right-to-left text", () => {
@@ -210,7 +210,7 @@ function stops(value: string): number[] {
 }
 
 const pressOn = (frame: Segment[][], input: TextInput, x: number): WidgetMouseEvent =>
-  ({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+  ({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 });
 
 describe("a press reads the frame it lands on", () => {
   it("lands a press past a wrapped right-to-left row's cells on the stop shown beside it, under logical as under visual", () => {
@@ -451,7 +451,7 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
     const frame = Segment.splitLines(render(input, drawn));
     const x = Segment.getLineLength(frame[0]!) - 1;
     expect(x).toBeGreaterThan(cellLen(HEBREW));
-    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 });
     expect(input.cursorPosition).toBe(HEBREW.length);
   });
 
@@ -627,6 +627,16 @@ describe("under logical, a step walks the stops the terminal shows on the whole 
         expect(input.cursorPosition, `${way} from ${stop}`).toBe(beside);
       }
     });
+    // Keys that arrive before a repaint, a held arrow's: each step cuts the
+    // line at the row the frame on screen drew, not the row as drawn since.
+    for (const [way, from, order] of [["left", leftToRight.at(-1)!, leftToRight.toReversed()], ["right", leftToRight[0]!, leftToRight]] as const) {
+      input.cursorPosition = asCodeUnit(from);
+      screen.paint(drawn, view);
+      for (const beside of order.slice(1)) {
+        screen.step(way);
+        expect(input.cursorPosition, `${way} unpainted, toward ${beside}`).toBe(beside);
+      }
+    }
   });
 });
 
@@ -673,7 +683,7 @@ describe("the insertion point past the text, under visual order", () => {
     input.cursorPosition = asCodeUnit(1);
     const frame = Segment.splitLines(render(input, options("visual")));
     const x = Segment.getLineLength(frame[0]!) - 1;
-    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 });
     expect(input.cursorPosition).toBe(0);
   });
 

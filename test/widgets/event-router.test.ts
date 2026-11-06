@@ -719,7 +719,7 @@ describe("EventRouter — mouse parsing", () => {
     const h = makeHarness([a]);
     h.feed("\x1b[<0;7;4M"); // screen (6, 3)
     expect(a.mouseEvents).toEqual([
-      { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false, over: true, time: 0 },
+      { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false, over: true, frame: expect.any(Array), time: 0 },
     ]);
     // Handlers registered with onMouse still see the screen position.
     expect(h.mouseEvents[0]).toMatchObject({ x: 6, y: 3 });

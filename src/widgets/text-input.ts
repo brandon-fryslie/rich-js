@@ -276,6 +276,9 @@ type Layout = { readonly drawn: Drawn } & (
  */
 type Stops = { readonly cells: readonly Cell[]; readonly ordersLine: boolean; readonly own: Outside };
 
+/** A frame's rows of segments, as the router hands one with an event. */
+type Frame = readonly (readonly Segment[])[];
+
 /** What is written on a row's line before its content and after it. */
 type Outside = { readonly before: readonly Segment[]; readonly after: readonly Segment[] };
 
@@ -355,13 +358,13 @@ class Laid {
  * terminal shows rightmost, beside the pointer, so every stop a step reaches a
  * press reaches too.
  */
-function offsetAtCell(stops: Stops, col: CellCol): CodePoint {
+function offsetAtCell(stops: Stops, col: CellCol, outside: Outside): CodePoint {
   let cells = 0;
   for (const seen of framed(stops)) {
     cells += seen.cells;
     if (cells > col) return asCodePoint(seen.at);
   }
-  const shown = shownIn(stops, stops.own);
+  const shown = shownIn(stops, outside);
   return asCodePoint((shown.find((seen) => seen.cells === 0) ?? shown.at(-1))?.at ?? 0);
 }
 
@@ -384,6 +387,27 @@ function outsideIn(frame: readonly (readonly Segment[])[], layout: Layout, row: 
     }
   }
   return undefined;
+}
+
+/** The cells a row's content takes on the frame. */
+function widthOf(stops: Stops): number {
+  return stops.cells.reduce((sum, cell) => sum + cell.cells, 0);
+}
+
+/**
+ * What `frame` writes around the row it shows the cursor of `field` in, cut
+ * at that row's cells in the layout `frame` drew — not the row as drawn
+ * since, so a cursor moved after the paint still cuts the line the terminal
+ * shows; `undefined` where `frame` does not show that row.
+ */
+function outsideOf(frame: Frame, field: object, cursor: CodePoint, markerWidth: number): Outside | undefined {
+  const layout = layoutIn(frame, field);
+  if (layout === undefined) return undefined;
+  if (layout.kind === "line") return outsideIn(frame, layout, 0, cellLen(OPEN), widthOf(layout.screen));
+  const at = cursorRowIn(layout.rows, cursor);
+  const stops = layout.screens.get(at);
+  if (stops === undefined) return undefined;
+  return outsideIn(frame, layout, at - layout.offset, layout.rows[at]!.isContinuation ? markerWidth : 0, widthOf(stops));
 }
 
 /** The layout stamped on the cell `anchor` names, at whatever depth. */
@@ -690,9 +714,6 @@ export class TextInput extends ThemedWidget {
   private readonly _drawn = new State<Drawn>({ maxWidth: Infinity, asciiOnly: false, textOrder: "plain" });
   // The last frame painted, which a step reads its row's stops off.
   private readonly _painted = new State<Painted | undefined>(undefined);
-  // The frame on screen, as the router last handed it (`framePainted`): the
-  // line a step reads what is written around its row off.
-  private readonly _frame = new State<readonly (readonly Segment[])[]>([]);
 
   // [LAW:single-enforcer] The multiline scroll: the viewport keeps the cursor
   // row in view, clamps when the value shrinks, and keeps its offset once the
@@ -788,8 +809,8 @@ export class TextInput extends ThemedWidget {
     // ─── unmodified motion ───
     if (!event.ctrl && !event.meta) {
       switch (event.key) {
-        case "left":  this.moveCharLeft();  event.stop(); return;
-        case "right": this.moveCharRight(); event.stop(); return;
+        case "left":  this.moveCharLeft(event.frame);  event.stop(); return;
+        case "right": this.moveCharRight(event.frame); event.stop(); return;
         case "up":    this.moveLineUp();    event.stop(); return;
         case "down":  this.moveLineDown();  event.stop(); return;
         case "home":  this.moveLineStart(); event.stop(); return;
@@ -800,8 +821,8 @@ export class TextInput extends ThemedWidget {
     // ─── Ctrl-modified motion + readline editing ───
     if (event.ctrl && !event.meta) {
       switch (event.key) {
-        case "left":  this.moveWordLeft();      event.stop(); return;
-        case "right": this.moveWordRight();     event.stop(); return;
+        case "left":  this.moveWordLeft(event.frame);      event.stop(); return;
+        case "right": this.moveWordRight(event.frame);     event.stop(); return;
         case "home":  this.moveDocStart();      event.stop(); return;
         case "end":   this.moveDocEnd();        event.stop(); return;
         case "a":     this.moveLineStart();     event.stop(); return;
@@ -823,8 +844,8 @@ export class TextInput extends ThemedWidget {
     // ─── Alt-modified (meta) motion + editing ───
     if (event.meta && !event.ctrl) {
       switch (event.key) {
-        case "left":  this.moveWordLeft();       event.stop(); return;
-        case "right": this.moveWordRight();      event.stop(); return;
+        case "left":  this.moveWordLeft(event.frame);       event.stop(); return;
+        case "right": this.moveWordRight(event.frame);      event.stop(); return;
         case "b":     this.moveWordBack();          event.stop(); return;
         case "f":     this.moveWordForward();       event.stop(); return;
         case "d":     this.deleteWordForward();  event.stop(); return;
@@ -870,14 +891,16 @@ export class TextInput extends ThemedWidget {
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
       const stops = layout.screens.get(rawRowIdx);
       if (stops === undefined) throw new Error(`TextInput: a press landed on row ${rawRowIdx}, which its frame did not draw`);
-      this.cursorPosition = asCodeUnit(row.valueStart + offsetAtCell(stops, relX));
+      const outside = outsideIn(event.frame, layout, event.y, contentXOff, widthOf(stops)) ?? stops.own;
+      this.cursorPosition = asCodeUnit(row.valueStart + offsetAtCell(stops, relX, outside));
     } else {
       // [LAW:types-are-the-program] relX is a column of the window the
       // clicked frame holds, past the bracket; a press on a bracket is one on
       // the cell inside it, beside the pointer.
-      const width = layout.screen.cells.reduce((sum, cell) => sum + cell.cells, 0);
+      const width = widthOf(layout.screen);
       const relX = asCellCol(Math.min(Math.max(0, event.x - 1), Math.max(0, width - 1)));
-      this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen, relX));
+      const outside = outsideIn(event.frame, layout, 0, cellLen(OPEN), width) ?? layout.screen.own;
+      this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen, relX, outside));
     }
     this._preferredColumn.set(null);
   }
@@ -891,13 +914,15 @@ export class TextInput extends ThemedWidget {
 
   // Left and Right move across the screen, so on a line shown right to left Left
   // moves on through the text. Under `plain` the screen is the text's order.
-  @action moveCharLeft(): void {
-    this.cursorPosition = this._screenStep(-1);
+  // `frame` is the frame on screen the step is taken in, which orders the line
+  // the row is written in (a key's `frame`); without one, the field's own row.
+  @action moveCharLeft(frame: Frame = []): void {
+    this.cursorPosition = this._screenStep(-1, frame);
     this._preferredColumn.set(null);
   }
 
-  @action moveCharRight(): void {
-    this.cursorPosition = this._screenStep(1);
+  @action moveCharRight(frame: Frame = []): void {
+    this.cursorPosition = this._screenStep(1, frame);
     this._preferredColumn.set(null);
   }
 
@@ -960,12 +985,12 @@ export class TextInput extends ThemedWidget {
     this._preferredColumn.set(null);
   }
 
-  @action moveWordLeft(): void {
-    this._wordStep(-1);
+  @action moveWordLeft(frame: Frame = []): void {
+    this._wordStep(-1, frame);
   }
 
-  @action moveWordRight(): void {
-    this._wordStep(1);
+  @action moveWordRight(frame: Frame = []): void {
+    this._wordStep(1, frame);
   }
 
   // Readline's back and forward: through the text, whatever the screen shows.
@@ -1259,7 +1284,7 @@ export class TextInput extends ThemedWidget {
       ({ at, text: segment.text, style, cells: isProbe ? 0 : segment.cellLength, probe: isProbe });
     if (drawn.textOrder === "plain") {
       const ordered = pieces.flatMap((piece) => piece.segments.map((segment) => cell(piece.at, segment, segment.style, segment === probe)));
-      return { ordered, screen: (own) => ({ cells: ordered, ordersLine: drawn.textOrder === "logical", own }) };
+      return { ordered, screen: (own) => ({ cells: ordered, ordersLine: false, own }) };
     }
     const stamped = pieces.flatMap((piece) => Segment.anchorLines([piece.segments], new Slot(piece.at))[0]!);
     const probed = probe === undefined ? undefined : stamped[pieces.flatMap((piece) => piece.segments).indexOf(probe)];
@@ -1271,28 +1296,20 @@ export class TextInput extends ThemedWidget {
   }
 
   /**
-   * The row the cursor is drawn in and its stops on the screen.
-   * [LAW:one-source-of-truth] They are the stops the last frame recorded while
-   * that frame still shows this value with this cursor; otherwise they are
-   * drawn by the frame's own path, the caret included, since the caret's blank
-   * is a cell the order places.
+   * The row the cursor is drawn in and its stops on the screen, as `frame`
+   * shows them. [LAW:one-source-of-truth] They are the stops the last frame
+   * recorded while that frame still shows this value with this cursor;
+   * otherwise they are drawn by the frame's own path, the caret included,
+   * since the caret's blank is a cell the order places.
    */
-  private _cursorScreen(): { row: ScreenRow; screen: readonly Seen[] } {
+  private _cursorScreen(frame: Frame): { row: ScreenRow; screen: readonly Seen[] } {
     const drawn = this._drawn.get();
     const caretShown = this.focused && !this.disabled;
     const painted = this._painted.get();
-    // What the frame on screen writes around the cursor's row while it shows
-    // this value — the line the terminal orders the row in — and, where it
-    // does not show that row, the field's own cells around it.
-    const outside = (stops: Stops): Outside => {
-      if (painted === undefined || painted.value !== this.value) return stops.own;
-      const { layout } = painted;
-      const cells = stops.cells.reduce((sum, cell) => sum + cell.cells, 0);
-      if (layout.kind === "line") return outsideIn(this._frame.get(), layout, 0, cellLen(OPEN), cells) ?? stops.own;
-      const at = cursorRowIn(layout.rows, this.cursorPosition);
-      const contentCol = layout.rows[at]?.isContinuation === true ? this._markerWidth : 0;
-      return outsideIn(this._frame.get(), layout, at - layout.offset, contentCol, cells) ?? stops.own;
-    };
+    // What `frame` writes around the cursor's row — the line the terminal
+    // orders the row in — and, where it does not show the field, the field's
+    // own cells around it.
+    const outside = (stops: Stops): Outside => outsideOf(frame, this, this.cursorPosition, this._markerWidth) ?? stops.own;
     if (painted !== undefined && painted.value === this.value && painted.cursor === this.cursorPosition && painted.caretShown === caretShown) {
       const { layout } = painted;
       const stops = layout.kind === "line" ? layout.screen : layout.screens.get(cursorRowIn(layout.rows, this.cursorPosition));
@@ -1307,11 +1324,6 @@ export class TextInput extends ThemedWidget {
     const row = this._screenRow(drawn);
     const stops = this._orderedRow(row, drawn, this.ground, caret).screen({ before: [], after: [] });
     return { row, screen: shownIn(stops, outside(stops)) };
-  }
-
-  /** Hear the frame on screen (`InteractiveWidget.framePainted`): a step reads its row's line off it. */
-  framePainted(frame: readonly (readonly Segment[])[]): void {
-    this._frame.set(frame);
   }
 
   // The stretch of the value a one-line frame's window showed, `width` cells from
@@ -1396,7 +1408,7 @@ export class TextInput extends ThemedWidget {
 
   // Where the caret is after one glyph `step` across the screen: within its row,
   // or out of the side of the row the step leaves by.
-  private _screenStep(step: -1 | 1): CodePoint {
+  private _screenStep(step: -1 | 1, frame: Frame): CodePoint {
     const drawn = this._drawn.get();
     const row = this._screenRow(drawn);
     const stop = stopIn(row, this.cursorPosition);
@@ -1406,7 +1418,7 @@ export class TextInput extends ThemedWidget {
       if (step === -1) return stop === 0 ? off(false) : prevGrapheme(this.value, asCodePoint(row.start + stop));
       return stop === row.text.length ? off(true) : nextGrapheme(this.value, asCodePoint(row.start + stop));
     }
-    const { screen } = this._cursorScreen();
+    const { screen } = this._cursorScreen(frame);
     const here = screen.findIndex((glyph) => glyph.at === stop);
     if (here < 0) throw new Error(`TextInput: the cursor at ${this.cursorPosition} is not a slot of the row it is drawn in`);
     const next = screen[here + step];
@@ -1427,7 +1439,7 @@ export class TextInput extends ThemedWidget {
   // readline's back and forward a word, and in right-to-left text the same
   // keys reach the same edges mirrored. With no edge on that side it is the
   // glyph step that leaves the row.
-  private _wordStep(step: -1 | 1): void {
+  private _wordStep(step: -1 | 1, frame: Frame): void {
     const drawn = this._drawn.get();
     const row = this._screenRow(drawn);
     if (this._screenIsText(row, drawn)) {
@@ -1435,7 +1447,7 @@ export class TextInput extends ThemedWidget {
       else this.moveWordBack();
       return;
     }
-    const { screen } = this._cursorScreen();
+    const { screen } = this._cursorScreen(frame);
     const indexOf = new Map(screen.map((glyph, index) => [glyph.at, index]));
     const from = indexOf.get(stopIn(row, this.cursorPosition));
     if (from === undefined) throw new Error(`TextInput: the cursor at ${this.cursorPosition} is not a slot of the row it is drawn in`);
@@ -1461,7 +1473,7 @@ export class TextInput extends ThemedWidget {
     }
     const ahead = edges.filter((index) => (index - from) * step > 0);
     const to = ahead.length === 0 ? undefined : step === 1 ? Math.min(...ahead) : Math.max(...ahead);
-    this.cursorPosition = to === undefined ? this._screenStep(step) : asCodePoint(row.start + screen[to]!.at);
+    this.cursorPosition = to === undefined ? this._screenStep(step, frame) : asCodePoint(row.start + screen[to]!.at);
     this._preferredColumn.set(null);
   }
 

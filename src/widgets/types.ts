@@ -34,15 +34,18 @@ export class WidgetKeyEvent implements KeyEvent {
   readonly ctrl: boolean;
   readonly meta: boolean;
   readonly time: number;
+  /** The frame on screen when it was heard, which the key acts on: none, for a key no frame was painted under. */
+  readonly frame: readonly (readonly Segment[])[];
   private _stopped = false;
 
-  constructor(init: KeyEvent, time: number) {
+  constructor(init: KeyEvent, time: number, frame: readonly (readonly Segment[])[] = []) {
     this.key = init.key;
     this.character = init.character;
     this.shift = init.shift;
     this.ctrl = init.ctrl;
     this.meta = init.meta;
     this.time = time;
+    this.frame = frame;
   }
 
   get stopped(): boolean { return this._stopped; }
@@ -66,12 +69,14 @@ export interface KeyHandlerOptions {
 // relative to where it is painted now — so they fall outside the widget once
 // the pointer leaves it. `over` is whether it drew the cell under the pointer,
 // and `cell` what its own draw stamped there, inside its stamp — so a widget
-// reads the layout of the frame the pointer is on, not of one drawn since.
+// reads the layout of the frame the pointer is on, not of one drawn since;
+// `frame` is that frame whole, the line around the cell included.
 // The wheel is not a widget's: it scrolls the innermost `Scrollable` under the
 // pointer, whatever widget it shows there.
 export type WidgetMouseEvent = Extract<TerminalMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
   readonly over: boolean;
   readonly cell: Anchor | undefined;
+  readonly frame: readonly (readonly Segment[])[];
   readonly time: number;
 };
 
@@ -108,8 +113,6 @@ export interface InteractiveWidget extends Renderable, Measurable {
   handleMouse(event: WidgetMouseEvent): void;
   /** A paste while focused: the text, each line break `\n`, at the frame's `time`. A widget without one ignores pastes. */
   handlePaste?(text: string, time: number): void;
-  /** The frame just painted, while focused: the rows on screen, which its keys act on. A widget without one ignores it. */
-  framePainted?(frame: readonly (readonly Segment[])[]): void;
   handleFocus(event: WidgetFocusEvent): void;
 
   // Programmatic control. `time` is the focus event's (`WidgetFocusEvent`).
