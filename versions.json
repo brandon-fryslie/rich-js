@@ -4,15 +4,22 @@
     {
       "version": "pr-587",
       "ref": "refs/pull/587/merge",
-      "sha": "3d689d5a2d64dceb7a3f3383159509fa9f51ec66",
-      "timestamp": "2026-11-06T22:15:23.317Z",
+      "sha": "a0a39922841d00f5165ec7907f11d9f5d39e8918",
+      "timestamp": "2026-11-06T22:24:26.159Z",
       "commits": [
         {
-          "sha": "3d689d5a2d64dceb7a3f3383159509fa9f51ec66",
+          "sha": "a0a39922841d00f5165ec7907f11d9f5d39e8918",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:13:03Z",
-          "message": "Merge 945dcb0ba931a4446a9078a9586cf0971bf4b5ee into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
+          "timestamp": "2026-11-06T22:21:56Z",
+          "message": "Merge 9f3e1335be15cfa097fc5dde87631bc405def463 into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
+        },
+        {
+          "sha": "9f3e1335be15cfa097fc5dde87631bc405def463",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T15:21:46-07:00",
+          "message": "Gate review (medium): the cursor column carries across writes, the scan judges at the card's own width, one line splitter, a mark joins only what the segmenter joins, a multi-row CNL is reported (rich-control-codes-xh4n.lyr)\n"
         },
         {
           "sha": "945dcb0ba931a4446a9078a9586cf0971bf4b5ee",
