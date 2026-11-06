@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-566",
-      "ref": "refs/pull/566/merge",
-      "sha": "a1b5fb734c1406a29d04a8f9e1dc281fc998d268",
-      "timestamp": "2026-11-06T00:50:03.858Z",
-      "commits": [
-        {
-          "sha": "a1b5fb734c1406a29d04a8f9e1dc281fc998d268",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:47:43Z",
-          "message": "Merge 10b0e67e3cbf606f6828488ceb3282794f138b4b into 9c5b3e136c6a8f85fa696554c77e69874e3ce96f\n"
-        },
-        {
-          "sha": "10b0e67e3cbf606f6828488ceb3282794f138b4b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:47:20-07:00",
-          "message": "Dropdown: the query's tail through cellFitEnd, its last glyph before the gutter; docs and module header say a long query shows its end (review of rich-control-codes-xh4n.okr)\n"
-        },
-        {
-          "sha": "53d6b12ace52dd9fb7945a065fbbdcdd8d377073",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:37:28-07:00",
-          "message": "Dropdown: a filter too long for the header shows its tail, so the caret stays at the editing point; docs name Live beside an app (review of rich-control-codes-xh4n.okr)\n"
-        },
-        {
-          "sha": "b47a4a2e5b74041a30a9dc1bb56db22516fc45b4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:32:50-07:00",
-          "message": "Dropdown: the caret cell survives a header too narrow for its gutter; labeled keeps an empty frame-styled segment unoriented; docs no longer tie the filter's caret shape to TextInput's (review of rich-control-codes-xh4n.okr)\n"
-        },
-        {
-          "sha": "d2710837279a46acb21354a8793d4b1234fb0ab0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:26:26-07:00",
-          "message": "A focused Dropdown's filter is the terminal's own cursor: where the painter shows it, the caret is a blank cell marked caretMark(\"bar\"), its side set by ordering; labeled takes its label as segments so the mark survives ordering (rich-control-codes-xh4n.okr)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9c5b3e136c6a8f85fa696554c77e69874e3ce96f",
-      "timestamp": "2026-11-06T00:20:33.768Z",
+      "sha": "40add431b708b04ca01ed0593bc03a2c2601e613",
+      "timestamp": "2026-11-06T01:04:39.970Z",
       "commits": [
         {
-          "sha": "9c5b3e136c6a8f85fa696554c77e69874e3ce96f",
+          "sha": "40add431b708b04ca01ed0593bc03a2c2601e613",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T17:18:23-07:00",
-          "message": "A bar caret in a right-to-left run stands on the insertion point's edge: Style.caret is a CaretMark, its shape and the side of its cell the insertion point is on, read off the levels the row is ordered by (rich-control-codes-xh4n.e1h) (#565)\n\n* A bar caret in a right-to-left run stands on the insertion point's edge: Style.caret is a CaretMark, its shape and the side of its cell the insertion point is on, read off the levels the row is ordered by (rich-control-codes-xh4n.e1h)\n\n* The caret's side is set where the row is ordered: orient's displayed turns a caret mark to the level its glyph is shown at, so a masked or pictured row puts the bar where its shown glyphs do; CaretMark is branded to caretMark (rich-control-codes-xh4n.e1h)\n\nBREAKING: Style.withCaret and StyleOptions.caret take a CaretMark (caretMark(shape, side)), not a CaretShape.\n\nReview (high): caretSide re-derived levels from the raw value; replaced. Search bar keeps measure. The paint clamp for a right-side bar in the last column stays: no column exists past the screen's edge.\n\n* caretMark takes a shape only: a mark stands on its glyph's leading edge and ordering alone sets a right side (caretMarkOn), so no caller states an edge for orient to contradict; one turned style per row (rich-control-codes-xh4n.e1h)\n\n* Only a bar caret turns; the docs promise the leading edge, not where a typed character lands; paint steps one grapheme (rich-control-codes-xh4n.e1h)"
+          "timestamp": "2026-11-05T18:02:51-07:00",
+          "message": "A focused Dropdown's filter is the terminal's own cursor (rich-control-codes-xh4n.okr) (#566)\n\n* A focused Dropdown's filter is the terminal's own cursor: where the painter shows it, the caret is a blank cell marked caretMark(\"bar\"), its side set by ordering; labeled takes its label as segments so the mark survives ordering (rich-control-codes-xh4n.okr)\n\n* Dropdown: the caret cell survives a header too narrow for its gutter; labeled keeps an empty frame-styled segment unoriented; docs no longer tie the filter's caret shape to TextInput's (review of rich-control-codes-xh4n.okr)\n\n* Dropdown: a filter too long for the header shows its tail, so the caret stays at the editing point; docs name Live beside an app (review of rich-control-codes-xh4n.okr)\n\n* Dropdown: the query's tail through cellFitEnd, its last glyph before the gutter; docs and module header say a long query shows its end (review of rich-control-codes-xh4n.okr)"
         }
       ]
     }
