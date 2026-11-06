@@ -651,4 +651,24 @@ describe("Dropdown filter on the terminal's own cursor", () => {
     expect(segs.filter((s) => s.style?.caret !== undefined)).toHaveLength(1);
     expect(segs[caretAt(segs)]!.style!.caret!.side).toBe("right");
   });
+
+  it("stands the caret beside the last character typed after a right-to-left run in a left-to-right query", () => {
+    const d = new Dropdown({ options: ["alphabet-long"] });
+    d.focus(0);
+    typed(d, "abc של");
+    const segs = header(d, { caret: true, textOrder: "visual" });
+    const at = caretAt(segs);
+    expect(segs[at]!.style!.caret!.side).toBe("right");
+    expect(segs.slice(at + 1).map((s) => s.text).join("")).toMatch(/^ל/);
+  });
+
+  it("stands the caret beside the last character typed after a left-to-right run in a right-to-left query", () => {
+    const d = new Dropdown({ options: ["alphabet-long"] });
+    d.focus(0);
+    typed(d, "של abc");
+    const segs = header(d, { caret: true, textOrder: "visual" });
+    const at = caretAt(segs);
+    expect(segs[at]!.style!.caret!.side).toBe("left");
+    expect(segs.slice(0, at).map((s) => s.text).join("")).toMatch(/c$/);
+  });
 });

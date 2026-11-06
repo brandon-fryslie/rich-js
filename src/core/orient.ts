@@ -136,7 +136,7 @@ function sided(style: Style | undefined, level: number, turned: Map<Style, Style
   const mark = style?.caret;
   if (mark?.shape !== "bar" || !(level & 1)) return style;
   let right = turned.get(style!);
-  if (right === undefined) turned.set(style!, right = style!.withCaret(caretMarkOn(mark.shape, "right")));
+  if (right === undefined) turned.set(style!, right = style!.withCaret(caretMarkOn(mark, "right")));
   return right;
 }
 
@@ -153,6 +153,9 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   const turned = new Map<Style, Style>();
   let unit = 0;
   for (const [index, cluster] of glyphs.entries()) {
+    // The insertion point past the text is no character (`CaretMark.after`):
+    // it stands beside the one before it, the paragraph's level when none is.
+    if (styles[unit]?.caret?.after === true) levelOf[index] = index > 0 ? levelOf[index - 1]! : paragraphLevel;
     clusters.push({ text: cluster, style: sided(styles[unit], levelOf[index]!, turned), level: levelOf[index]! });
     unit += cluster.length;
   }

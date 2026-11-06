@@ -569,3 +569,32 @@ describe("under logical, a press reads the column the terminal reports", () => {
     }
   });
 });
+
+describe("the caret on the terminal's own cursor, under visual order", () => {
+  // The row's cells and the index of the one marked for the terminal's cursor.
+  function marked(input: TextInput): { row: Segment[]; at: number } {
+    const [row] = Segment.splitLines(render(input, { ...options("visual"), caret: true }));
+    return { row: row!, at: row!.findIndex((segment) => segment.style?.caret !== undefined) };
+  }
+
+  it("past a right-to-left run in a left-to-right line, stands beside the character typed last", () => {
+    const { row, at } = marked(field("abc של"));
+    expect(row[at]!.style!.caret).toMatchObject({ after: true, side: "right" });
+    expect(row.slice(at + 1).map((segment) => segment.text).join("")).toMatch(/^ל/);
+  });
+
+  it("past a left-to-right run in a right-to-left line, stands beside the character typed last", () => {
+    const { row, at } = marked(field("של abc"));
+    expect(row[at]!.style!.caret).toMatchObject({ after: true, side: "left" });
+    expect(row.slice(0, at).map((segment) => segment.text).join("")).toMatch(/c$/);
+  });
+
+  it("on a typed trailing space, is on a character, which keeps the level its text gives it", () => {
+    const input = field("abc של ");
+    input.cursorPosition = asCodeUnit(6);
+    const { row, at } = marked(input);
+    expect(row[at]!.style!.caret).toMatchObject({ after: false, side: "left" });
+    expect(row[at]!.text).toBe(" ");
+    expect(row.slice(0, at).map((segment) => segment.text).join("")).toMatch(/ש$/);
+  });
+});

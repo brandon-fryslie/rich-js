@@ -194,7 +194,7 @@ interface Seen {
  */
 interface Caret {
   readonly at: CodePoint;
-  readonly draw: (glyph: string) => Iterable<Segment>;
+  readonly draw: (glyph: string, after?: boolean) => Iterable<Segment>;
 }
 
 /**
@@ -1179,7 +1179,7 @@ export class TextInput extends ThemedWidget {
     // end, as it places the blank, never a rule beside it.
     let probe: Segment | undefined;
     if (row.endSlot) {
-      const end: Segment[] = caretAt === at ? [...caret!.draw(" ")] : [];
+      const end: Segment[] = caretAt === at ? [...caret!.draw(" ", true)] : [];
       const pad = endCells - Segment.getLineLength(end);
       if (pad > 0) end.push(new Segment(" ".repeat(pad), contentStyle));
       if (end.length === 0) end.push(probe = new Segment(" ", contentStyle));
@@ -1463,7 +1463,7 @@ export class TextInput extends ThemedWidget {
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
 
     const caret = this.focused && !this.disabled
-      ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
+      ? { at: this.cursorPosition, draw: (glyph: string, after?: boolean) => this._caret(glyph, cursorStyle, contentStyle, options, after) }
       : undefined;
     // [LAW:one-source-of-truth] The window is a row of the value drawn as every
     // row is, so the stops a press reads are the cells the frame holds; a
@@ -1523,7 +1523,7 @@ export class TextInput extends ThemedWidget {
     const markerStyle = new Style({ ...ink(this.theme, "foreground", "background"), dim: true });
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
     const caret = this.focused && !this.disabled
-      ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
+      ? { at: this.cursorPosition, draw: (glyph: string, after?: boolean) => this._caret(glyph, cursorStyle, contentStyle, options, after) }
       : undefined;
     // One visual row as drawn: its continuation marker, then its content, the
     // caret on the cursor's row, and its stops once what follows it on its
@@ -1633,8 +1633,8 @@ export class TextInput extends ThemedWidget {
   // terminal's cursor, the cell is the text's, marked for it: the terminal
   // blinks its own, and an IME's candidate window and a screen reader follow
   // it to the editing point.
-  private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape)))];
+  private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions, after = false): Iterable<Segment> {
+    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape, after)))];
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 

@@ -282,7 +282,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     const caret = !this.focused
       ? undefined
       : options.caret === true
-        ? new Segment(" ", baseStyle.withCaret(caretMark("bar")))
+        ? new Segment(" ", baseStyle.withCaret(caretMark("bar", true)))
         : new Segment(drawable(options, "│", "|"), baseStyle);
 
     return [

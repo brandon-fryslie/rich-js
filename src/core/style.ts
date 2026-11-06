@@ -99,11 +99,17 @@ export type CaretShape = "block" | "underline" | "bar";
  * edge (`caretMark`) and only ordering a row turns it (`caretMarkOn`, from
  * `orient`): the side is read off the level the glyph is shown at, so no caller
  * states a physical edge for it to disagree with. A mark stands on one cell.
- * One value per pair, so two styles holding the same mark compare equal.
+ * One value per triple, so two styles holding the same mark compare equal.
+ *
+ * `after` says the cell holds no character: it is the insertion point past the
+ * text's end, a blank the widget added. Ordering stands it at the level of the
+ * character before it, beside the last one typed, where UAX #9 would send a
+ * neutral to the paragraph's end. A caret on a typed space is on a character.
  */
 export interface CaretMark {
   readonly shape: CaretShape;
   readonly side: "left" | "right";
+  readonly after: boolean;
   // [LAW:types-are-the-program] Only `caretMark` makes one, so a literal that
   // would compare unequal to its twin does not type-check.
   readonly [caretMarkBrand]: true;
@@ -111,22 +117,31 @@ export interface CaretMark {
 
 declare const caretMarkBrand: unique symbol;
 
-const mark = (shape: CaretShape, side: CaretMark["side"]): CaretMark => Object.freeze({ shape, side }) as CaretMark;
+type Sided = Readonly<Record<CaretMark["side"], CaretMark>>;
 
-const CARET_MARKS: Readonly<Record<CaretShape, Readonly<Record<CaretMark["side"], CaretMark>>>> = {
-  block: { left: mark("block", "left"), right: mark("block", "right") },
-  underline: { left: mark("underline", "left"), right: mark("underline", "right") },
-  bar: { left: mark("bar", "left"), right: mark("bar", "right") },
+const sides = (shape: CaretShape, after: boolean): Sided => ({
+  left: Object.freeze({ shape, side: "left", after }) as CaretMark,
+  right: Object.freeze({ shape, side: "right", after }) as CaretMark,
+});
+
+const CARET_MARKS: Readonly<Record<CaretShape, Readonly<Record<"on" | "after", Sided>>>> = {
+  block: { on: sides("block", false), after: sides("block", true) },
+  underline: { on: sides("underline", false), after: sides("underline", true) },
+  bar: { on: sides("bar", false), after: sides("bar", true) },
 };
 
-/** The caret in `shape` on the glyph the next character goes before, at its leading edge once the row is ordered. */
-export function caretMark(shape: CaretShape): CaretMark {
-  return CARET_MARKS[shape].left;
+/**
+ * The caret in `shape` on the glyph the next character goes before, at its
+ * leading edge once the row is ordered — or, `after`, on the blank past the
+ * text's end.
+ */
+export function caretMark(shape: CaretShape, after = false): CaretMark {
+  return CARET_MARKS[shape][after ? "after" : "on"].left;
 }
 
-/** The one `CaretMark` for `shape` on `side`: what ordering a row sets, at the level its glyph is shown at. */
-export function caretMarkOn(shape: CaretShape, side: CaretMark["side"]): CaretMark {
-  return CARET_MARKS[shape][side];
+/** `mark` turned to `side`: what ordering a row sets, at the level its glyph is shown at. */
+export function caretMarkOn(mark: CaretMark, side: CaretMark["side"]): CaretMark {
+  return CARET_MARKS[mark.shape][mark.after ? "after" : "on"][side];
 }
 
 export interface StyleOptions {
