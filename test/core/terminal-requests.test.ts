@@ -7,6 +7,9 @@ import { describe, expect, it } from "vitest";
 import { Console } from "../../src/core/console.js";
 import type { Env } from "../../src/core/env.js";
 import { identifyTerminal } from "../../src/core/terminal-identity.js";
+import { RichText } from "../../src/core/text.js";
+import { App } from "../../src/host/app.js";
+import { scriptedHost } from "../host/scripted-host.js";
 
 const ESC = "\x1b";
 const ST = `${ESC}\\`;
@@ -195,5 +198,31 @@ describe("identifyTerminal", () => {
     [{ TERM: "xterm-256color", TERM_PROGRAM: "tmux", TMUX: "x" }, "other", "tmux"],
   ] as const)("%j is %s behind %s", (env, terminal, intermediary) => {
     expect(identifyTerminal(env)).toEqual({ terminal, intermediary });
+  });
+});
+
+describe("a pointer shape", () => {
+  // BEL ends OSC 22 in xterm's parser, and what follows is a clipboard write.
+  const planted = "text\x07\x1b]52;c;AAA\x07" as "text";
+
+  it("writes every shape it names", () => {
+    const { console, written } = terminal(KITTY);
+    console.setPointerShape("ew-resize");
+    expect(written()).toBe(`${ESC}]22;ew-resize${ST}`);
+  });
+
+  it.each([
+    ["attended", true],
+    ["unattended", false],
+  ])("is refused on an %s console before anything is written", (_, forceTerminal) => {
+    const { console, written } = terminal(KITTY, { forceTerminal });
+    expect(() => console.setPointerShape(planted)).toThrow(TypeError);
+    expect(written()).toBe("");
+  });
+
+  it("is refused by an app that has not started, so none is held for its take", () => {
+    const app = new App({ host: scriptedHost(), surface: "inline", view: () => new RichText("x") });
+    expect(() => (app.pointerShape = planted)).toThrow(TypeError);
+    expect(app.pointerShape).toBe("default");
   });
 });

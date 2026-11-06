@@ -8,7 +8,7 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal, type TerminalIdentity } from "./terminal-identity.js";
-import { clipboardSequence, notificationSequence, pointerSequence, throughIntermediary, titleSequence, type PointerShape } from "./terminal-requests.js";
+import { clipboardSequence, notificationSequence, pointerSequence, pointerShape, throughIntermediary, titleSequence, type PointerShape } from "./terminal-requests.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -785,7 +785,8 @@ export class Console {
    * multiplexer, which does not know the sequence and would drop it.
    */
   setPointerShape(shape: PointerShape): void {
-    this._request(() => throughIntermediary(pointerSequence(shape), this._identity));
+    const parsed = pointerShape(shape);
+    this._request(() => throughIntermediary(pointerSequence(parsed), this._identity));
   }
 
   /** Raises a desktop notification, in the protocol this console's terminal reads. */

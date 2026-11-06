@@ -25,9 +25,24 @@ export function titleSequence(title: string): string {
  * The shapes a pointer takes over a cell, by their CSS `cursor` names, which
  * OSC 22 reads in kitty, foot, Ghostty and WezTerm.
  */
-export type PointerShape =
-  | "default" | "pointer" | "text" | "not-allowed" | "help" | "wait" | "crosshair"
-  | "move" | "grab" | "grabbing" | "ew-resize" | "ns-resize";
+export type PointerShape = (typeof POINTER_SHAPES)[number];
+
+const POINTER_SHAPES = [
+  "default", "pointer", "text", "not-allowed", "help", "wait", "crosshair",
+  "move", "grab", "grabbing", "ew-resize", "ns-resize",
+] as const;
+
+/**
+ * `value` as a `PointerShape`, or a `TypeError` naming it. The type binds only
+ * a TypeScript caller, and OSC 22 carries the name raw, so a BEL in a cast
+ * string would end it and start a sequence of the caller's choosing. Every road
+ * a shape takes to the terminal parses it here first, whether or not anything
+ * is then written.
+ */
+export function pointerShape(value: string): PointerShape {
+  if ((POINTER_SHAPES as readonly string[]).includes(value)) return value as PointerShape;
+  throw new TypeError(`${JSON.stringify(value)} is not a pointer shape: one of ${POINTER_SHAPES.join(", ")}`);
+}
 
 /**
  * OSC 22: the mouse pointer's shape over the terminal. A terminal without it
