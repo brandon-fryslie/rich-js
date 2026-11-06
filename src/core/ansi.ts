@@ -119,6 +119,8 @@ const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
 // A C1 introducer is its ESC form's final byte plus 0x40 (ECMA-48 §5.3), and a
 // terminal that reads C1 reads it as that ESC form (`docs/control-codes.md`).
 const hex = (codes: readonly number[]): string => codes.map((code) => `\\x${code.toString(16).padStart(2, "0")}`).join("");
+/** ECMA-48's C1 set, U+0080 to U+009F. */
+const isC1 = (code: number): boolean => code >= 0x80 && code <= 0x9f;
 const finals = (introducers: string): number[] => [...introducers].map((final) => final.charCodeAt(0));
 const either = (introducers: string): string => {
   const codes = finals(introducers);
@@ -137,7 +139,7 @@ const STRING_ESCAPE = String.raw`${either("]P_^X")}[^${STRING_STOPS}\n]*(?:\x07|
 // The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
 const ESC_LINE_BREAKS = hex(
   CONTROL_CODES.filter((row) => row.disposition === "line-break").flatMap((row) =>
-    Array.from({ length: row.last - row.first + 1 }, (_, at) => row.first + at).filter((code) => code >= 0x80 && code <= 0x9f),
+    Array.from({ length: row.last - row.first + 1 }, (_, at) => row.first + at).filter(isC1),
   ).map((code) => code - 0x40),
 );
 
@@ -254,13 +256,25 @@ const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "
  */
 const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${CSI}[0-?]*[ -/]*|${either("]P_^X")}[^${STRING_STOPS}\n]*\x1b?|\x1b[ -/]*)$`, "u"));
 
-function* escapeTokens(bytes: string): Generator<Token> {
+/**
+ * Whether a terminal performs `control`, one `ESCAPES` matched alone, and
+ * `next` the character after it: a C1 control, which some terminals do, and an
+ * ESC that begins an escape the decoder does not read. An ESC the next ESC or
+ * C1 control cancels, as the VT500 parser does, a terminal drops as the
+ * decoder does.
+ */
+const performed = (control: string, next: string): boolean =>
+  isC1(control.charCodeAt(0)) || (control === "\x1b" && next !== "\x1b" && !isC1(next.charCodeAt(0)));
+
+/** `bytes`, and `following`, the character after them in their line, which an ESC at their end comes before. */
+function* escapeTokens(bytes: string, following: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
     const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
     const escape = match[0];
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
-    if (undrawn !== undefined || (control !== undefined && /[\x1b\x80-\x9f]/.test(control))) yield { kind: "undrawn", escape };
+    const next = bytes[match.index + escape.length] ?? following;
+    if (undrawn !== undefined || (control !== undefined && performed(control, next))) yield { kind: "undrawn", escape };
     else if (control !== undefined) yield { kind: "silent" };
     if (escape === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined, escape };
@@ -286,11 +300,11 @@ function* escapeTokens(bytes: string): Generator<Token> {
 function* tokens(line: string): Generator<Token> {
   let at = 0;
   for (const sequence of osc8Sequences(line)) {
-    yield* escapeTokens(line.slice(at, sequence.index));
+    yield* escapeTokens(line.slice(at, sequence.index), line[sequence.index]!);
     yield { kind: "link", uri: sequence.uri };
     at = sequence.index + sequence.length;
   }
-  yield* escapeTokens(line.slice(at));
+  yield* escapeTokens(line.slice(at), "");
 }
 
 /**
@@ -569,9 +583,9 @@ export interface LineState {
 /** A line nothing has been written on. */
 export const LINE_START: LineState = { savedColumn: undefined, last: undefined };
 
-/** A line drawn: its text, what it holds for bytes written after it, and the first escape on it no terminal draws this way. */
+/** A line drawn: its cells, what it holds for bytes written after it, and the first escape on it no terminal draws this way. */
 interface DrawnLine {
-  readonly text: RichText;
+  readonly cells: readonly Cell[];
   readonly end: LineState;
   readonly undrawn: string | undefined;
 }
@@ -613,7 +627,7 @@ export class AnsiDecoder {
    * it: `\r` returns to the first column, and text overwrites from there.
    */
   decodeLine(line: string): RichText {
-    return drawLine(this.stream, line, LINE_START).text;
+    return assembled(drawLine(this.stream, line, LINE_START).cells);
   }
 }
 
@@ -663,12 +677,15 @@ function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
       case "text": {
         const style = stream.sgr.withLink(stream.link);
         const text = drawnIn(stream.sets[stream.shifted], token.text);
-        let final = "";
+        last = preceding;
         for (const cluster of graphemes(text)) {
-          column += draw(cells, column, cluster, style);
-          final = cluster;
+          const width = draw(cells, column, cluster, style);
+          column += width;
+          // A mark joins the cluster drawn before it, as `draw` sets it on that
+          // cluster's cell, even one an earlier write drew.
+          if (width === 0) last = last && [last[0] + cluster, last[1]];
+          else last = repeatable(cluster) ? [cluster, style] : undefined;
         }
-        if (repeatable(final)) last = [final, style];
         break;
       }
       case "repeat": {
@@ -679,8 +696,10 @@ function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
         const width = cellLen(preceding[0]);
         // A terminal wraps what passes the right margin onto the next row; the
         // decoder holds one row, so the repeats stop at the margin, or where
-        // the cursor already stands past it, as a move forward does.
+        // the cursor already stands past it, as a move forward does, and the
+        // cut is one no terminal makes.
         const room = Math.floor(Math.max(0, stream.width - (column - 1)) / width);
+        if (token.count > room) report(token.escape);
         for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding);
         break;
       }
@@ -753,13 +772,18 @@ function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
         break;
     }
   }
+  return { cells, end: { savedColumn, last }, undrawn };
+}
+
+/** A line's cells as the text they show, a run per style. */
+function assembled(cells: readonly Cell[]): RichText {
   const runs: [string, Style][] = [];
   for (const [char, style] of cells.filter(([char]) => char !== "")) {
     const run = runs.at(-1);
     if (run?.[1].equals(style)) run[0] += char;
     else runs.push([char, style]);
   }
-  return { text: RichText.assemble(runs), end: { savedColumn, last }, undrawn };
+  return RichText.assemble(runs);
 }
 
 
@@ -780,16 +804,34 @@ export interface UndrawnScan {
  * `before` is what the line held when an earlier write on it ended, so a stream
  * read write by write reads as it does whole; only the complete bytes are read.
  */
-export function scanUndrawn(bytes: string, before: LineState = LINE_START): UndrawnScan {
+export function scanUndrawn(bytes: string, before: LineState = LINE_START, width: number = DEFAULT_WIDTH): UndrawnScan {
   const open = OPEN_ESCAPE.exec(bytes);
   const unread = open === null ? bytes.length : open.index;
-  const stream = streamOf(DEFAULT_WIDTH);
-  // The first line continues the one `before` ended on; each after it starts fresh.
-  const drawn = lined(bytes.slice(0, unread))
-    .split("\n")
-    .map((line, index) => drawLine(stream, line, index === 0 ? before : LINE_START));
-  return { undrawn: drawn.find((line) => line.undrawn !== undefined)?.undrawn ?? null, unread, after: drawn.at(-1)!.end };
+  const complete = bytes.slice(0, unread);
+  const stream = streamOf(width);
+  let undrawn: string | undefined = undefined;
+  let start = 0;
+  let state = before;
+  // Each line, then the break that ends it; the first continues the one `before` ended on, and each after it starts fresh.
+  for (const found of complete.matchAll(lineBreaks())) {
+    if (found[1] !== undefined) continue;
+    undrawn ??= drawLine(stream, complete.slice(start, found.index), state).undrawn;
+    if (RELOCATING_BREAK.test(found[0])) undrawn ??= found[0];
+    start = found.index + found[0].length;
+    state = LINE_START;
+  }
+  const end = drawLine(stream, complete.slice(start), state);
+  return { undrawn: undrawn ?? end.undrawn ?? null, unread, after: end.end };
 }
+
+/**
+ * A line break of the census's a terminal does not perform as CR LF: VT and FF
+ * go down a row and keep the column, and LS and PS move nothing. The decoder
+ * ends the line at each, so what follows starts at the first column of a new
+ * one. LF does too, as a terminal's output translation writes it, and so does
+ * NEL, which is CR LF.
+ */
+const RELOCATING_BREAK = pattern(new RegExp(`^(?![\\n\\x85])${controlClass((disposition) => disposition === "line-break")}$`, "u"));
 
 /**
  * `ansi` as one `RichText`, its lines joined by `\n` — Rich's

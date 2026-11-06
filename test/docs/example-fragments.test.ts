@@ -70,6 +70,26 @@ describe("scanEscapes", () => {
     expect(scanEscapes(`a${"́".repeat(70)}\x1b[2b`).dropped).toBeNull();
   });
 
+  it("repeats a cluster a mark finished in a later write, as it does the cluster whole", () => {
+    expect(streamed("e", "́\x1b[2b")).toBeNull();
+    expect(streamed("é", "́\x1b[2b")).toBeNull();
+  });
+
+  it("finds a REP the drawing cuts at the card's right margin, where a terminal wraps the rest", () => {
+    expect(scanEscapes("a\x1b[200b").dropped).toBe("\x1b[200b");
+    expect(scanEscapes(`${"a".repeat(30)}\x1b[39b`).dropped).toBeNull();
+  });
+
+  it.each(["\x0b", "\x0c", " ", " "])("finds %j, a line break no terminal performs as the drawing does", (control) => {
+    expect(scanEscapes(`abc${control}def`).dropped).toBe(control);
+  });
+
+  it("passes an ESC the next escape cancels, which a terminal drops as the drawing does", () => {
+    expect(scanEscapes("\x1b\x1b[31mx").dropped).toBeNull();
+    expect(scanEscapes(`\x1b${osc8Open("https://example.com")}x${OSC8_CLOSE}`).dropped).toBeNull();
+    expect(scanEscapes("\x1b\x01").dropped).toBe("\x1b");
+  });
+
   it.each([
     ["a cursor move", "\x1b[2A"],
     ["a cursor move in its C1 form", "\x9b2A"],

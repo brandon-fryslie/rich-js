@@ -57,7 +57,8 @@ export interface EscapeScan {
  * `undrawnEscape` reads a program's whole output by it.
  */
 export function scanEscapes(bytes: string, before: LineState = LINE_START): EscapeScan {
-  const { undrawn, unread, after } = scanUndrawn(bytes, before);
+  // At the width the card draws them at, so a rule that reads the margin agrees with the drawing.
+  const { undrawn, unread, after } = scanUndrawn(bytes, before, EXAMPLE_TERMINAL.columns);
   const open = bytes.slice(unread);
   return { dropped: undrawn ?? (open.length > LONGEST_OPEN_ESCAPE ? open : null), unread, after };
 }
