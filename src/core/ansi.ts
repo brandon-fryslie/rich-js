@@ -55,7 +55,7 @@
  * `\x1b[s`, `\x1b[u`), which curses and `tput sc`/`rc` write, so text drawn
  * after a restore lands after what it overwrote. Here a save holds what a
  * terminal's does — the column, the SGR style and the sets — and a restore
- * brings them back (`CURSOR_SAVES`). The column comes back only on the line it
+ * brings them back (`CURSOR_SAVE`, `CURSOR_RESTORE`). The column comes back only on the line it
  * was saved on: on a later one it names a row the decoder no longer holds, as
  * CPL does.
  *
@@ -177,9 +177,10 @@ type Edit = keyof typeof EDITS;
  * `\x1b[s` and SCORC `\x1b[u`, each exactly — with parameters `s` is DECSLRM's
  * margins, and `u` with a parameter or a marker is kitty's keyboard protocol,
  * both left to the silent "any other CSI". `\x1b#8` carries an intermediate, so
- * it is not `\x1b8`. The docs' output gate reads this rather than a copy of it.
+ * it is not `\x1b8`. The docs' output gate reads these rather than a copy of them.
  */
-export const CURSOR_SAVES: string = String.raw`\x1b[78]|${CSI}[su]`;
+export const CURSOR_SAVE: string = String.raw`\x1b7|${CSI}s`;
+export const CURSOR_RESTORE: string = String.raw`\x1b8|${CSI}u`;
 
 const finalClass = (table: object): string => `[${hex(finals(Object.keys(table).join("")))}]`;
 
@@ -193,7 +194,8 @@ export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(E
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
  * order — each CSI and string escape in its `ESC` form or its C1 one — a
- * carriage return; a move along the line (`motion`) or an edit of it (`edit`),
+ * carriage return; a cursor save (`save`) or restore (`restore`), ahead of the
+ * "any other" CSI and escape that would otherwise take them; a move along the line (`motion`) or an edit of it (`edit`),
  * reading the first parameter (`count`) as a terminal does; an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
  * (`mode`); a soft reset, DECSTR (`reset`); any other CSI sequence; any other
@@ -207,7 +209,7 @@ export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(E
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|(?<cursor>${CURSOR_SAVES})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -236,10 +238,10 @@ const lineBreaks = (): RegExp =>
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { cursor, count, motion, edit, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
+    const { save, restore, count, motion, edit, sgr, mode, reset, designate, charset, shift, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
-    if (cursor !== undefined) yield { kind: "cursor", save: /[7s]$/.test(cursor) };
+    if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };

@@ -10,15 +10,32 @@ import { OSC8_CLOSE, osc8Open } from "../../src/core/osc8.js";
 describe("scanEscapes", () => {
   it("passes what a drawing draws: SGR, erase in line, a carriage return and an OSC 8 link", () => {
     const bytes = `\x1b[1;31mred\x1b[0m\r\x1b[2K${osc8Open("https://example.com")}link${OSC8_CLOSE}`;
-    expect(scanEscapes(bytes)).toEqual({ dropped: null, unread: bytes.length });
+    expect(scanEscapes(bytes)).toEqual({ dropped: null, unread: bytes.length, saved: false });
   });
 
   it.each(["\x1b[E", "\x1b[3E", "\x1bE"])("passes %j, a line break the drawing draws", (escape) => {
     expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
   });
 
-  it.each(["\x1b7", "\x1b8", "\x1b[s", "\x1b[u"])("passes %j, a cursor save or restore the drawing performs", (escape) => {
-    expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
+  it.each([["\x1b7", "\x1b8"], ["\x1b[s", "\x1b[u"]])("passes %j then %j, a save and a restore on one line, which the drawing performs", (save, restore) => {
+    expect(scanEscapes(`a${save}b`).dropped).toBeNull();
+    expect(scanEscapes(`a${save}bc${restore}d`).dropped).toBeNull();
+  });
+
+  it.each([
+    ["with nothing saved, where a terminal homes the cursor", "a\x1b8b"],
+    ["from a later line, where a terminal goes up to the saved row", "a\x1b7b\nc\x1b8d"],
+    ["after a line-break escape", "a\x1b7b\x1bEc\x1b8d"],
+    ["after a soft reset forgot the save", "a\x1b7b\x1b[!pc\x1b8d"],
+  ])("finds a restore %s", (_, bytes) => {
+    expect(scanEscapes(bytes).dropped).toBe("\x1b8");
+  });
+
+  it("carries a save across writes, so a restore in the next one is drawn as it is in the whole output", () => {
+    const first = scanEscapes("a\x1b7bc");
+    expect(first).toMatchObject({ dropped: null, saved: true });
+    expect(scanEscapes("\x1b8d", first.saved).dropped).toBeNull();
+    expect(scanEscapes("\nx\x1b8d", first.saved).dropped).toBe("\x1b8");
   });
 
   it.each([
@@ -39,16 +56,16 @@ describe("scanEscapes", () => {
     const link = osc8Open("https://example.com/a/long/path/past/any/window");
     const first = `x${link.slice(0, 20)}`;
     const scan = scanEscapes(first);
-    expect(scan).toEqual({ dropped: null, unread: 1 });
+    expect(scan).toEqual({ dropped: null, unread: 1, saved: false });
     const whole = `${first.slice(scan.unread)}${link.slice(20)}y`;
-    expect(scanEscapes(whole)).toEqual({ dropped: null, unread: whole.length });
+    expect(scanEscapes(whole)).toEqual({ dropped: null, unread: whole.length, saved: false });
     expect(scanEscapes("\x1b[2").unread).toBe(0);
-    expect(scanEscapes("x\x1b(")).toEqual({ dropped: null, unread: 1 });
-    expect(scanEscapes("\x1b(0q\x1b[!p")).toEqual({ dropped: null, unread: 8 });
+    expect(scanEscapes("x\x1b(")).toEqual({ dropped: null, unread: 1, saved: false });
+    expect(scanEscapes("\x1b(0q\x1b[!p")).toEqual({ dropped: null, unread: 8, saved: false });
   });
 
   it("cuts a designation of any final, a string escape's introducer included", () => {
-    expect(scanEscapes("\x1b(_q")).toEqual({ dropped: null, unread: 4 });
+    expect(scanEscapes("\x1b(_q")).toEqual({ dropped: null, unread: 4, saved: false });
   });
 
   it.each([

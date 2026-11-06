@@ -170,8 +170,8 @@ test("the global console writes to the output, as Node's writes to stdout and st
 test("a program that moves the cursor runs in a live terminal, though it sets no timer", async ({ page }) => {
   const errors = await open(page);
   await expect.poll(() => drawn(page), OPENING).toContain("Hello, World!");
-  // A cursor save and restore, which is no CSI, around text the next write overwrites.
-  await write(page, 'process.stdout.write("\\x1b7first\\x1b8second");');
+  // A reverse index, which is no CSI, between text and the line above it.
+  await write(page, 'process.stdout.write("first\\x1bMsecond");');
   await expect.poll(() => rows(page), LIVE).toContain("second");
   await expect(output(page).locator(".rich-example-name")).toHaveText("Live");
   expect(errors).toEqual([]);
