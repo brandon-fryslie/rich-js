@@ -177,10 +177,11 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
 }
 
 /**
- * `clusters` cut before each unit `noCharacter` names: the end slot past the text
- * (`Style.textEnd`) is a blank no character holds, so a Prepend character typed
- * last (U+0600–U+0605), which a segmenter joins to whatever follows, never takes
- * it, and the caret it carries keeps a cell of its own.
+ * `clusters` cut wherever the end slot past the text (`Style.textEnd`) begins or
+ * ends: that slot is a blank no character holds, so a Prepend character typed
+ * last, which a segmenter joins to whatever follows, never takes it, and the
+ * caret it carries keeps a cell of its own. Only the edges are cut, so a slot's
+ * own glyph keeps its surrogate pair.
  */
 function endSlotsApart(clusters: readonly string[], noCharacter: (unit: number) => boolean): string[] {
   const out: string[] = [];
@@ -188,7 +189,7 @@ function endSlotsApart(clusters: readonly string[], noCharacter: (unit: number) 
   for (const cluster of clusters) {
     let start = 0;
     for (let at = 1; at < cluster.length; at += 1) {
-      if (!noCharacter(unit + at)) continue;
+      if (noCharacter(unit + at) === noCharacter(unit + at - 1)) continue;
       out.push(cluster.slice(start, at));
       start = at;
     }
