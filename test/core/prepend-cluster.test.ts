@@ -8,7 +8,7 @@ import type { TextOrder } from "../../src/core/text-order.js";
 
 const CARET = NULL_STYLE.withCaret(caretMark("block")).asTextEnd;
 const BOLD = Style.parse("bold");
-const WORD_JOINER = "⁠";
+const WORD_JOINER = "\u2060";
 const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 /** `line` as `sealed` writes it for `order`: the segments that reach the wire. */
@@ -60,8 +60,13 @@ describe("a Prepend character's cluster ends at itself", () => {
     expect(written[1]!.style?.caret).toBeDefined();
   });
 
-  it("writes nothing extra where nothing follows it to join", () => {
-    expect(text(wire([new Segment("a؀")], "plain"))).toBe("a؀");
+  it("ends a Prepend that ends a write, since the next write may continue the line", () => {
+    expect(text(wire([new Segment("a؀")], "plain"))).toBe(`a؀${WORD_JOINER}`);
+  });
+
+  it("keeps a Prepend one cluster with the marks on it, which are one cell to Rich too", () => {
+    expect(graphemes("؀́a")).toEqual(["؀́", "a"]);
+    expect(text(wire([new Segment("؀́a")], "plain"))).toBe("؀́a");
   });
 
   it("leaves a neighbour's style on the neighbour's cell", () => {
@@ -77,7 +82,21 @@ describe("a Prepend character's cluster ends at itself", () => {
     expect(text(reordered.orient(reordered.line, 0, "א؀ b"))).toBe("b ؀א");
   });
 
-  it("is a glyph a mark opening the next segment would reach, so the mark is dropped", () => {
-    expect(text(wire([new Segment("a؀"), new Segment("́b")], "plain"))).toBe(`a؀${WORD_JOINER}b`);
+  it("keeps a mark opening the next segment, which joins it as one cell", () => {
+    expect(text(wire([new Segment("a؀"), new Segment("́b")], "plain"))).toBe("a؀́b");
+  });
+});
+
+// The end slot is a blank no character holds, so nothing in the text — an
+// extender a neighbour opens with, a trailing ZWJ — joins it in ordering.
+describe("the caret's end slot stays its own cluster", () => {
+  it("leaves a neighbour's opening mark in the neighbour's segment under visual", () => {
+    const written = wire([new Segment("א"), new Segment(" ", CARET), new Segment("́x", BOLD)], "visual");
+    expect(written.filter((segment) => segment.style?.caret !== undefined).map((segment) => segment.text)).toEqual([" "]);
+  });
+
+  it("keeps an emoji caret glyph apart from a ZWJ the text ends with", () => {
+    const written = wire([new Segment("א👨‍"), new Segment("😀", CARET)], "visual");
+    expect(written.filter((segment) => segment.style?.caret !== undefined).map((segment) => segment.text)).toEqual(["😀"]);
   });
 });

@@ -38,49 +38,75 @@ interface Cluster {
   readonly segment: string;
 }
 
+const AN_EXTENDER = pattern(new RegExp(`^${EXTENDER}$`, "u"));
+
 /**
- * A segmenter cluster with each Prepend character leading it cut off as a
- * cluster of its own. [LAW:one-source-of-truth] This is where a Prepend's
- * cluster ends: at itself. `cellLen` counts its cell, as Rich does, so a cluster
- * holding it with what follows would be one glyph to a clustering terminal and
- * the row a cell short; `endedPrepends` makes the wire agree.
+ * Whether the Prepend `character`, before `next`, ends its cluster where the
+ * library does: before a base, which a segmenter joins to it and Rich counts
+ * apart. Before an extender it does not — Prepend and mark are one cell to both
+ * — and before a control or nothing, nothing joins it.
+ */
+function standsAlone(character: string, next: string): boolean {
+  return next !== "" && isPrepend(character) && !AN_EXTENDER.test(next) && SEGMENTER.segment(character + next).containing(0)!.segment.length > character.length;
+}
+
+/**
+ * A segmenter cluster with each Prepend leading it that stands before a base
+ * (`standsAlone`) cut off as a cluster of its own. [LAW:one-source-of-truth]
+ * This is where such a Prepend's cluster ends: at itself. `cellLen` counts its
+ * cell, as Rich does, so a cluster holding it with the base would be one glyph
+ * to a clustering terminal and the row a cell short; `endedPrepends` makes the
+ * wire agree.
  */
 function* ownCells({ index, segment }: Cluster): Generator<Cluster> {
+  const characters = Array.from(segment);
   let at = 0;
-  for (const character of segment) {
-    if (at + character.length === segment.length || !isPrepend(character)) break;
+  for (const [i, character] of characters.entries()) {
+    if (!standsAlone(character, characters[i + 1] ?? "")) break;
     yield { index: index + at, segment: character };
     at += character.length;
   }
   yield { index: index + at, segment: segment.slice(at) };
 }
 
+// Only a cluster a Prepend leads can be cut, so every other one passes as the
+// segmenter made it, with nothing allocated.
+const leadsWithPrepend = (segment: string): boolean => isPrepend(String.fromCodePoint(segment.codePointAt(0)!));
+
 function* clustersOf(text: string): Generator<Cluster> {
-  for (const cluster of SEGMENTER.segment(text)) yield* ownCells(cluster);
+  for (const cluster of SEGMENTER.segment(text)) {
+    if (leadsWithPrepend(cluster.segment)) yield* ownCells(cluster);
+    else yield cluster;
+  }
 }
 
 /** The cluster of `segments`, one segmentation of a text, holding code unit `at`. */
 function clusterContaining(segments: Intl.Segments, at: number): Cluster | undefined {
   const raw = segments.containing(at);
-  return raw === undefined ? undefined : [...ownCells(raw)].find((cluster) => at < cluster.index + cluster.segment.length);
+  if (raw === undefined || !leadsWithPrepend(raw.segment)) return raw;
+  for (const cluster of ownCells(raw)) if (at < cluster.index + cluster.segment.length) return cluster;
+  return undefined;
 }
 
 /**
- * `text` as written before `after`, a WORD JOINER after each Prepend character
- * a segmenter would join to what follows it. The joiner is a Control to UAX #29,
- * so a clustering terminal ends the Prepend's cluster where `ownCells` does; it
- * takes no cell, and stands in the Prepend's, where a terminal puts it.
+ * `text` as written before `after`, a WORD JOINER after each Prepend that
+ * stands alone (`standsAlone`). The joiner is a Control to UAX #29, so a
+ * clustering terminal ends the Prepend's cluster where `ownCells` does; it takes
+ * no cell, and stands in the Prepend's, where a terminal puts it. `after` is
+ * undefined where what follows is unknown — the next write may continue the
+ * line — so a Prepend that ends `text` there is ended too.
  */
-export function endedPrepends(text: string, after: string): string {
+export function endedPrepends(text: string, after: string | undefined): string {
   if (PRINTABLE_ASCII.test(text)) return text;
-  let out = "";
   const characters = Array.from(text);
+  let out: string | undefined;
   for (const [index, character] of characters.entries()) {
-    out += character;
     const next = characters[index + 1] ?? after;
-    if (next !== "" && isPrepend(character) && SEGMENTER.segment(character + next).containing(0)!.segment.length > character.length) out += WORD_JOINER;
+    const ends = next === undefined ? isPrepend(character) : standsAlone(character, next);
+    if (ends && out === undefined) out = characters.slice(0, index).join("");
+    if (out !== undefined) out += ends ? character + WORD_JOINER : character;
   }
-  return out;
+  return out ?? text;
 }
 
 // The cells `codePoint` takes as what the census says is done with it. Exhaustive,

@@ -97,11 +97,13 @@ neighbour, at the width each was measured.
 A Prepend character — the Arabic number sign U+0600, the Syriac abbreviation mark
 U+070F, the Malayalam dot reph U+0D4E, the rest of Unicode's grapheme-break class —
 joins whatever follows it into one cluster, and a terminal that clusters draws that
-cluster in one cell. Rich's width gives the Prepend a cell of its own, so the library
-does too: it is its own cluster to every cut, caret step and reordering, and a WORD
-JOINER (U+2060), which takes no cell and ends a cluster, is written after it wherever
-something would join it. A number sign typed before a caret, a blank or a letter in
-another style keeps its cell, and the row its width.
+cluster in one cell. Rich's width gives the Prepend a cell of its own, so before a
+base character the library does too: it is its own cluster to every cut, caret step
+and reordering, and a WORD JOINER (U+2060), which takes no cell and ends a cluster, is
+written after it there and wherever a write ends on it, since the next write may
+continue the line. A number sign typed before a caret, a blank or a letter in another
+style keeps its cell, and the row its width. A mark on a Prepend stays in its cluster,
+one cell to both.
 
 ## Wrapping
 
