@@ -228,12 +228,15 @@ const CNL = "[0-9;]*E";
  */
 export const LINE_BREAK_ESCAPES: string = String.raw`\x1b\[${CNL}|\x1b[${ESC_LINE_BREAKS}]`;
 
+/**
+ * Everything `decode` ends a line at, `\n`, C1 forms and line-break controls
+ * included; a pattern for a `u` regex. The docs' output gate reads this rather
+ * than a copy of it.
+ */
+export const LINE_ENDS: string = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`;
+
 // A string escape goes first so a line break its payload holds stays in it.
-const lineBreaks = (): RegExp =>
-  new RegExp(
-    `(${STRING_ESCAPE})|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`,
-    "gu",
-  );
+const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "gu");
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;

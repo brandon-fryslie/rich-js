@@ -98,8 +98,11 @@ it is on screen. Anywhere else a terminal moves the cursor to another row — up
 to the saved one, or home when nothing is saved — and the decoder holds no row:
 it brings back the style and the sets and keeps the column, so the text after
 it lands where it does not on screen. A docs example that writes such a restore
-runs in a live terminal. With parameters, `\x1b[s` sets DECSLRM's margins and `\x1b[u` is kitty's
-keyboard protocol, so the decoder drops both. Either reset forgets the save.
+runs in a live terminal. With parameters the same finals are other escapes —
+`\x1b[1;5s` sets DECSLRM's margins and `\x1b[?u` is kitty's keyboard protocol —
+so the decoder drops both. It holds no modes, so a bare `\x1b[s` is a save even
+under DECLRMM, where a terminal reads it as a margin reset. Either reset forgets
+the save.
 
 A C1 control in text is often a Windows-1252 byte decoded as Latin-1: `\x85` was
 meant as `…`. Telling that from a planted sequence takes the whole string, so

@@ -26,6 +26,8 @@ describe("scanEscapes", () => {
     ["with nothing saved, where a terminal homes the cursor", "a\x1b8b"],
     ["from a later line, where a terminal goes up to the saved row", "a\x1b7b\nc\x1b8d"],
     ["after a line-break escape", "a\x1b7b\x1bEc\x1b8d"],
+    ["after a C1 next line, NEL", "a\x1b7b\x85c\x1b8d"],
+    ["after a C1 CNL", "a\x1b7b\x9b3Ec\x1b8d"],
     ["after a soft reset forgot the save", "a\x1b7b\x1b[!pc\x1b8d"],
   ])("finds a restore %s", (_, bytes) => {
     expect(scanEscapes(bytes).dropped).toBe("\x1b8");
