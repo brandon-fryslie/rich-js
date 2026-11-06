@@ -335,6 +335,7 @@ describe("decodeAnsi lines and other escapes", () => {
   });
 
   it("stops REP at the right margin, where a terminal would wrap", () => {
+    for (const width of [Infinity, 0, 2.5, Number.NaN]) expect(() => new AnsiDecoder({ width })).toThrow(RangeError);
     expect(decodeAnsi("a\x1b[999999999b").cellLength).toBe(80);
     expect(decodeAnsi("字\x1b[99b", { width: 9 }).cellLength).toBe(8);
     expect(decodeAnsi("abcdef\x1b[5b", { width: 4 }).plain).toBe("abcdef");

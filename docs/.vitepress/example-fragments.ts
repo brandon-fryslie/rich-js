@@ -134,9 +134,12 @@ export function scanEscapes(bytes: string, before: Carried = { saved: false, rep
  * after an escape it has none, as the decoder has none after any control
  * function; at the start of a write it has what the last write ended on.
  */
+const LONGEST_CLUSTER = 64;
 const repeatable = (bytes: string, from: number, at: number, carried: boolean): boolean => {
   if (at === from) return from === 0 && carried;
-  const last = [...graphemes(bytes.slice(from, at))].at(-1)!;
+  // Only the last cluster counts, so only a tail is segmented; a cluster longer
+  // than it is judged by its marks alone, and refused loudly rather than passed.
+  const last = [...graphemes(bytes.slice(Math.max(from, at - LONGEST_CLUSTER), at))].at(-1)!;
   return !/\p{Cc}/u.test(last) && cellLen(last) > 0;
 };
 
@@ -161,7 +164,7 @@ export function undrawnEscape(output: string): string | null {
  */
 export function drawOutput(bytes: string): Drawn | null {
   if (bytes === "") return null;
-  const text = decodeAnsi(bytes, { noWrap: true });
+  const text = decodeAnsi(bytes, { noWrap: true, width: EXAMPLE_TERMINAL.columns });
   const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, asciiOnly: false })];
   const [columns] = Segment.getShape(Segment.splitLines(segments));
   return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark), columns };

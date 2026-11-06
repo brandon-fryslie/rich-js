@@ -557,7 +557,8 @@ export interface AnsiDecoderOptions {
   /**
    * The terminal's width in cells, its right margin: a move forward stops there,
    * so `\x1b[999C` reaches the right edge as it does on a terminal. Text runs
-   * past it, since a captured line has not been wrapped. Default 80.
+   * past it, since a captured line has not been wrapped. A positive whole
+   * number, since a REP draws up to it; default 80.
    */
   readonly width?: number;
 }
@@ -581,6 +582,7 @@ export class AnsiDecoder {
 
   constructor(options: AnsiDecoderOptions = {}) {
     this.width = options.width ?? DEFAULT_WIDTH;
+    if (!Number.isInteger(this.width) || this.width < 1) throw new RangeError(`AnsiDecoder width must be a positive whole number of cells, got ${this.width}`);
   }
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
@@ -611,10 +613,12 @@ export class AnsiDecoder {
         case "text": {
           const style = this.sgr.withLink(this.link);
           const text = drawnIn(this.sets[this.shifted], token.text);
+          let final = "";
           for (const cluster of graphemes(text)) {
             column += draw(cells, column, cluster, style);
-            last = cluster === "\t" ? undefined : [cluster, style];
+            final = cluster;
           }
+          if (final !== "" && final !== "\t") last = [final, style];
           break;
         }
         case "repeat": {
@@ -624,7 +628,7 @@ export class AnsiDecoder {
           // A terminal wraps what passes the right margin onto the next row; the
           // decoder holds one row, so the repeats stop at the margin, or where
           // the cursor already stands past it, as a move forward does.
-          const room = Math.floor((Math.max(this.width, column - 1) - (column - 1)) / width);
+          const room = Math.floor(Math.max(0, this.width - (column - 1)) / width);
           for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding!);
           break;
         }
