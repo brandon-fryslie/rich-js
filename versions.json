@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-588",
+      "ref": "refs/pull/588/merge",
+      "sha": "2ed1e7f9c9866fafad0eb4771080c60a9e5d8389",
+      "timestamp": "2026-11-06T22:52:17.867Z",
+      "commits": [
+        {
+          "sha": "2ed1e7f9c9866fafad0eb4771080c60a9e5d8389",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T15:49:42-07:00",
+          "message": "Merge bd471753c49d06140300e7e57ddbcfc6f17d678e into bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10\n"
+        },
+        {
+          "sha": "bd471753c49d06140300e7e57ddbcfc6f17d678e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T15:49:31-07:00",
+          "message": "A string escape's payload, an OSC 8 URI included, ends at CAN or SUB as a terminal's parser aborts it (rich-control-codes-xh4n.52p)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10",
