@@ -22,6 +22,7 @@ import { Syntax } from "../../src/renderables/syntax.js";
 import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
+import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Button } from "../../src/widgets/button.js";
 import { balancedControls, implicit, implicitVte, kitty, none, rows } from "./bidi-terminal.js";
 
@@ -477,6 +478,28 @@ describe("a paragraph starts at its own edge", () => {
   test("a Hebrew comment in Syntax is its own cells, not set against the block's right edge", () => {
     const [, comment] = rows(plainBytes(new Syntax("def f():\n    # שלום\n    return 1", "python"), "visual", 30));
     expect(comment).toBe("םולש #    ");
+  });
+
+  const printed = (renderable: Parameters<Console["print"]>[0], width: number): string[] => {
+    const recording = new Console({ width, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(renderable);
+    return recording.exportText().split("\n").filter((row) => row !== "");
+  };
+
+  test("print sets its own text at the paragraph's edge, and hands a container no justify", () => {
+    expect(printed(new FlexStrip([new RichText("שלום"), new RichText("abc"), new RichText("עולם")]), 30).map(cellLen)).toEqual([4, 3, 4]);
+    const tree = new Tree("root");
+    tree.add("שלום");
+    expect(printed(tree, 30)[1]).toBe("└── םולש");
+  });
+
+  test.each(laidOut)("the last row of a full right-to-left paragraph starts at its right, under %s", (order) => {
+    const lines = shown(new RichText(SENTENCE, { end: "", justify: "full" }), order, 12);
+    expect(padded(lines.at(-1)!)).toBe("left");
+  });
+
+  test("unjustified, a stated right-to-left line is its isolate and nothing more", () => {
+    expect(plainBytes(new RichText("abc", { end: "", direction: "rtl" }), "logical", 20)).toBe("⁧abc⁩");
   });
 
   test("a leading RLM decides the edge under visual, as it decides the order", () => {

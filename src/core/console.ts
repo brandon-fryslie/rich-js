@@ -658,7 +658,7 @@ export class Console {
       ...options,
       ...strings,
       frame: opts.frame,
-      justify: opts.justify ?? "default",
+      justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
     };
@@ -684,10 +684,14 @@ export class Console {
     // `Panel` ends in a line break and a bare `ProgressBar` does not (a line
     // fragment — test/seam/line-ends.ts), and both leave the next print at the
     // start of a line.
+    // Unasked, the text a print sets itself starts at each paragraph's own
+    // edge. A renderable is handed no justify: the containers inside it that
+    // set a child down at its natural width read absent as exactly that.
+    const textOpts: RenderOptions = { ...renderOpts, justify: opts.justify ?? "default" };
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
-      const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
-      if (align) return { lines: placeBlock(renderable, align, renderOpts), closed: true };
-      const drawn = [...render(renderable, renderOpts)];
+      const [renderable, blockOpts] = block.kind === "text" ? [new TextRun(block.items, terminator), textOpts] : [block.renderable, renderOpts];
+      if (align) return { lines: placeBlock(renderable, align, blockOpts), closed: true };
+      const drawn = [...render(renderable, blockOpts)];
       // A text run's last segment is always its `end`, yielded even when
       // empty, and `splitLines` drops the empty line after a final break only
       // when nothing follows it — so the run is closed exactly when `end` is.

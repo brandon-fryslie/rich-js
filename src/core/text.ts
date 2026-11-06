@@ -1021,16 +1021,17 @@ export class RichText implements Renderable, Measurable {
       const ordered = laidOutVisually(order) && directed ? reorder(drawnSegments(raw, base, options).segments, order, stated) : undefined;
       // Under `logical` the paragraph level is what a row cannot find alone,
       // and the row states it.
-      const level = order === "logical" && directed ? paragraphLevelOf(line.text, stated) : stated;
+      // Read off the raw line, as `reorder` reads its level: a mark `without`
+      // took out under `visual` still decided the paragraph.
+      const paragraph = directed ? paragraphLevelOf(raw.text, stated) : undefined;
+      const level = order === "logical" ? paragraph ?? stated : stated;
       const direction = level === undefined ? format.direction : DIRECTION_OF[level];
       // The edge a row starts at is its paragraph's under every order that lays
       // the row out, not only the one that states it on the wire. Under `plain`
       // the bytes are logical, where a line starts at its first character and
       // padding after it is already at its start, wherever the destination
       // shows that: it is the destination's own bidi, if any, that turns it.
-      // Read off the raw line, as `reorder` reads its level: a mark `without`
-      // took out under `visual` still decided the paragraph.
-      const startLevel = order !== "plain" && directed ? paragraphLevelOf(raw.text, stated) : 0;
+      const startLevel = order === "plain" ? 0 : paragraph ?? 0;
       const openersAt = openersAlong(line.text);
 
       divided(line, ranges).forEach((cut, index) => {
@@ -1245,7 +1246,8 @@ function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
  * The edge a row is placed against. `"start"` and `"default"` are the
  * paragraph's own edge: a right-to-left row unpadded would be drawn at the
  * left, the edge its reader ends at. A `full` row's gaps are already in its
- * text, so its last row is placed as no justify places one: not at all.
+ * text, so it is placed as `"default"` places one, which only its last row,
+ * short of the width, shows.
  */
 function edgeOf(justify: Justify | undefined, level: ParagraphLevel): "left" | "center" | "right" | undefined {
   const rightToLeft = level === 1;
@@ -1253,8 +1255,8 @@ function edgeOf(justify: Justify | undefined, level: ParagraphLevel): "left" | "
     case "start":
       return rightToLeft ? "right" : "left";
     case "default":
-      return rightToLeft ? "right" : undefined;
     case "full":
+      return rightToLeft ? "right" : undefined;
     case undefined:
       return undefined;
     default:

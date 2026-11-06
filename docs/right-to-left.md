@@ -126,7 +126,9 @@ output.print(table);
 `Table` column and `Markdown` use unless told otherwise, so a right-to-left cell
 sits at its cell's right. `justify: "default"` names the same edge without
 filling the width, so a left-to-right line keeps its natural width; it is what
-`Console.print` asks for. `"left"` and `"right"` mean those edges whatever the
+`Console.print` asks for, for the text it sets itself; a renderable it prints,
+and a `Live` or `App` view, is handed no `justify`, so a text inside one states
+its own. `"left"` and `"right"` mean those edges whatever the
 direction, and a stated `direction` decides the edge as it decides the order.
 
 A text with no `justify` at all is not placed. Containers that set a line down
