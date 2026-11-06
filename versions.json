@@ -4,15 +4,22 @@
     {
       "version": "pr-566",
       "ref": "refs/pull/566/merge",
-      "sha": "7a92921d3570b61a413678fa87ea46977965b358",
-      "timestamp": "2026-11-06T00:39:39.443Z",
+      "sha": "a1b5fb734c1406a29d04a8f9e1dc281fc998d268",
+      "timestamp": "2026-11-06T00:50:03.858Z",
       "commits": [
         {
-          "sha": "7a92921d3570b61a413678fa87ea46977965b358",
+          "sha": "a1b5fb734c1406a29d04a8f9e1dc281fc998d268",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:37:39Z",
-          "message": "Merge 53d6b12ace52dd9fb7945a065fbbdcdd8d377073 into 9c5b3e136c6a8f85fa696554c77e69874e3ce96f\n"
+          "timestamp": "2026-11-06T00:47:43Z",
+          "message": "Merge 10b0e67e3cbf606f6828488ceb3282794f138b4b into 9c5b3e136c6a8f85fa696554c77e69874e3ce96f\n"
+        },
+        {
+          "sha": "10b0e67e3cbf606f6828488ceb3282794f138b4b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T17:47:20-07:00",
+          "message": "Dropdown: the query's tail through cellFitEnd, its last glyph before the gutter; docs and module header say a long query shows its end (review of rich-control-codes-xh4n.okr)\n"
         },
         {
           "sha": "53d6b12ace52dd9fb7945a065fbbdcdd8d377073",
