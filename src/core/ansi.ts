@@ -137,8 +137,18 @@ const CSI = either("[");
 // tell the two apart, so repairing it is the caller's.
 const STRING_SO_FAR = String.raw`${either("]P_^X")}[^${STRING_STOPS}\n]*`;
 const STRING_ESCAPE = String.raw`${STRING_SO_FAR}(?:\x07|\x1b\\|\x9c)?`;
-/** A CSI or an escape so far: parameters, then intermediates, short of its final byte. */
-const SEQUENCE_SO_FAR = String.raw`(?:${CSI}[0-?]*|\x1b)[ -/]*`;
+// The C0 controls a VT500 parser runs inside a CSI or an escape and goes on
+// with it: all but LF, which ends the decoder's line, CAN and SUB, which abort
+// the sequence, and ESC, which starts another.
+const RUN_IN_SEQUENCE = String.raw`\x00-\x09\x0b-\x17\x19\x1c-\x1f`;
+const IN_SEQUENCE = String.raw`${RUN_IN_SEQUENCE}\x7f`;
+/**
+ * A CSI or an escape so far, short of its final byte: parameters, then
+ * intermediates, and after an intermediate any more parameters, which a
+ * terminal ignores to the final byte; and among them the C0 controls a
+ * terminal runs there (`RUN_IN_SEQUENCE`) and DEL, which it ignores.
+ */
+const SEQUENCE_SO_FAR = String.raw`(?:${CSI}[0-?${IN_SEQUENCE}]*(?:[ -/][ -?${IN_SEQUENCE}]*)?|\x1b[ -/${IN_SEQUENCE}]*)`;
 
 // The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
 const ESC_LINE_BREAKS = hex(
@@ -235,7 +245,7 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * otherwise.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<inert>(?:${SEQUENCE_SO_FAR}|${STRING_SO_FAR})[${ABORTS}]|\x1b\\|\x9c)|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<inert>(?:${SEQUENCE_SO_FAR}|${STRING_SO_FAR})[${ABORTS}]|\x1b\\|\x9c)|(?<undrawn>${CSI}[0-?]*(?:[ -/][ -?]*)?[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
@@ -269,11 +279,10 @@ const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${SEQUENCE_SO_FAR}|${STRING
 /**
  * Whether a terminal performs `control`, one `ESCAPES` matched alone, and
  * `next` the character after it: a C1 control, which some terminals do, and an
- * ESC no escape here begins. A VT500 parser stays in its escape state past such
- * an ESC, running a C0 control and ignoring DEL there, and takes a later byte as
- * the escape's final, which the decoder draws as text. Only the next ESC or C1
- * control cancels it, and then a terminal drops it as the decoder does; an
- * abort after it is the inert escape `ESCAPES` takes whole. `next` is never an
+ * ESC no escape here begins. A C0 control after an ESC has been run ahead of it
+ * (`executedFirst`). The next ESC or C1 control cancels such an ESC, and then a
+ * terminal drops it as the decoder does; an abort after it is the inert escape
+ * `ESCAPES` takes whole. `next` is never an
  * abort from beyond `bytes`: what `tokens` passes is a line break or an OSC 8
  * introducer, and an ESC ending a write is held open (`OPEN_ESCAPE`).
  */
@@ -676,7 +685,8 @@ function streamOf(width: number): Stream {
  * and keep the column, LS and PS move nothing, and a CNL of more rows passes
  * rows the decoder, ending its line once, never draws.
  */
-function linesOf(ansi: string): { readonly ended: readonly EndedLine[]; readonly last: string } {
+function linesOf(bytes: string): { readonly ended: readonly EndedLine[]; readonly last: string } {
+  const ansi = executedFirst(bytes);
   const ended: EndedLine[] = [];
   let start = 0;
   for (const found of ansi.matchAll(lineBreaks())) {
@@ -687,6 +697,20 @@ function linesOf(ansi: string): { readonly ended: readonly EndedLine[]; readonly
     start = found.index + found[0].length;
   }
   return { ended, last: ansi.slice(start) };
+}
+
+const SEQUENCE = pattern(new RegExp(SEQUENCE_SO_FAR, "u"));
+
+/**
+ * `bytes` with each C0 control a CSI or an escape holds run ahead of it, and
+ * each DEL there dropped. A sequence does nothing until its final byte, so
+ * running such a control where it stands, as a terminal does, is running it
+ * before the sequence began; nothing after this sees a control inside one.
+ */
+function executedFirst(bytes: string): string {
+  return bytes.replace(new RegExp(SEQUENCE.source, "gu"), (sequence) =>
+    sequence.replace(new RegExp(`[^${RUN_IN_SEQUENCE}]`, "gu"), "") + sequence.replace(new RegExp(`[${IN_SEQUENCE}]`, "gu"), ""),
+  );
 }
 
 /** A line and the break that ends it. */

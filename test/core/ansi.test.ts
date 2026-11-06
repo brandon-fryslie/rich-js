@@ -180,6 +180,23 @@ describe("decodeAnsi links", () => {
     }
   });
 
+  it("runs a C0 control inside a CSI or an escape and goes on with the sequence, as a VT500 parser does", () => {
+    const red = decodeAnsi("\x1b[31\x07mx");
+    expect(red.plain).toBe("x");
+    expect(styleAt(red, 0).color?.number).toBe(1);
+    expect(decodeAnsi("\x1b[31\x7fmx").plain).toBe("x");
+    expect(decodeAnsi("ab\x1b[3\r1mc").plain).toBe("cb");
+    expect(decodeAnsi("ab\x1b[1\bDc").plain).toBe("cb");
+    for (const abort of ["\x18", "\x1a"]) {
+      expect(decodeAnsi(`\x1b[31\x07${abort}mx`).plain).toBe("mx");
+      expect(decodeAnsi(`a\x1b(\x07${abort}Bc`).plain).toBe("aBc");
+      expect(decodeAnsi(`a\x1b\x01${abort}b`).plain).toBe("ab");
+      expect(decodeAnsi(`\x1b[ 1${abort}x`).plain).toBe("x");
+    }
+    expect(decodeAnsi("a\x1b\x07Bc").plain).toBe("ac");
+    expect(decodeAnsi("\x1b]0;t\x01i\x07x").plain).toBe("x");
+  });
+
   it("keeps a link open across an SGR reset, as a terminal does", () => {
     const text = decodeAnsi("\x1b]8;;https://x.test\x1b\\\x1b[1mbold\x1b[0m plain\x1b]8;;\x1b\\");
     expect(styleAt(text, 0).bold).toBe(true);
