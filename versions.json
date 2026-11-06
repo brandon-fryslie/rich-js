@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-581",
+      "ref": "refs/pull/581/merge",
+      "sha": "910c24e46b85bb68680392b00d5c265bf4253d97",
+      "timestamp": "2026-11-06T13:26:04.518Z",
+      "commits": [
+        {
+          "sha": "910c24e46b85bb68680392b00d5c265bf4253d97",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:23:32-07:00",
+          "message": "Merge 11e8c622abc68d56d228cca74400bb48d21cf701 into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
+        },
+        {
+          "sha": "11e8c622abc68d56d228cca74400bb48d21cf701",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:23:06-07:00",
+          "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c92c321cc7035dfe27312c8023b9f75dc54494d8",
