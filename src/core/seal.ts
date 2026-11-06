@@ -21,7 +21,7 @@
  */
 
 import { advance, closersOf, lineLevels, mirroredCluster, opened, paragraph, visualOrder, withoutExplicit, type Open } from "./bidi.js";
-import { cellLen, EXTENDER, wireText, ZWJ_CHARACTER } from "./cells.js";
+import { cellLen, endedPrepends, EXTENDER, isPrepend, wireText, ZWJ_CHARACTER } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { rowClusters, Segment } from "./segment.js";
 import type { LogicalStamp, TextOrder } from "./text-order.js";
@@ -34,8 +34,12 @@ const STARTS_EXTENDED = pattern(new RegExp(`^${EXTENDER}`, "u"));
 const AN_EXTENDER = pattern(new RegExp(`^${EXTENDER}$`, "u"));
 const TRAILING_JOINERS = pattern(new RegExp(`${ZWJ_CHARACTER}+$`, "u"));
 // What ends a cluster for whatever follows it (UAX #29 GB4): a control, a line
-// or paragraph separator, a format character — a bidi control included.
+// or paragraph separator, a format character — a bidi control included — but a
+// Prepend, which is a glyph (`isPrepend`).
 const ENDS_CLUSTER = pattern(/[\p{Cc}\p{Zl}\p{Zp}\p{Cf}]$/u);
+
+/** The last character of `text`, which is not empty. */
+const lastCharacter = (text: string): string => String.fromCodePoint(text.codePointAt(text.length - (/[\udc00-\udfff]$/.test(text) ? 2 : 1))!);
 
 /**
  * `text`, written after a glyph it could reach when `reaches`, without what
@@ -87,7 +91,38 @@ function* isolated(run: readonly Segment[], { level, opens }: LogicalStamp): Ite
  */
 export function sealed(segments: Iterable<Segment>, order: TextOrder): Iterable<Segment> {
   const edges = withEdges(contained(segments, order));
-  return order === "words" ? turnedBack(edges) : edges;
+  return prependsEnded(order === "words" ? turnedBack(edges) : edges);
+}
+
+/**
+ * `segments` with each Prepend character's cluster ended on the wire where the
+ * library ends it (`endedPrepends`). It runs last, on the bytes in the order they
+ * are written, because a terminal clusters what it is sent before it reorders.
+ */
+function* prependsEnded(segments: Iterable<Segment>): Iterable<Segment> {
+  // The last segment with text, held until what follows it is known, and the
+  // empty ones after it, which join nothing.
+  let held: Segment[] = [];
+  const release = (after: string): Segment[] => {
+    const [last, ...empty] = held;
+    held = [];
+    if (last === undefined) return empty;
+    const text = endedPrepends(last.text, after);
+    return [text === last.text ? last : new Segment(text, last.style, last.control), ...empty];
+  };
+  for (const segment of segments) {
+    if (segment.isControl) {
+      // A control moves the cursor or draws no cell, so nothing joins across it.
+      yield* release("");
+      yield segment;
+    } else if (segment.text === "") {
+      held.push(segment);
+    } else {
+      yield* release(String.fromCodePoint(segment.text.codePointAt(0)!));
+      held.push(segment);
+    }
+  }
+  yield* release("");
 }
 
 /**
@@ -130,7 +165,7 @@ function* withEdges(segments: Iterable<Segment>): Iterable<Segment> {
       continue;
     }
     const text = edged(segment.text, reaches);
-    if (text !== "") reaches = !ENDS_CLUSTER.test(text);
+    if (text !== "") reaches = !ENDS_CLUSTER.test(text) || isPrepend(lastCharacter(text));
     yield text === segment.text ? segment : new Segment(text, segment.style, segment.control);
   }
 }
