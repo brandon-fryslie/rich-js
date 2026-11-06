@@ -4,15 +4,22 @@
     {
       "version": "pr-587",
       "ref": "refs/pull/587/merge",
-      "sha": "a0a39922841d00f5165ec7907f11d9f5d39e8918",
-      "timestamp": "2026-11-06T22:24:26.159Z",
+      "sha": "4f880ac1a7f5ea370f2087e7ed8fec970e010cd7",
+      "timestamp": "2026-11-06T22:35:23.151Z",
       "commits": [
         {
-          "sha": "a0a39922841d00f5165ec7907f11d9f5d39e8918",
+          "sha": "4f880ac1a7f5ea370f2087e7ed8fec970e010cd7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:21:56Z",
-          "message": "Merge 9f3e1335be15cfa097fc5dde87631bc405def463 into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
+          "timestamp": "2026-11-06T22:33:41Z",
+          "message": "Merge b883288194c0a2812371bf7a3870640e9c51db76 into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
+        },
+        {
+          "sha": "b883288194c0a2812371bf7a3870640e9c51db76",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T15:33:30-07:00",
+          "message": "Gate review (high, step 12): an ESC cancelled by CAN, SUB or the line break after it is silent; each break's verdict comes from the match that found it (rich-control-codes-xh4n.lyr)\n"
         },
         {
           "sha": "9f3e1335be15cfa097fc5dde87631bc405def463",
