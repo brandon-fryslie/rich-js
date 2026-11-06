@@ -25,15 +25,15 @@ export function buildSearchBar(state: AppState): Renderable {
       const query = s.query;
       // The editing point is the terminal's own cursor where the painter shows
       // one, so an IME and a screen reader follow it; elsewhere it is drawn.
-      // The blank past the query is a neutral between it and the hint, so it is
-      // shown at the line's own level: the bar stands on its left edge.
+      // The cell past the query holds none of it (`Style.asTextEnd`), so it is
+      // shown beside the character typed last, whatever direction ends it.
       const line = (marked: boolean): RichText => {
         const out = new RichText("", { end: "" });
         out.append(`${sigil} `, "bold yellow on black");
         out.append(`${label}: `, "dim yellow on black");
         out.append(query, "white on black");
-        if (marked) out.append(" ", Style.parse("on black").withCaret(caretMark("bar")));
-        else out.append("█", "bold yellow on black");
+        if (marked) out.append(" ", Style.parse("on black").asTextEnd.withCaret(caretMark("bar")));
+        else out.append("█", Style.parse("bold yellow on black").asTextEnd);
         out.append("    [⏎] search  [esc] cancel", "dim");
         return out;
       };

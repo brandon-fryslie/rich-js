@@ -614,6 +614,21 @@ describe("the insertion point past the text, under visual order", () => {
     });
   });
 
+  it("shows no blank the value does not hold while the caret is elsewhere", () => {
+    const blurred = new TextInput({ value: "abc של" });
+    const [row] = Segment.splitLines(render(blurred, options("visual")));
+    expect(row!.map((segment) => segment.text).join("")).toMatch(/abc לש/);
+  });
+
+  it("puts a press on a right-to-left field's closing bracket beside the pointer", () => {
+    const input = field("של");
+    input.cursorPosition = asCodeUnit(1);
+    const frame = Segment.splitLines(render(input, options("visual")));
+    const x = Segment.getLineLength(frame[0]!) - 1;
+    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+    expect(input.cursorPosition).toBe(0);
+  });
+
   // From the end of "abc של", shown "abc ␣לש" with the end beside ל: Left
   // crosses to the space, Right to ל.
   it.each([

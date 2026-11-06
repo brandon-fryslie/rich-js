@@ -808,8 +808,10 @@ export class TextInput extends ThemedWidget {
       this.cursorPosition = asCodeUnit(row.valueStart + offsetAtCell(stops, relX));
     } else {
       // [LAW:types-are-the-program] relX is a column of the window the
-      // clicked frame holds, past the bracket.
-      const relX = asCellCol(Math.max(0, event.x - 1));
+      // clicked frame holds, past the bracket; a press on a bracket is one on
+      // the cell inside it, beside the pointer.
+      const width = layout.screen.framed.reduce((cells, seen) => cells + seen.cells, 0);
+      const relX = asCellCol(Math.min(Math.max(0, event.x - 1), Math.max(0, width - 1)));
       this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen, relX));
     }
     this._preferredColumn.set(null);
@@ -1174,17 +1176,17 @@ export class TextInput extends ThemedWidget {
       pieces.push({ at, segments: caretAt === at ? [...caret!.draw(shown)] : [new Segment(shown, contentStyle)] });
       at += glyph.length;
     }
-    // The end is one blank holding no character (`Style.textEnd`), the caret's
-    // when it is there, and a probe the frame drops when the frame draws no
-    // cell for it: [LAW:one-source-of-truth] the order places that end, with a
-    // caret or without, never a rule beside it.
+    // The end is one blank holding no character (`Style.textEnd`): the caret's,
+    // drawn, when it is there, and otherwise a probe the frame drops, so no row
+    // shows a blank its value does not hold. [LAW:one-source-of-truth] The
+    // order places that end, with a caret or without, never a rule beside it.
     let probe: Segment | undefined;
     if (row.endSlot) {
-      const caretHere = caretAt === at;
-      const end = (caretHere ? [...caret!.draw(" ")] : [new Segment(" ", contentStyle)])
-        .map((segment) => new Segment(segment.text, (segment.style ?? Style.null()).asTextEnd, segment.control));
-      if (!caretHere && endCells < 1) probe = end[0];
-      const pad = endCells - Segment.getLineLength(end);
+      const atEnd = contentStyle.asTextEnd;
+      const end = caretAt === at
+        ? [...caret!.draw(" ")].map((segment) => new Segment(segment.text, (segment.style ?? contentStyle).asTextEnd, segment.control))
+        : [probe = new Segment(" ", atEnd)];
+      const pad = endCells - Segment.getLineLength(probe === undefined ? end : []);
       if (pad > 0) end.push(new Segment(" ".repeat(pad), contentStyle));
       pieces.push({ at, segments: end });
     }
@@ -1195,7 +1197,7 @@ export class TextInput extends ThemedWidget {
       return { ordered, screen: () => this._screenOf(ordered, drawn, []) };
     }
     const stamped = pieces.flatMap((piece) => Segment.anchorLines([piece.segments], new Slot(piece.at))[0]!);
-    const probed = probe === undefined ? undefined : stamped.at(-1);
+    const probed = probe === undefined ? undefined : stamped[pieces.flatMap((piece) => piece.segments).indexOf(probe)];
     const ordered = this._oriented(stamped, drawn.textOrder, row.level).map((segment) => {
       const { at, style } = unslotted(segment);
       return cell(at, segment, style, probed !== undefined && segment.style?.anchor === probed.style?.anchor);
