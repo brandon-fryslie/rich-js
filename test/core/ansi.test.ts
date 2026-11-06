@@ -119,6 +119,17 @@ describe("decodeAnsi SGR parameters", () => {
     expect([styleAt(text, 3).underline, styleAt(text, 3).doubleUnderline]).toEqual([false, true]);
   });
 
+  it("reads the plain underline codes as one kind too", () => {
+    const text = decodeAnsi("\x1b[21ma\x1b[4mb\x1b[21mc");
+    expect([styleAt(text, 1).underline, styleAt(text, 1).doubleUnderline]).toEqual([true, false]);
+    expect([styleAt(text, 2).underline, styleAt(text, 2).doubleUnderline]).toEqual([false, true]);
+  });
+
+  it("tells the colour-space slot by the kind's value and trims empty trailing arguments", () => {
+    expect(styleAt(decodeAnsi("\x1b[38:02::1:2:3mx"), 0).color!.value).toEqual(new ColorRgba(1, 2, 3));
+    expect(styleAt(decodeAnsi("\x1b[38:2:1:2:3:mx"), 0).color!.value).toEqual(new ColorRgba(1, 2, 3));
+  });
+
   it("names no color for a colon-form color cut short after an empty colour-space slot", () => {
     expect(styleAt(decodeAnsi("\x1b[38:2::1:2mx"), 0).isNull).toBe(true);
   });

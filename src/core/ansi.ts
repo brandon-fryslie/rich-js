@@ -194,6 +194,10 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   // [LAW:one-source-of-truth] The codes that turn an attribute on are the
   // ones `Style.toSgrCodes` writes; only the codes that turn one off are ours.
   ...ATTRIBUTE_NAMES.map((name): [number, SgrOp] => [ATTRIBUTE_SGR[name], adding({ [name]: true })]),
+  // A terminal draws one underline kind, so a single and a double underline
+  // each replace the other; Rich's table adds them. Later entries win.
+  [ATTRIBUTE_SGR.underline, adding({ underline: true, doubleUnderline: false })],
+  [ATTRIBUTE_SGR.doubleUnderline, adding({ underline: false, doubleUnderline: true })],
   [22, adding({ bold: false, dim: false })],
   [23, adding({ italic: false })],
   // ECMA-48: 24 is "neither singly nor doubly underlined", 25 "steady" at
@@ -227,27 +231,29 @@ const parameter = (code: string): number => Math.min(255, Number(code));
 /**
  * The T.416 colon form of an extended color as the `;` arguments `SGR_OPS`
  * reads: `5:n`, `2:r:g:b`, or `2:cs:r:g:b`, whose colour-space slot, empty or
- * not, names no color a terminal draws. The slot is told by count or by being
- * empty, so it is read before an empty argument becomes 0.
+ * not, names no color a terminal draws. The slot is told by count, trailing
+ * empty arguments aside since they carry no channel, or by being empty, so it
+ * is read before an empty argument becomes 0.
  */
 function colorArguments([kind = "", ...args]: readonly string[]): number[] {
-  const slot = kind === "2" && (args.length > 3 || args[0] === "");
-  return [kind, ...(slot ? args.slice(1) : args)].map(parameter);
+  let end = args.length;
+  while (end > 0 && args[end - 1] === "") end -= 1;
+  const slot = parameter(kind) === 2 && (end > 3 || args[0] === "");
+  return [kind, ...args.slice(slot ? 1 : 0, end)].map(parameter);
 }
 
 /**
- * A code carrying colon sub-parameters, as the plain codes `SGR_OPS` applies in
- * turn: its arguments are its own, so the codes after it are untouched. `4:n`
- * is one underline kind, so it clears the last; a curly, dotted or dashed one
- * (3–5) is the underline `Style` can hold. A code T.416 gives no sub-parameters
- * is skipped, as is a kind past 5.
+ * A code carrying colon sub-parameters, as the plain code and arguments
+ * `SGR_OPS` applies: its arguments are its own, so the codes after it are
+ * untouched. `4:n` is an underline's kind; a curly, dotted or dashed one (3–5)
+ * is the underline `Style` can hold. A code T.416 gives no sub-parameters is
+ * skipped, as is a kind past 5.
  */
-function subCodes(code: number, subs: readonly string[]): (readonly [number, number[]])[] {
-  if (code === 38 || code === 48 || code === 58) return [[code, colorArguments(subs)]];
-  if (code !== 4) return [];
+function subCode(code: number, subs: readonly string[]): readonly [number, number[]] | undefined {
+  if (code === 38 || code === 48 || code === 58) return [code, colorArguments(subs)];
+  if (code !== 4) return undefined;
   const kind = parameter(subs[0] ?? "");
-  if (kind > 5) return [];
-  return kind === 0 ? [[24, []]] : [[24, []], [kind === 2 ? 21 : 4, []]];
+  return kind > 5 ? undefined : [kind === 0 ? 24 : kind === 2 ? 21 : 4, []];
 }
 
 /**
@@ -270,8 +276,12 @@ function applySgr(style: Style, params: string): Style {
   let result = style;
   while (at < groups.length) {
     const [code = "", ...subs] = groups[at++]!;
-    const steps = subs.length === 0 ? [[parameter(code), rest] as const] : subCodes(parameter(code), subs).map(([c, args]) => [c, args.values()] as const);
-    for (const [c, args] of steps) result = (SGR_OPS.get(c) ?? identity)(result, args);
+    if (subs.length === 0) {
+      result = (SGR_OPS.get(parameter(code)) ?? identity)(result, rest);
+      continue;
+    }
+    const sub = subCode(parameter(code), subs);
+    if (sub !== undefined) result = (SGR_OPS.get(sub[0]) ?? identity)(result, sub[1].values());
   }
   return result;
 }
