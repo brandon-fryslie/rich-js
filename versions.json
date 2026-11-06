@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd",
-      "timestamp": "2026-11-06T10:31:57.273Z",
+      "sha": "e8ee9d2d00559fb249809ef4103d270a9269551c",
+      "timestamp": "2026-11-06T10:58:13.580Z",
       "commits": [
         {
-          "sha": "e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd",
+          "sha": "e8ee9d2d00559fb249809ef4103d270a9269551c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T03:29:50-07:00",
-          "message": "decodeAnsi reads colon-form SGR sub-parameters: 4:n underlines, 38:/48: colors, each group its own code (rich-control-codes-xh4n.qx1) (#575)\n\n* decodeAnsi reads colon-form SGR sub-parameters: 4:n underlines, 38:/48: colors, each group its own code (rich-control-codes-xh4n.qx1)\n\n* Colon groups apply through SGR_OPS: 4:n replaces the underline kind, an empty colour-space slot is read before it becomes 0 (rich-control-codes-xh4n.qx1)\n\n* Plain 4 and 21 replace each other's underline; the colour-space slot is told by the kind's value with trailing empties trimmed; docs/text.md names colon decoding (rich-control-codes-xh4n.qx1)"
+          "timestamp": "2026-11-06T03:56:03-07:00",
+          "message": "decodeAnsi moves along the line for CUB, CUF, CHA, HPR and HPA as it does for BS and CR (rich-control-codes-xh4n.9pb) (#576)\n\n* decodeAnsi moves along the line for CUB, CUF, CHA, HPR and HPA as it does for BS and CR (rich-control-codes-xh4n.9pb)\n\n* decodeAnsi bounds a motion count, reads a move's first parameter, and moves on CHT, CBT and HPB (rich-control-codes-xh4n.9pb review)\n\n* A move's bound stops a forward move and never turns one around past column 9999 (rich-control-codes-xh4n.9pb review)\n\n* decodeAnsi moves against a right margin it is given, edits cells for ECH, DCH and ICH, and the docs gate reads its finals (rich-control-codes-xh4n.9pb review)"
         }
       ]
     }
