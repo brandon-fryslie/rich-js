@@ -15,8 +15,9 @@
  * or running on with a timer set once its body has returned (`runsOn`), is ended as soon as it does, and the run says which: nothing it
  * prints from then on is a drawing of what it does.
  */
+import { LINE_START } from "../../../src/core/ansi.js";
+import type { LineState } from "../../../src/core/ansi.js";
 import { scanEscapes, undrawnEscape } from "../example-fragments.js";
-import type { Carried } from "../example-fragments.js";
 import { sandbox, type TerminalSpec } from "./sandbox.js";
 
 /** How a static run ended. */
@@ -71,7 +72,7 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
   // An escape begun in one write and ended in a later one is read whole, once it is.
   let unread = "";
   // What the line the bytes seen so far end on holds for the next write (`scanEscapes`).
-  let carried: Carried = { saved: false, repeatable: false };
+  let carried: LineState = LINE_START;
   let finish: (end: StaticEnd) => void = () => {};
   const result = new Promise<StaticResult>((resolve) => {
     // [LAW:single-enforcer] Every way a run ends comes through here, once:
@@ -96,7 +97,7 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
         const scan = scanEscapes(seen, carried);
         if (scan.dropped !== null) return finish({ kind: "dropped" });
         unread = seen.slice(scan.unread);
-        carried = scan;
+        carried = scan.after;
         return printed > options.limitChars ? finish({ kind: "overflowed", limitChars: options.limitChars }) : undefined;
       }
       case "listening":

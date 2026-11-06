@@ -82,6 +82,7 @@ import { cellLen, graphemes } from "./cells.js";
 import { ColorSpec } from "./color.js";
 import { CONTROL_CODES, controlClass } from "./control-codes.js";
 import { osc8Sequences, STRING_STOPS } from "./osc8.js";
+import { pattern } from "./pattern.js";
 import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
 import type { StyleOptions } from "./style.js";
 import { RichText } from "./text.js";
@@ -93,18 +94,20 @@ type Token =
   | { readonly kind: "link"; readonly uri: string }
   | { readonly kind: "designate"; readonly set: 0 | 1; readonly charset: Charset }
   /** DECSTR (`soft`) resets the style and the sets; RIS also ends a link and clears the screen. */
-  | { readonly kind: "reset"; readonly soft: boolean }
+  | { readonly kind: "reset"; readonly soft: boolean; readonly escape: string }
   | { readonly kind: "shift"; readonly set: 0 | 1 }
   | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
   | { readonly kind: "move"; readonly motion: Motion; readonly count: number }
   | { readonly kind: "edit"; readonly edit: Edit; readonly count: number }
   | { readonly kind: "erase"; readonly mode: EraseMode }
   /** DECSC or SCOSC (`save`), DECRC or SCORC (not). */
-  | { readonly kind: "cursor"; readonly save: boolean }
+  | { readonly kind: "cursor"; readonly save: boolean; readonly escape: string }
   /** REP: the graphic character drawn just before it, `count` more times. */
-  | { readonly kind: "repeat"; readonly count: number }
-  /** An escape or control the decoder draws nothing for; it still comes between a character and a REP. */
-  | { readonly kind: "silent" };
+  | { readonly kind: "repeat"; readonly count: number; readonly escape: string }
+  /** A control a terminal draws nothing for either; it still comes between a character and a REP. */
+  | { readonly kind: "silent" }
+  /** An escape a terminal performs and the decoder does not: a move off the line, a mode, a title, a C1 control. */
+  | { readonly kind: "undrawn"; readonly escape: string };
 
 /** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
 type EraseMode = "0" | "1" | "2";
@@ -187,31 +190,22 @@ type Edit = keyof typeof EDITS;
  * Save and restore the cursor: DECSC `\x1b7` and DECRC `\x1b8`, and SCOSC
  * `\x1b[s` and SCORC `\x1b[u`, each exactly — with parameters `s` is DECSLRM's
  * margins, and `u` with a parameter or a marker is kitty's keyboard protocol,
- * both left to the silent "any other CSI". `\x1b#8` carries an intermediate, so
- * it is not `\x1b8`. The docs' output gate reads these rather than a copy of them.
+ * both left to the undrawn "any other CSI". `\x1b#8` carries an intermediate, so
+ * it is not `\x1b8`.
  */
-export const CURSOR_SAVE: string = String.raw`\x1b7|${CSI}s`;
-export const CURSOR_RESTORE: string = String.raw`\x1b8|${CSI}u`;
+const CURSOR_SAVE = String.raw`\x1b7|${CSI}s`;
+const CURSOR_RESTORE = String.raw`\x1b8|${CSI}u`;
 
 const finalClass = (table: object): string => `[${hex(finals(Object.keys(table).join("")))}]`;
 
-/**
- * The CSI final bytes `decodeAnsi` performs on a line besides SGR's `m` and
- * erase in line's `K`: every move and every edit. The docs' output gate reads
- * this rather than a copy of it.
- */
-export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(EDITS).join("");
-
-/** REP's CSI final byte, which the docs' output gate reads too. */
-export const REPEAT_FINAL = "b";
+const REPEAT_FINAL = "b";
 
 /**
  * Whether REP repeats `cluster`, the last one drawn before it with no control
  * function between: a graphic character, so one that takes a cell. A tab moves
- * the cursor, and a mark with nothing under it takes none. The docs' output
- * gate asks this of the bytes it reads, so the two cannot disagree on it.
+ * the cursor, and a mark with nothing under it takes none.
  */
-export const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.test(cluster) && cellLen(cluster) > 0;
+const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.test(cluster) && cellLen(cluster) > 0;
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
@@ -222,16 +216,18 @@ export const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
  * (`mode`); a soft reset, DECSTR, or a full reset, RIS (`reset`); a G0 or G1
  * designation (`designate`, its `charset`, such as `\x1b(B` or `\x1b)0`); the
- * silent escapes (`silent`) — any other CSI sequence, any other string escape
+ * undrawn escapes (`undrawn`) — any other CSI sequence, any other string escape
  * (OSC, DCS, APC, PM, SOS) run to a terminator or cut off where `STRING_ESCAPE`
  * says, and any other escape, ECMA-48's intermediates and one final byte
  * (`\x1b#8`, `\x1b(%5`); a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
  * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line
- * may not hold or a terminal draws nothing for (`control`), silent too.
+ * may not hold or a terminal draws nothing for (`control`): undrawn when it is an
+ * ESC that starts no escape or a C1 control, which a terminal performs, and silent
+ * otherwise.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<silent>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
@@ -244,35 +240,35 @@ const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 // NEL does: what follows is on a line of its own.
 const CNL = "[0-9;]*E";
 
-/**
- * The escapes `decode` ends a line at, in their `ESC` form: CNL and `ESC E`.
- * The docs' output gate reads this rather than a copy of it.
- */
-export const LINE_BREAK_ESCAPES: string = String.raw`\x1b\[${CNL}|\x1b[${ESC_LINE_BREAKS}]`;
-
-/**
- * Everything `decode` ends a line at, `\n`, C1 forms and line-break controls
- * included; a pattern for a `u` regex. The docs' output gate reads this rather
- * than a copy of it.
- */
-export const LINE_ENDS: string = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`;
+/** Everything `decode` ends a line at, `\n`, C1 forms and line-break controls included. */
+const LINE_ENDS = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`;
 
 // A string escape goes first so a line break its payload holds stays in it.
 const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "gu");
 
+/**
+ * An escape begun at the end of the bytes and not yet complete, cut from the
+ * same pieces as `ESCAPES`: a CSI so far parameters and intermediates, a string
+ * escape short of its terminator (an ESC at its end may be the first byte of
+ * ST), or an ESC so far only intermediates.
+ */
+const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${CSI}[0-?]*[ -/]*|${either("]P_^X")}[^${STRING_STOPS}\n]*\x1b?|\x1b[ -/]*)$`, "u"));
+
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, silent, control, shift, underscore, struck, underlined } = match.groups!;
+    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
+    const escape = match[0];
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
-    if (silent !== undefined || control !== undefined) yield { kind: "silent" };
-    if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
-    if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined };
+    if (undrawn !== undefined || (control !== undefined && /[\x1b\x80-\x9f]/.test(control))) yield { kind: "undrawn", escape };
+    else if (control !== undefined) yield { kind: "silent" };
+    if (escape === "\r") yield { kind: "move", motion: "G", count: 1 };
+    if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined, escape };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
-    if (repeat !== undefined) yield { kind: "repeat", count: Number(count) || 1 };
+    if (repeat !== undefined) yield { kind: "repeat", count: Number(count) || 1, escape };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
-    if (reset !== undefined) yield { kind: "reset", soft: reset !== "\x1bc" };
+    if (reset !== undefined) yield { kind: "reset", soft: reset !== "\x1bc", escape };
     if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charsetOf(charset!) };
     if (shift !== undefined) yield { kind: "shift", set: shift === "\x0e" ? 1 : 0 };
     if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
@@ -560,6 +556,26 @@ interface Rendition {
 /** What a restore with nothing saved brings back, and what a reset leaves saved. */
 const DEFAULT_RENDITION: Rendition = { sgr: NULL_STYLE, sets: ["B", "B"], shifted: 0 };
 
+/**
+ * What a line holds for bytes written later on it: the column a save on it
+ * holds, and the graphic character drawn last with nothing after it, which a REP
+ * repeats.
+ */
+export interface LineState {
+  readonly savedColumn: number | undefined;
+  readonly last: readonly [string, Style] | undefined;
+}
+
+/** A line nothing has been written on. */
+export const LINE_START: LineState = { savedColumn: undefined, last: undefined };
+
+/** A line drawn: its text, what it holds for bytes written after it, and the first escape on it no terminal draws this way. */
+interface DrawnLine {
+  readonly text: RichText;
+  readonly end: LineState;
+  readonly undrawn: string | undefined;
+}
+
 /** What a decoder knows of the terminal that drew its bytes. */
 export interface AnsiDecoderOptions {
   /**
@@ -579,24 +595,15 @@ export interface AnsiDecoderOptions {
  * as the line it appears to be.
  */
 export class AnsiDecoder {
-  private sgr: Style = NULL_STYLE;
-  private link: string | undefined = undefined;
-  private readonly width: number;
-  /** G0 and G1, each a designation's final byte, and which of them SO and SI have shifted in. */
-  private readonly sets: [Charset, Charset] = ["B", "B"];
-  private shifted: 0 | 1 = 0;
-  /** The rendition a cursor save holds; its column is the line's own (`decodeLine`). */
-  private saved: Rendition = DEFAULT_RENDITION;
+  private readonly stream: Stream;
 
   constructor(options: AnsiDecoderOptions = {}) {
-    this.width = options.width ?? DEFAULT_WIDTH;
-    if (!Number.isInteger(this.width) || this.width < 1) throw new RangeError(`AnsiDecoder width must be a positive whole number of cells, got ${this.width}`);
+    this.stream = streamOf(options.width ?? DEFAULT_WIDTH);
   }
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    const lined = ansi.replace(lineBreaks(), (_found, escape?: string) => escape ?? "\n");
-    return (lined.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
+    return (lined(ansi).match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
       this.decodeLine(line.replace(/\r?\n$/, "")),
     );
   }
@@ -606,108 +613,182 @@ export class AnsiDecoder {
    * it: `\r` returns to the first column, and text overwrites from there.
    */
   decodeLine(line: string): RichText {
-    const cells: Cell[] = [ORIGIN];
-    let column = 1;
-    // A column saved on this line; a save on another names a row this one is not.
-    let savedColumn: number | undefined = undefined;
-    // The graphic character drawn last and its style, while nothing has come
-    // after it: ECMA-48's REP repeats "the preceding graphic character", and a
-    // control function in between leaves it none.
-    let last: Cell | undefined = undefined;
-    for (const token of tokens(line)) {
-      const preceding = last;
-      last = undefined;
-      switch (token.kind) {
-        case "text": {
-          const style = this.sgr.withLink(this.link);
-          const text = drawnIn(this.sets[this.shifted], token.text);
-          let final = "";
-          for (const cluster of graphemes(text)) {
-            column += draw(cells, column, cluster, style);
-            final = cluster;
-          }
-          if (repeatable(final)) last = [final, style];
-          break;
-        }
-        case "repeat": {
-          if (preceding === undefined) break;
-          const width = cellLen(preceding[0]);
-          // A terminal wraps what passes the right margin onto the next row; the
-          // decoder holds one row, so the repeats stop at the margin, or where
-          // the cursor already stands past it, as a move forward does.
-          const room = Math.floor(Math.max(0, this.width - (column - 1)) / width);
-          for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding);
-          break;
-        }
-        case "overstrike": {
-          // Overstrike is nroff's, and nroff writes ASCII; a glyph struck over
-          // itself only overwrites the earlier, as on a terminal.
-          const character = drawnIn(this.sets[this.shifted], token.character);
-          const emphasis = character === token.character ? token.emphasis : NULL_STYLE;
-          column += draw(cells, column, character, this.sgr.add(emphasis).withLink(this.link));
-          // The emphasis is this decoder's reading of the overstrike; a terminal repeats the character in the SGR style.
-          if (repeatable(character)) last = [character, this.sgr.withLink(this.link)];
-          break;
-        }
-        case "reset":
-          this.sgr = NULL_STYLE;
-          this.sets.fill("B");
-          this.shifted = 0;
-          this.saved = DEFAULT_RENDITION;
-          savedColumn = undefined;
-          if (token.soft) break;
-          this.link = undefined;
-          cells.length = 1;
-          cells[0] = ORIGIN;
-          column = 1;
-          break;
-        case "designate":
-          this.sets[token.set] = token.charset;
-          break;
-        case "shift":
-          this.shifted = token.set;
-          break;
-        case "move":
-          column = moved(column, token.motion, token.count, this.width);
-          // A mark waiting at the origin had nothing to sit on; moved away, it never will.
-          if (column !== 1) cells[0] = ORIGIN;
-          break;
-        case "edit":
-          EDITS[token.edit](cells, column, token.count, this.width);
-          break;
-        case "erase":
-          erase(cells, column, token.mode);
-          break;
-        case "cursor":
-          if (token.save) {
-            this.saved = { sgr: this.sgr, sets: [...this.sets], shifted: this.shifted };
-            savedColumn = column;
-            break;
-          }
-          this.sgr = this.saved.sgr;
-          this.sets.splice(0, 2, ...this.saved.sets);
-          this.shifted = this.saved.shifted;
-          column = savedColumn ?? column;
-          if (column !== 1) cells[0] = ORIGIN;
-          break;
-        case "sgr":
-          this.sgr = applySgr(this.sgr, token.params);
-          break;
-        case "link":
-          this.link = token.uri === "" ? undefined : token.uri;
-          break;
-        case "silent":
-          break;
-      }
-    }
-    const runs: [string, Style][] = [];
-    for (const [char, style] of cells.filter(([char]) => char !== "")) {
-      const last = runs.at(-1);
-      if (last?.[1].equals(style)) last[0] += char;
-      else runs.push([char, style]);
-    }
-    return RichText.assemble(runs);
+    return drawLine(this.stream, line, LINE_START).text;
   }
+}
+
+/** What a stream's escapes set that carries on across its lines, as it does on a terminal. */
+interface Stream {
+  sgr: Style;
+  link: string | undefined;
+  readonly width: number;
+  /** G0 and G1, each a designation's final byte, and which of them SO and SI have shifted in. */
+  readonly sets: [Charset, Charset];
+  shifted: 0 | 1;
+  /** The rendition a cursor save holds; its column is the line's own (`LineState`). */
+  saved: Rendition;
+}
+
+function streamOf(width: number): Stream {
+  if (!Number.isInteger(width) || width < 1) throw new RangeError(`AnsiDecoder width must be a positive whole number of cells, got ${width}`);
+  return { sgr: NULL_STYLE, link: undefined, width, sets: ["B", "B"], shifted: 0, saved: DEFAULT_RENDITION };
+}
+
+/** `ansi` with every line end `decode` ends a line at written `\n`, one inside a string escape's payload left there. */
+const lined = (ansi: string): string => ansi.replace(lineBreaks(), (_found, escape?: string) => escape ?? "\n");
+
+/**
+ * `line` drawn after `start`, what the same line held before it. The branches
+ * that decide what the decoder does with a restore, a REP and RIS also say
+ * whether a terminal does the same, so the gate that reads `undrawn` reads
+ * the decoder's own rule (`scanUndrawn`).
+ */
+function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
+  const cells: Cell[] = [ORIGIN];
+  let column = 1;
+  // A column saved on this line; a save on another names a row this one is not.
+  let savedColumn = start.savedColumn;
+  // The graphic character drawn last and its style, while nothing has come
+  // after it: ECMA-48's REP repeats "the preceding graphic character", and a
+  // control function in between leaves it none.
+  let last = start.last;
+  let undrawn: string | undefined = undefined;
+  const report = (escape: string): void => {
+    undrawn ??= escape;
+  };
+  for (const token of tokens(line)) {
+    const preceding = last;
+    last = undefined;
+    switch (token.kind) {
+      case "text": {
+        const style = stream.sgr.withLink(stream.link);
+        const text = drawnIn(stream.sets[stream.shifted], token.text);
+        let final = "";
+        for (const cluster of graphemes(text)) {
+          column += draw(cells, column, cluster, style);
+          final = cluster;
+        }
+        if (repeatable(final)) last = [final, style];
+        break;
+      }
+      case "repeat": {
+        if (preceding === undefined) {
+          report(token.escape);
+          break;
+        }
+        const width = cellLen(preceding[0]);
+        // A terminal wraps what passes the right margin onto the next row; the
+        // decoder holds one row, so the repeats stop at the margin, or where
+        // the cursor already stands past it, as a move forward does.
+        const room = Math.floor(Math.max(0, stream.width - (column - 1)) / width);
+        for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding);
+        break;
+      }
+      case "overstrike": {
+        // Overstrike is nroff's, and nroff writes ASCII; a glyph struck over
+        // itself only overwrites the earlier, as on a terminal.
+        const character = drawnIn(stream.sets[stream.shifted], token.character);
+        const emphasis = character === token.character ? token.emphasis : NULL_STYLE;
+        column += draw(cells, column, character, stream.sgr.add(emphasis).withLink(stream.link));
+        // The emphasis is this decoder's reading of the overstrike; a terminal repeats the character in the SGR style.
+        if (repeatable(character)) last = [character, stream.sgr.withLink(stream.link)];
+        break;
+      }
+      case "reset":
+        stream.sgr = NULL_STYLE;
+        stream.sets.fill("B");
+        stream.shifted = 0;
+        stream.saved = DEFAULT_RENDITION;
+        savedColumn = undefined;
+        if (token.soft) break;
+        // A terminal also clears its screen, which the decoder holds none of.
+        report(token.escape);
+        stream.link = undefined;
+        cells.length = 1;
+        cells[0] = ORIGIN;
+        column = 1;
+        break;
+      case "designate":
+        stream.sets[token.set] = token.charset;
+        break;
+      case "shift":
+        stream.shifted = token.set;
+        break;
+      case "move":
+        column = moved(column, token.motion, token.count, stream.width);
+        // A mark waiting at the origin had nothing to sit on; moved away, it never will.
+        if (column !== 1) cells[0] = ORIGIN;
+        break;
+      case "edit":
+        EDITS[token.edit](cells, column, token.count, stream.width);
+        break;
+      case "erase":
+        erase(cells, column, token.mode);
+        break;
+      case "cursor":
+        if (token.save) {
+          stream.saved = { sgr: stream.sgr, sets: [...stream.sets], shifted: stream.shifted };
+          savedColumn = column;
+          break;
+        }
+        // With nothing saved on this line a terminal homes the cursor or goes
+        // up to the saved row, and the decoder holds no row to do either.
+        if (savedColumn === undefined) report(token.escape);
+        stream.sgr = stream.saved.sgr;
+        stream.sets.splice(0, 2, ...stream.saved.sets);
+        stream.shifted = stream.saved.shifted;
+        column = savedColumn ?? column;
+        if (column !== 1) cells[0] = ORIGIN;
+        break;
+      case "sgr":
+        stream.sgr = applySgr(stream.sgr, token.params);
+        break;
+      case "link":
+        stream.link = token.uri === "" ? undefined : token.uri;
+        break;
+      case "undrawn":
+        report(token.escape);
+        break;
+      case "silent":
+        break;
+    }
+  }
+  const runs: [string, Style][] = [];
+  for (const [char, style] of cells.filter(([char]) => char !== "")) {
+    const run = runs.at(-1);
+    if (run?.[1].equals(style)) run[0] += char;
+    else runs.push([char, style]);
+  }
+  return { text: RichText.assemble(runs), end: { savedColumn, last }, undrawn };
+}
+
+
+/** Bytes a program wrote, read for the escapes a drawing of them performs as no terminal would. */
+export interface UndrawnScan {
+  /** The first escape the decoder draws other than a terminal does; null when there is none. */
+  readonly undrawn: string | null;
+  /** Where an escape starts that is not yet complete, to be read once the rest of it is written; the length of the bytes when none does. */
+  readonly unread: number;
+  /** What the line the bytes end on holds for the next write. */
+  readonly after: LineState;
+}
+
+/**
+ * [LAW:one-source-of-truth] The escapes in `bytes` the decoder does not
+ * perform as a terminal does, read by the decoder itself: its own line breaks,
+ * so one inside a string escape's payload ends nothing, and its own branches.
+ * `before` is what the line held when an earlier write on it ended, so a stream
+ * read write by write reads as it does whole; only the complete bytes are read.
+ */
+export function scanUndrawn(bytes: string, before: LineState = LINE_START): UndrawnScan {
+  const open = OPEN_ESCAPE.exec(bytes);
+  const unread = open === null ? bytes.length : open.index;
+  const stream = streamOf(DEFAULT_WIDTH);
+  // The first line continues the one `before` ended on; each after it starts fresh.
+  const drawn = lined(bytes.slice(0, unread))
+    .split("\n")
+    .map((line, index) => drawLine(stream, line, index === 0 ? before : LINE_START));
+  return { undrawn: drawn.find((line) => line.undrawn !== undefined)?.undrawn ?? null, unread, after: drawn.at(-1)!.end };
 }
 
 /**
