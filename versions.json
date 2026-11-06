@@ -4,15 +4,22 @@
     {
       "version": "pr-565",
       "ref": "refs/pull/565/merge",
-      "sha": "fbec9827893cfe99b348e51cad64082221ae1a63",
-      "timestamp": "2026-11-05T23:59:53.916Z",
+      "sha": "85a601d32c4fd33a079271556826d89b8b8f9f33",
+      "timestamp": "2026-11-06T00:05:37.749Z",
       "commits": [
         {
-          "sha": "fbec9827893cfe99b348e51cad64082221ae1a63",
+          "sha": "85a601d32c4fd33a079271556826d89b8b8f9f33",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T23:57:30Z",
-          "message": "Merge 157ef4448259a38efcba252dd4143ad64aa9cbfb into 071d41c8dcc12133fe39fde3a8b6f812dd4df86a\n"
+          "timestamp": "2026-11-06T00:03:26Z",
+          "message": "Merge f6098fa9ddd34b8ca0549e63aea90bad5f73ee36 into 071d41c8dcc12133fe39fde3a8b6f812dd4df86a\n"
+        },
+        {
+          "sha": "f6098fa9ddd34b8ca0549e63aea90bad5f73ee36",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T17:03:16-07:00",
+          "message": "Only a bar caret turns; the docs promise the leading edge, not where a typed character lands; paint steps one grapheme (rich-control-codes-xh4n.e1h)\n"
         },
         {
           "sha": "157ef4448259a38efcba252dd4143ad64aa9cbfb",
