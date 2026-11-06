@@ -208,24 +208,26 @@ const groundRelative = (role: string): boolean => NEUTRAL_INTENTS.has(role) || r
  * on the grounds Textual promises them (`heldOn`). An authored theme is this
  * with roles stated; see `RULES` for what a role not stated becomes.
  *
- * A translucent color is drawn onto `background` before anything is derived
- * from it, so a component's text is chosen against the color its ground is
- * drawn as. `boost` alone stays a layer: it is what `panel` composites.
+ * A stated translucent color is drawn onto its ground before anything is
+ * derived from it (`GROUND`), so a component's text is chosen against the
+ * color its ground is drawn as.
  */
 export function buildPalette(name: string, dark: boolean, given: StatedRoles): Palette {
-  const known = statedRoles(name, given);
+  const stated = statedRoles(name, given);
+  const known = new Map<PaletteRole, ColorRgba>();
+  const drawn = drawnOn(name, given.background);
+  for (const key of BASE_KEYS) known.set(key, drawn(given[key]));
 
   // [LAW:no-ambient-temporal-coupling] A rule asks for the roles it reads, so
   // no order among the rules matters. The eight base roles are always known.
   const at: At = (role) => {
-    const color = known.get(role) ?? RULES[role as keyof typeof RULES](at, dark);
+    const color = known.get(role) ?? drawnOnGround(role, stated.get(role), at) ?? RULES[role as keyof typeof RULES](at, dark);
     known.set(role, color);
     return color;
   };
 
   // [LAW:single-enforcer] Stated and derived alike: the color is the palette's,
   // whether it reads is decided here, at the floor `textOn` holds the intent to.
-  // A stated color is already drawn on `background` (`statedRoles`).
   const grounds = (["background", "surface", "panel"] as const).map((role) => at(role).compositeOver(at("background")));
   const side = contrastFor(at("background"));
   for (const key of ACCENT_KEYS) {
@@ -237,18 +239,44 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
 }
 
 /**
- * The roles `given` states, drawn on `background`. The one place a caller's
- * roles are read: a key that names no role is refused, and one holding
- * `undefined` states nothing. [LAW:parse-dont-validate]
+ * The role each text role is drawn on, where that is not `background`: a
+ * stated translucent text composites there, as Textual draws it, so a cursor's
+ * `#000000DD` is the color it shows on the cursor. [LAW:one-source-of-truth]
+ */
+const GROUND: { readonly [R in PaletteRole]?: PaletteRole } = {
+  ...Object.fromEntries(ACCENT_KEYS.map((key) => [`text-${key}`, `${key}-muted`])),
+  "block-cursor-foreground": "block-cursor-background",
+  "block-cursor-blurred-foreground": "block-cursor-blurred-background",
+  "button-color-foreground": "primary",
+  "footer-foreground": "footer-background",
+  "footer-description-foreground": "footer-description-background",
+  "footer-key-foreground": "footer-key-background",
+  "input-cursor-foreground": "input-cursor-background",
+  "link-color": "link-background",
+  "link-color-hover": "link-background-hover",
+  ...Object.fromEntries(([1, 2, 3, 4, 5, 6] as const).map((n) => [`markdown-h${n}-color`, `markdown-h${n}-background`])),
+};
+
+/**
+ * A stated role as it is drawn: on its ground (`GROUND`), itself drawn on
+ * `background`. `boost` alone stays a layer: it is what `panel` composites,
+ * and a fully transparent color draws nothing anywhere.
+ */
+function drawnOnGround(role: PaletteRole, color: ColorRgba | undefined, at: At): ColorRgba | undefined {
+  if (color === undefined || role === "boost" || color.alpha === 0 || color.alpha === 1) return color;
+  return color.compositeOver(at(GROUND[role] ?? "background").compositeOver(at("background")));
+}
+
+/**
+ * The roles `given` states, as given. The one place a caller's roles are read:
+ * a key that names no role is refused, and one holding `undefined` states
+ * nothing. [LAW:parse-dont-validate]
  */
 function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRgba> {
-  const drawn = drawnOn(name, given.background);
   const stated = Object.entries(given).flatMap(([role, color]: [string, ColorRgba | undefined]): [PaletteRole, ColorRgba][] => {
     if (!ROLE_NAMES.has(role)) throw new RangeError(`palette ${JSON.stringify(name)}: ${JSON.stringify(role)} is not a role${groundRelative(role) ? ` — text drawn relative to its ground is \`textOn(palette, intent, ground)\`, not a palette color` : ""}`);
-    if (color === undefined) return [];
-    return [[role as PaletteRole, role === "boost" ? color : drawn(color)]];
+    return color === undefined ? [] : [[role as PaletteRole, color]];
   });
-  const known = new Map(stated);
   // Every base color is derived from, and a fully transparent one draws no
   // color of its own to derive a muted shade or a contrast from.
   // [LAW:no-silent-failure]
@@ -259,9 +287,8 @@ function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRg
         `palette ${JSON.stringify(name)}: ${key} is fully transparent (${color.hex}), so there is no color to derive the palette from`,
       );
     }
-    known.set(key, drawn(color));
   }
-  return known;
+  return new Map(stated);
 }
 
 /**

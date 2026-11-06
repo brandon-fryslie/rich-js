@@ -37,20 +37,20 @@ Every palette holds its fixed text colors where Textual promises they read: each
 
 A fit is what text becomes on a ground it does not read on. Three ship:
 
-- `slide` (the default) moves the color's lightness until it clears the floor, keeping its hue: a red stays a red, lighter or darker.
-- `named` takes the first color the theme itself names for the intent that clears the floor — the role's text, then its ladder, walking toward the side that reads — or the one standing furthest off the ground where none does. The text is always one of the theme's own colors, at the cost of the floor on a ground none of them reads on.
-- `tinted` runs Textual's own `text-*` recipe on this ground: the ground's black or white, tinted with the accent at the largest share, up to Textual's 66%, that clears the floor.
+- `TEXT_FITS.slide` (the default) moves the color's lightness until it clears the floor, keeping its hue: a red stays a red, lighter or darker.
+- `TEXT_FITS.named` takes the first color the theme itself names for the intent that clears the floor — the role's text, then its ladder, nearest rungs first — or the one standing furthest off the ground where none does. The text is always one of the theme's own colors, at the cost of the floor on a ground none of them reads on.
+- `TEXT_FITS.tinted` runs Textual's own `text-*` recipe on this ground: the ground's black or white, tinted with the accent at the largest share, up to Textual's 66%, that clears the floor.
 
 A fit is any function from a `TextRequest` — the candidate that missed, the ground, the floor, where it is drawn, the color it is tinted toward, and the shades the theme names for it — to a color. Here are the three, and one written in place, on the shades of Dracula's `primary` with an error's text:
 
 ```typescript
-import { contrastFor, getThemePalette, named, slide, textOn, tinted, type TextFit } from "@promptctl/rich-js";
+import { contrastFor, getThemePalette, textOn, TEXT_FITS, type TextFit } from "@promptctl/rich-js";
 
 const palette = getThemePalette("dracula");
 const pole: TextFit = ({ ground }) => contrastFor(ground);
 const shades = ["primary-darken-3", "primary-darken-1", "primary", "primary-lighten-1", "primary-lighten-3", "primary-muted"] as const;
 
-for (const [name, fit] of [["slide", slide], ["named", named], ["tinted", tinted], ["yours", pole]] as const) {
+for (const [name, fit] of [...Object.entries(TEXT_FITS), ["yours", pole] as const]) {
   const cells = shades.map((role) => {
     const ground = palette.get(role);
     return `[${textOn(palette, "text-error", ground, { fit }).hex} on ${ground.hex}] error [/]`;

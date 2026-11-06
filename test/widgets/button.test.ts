@@ -114,7 +114,7 @@ describe("Button", () => {
       expect(segments).toHaveLength(1);
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
-      // bg should be the full accent (same as hover), fg should be on-${accent}.
+      // bg should be the full accent (same as hover), fg is `text` drawn on that accent.
       // Both should be different — no inversion that would put fg = mostly-bg.
       expect(style.color!.name).not.toBe(style.bgcolor!.name);
     });

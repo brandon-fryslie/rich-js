@@ -113,6 +113,22 @@ describe("a fit is any function", () => {
     expect([request!.candidate, request!.ground, ...request!.shades].every((c) => c.alpha === 1)).toBe(true);
   });
 
+  it("hands an accent's shades nearest first, both directions at each step out", () => {
+    const asked: TextRequest[] = [];
+    textOn(palette, "text-primary", palette.get("primary"), { fit: (request) => (asked.push(request), request.candidate) });
+    const ground = palette.get("primary");
+    const rung = (direction: string, n: number) => palette.get(`primary-${direction}-${n}` as "primary-lighten-1").compositeOver(ground).hex;
+    const steps = asked[0]!.shades.slice(2).map((c) => c.hex);
+    for (const [i, n] of [1, 2, 3].entries()) {
+      expect(new Set(steps.slice(2 * i, 2 * i + 2))).toEqual(new Set([rung("lighten", n), rung("darken", n)]));
+    }
+  });
+
+  it("named refuses a request that names no shades", () => {
+    const request = { candidate: palette.get("primary"), ground: palette.get("background"), floor: 99, drawnAt: { depth: ColorDepth.TRUECOLOR }, tint: palette.get("primary"), shades: [] };
+    expect(() => named(request)).toThrow(/names no shades/);
+  });
+
   it("is never asked for disabled text, which has no floor", () => {
     const refuse: TextFit = () => {
       throw new Error("asked");

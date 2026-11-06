@@ -515,8 +515,7 @@ export interface TextInputOptions {
   indicatorStyle?: Style;
   /**
    * Style override for the cursor cell. Defaults to
-   * `bgcolor: primary, color: on-primary` (the WCAG-correct combination
-   * derived from the active theme).
+   * `bgcolor: primary` with the theme's `text` drawn on it (`textOn`).
    */
   cursorStyle?: Style;
   /**

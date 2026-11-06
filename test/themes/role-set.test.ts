@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ColorRgba, TerminalTheme, blendRgb, contrastRatio, relativeLuminance } from "../../src/core/color.js";
+import { ColorRgba, TerminalTheme, blendRgb, contrastRatio, parseHexColor, relativeLuminance } from "../../src/core/color.js";
+import { THEMES } from "../../src/themes/data/index.js";
 import { IDENTITY } from "../../src/core/oklch.js";
 import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
 import type { Palette, PaletteRole, ShadedRole } from "../../src/themes/palette.js";
@@ -117,6 +118,31 @@ describe("what buildPalette is given", () => {
     // A light cursor on a dark palette whose primary is mid-blue: text chosen
     // for `primary` would be white, and white does not read on this cursor.
     expect(contrastRatio(palette.get("block-cursor-foreground"), cursor)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("a stated translucent text-* composites over its own *-muted", () => {
+    const tint = new ColorRgba(235, 242, 255, 0xdd / 255);
+    const palette = buildPalette("t", true, { ...base, "text-primary": tint });
+    expect(palette.get("text-primary").hex).toBe(tint.compositeOver(palette.get("primary-muted")).hex);
+  });
+
+  // Every bundled theme that states a cursor or hovered link's text as a tint
+  // shows it on the cursor and the hovered link, not on `background`.
+  const drawnOnItsGround = listThemePalettes().flatMap((name) =>
+    (
+      [
+        ["block-cursor-foreground", "block-cursor-background"],
+        ["link-color-hover", "link-background-hover"],
+      ] as const
+    ).flatMap(([text, ground]) => {
+      const stated = THEMES[name].vars[text];
+      return stated === undefined ? [] : [{ name, text, ground, stated }];
+    }),
+  );
+  it.each(drawnOnItsGround)("$name draws $text on $ground", ({ name, text, ground, stated }) => {
+    const palette = getThemePalette(name);
+    const color = parseHexColor(stated);
+    expect(palette.get(text).hex).toBe(color.compositeOver(palette.get(ground).compositeOver(palette.get("background"))).hex);
   });
 });
 

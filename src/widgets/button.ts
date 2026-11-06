@@ -5,7 +5,7 @@
  *
  * Four visual states:
  *   normal  — variant colors from theme semantic palette (muted)
- *   hover   — full variant accent bg + on-accent fg (WCAG contrast)
+ *   hover   — full variant accent bg + `text` drawn on it (`textOn`)
  *   focus   — brackets [ label ] surrounding the button
  *   active  — same color pair as hover, plus bold (pressed cue)
  *

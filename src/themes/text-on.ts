@@ -38,7 +38,7 @@ export interface DrawnAt {
   readonly terminal?: TerminalTheme;
 }
 
-export const TRUECOLOR: DrawnAt = { depth: ColorDepth.TRUECOLOR };
+export const DRAWN_AT_TRUECOLOR: DrawnAt = { depth: ColorDepth.TRUECOLOR };
 
 /** Textual's ground-relative weights. */
 export type NeutralIntent = "text" | "text-muted" | "text-disabled";
@@ -56,7 +56,7 @@ export interface TextRequest {
   readonly drawnAt: DrawnAt;
   /** The color the intent is tinted toward: the accent for `text-<accent>`, the text color itself otherwise. */
   readonly tint: ColorRgba;
-  /** The colors the theme names for this intent: its own color first, then its shades, walking first toward the pole that reads. */
+  /** The colors the theme names for this intent: its own color first, then its shades, nearest first. */
   readonly shades: readonly ColorRgba[];
 }
 
@@ -64,7 +64,7 @@ export interface TextRequest {
 export type TextFit = (request: TextRequest) => ColorRgba;
 
 /** Whether `fg` clears `floor` on an opaque `ground` as the terminal draws the pair. */
-export function readsOn(fg: ColorRgba, ground: ColorRgba, floor: number, drawnAt: DrawnAt = TRUECOLOR): boolean {
+export function readsOn(fg: ColorRgba, ground: ColorRgba, floor: number, drawnAt: DrawnAt = DRAWN_AT_TRUECOLOR): boolean {
   return drawnContrast(fg, ground, drawnAt) >= floor;
 }
 
@@ -75,6 +75,9 @@ function drawnContrast(fg: ColorRgba, ground: ColorRgba, { depth, terminal }: Dr
 
 /** The candidate standing furthest off the ground as drawn. */
 function furthest(candidates: readonly ColorRgba[], ground: ColorRgba, drawnAt: DrawnAt): ColorRgba {
+  // A fit that hands `named` a request of its own may have filtered every
+  // shade away; there is then no color the theme chose. [LAW:no-silent-failure]
+  if (candidates.length === 0) throw new RangeError("named: the request names no shades, so there is no color of the theme's to choose");
   const scored = candidates.map((color) => ({ color, contrast: drawnContrast(color, ground, drawnAt) }));
   return scored.reduce((best, c) => (c.contrast > best.contrast ? c : best)).color;
 }
@@ -162,11 +165,15 @@ interface IntentRule {
 
 const RUNGS = [1, 2, 3] as const;
 
-/** `root` and its ladder, walking first toward the pole that reads on `ground`. */
+/**
+ * `root` and its ladder, nearest rungs first: each step out tries both
+ * directions before the next, so the first shade that reads is the one closest
+ * to the theme's color, whichever side it is on. At one step, the direction
+ * toward the pole that reads on `ground` is tried first.
+ */
 function ladder(palette: Palette, root: "foreground" | "background" | AccentRole, ground: ColorRgba): ColorRgba[] {
   const [near, far] = contrastFor(ground).red === 255 ? (["lighten", "darken"] as const) : (["darken", "lighten"] as const);
-  const rungs = (direction: "lighten" | "darken") => RUNGS.map((n) => palette.get(`${root}-${direction}-${n}`));
-  return [palette.get(root), ...rungs(near), ...rungs(far)];
+  return [palette.get(root), ...RUNGS.flatMap((n) => [palette.get(`${root}-${near}-${n}`), palette.get(`${root}-${far}-${n}`)])];
 }
 
 /** The neutrals a theme names, its own colors for the weight first. */
@@ -255,7 +262,7 @@ export function textOn(
   palette: Palette,
   intent: TextIntent,
   ground: ColorRgba,
-  { fit = slide, drawnAt = TRUECOLOR }: { readonly fit?: TextFit; readonly drawnAt?: DrawnAt } = {},
+  { fit = slide, drawnAt = DRAWN_AT_TRUECOLOR }: { readonly fit?: TextFit; readonly drawnAt?: DrawnAt } = {},
 ): ColorRgba {
   const drawnGround = ground.compositeOver(palette.get("background"));
   const { floor, on } = INTENTS[intent];

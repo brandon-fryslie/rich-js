@@ -61,7 +61,7 @@ import { blendRgb, ColorParseError, parseHexColor, type ColorRgba } from "../cor
 import { Oklch, IDENTITY } from "../core/oklch.js";
 import type { ColorAdjustment } from "../core/oklch.js";
 import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
-import { TRUECOLOR, type DrawnAt } from "../themes/text-on.js";
+import { DRAWN_AT_TRUECOLOR, type DrawnAt } from "../themes/text-on.js";
 
 export type { DrawnAt };
 
@@ -289,7 +289,7 @@ function oklchAxisFuncs(): FuncMap {
  *   when known — read on every `ensureContrast` evaluation so a host that learns
  *   its destination per render passes one getter; defaults to truecolor.
  */
-export function colorFuncs(drawnAt: () => DrawnAt = () => TRUECOLOR): FuncMap {
+export function colorFuncs(drawnAt: () => DrawnAt = () => DRAWN_AT_TRUECOLOR): FuncMap {
   return {
     darken: darkenFunc,
     lighten: lightenFunc,

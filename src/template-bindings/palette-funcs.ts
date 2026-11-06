@@ -69,7 +69,7 @@ import { resolveColorRef } from "../themes/colorRef.js";
 import { parseEasing } from "../core/easing.js";
 import { ColorRamp, type ColorStop } from "../themes/ramp.js";
 import { asColor, computable } from "./color-funcs.js";
-import { isTextIntent, slide, textOn, TEXT_INTENTS, TRUECOLOR, type DrawnAt, type TextFit } from "../themes/text-on.js";
+import { isTextIntent, slide, textOn, TEXT_INTENTS, DRAWN_AT_TRUECOLOR, type DrawnAt, type TextFit } from "../themes/text-on.js";
 
 /**
  * The `(position, color-ref)` pairs a `ramp` call's tail spells, as stops.
@@ -130,7 +130,7 @@ function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
  * ```
  */
 export function paletteFuncs(getPalette: () => Palette, place: TextPlace = {}): FuncMap {
-  const { fit = () => slide, drawnAt = () => TRUECOLOR } = place;
+  const { fit = () => slide, drawnAt = () => DRAWN_AT_TRUECOLOR } = place;
   const colorFunc: TemplateFunc = {
     fn: ((ref: string) => resolveColorRef(getPalette(), ref).hex) as TemplateFunc["fn"],
     argTypes: ["string"],

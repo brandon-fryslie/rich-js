@@ -14,17 +14,14 @@ import {
   getThemePalette,
   isTextIntent,
   listThemePalettes,
-  named,
   readsOn,
   RichText,
-  slide,
   Style,
   TEXT_FITS,
   TEXT_INTENTS,
   textFloor,
   textOn,
-  tinted,
-  TRUECOLOR,
+  DRAWN_AT_TRUECOLOR,
   type ColorRgba,
   type Palette,
   type TextFit,
@@ -48,21 +45,20 @@ function grounds(palette: Palette): ColorRgba[] {
  */
 const pole: TextFit = ({ ground }) => contrastFor(ground);
 
-const FITS: ReadonlyArray<readonly [string, TextFit]> = [
-  ["slide", slide],
-  ["named", named],
-  ["tinted", tinted],
-  ["pole (yours)", pole],
-];
+const FITS: ReadonlyArray<readonly [string, TextFit]> = [...Object.entries(TEXT_FITS), ["pole (yours)", pole]];
 
-// The intents to compare, spelled as a config would spell them: an accent's
-// text, which is what misses on another role's shades. Neutral text rarely
-// misses at all; add "text-muted" or any other intent to compare it too.
-const COMPARED = "text-error";
-const INTENTS: readonly TextIntent[] = COMPARED.split(" ").map((name) => {
-  if (!isTextIntent(name)) throw new Error(`${JSON.stringify(name)} is not one of ${TEXT_INTENTS.join(", ")}`);
-  return name;
-});
+/**
+ * The intents to compare, as a setting spells them: space-separated names,
+ * each parsed against the one list. An accent's text is the default, since it
+ * is what misses on another role's shades; neutral text rarely misses at all.
+ * `npm run themes-and-color-studio` reads `TEXT_ON_INTENTS`.
+ */
+export function comparedIntents(setting = "text-error"): readonly TextIntent[] {
+  return setting.split(/\s+/).filter((name) => name !== "").map((name) => {
+    if (!isTextIntent(name)) throw new Error(`TEXT_ON_INTENTS: ${JSON.stringify(name)} is not one of ${TEXT_INTENTS.join(", ")}`);
+    return name;
+  });
+}
 
 const LABEL = 19;
 
@@ -70,7 +66,7 @@ const LABEL = 19;
 function row(palette: Palette, intent: TextIntent, label: string, fit: TextFit): RichText {
   const line = new RichText().append(label.padEnd(LABEL), "dim");
   for (const ground of grounds(palette)) {
-    const text = textOn(palette, intent, ground, { fit, drawnAt: TRUECOLOR });
+    const text = textOn(palette, intent, ground, { fit, drawnAt: DRAWN_AT_TRUECOLOR });
     const bg = ColorSpec.fromRgba(ground);
     line.append("Aa", Style.fromColor(ColorSpec.fromRgba(text), bg));
     line.append(readsOn(text, ground, textFloor(intent)) ? " " : "•", new Style({ color: "red", bold: true, bgcolor: bg }));
@@ -78,7 +74,7 @@ function row(palette: Palette, intent: TextIntent, label: string, fit: TextFit):
   return line;
 }
 
-export function section9TextOn(out: Console): void {
+export function section9TextOn(out: Console, intents: readonly TextIntent[] = comparedIntents()): void {
   out.print(sectionHeader(9, "Text on a ground — textOn and its fits"));
   out.print(
     blurb(
@@ -90,12 +86,11 @@ export function section9TextOn(out: Console): void {
     ),
   );
   out.print(dim(`  Grounds: ${DECORATIVE.join(", ")} — each darken-3 … lighten-3 and muted — then surface, panel. A red dot: under the floor.`));
-  out.print(dim(`  Fits by name, for a setting that names one: ${Object.keys(TEXT_FITS).join(", ")}.`));
   out.print(blank());
   for (const name of listThemePalettes()) {
     const palette = getThemePalette(name);
     out.print(new RichText(name, { style: "bold" }));
-    for (const intent of INTENTS) {
+    for (const intent of intents) {
       for (const [fitName, fit] of FITS) {
         out.print(row(palette, intent, `${intent.replace("text-", "")} ${fitName}`, fit));
       }
