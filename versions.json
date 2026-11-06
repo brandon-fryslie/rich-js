@@ -4,15 +4,22 @@
     {
       "version": "pr-569",
       "ref": "refs/pull/569/merge",
-      "sha": "02eaa45bb34a45e894e65382aa0e12f4dfd866b2",
-      "timestamp": "2026-11-06T03:36:48.408Z",
+      "sha": "17a0c21bd049e2fd1592a364baa0b59e21e5caca",
+      "timestamp": "2026-11-06T03:42:57.002Z",
       "commits": [
         {
-          "sha": "02eaa45bb34a45e894e65382aa0e12f4dfd866b2",
+          "sha": "17a0c21bd049e2fd1592a364baa0b59e21e5caca",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:35:11-07:00",
-          "message": "Merge 5891e3a726a257c1308694ed315b22f89e707a1a into 12789fcb9cb12d5a4e1655a5699413d3fec64dca\n"
+          "timestamp": "2026-11-06T03:41:22Z",
+          "message": "Merge b114032320bcadb52384ab41c2d33e47ad4758fe into 12789fcb9cb12d5a4e1655a5699413d3fec64dca\n"
+        },
+        {
+          "sha": "b114032320bcadb52384ab41c2d33e47ad4758fe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T20:41:11-07:00",
+          "message": "Cut the end slot only at its edges, so a glyph outside the BMP stays whole; pin Syriac Prepend and the drawn-cursor slot (review of #569)\n"
         },
         {
           "sha": "5891e3a726a257c1308694ed315b22f89e707a1a",
