@@ -46,13 +46,18 @@
  * in, across lines and calls as it holds the SGR style, and draws text in that
  * set (`CHARSETS`).
  *
+ * CNL is the sixth. Rich drops `\x1b[E`, gluing the text after it to the line
+ * before; here it ends the line, once whatever its count, since the decoder
+ * holds no cursor row or screen height to count rows against (`CNL`). CPL goes
+ * up to a line already decoded, so it stays dropped.
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator: movement along the line
  * (`MOTIONS`) moves the column as `\r` and a backspace do, since a redraw writes
  * `\x1b[2D` as readily as two backspaces, and the line editor's edits beside it
- * (`EDITS`) erase, delete and insert cells; every other cursor movement is
- * dropped, not performed. The right margin is the decoder's `width`.
+ * (`EDITS`) erase, delete and insert cells; every other cursor movement but
+ * CNL's is dropped, not performed. The right margin is the decoder's `width`.
  *
  * Tier 5 of `src/core/`: it builds `RichText`, so it sits above `text`, and
  * `RichText` cannot offer a `fromAnsi` static without importing upward.
@@ -190,9 +195,24 @@ const ESCAPES = [
 
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
+// CNL after its introducer. On a terminal it passes `count` rows, or none on
+// the bottom row, where it does not scroll; the decoder holds no cursor row and
+// no screen height, so no count has an answer it could give, and CNL decodes as
+// NEL does: what follows is on a line of its own.
+const CNL = "[0-9;]*E";
+
+/**
+ * The escapes `decode` ends a line at, in their `ESC` form: CNL and `ESC E`.
+ * The docs' output gate reads this rather than a copy of it.
+ */
+export const LINE_BREAK_ESCAPES: string = String.raw`\x1b\[${CNL}|\x1b[${ESC_LINE_BREAKS}]`;
+
 // A string escape goes first so a line break its payload holds stays in it.
 const lineBreaks = (): RegExp =>
-  new RegExp(`(${STRING_ESCAPE})|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`, "gu");
+  new RegExp(
+    `(${STRING_ESCAPE})|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`,
+    "gu",
+  );
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
