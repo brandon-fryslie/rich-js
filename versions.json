@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-569",
-      "ref": "refs/pull/569/merge",
-      "sha": "a3a49d13cdbac1d59c1b1ecfd5c29f3a6d3cf677",
-      "timestamp": "2026-11-06T04:04:44.292Z",
-      "commits": [
-        {
-          "sha": "a3a49d13cdbac1d59c1b1ecfd5c29f3a6d3cf677",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:02:23Z",
-          "message": "Merge f4e522c5b8af40085ddefa11c1856b7217fee2a3 into 12789fcb9cb12d5a4e1655a5699413d3fec64dca\n"
-        },
-        {
-          "sha": "f4e522c5b8af40085ddefa11c1856b7217fee2a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T21:01:45-07:00",
-          "message": "The Syriac end slot under words order is an expected failure that goes green with qmw (second high review of #569)\n"
-        },
-        {
-          "sha": "ccf11327fd2c48238dcaec3c73a64b870f7dd1fe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:56:05-07:00",
-          "message": "Every row ordered by cluster asks rowClusters, so seal's kitty reversal keeps the end slot apart from a Prepend character too (medium review of #569)\n"
-        },
-        {
-          "sha": "b114032320bcadb52384ab41c2d33e47ad4758fe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:41:11-07:00",
-          "message": "Cut the end slot only at its edges, so a glyph outside the BMP stays whole; pin Syriac Prepend and the drawn-cursor slot (review of #569)\n"
-        },
-        {
-          "sha": "5891e3a726a257c1308694ed315b22f89e707a1a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:35:02-07:00",
-          "message": "The end slot past the text never joins a Prepend character's cluster, so under visual order the caret after U+0600-U+0605 keeps its cell (rich-control-codes-xh4n.q87)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "12789fcb9cb12d5a4e1655a5699413d3fec64dca",
-      "timestamp": "2026-11-06T03:33:13.812Z",
+      "sha": "f197d9cf43c2ffb1cb1189b7cbc42038e2250062",
+      "timestamp": "2026-11-06T04:16:28.000Z",
       "commits": [
         {
-          "sha": "12789fcb9cb12d5a4e1655a5699413d3fec64dca",
+          "sha": "f197d9cf43c2ffb1cb1189b7cbc42038e2250062",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-05T20:30:45-07:00",
-          "message": "The caret past a mixed-direction text stands beside the last character typed: CaretMark.after marks the blank a widget adds past the text, and ordering gives it the level before it (rich-control-codes-xh4n.tmh) (#568)\n\n* The caret past a mixed-direction text stands beside the last character typed: CaretMark.after marks the blank a widget adds past the text, and ordering gives it the level before it (rich-control-codes-xh4n.tmh)\n\n* The end slot is a fact of its own: Style.textEnd marks the blank past the text on every path — probe, fallback, drawn caret, terminal caret, Dropdown — and ordering folds it into clusterLevels' 'level before it' rule; a press past a row lands on Stops.end (rich-control-codes-xh4n.tmh)\n\n* Drop _endCells and Stops.end: a wrapped row's end stays a probe, so no layout shifts and a press past a row still lands on the end; keep a caret segment's control at the end slot; delete the uncalled shownOrder; scope the docs to the orders the frame orders; narrow the step oracle's skip to an unpressable line end (rich-control-codes-xh4n.tmh)\n\n* The end past the text is drawn only under the caret, a probe otherwise, so no row shows a blank its value lacks; the probe is found by index now that padding follows it; a press on a single-line bracket is one on the cell inside it; the claude-sessions search bar marks its end cell; Style.textEnd has its own tests (rich-control-codes-xh4n.tmh)"
+          "timestamp": "2026-11-05T21:14:42-07:00",
+          "message": "The end slot past the text never joins a Prepend character's cluster, so under visual order the caret after U+0600-U+0605 keeps its cell (rich-control-codes-xh4n.q87) (#569)\n\n* The end slot past the text never joins a Prepend character's cluster, so under visual order the caret after U+0600-U+0605 keeps its cell (rich-control-codes-xh4n.q87)\n\n* Cut the end slot only at its edges, so a glyph outside the BMP stays whole; pin Syriac Prepend and the drawn-cursor slot (review of #569)\n\n* Every row ordered by cluster asks rowClusters, so seal's kitty reversal keeps the end slot apart from a Prepend character too (medium review of #569)\n\n* The Syriac end slot under words order is an expected failure that goes green with qmw (second high review of #569)"
         }
       ]
     }
