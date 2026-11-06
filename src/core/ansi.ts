@@ -46,13 +46,17 @@
  * in, across lines and calls as it holds the SGR style, and draws text in that
  * set (`CHARSETS`).
  *
+ * CNL is the sixth. Rich drops `\x1b[E`; it ends a line as NEL does, so it
+ * ends one here, once whatever its count. Lines are decoded in order with no
+ * screen height, so CPL, which goes up to a line already decoded, stays dropped.
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator: movement along the line
  * (`MOTIONS`) moves the column as `\r` and a backspace do, since a redraw writes
  * `\x1b[2D` as readily as two backspaces, and the line editor's edits beside it
- * (`EDITS`) erase, delete and insert cells; every other cursor movement is
- * dropped, not performed. The right margin is the decoder's `width`.
+ * (`EDITS`) erase, delete and insert cells; every other cursor movement but
+ * CNL's is dropped, not performed. The right margin is the decoder's `width`.
  *
  * Tier 5 of `src/core/`: it builds `RichText`, so it sits above `text`, and
  * `RichText` cannot offer a `fromAnsi` static without importing upward.
@@ -191,23 +195,14 @@ const ESCAPES = [
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
 // A string escape goes first so a line break its payload holds stays in it.
-// CNL (`count`) is NEL `count` times: column 1 of a row that far down, with the
-// rows it passes blank in a capture. CPL goes up, where a capture holds no line
-// to return to, so it is dropped as the other vertical motions are.
+// CNL ends a line once, whatever its count, as NEL does: lines are decoded in
+// order with no screen height, so the rows a count would pass are ones no
+// terminal is known to have, and a terminal on its bottom row moves none.
 const lineBreaks = (): RegExp =>
   new RegExp(
-    `(?<escape>${STRING_ESCAPE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?E|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`,
+    `(${STRING_ESCAPE})|${CSI}[0-9;]*E|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`,
     "gu",
   );
-
-/** A move down by more rows than this is one this far: no terminal is taller, and a count cannot make the decoder allocate without bound. */
-const MOST_ROWS_DOWN = 255;
-
-const lineBreak = (...match: unknown[]): string => {
-  const { escape, count } = match.at(-1) as Record<string, string | undefined>;
-  if (escape !== undefined) return escape;
-  return "\n".repeat(count === undefined ? 1 : Math.min(MOST_ROWS_DOWN, Number(count) || 1));
-};
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -527,7 +522,7 @@ export class AnsiDecoder {
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    const lined = ansi.replace(lineBreaks(), lineBreak);
+    const lined = ansi.replace(lineBreaks(), (_found, escape?: string) => escape ?? "\n");
     return (lined.match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
       this.decodeLine(line.replace(/\r?\n$/, "")),
     );
