@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-584",
+      "ref": "refs/pull/584/merge",
+      "sha": "0763a88e3c6f148ae5428e8957f29055c10acd8c",
+      "timestamp": "2026-11-06T15:28:57.191Z",
+      "commits": [
+        {
+          "sha": "0763a88e3c6f148ae5428e8957f29055c10acd8c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T15:26:16Z",
+          "message": "Merge 040953873e13f9f3482da260f7528868d3c86602 into 0f0e2b67ec0449800b781c88e674866f6d824f9e\n"
+        },
+        {
+          "sha": "040953873e13f9f3482da260f7528868d3c86602",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:26:05-07:00",
+          "message": "Animations, effects, function views and print fragments pass the edge as text does (rich-control-codes-xh4n.5ya)\n\nMedium review of #584. The mark stays opt-in: a pass-through that misses it\nleaves text unplaced (master's behavior), where a missed opt-out moves a\nlayout. The mark is a prototype getter; passingOptions returns the options\nunchanged unless it drops a default.\n"
+        },
+        {
+          "sha": "dac780253de1600484404b5f83dde7a68265ca6d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:18:46-07:00",
+          "message": "The filled-row default edge reaches text and what passes options on, not every renderable (rich-control-codes-xh4n.5ya)\n\nReview of #584: opt-out justify \"default\" moved Pretty, JSON, Align and a\nTraceback's message. PASSES_EDGE in core/protocol marks RichText,\nEmbeddedText, Group and Constrain; renderFilling starts the default, renderPassing\nforwards it, and anything unmarked loses only the default. besideDrawing removed.\n"
+        },
+        {
+          "sha": "db2dbe315efe61115fe4d508bf2c83832b60efbb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:04:34-07:00",
+          "message": "Right-to-left text through a Group, a Viewport, a scroll or a view stands at its start edge (rich-control-codes-xh4n.5ya)\n\nEvery row-filling container hands its body justify \"default\", not only a\ntext body: Padding, Layout, Viewport, scroll, Console.print's renderable\nblocks and drawView (Live, App). Group and Constrain forward it. A Tree\nlabel and a traceback frame sit beside other drawing, so they drop only\nthe default (besideDrawing) and keep a justify the print named.\nLeft-to-right output is unchanged: RichText alone reads justify, and\n\"default\" draws a left-to-right row as no justify does.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-585",
       "ref": "refs/pull/585/merge",
       "sha": "2c6ec67fac3c8274363527eaefa69778a7fce023",
@@ -34,35 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T08:09:52-07:00",
           "message": "A stated component text is held on its ground, opaque or tint: an author's color that reads is kept, one that does not keeps its hue (rich-unfiled-791c.h35m)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-584",
-      "ref": "refs/pull/584/merge",
-      "sha": "bbe635620a2cfa2aa4e782356880301d05b6e1b7",
-      "timestamp": "2026-11-06T15:21:06.493Z",
-      "commits": [
-        {
-          "sha": "bbe635620a2cfa2aa4e782356880301d05b6e1b7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:18:56Z",
-          "message": "Merge dac780253de1600484404b5f83dde7a68265ca6d into 0f0e2b67ec0449800b781c88e674866f6d824f9e\n"
-        },
-        {
-          "sha": "dac780253de1600484404b5f83dde7a68265ca6d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:18:46-07:00",
-          "message": "The filled-row default edge reaches text and what passes options on, not every renderable (rich-control-codes-xh4n.5ya)\n\nReview of #584: opt-out justify \"default\" moved Pretty, JSON, Align and a\nTraceback's message. PASSES_EDGE in core/protocol marks RichText,\nEmbeddedText, Group and Constrain; renderFilling starts the default, renderPassing\nforwards it, and anything unmarked loses only the default. besideDrawing removed.\n"
-        },
-        {
-          "sha": "db2dbe315efe61115fe4d508bf2c83832b60efbb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:04:34-07:00",
-          "message": "Right-to-left text through a Group, a Viewport, a scroll or a view stands at its start edge (rich-control-codes-xh4n.5ya)\n\nEvery row-filling container hands its body justify \"default\", not only a\ntext body: Padding, Layout, Viewport, scroll, Console.print's renderable\nblocks and drawView (Live, App). Group and Constrain forward it. A Tree\nlabel and a traceback frame sit beside other drawing, so they drop only\nthe default (besideDrawing) and keep a justify the print named.\nLeft-to-right output is unchanged: RichText alone reads justify, and\n\"default\" draws a left-to-right row as no justify does.\n"
         }
       ]
     },
