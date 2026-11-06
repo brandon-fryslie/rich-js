@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03",
-      "timestamp": "2026-11-06T12:12:32.710Z",
+      "sha": "4c703f46a6759a75eb8bb866936709e8e35f2020",
+      "timestamp": "2026-11-06T12:31:10.306Z",
       "commits": [
         {
-          "sha": "22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03",
+          "sha": "4c703f46a6759a75eb8bb866936709e8e35f2020",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T05:10:27-07:00",
-          "message": "decodeAnsi ends a line at CNL as at NEL, once whatever its count; CPL stays dropped (rich-control-codes-xh4n.llj) (#578)\n\n* decodeAnsi ends a line at CNL as at NEL, once per row it moves down; CPL stays dropped (rich-control-codes-xh4n.llj)\n\n* CNL ends a line once whatever its count; the docs gate counts CNL and ESC E as drawn (rich-control-codes-xh4n.llj)\n\nHigh review: a count invented rows no terminal draws (999E, a CPL/CNL redraw). With no screen height, a count is unknowable; one break is NEL's meaning.\n\n* CNL's rule rests on the decoder holding no cursor row; the docs gate reads LINE_BREAK_ESCAPES (rich-control-codes-xh4n.llj)\n\nMedium review: the bottom-row argument was backwards (CNL never scrolls). DRAWN no longer copies the line-break pattern, and a test pins CNL and ESC E as drawn, CPL dropped. decodeLine's CNL drop is documented beside its form-feed drop."
+          "timestamp": "2026-11-06T05:29:04-07:00",
+          "message": "A pointer shape is parsed where it enters, so no caller writes a second OSC through OSC 22 (rich-control-codes-xh4n.19b) (#579)\n\n* A pointer shape is parsed where it enters, so no caller writes a second OSC through OSC 22 (rich-control-codes-xh4n.19b)\n\nPointerShape is derived from one runtime list; Console.setPointerShape and the App.pointerShape setter parse first, attended or not, running or not.\n\n* Review: stopped-app error precedes the shape parse; a non-string is named by its type; App test moves to widgets; docs state the TypeError (rich-control-codes-xh4n.19b)\n\n* pointerSequence takes only a ParsedPointerShape, which only pointerShape makes; the parser takes unknown (rich-control-codes-xh4n.19b)"
         }
       ]
     }
