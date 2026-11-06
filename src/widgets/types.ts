@@ -15,6 +15,9 @@ import type { KeyEvent, TerminalMouseEvent } from "../host/input.js";
 
 // --- Event types ---
 
+/** A painted frame: its rows of segments, top to bottom. */
+export type Frame = readonly (readonly Segment[])[];
+
 // Every event a widget hears carries `time`: when it was heard, on the clock
 // the frame's cells are read on (`RenderOptions.frame`), so a widget
 // keeping the moment of its last interaction — a caret's blink restarting —
@@ -35,10 +38,10 @@ export class WidgetKeyEvent implements KeyEvent {
   readonly meta: boolean;
   readonly time: number;
   /** The frame on screen when it was heard, which the key acts on: none, for a key no frame was painted under. */
-  readonly frame: readonly (readonly Segment[])[];
+  readonly frame: Frame;
   private _stopped = false;
 
-  constructor(init: KeyEvent, time: number, frame: readonly (readonly Segment[])[] = []) {
+  constructor(init: KeyEvent, time: number, frame: Frame = []) {
     this.key = init.key;
     this.character = init.character;
     this.shift = init.shift;
@@ -76,7 +79,7 @@ export interface KeyHandlerOptions {
 export type WidgetMouseEvent = Extract<TerminalMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
   readonly over: boolean;
   readonly cell: Anchor | undefined;
-  readonly frame: readonly (readonly Segment[])[];
+  readonly frame: Frame;
   readonly time: number;
 };
 
@@ -179,7 +182,7 @@ export interface FocusManager {
 // the wheel moved.
 export interface FrameSource {
   readonly focusManager: FocusManager;
-  readonly frame: readonly (readonly Segment[])[];
+  readonly frame: Frame;
   frameNow(): HostFrame;
   refresh(): void;
 }

@@ -629,7 +629,7 @@ describe("under logical, a step walks the stops the terminal shows on the whole 
     });
     // Keys that arrive before a repaint, a held arrow's: each step cuts the
     // line at the row the frame on screen drew, not the row as drawn since.
-    for (const [way, from, order] of [["left", leftToRight.at(-1)!, leftToRight.toReversed()], ["right", leftToRight[0]!, leftToRight]] as const) {
+    for (const [way, from, order] of [["left", leftToRight.at(-1)!, [...leftToRight].reverse()], ["right", leftToRight[0]!, leftToRight]] as const) {
       input.cursorPosition = asCodeUnit(from);
       screen.paint(drawn, view);
       for (const beside of order.slice(1)) {

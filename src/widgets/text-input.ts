@@ -103,7 +103,7 @@ import { levelOf, type Anchor } from "../core/anchor.js";
 import type { TerminalTheme } from "../core/color.js";
 import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
-import type { WidgetKeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
+import type { Frame, WidgetKeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
 import { pattern } from "../core/pattern.js";
 import { Memo } from "../core/memo.js";
 
@@ -276,9 +276,6 @@ type Layout = { readonly drawn: Drawn } & (
  */
 type Stops = { readonly cells: readonly Cell[]; readonly ordersLine: boolean; readonly own: Outside };
 
-/** A frame's rows of segments, as the router hands one with an event. */
-type Frame = readonly (readonly Segment[])[];
-
 /** What is written on a row's line before its content and after it. */
 type Outside = { readonly before: readonly Segment[]; readonly after: readonly Segment[] };
 
@@ -358,13 +355,13 @@ class Laid {
  * terminal shows rightmost, beside the pointer, so every stop a step reaches a
  * press reaches too.
  */
-function offsetAtCell(stops: Stops, col: CellCol, outside: Outside): CodePoint {
+function offsetAtCell(stops: Stops, col: CellCol, outside: () => Outside): CodePoint {
   let cells = 0;
   for (const seen of framed(stops)) {
     cells += seen.cells;
     if (cells > col) return asCodePoint(seen.at);
   }
-  const shown = shownIn(stops, outside);
+  const shown = shownIn(stops, outside());
   return asCodePoint((shown.find((seen) => seen.cells === 0) ?? shown.at(-1))?.at ?? 0);
 }
 
@@ -373,7 +370,7 @@ function offsetAtCell(stops: Stops, col: CellCol, outside: Outside): CodePoint {
  * was drawn in, the content starting `contentCol` cells into the field's row
  * and `cells` wide; `undefined` when the frame does not show that row.
  */
-function outsideIn(frame: readonly (readonly Segment[])[], layout: Layout, row: number, contentCol: number, cells: number): Outside | undefined {
+function outsideIn(frame: Frame, layout: Layout, row: number, contentCol: number, cells: number): Outside | undefined {
   for (const line of frame) {
     let start = 0;
     for (const segment of line) {
@@ -891,7 +888,7 @@ export class TextInput extends ThemedWidget {
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
       const stops = layout.screens.get(rawRowIdx);
       if (stops === undefined) throw new Error(`TextInput: a press landed on row ${rawRowIdx}, which its frame did not draw`);
-      const outside = outsideIn(event.frame, layout, event.y, contentXOff, widthOf(stops)) ?? stops.own;
+      const outside = (): Outside => outsideIn(event.frame, layout, event.y, contentXOff, widthOf(stops)) ?? stops.own;
       this.cursorPosition = asCodeUnit(row.valueStart + offsetAtCell(stops, relX, outside));
     } else {
       // [LAW:types-are-the-program] relX is a column of the window the
@@ -899,7 +896,7 @@ export class TextInput extends ThemedWidget {
       // the cell inside it, beside the pointer.
       const width = widthOf(layout.screen);
       const relX = asCellCol(Math.min(Math.max(0, event.x - 1), Math.max(0, width - 1)));
-      const outside = outsideIn(event.frame, layout, 0, cellLen(OPEN), width) ?? layout.screen.own;
+      const outside = (): Outside => outsideIn(event.frame, layout, 0, cellLen(OPEN), width) ?? layout.screen.own;
       this.cursorPosition = asCodeUnit(layout.start + offsetAtCell(layout.screen, relX, outside));
     }
     this._preferredColumn.set(null);
