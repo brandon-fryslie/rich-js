@@ -139,4 +139,11 @@ describe("the pointer's shape over a widget app", () => {
     await done;
     expect(() => (app.pointerShape = "text")).toThrow(/stopped/);
   });
+
+  it("refuses a name outside PointerShape before the app starts, so none is held for its take", () => {
+    // BEL ends OSC 22 in xterm's parser, and what follows is a clipboard write.
+    const app = new App({ host: scriptedHost(), surface: "inline", view: () => new RichText("x") });
+    expect(() => (app.pointerShape = "text\x07\x1b]52;c;AAA\x07" as "text")).toThrow(TypeError);
+    expect(app.pointerShape).toBe("default");
+  });
 });

@@ -34,7 +34,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
-import type { PointerShape } from "../core/terminal-requests.js";
+import { pointerShape, type PointerShape } from "../core/terminal-requests.js";
 import { Segment } from "../core/segment.js";
 import { SurfaceRenderer, type Surface } from "../core/paint.js";
 import { fitHeight, render, type HostFrame, type FrameHost, type Renderable } from "../core/protocol.js";
@@ -557,8 +557,9 @@ export class App implements FrameHost {
     return this.pointer;
   }
 
-  set pointerShape(shape: PointerShape) {
+  set pointerShape(value: PointerShape) {
     if (this._phase === "stopped") throw new Error("App.pointerShape: a stopped app has handed its terminal back for good");
+    const shape = pointerShape(value);
     if (shape === this.pointer) return;
     this.pointer = shape;
     // Before the run or while suspended, the shape waits for the take that shows it.

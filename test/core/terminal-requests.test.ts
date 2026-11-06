@@ -197,3 +197,22 @@ describe("identifyTerminal", () => {
     expect(identifyTerminal(env)).toEqual({ terminal, intermediary });
   });
 });
+
+describe("a pointer shape", () => {
+  // BEL ends OSC 22 in xterm's parser, and what follows is a clipboard write.
+  const planted = "text\x07\x1b]52;c;AAA\x07" as "text";
+
+  it.each([
+    ["attended", true],
+    ["unattended", false],
+  ])("is refused on an %s console before anything is written", (_, forceTerminal) => {
+    const { console, written } = terminal(KITTY, { forceTerminal });
+    expect(() => console.setPointerShape(planted)).toThrow(TypeError);
+    expect(written()).toBe("");
+  });
+
+  it("names a value that is not a string by its type", () => {
+    const { console } = terminal(KITTY);
+    expect(() => console.setPointerShape(1n as never)).toThrow(/^a bigint is not a pointer shape/);
+  });
+});
