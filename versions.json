@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-587",
-      "ref": "refs/pull/587/merge",
-      "sha": "4f880ac1a7f5ea370f2087e7ed8fec970e010cd7",
-      "timestamp": "2026-11-06T22:35:23.151Z",
-      "commits": [
-        {
-          "sha": "4f880ac1a7f5ea370f2087e7ed8fec970e010cd7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:33:41Z",
-          "message": "Merge b883288194c0a2812371bf7a3870640e9c51db76 into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
-        },
-        {
-          "sha": "b883288194c0a2812371bf7a3870640e9c51db76",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:33:30-07:00",
-          "message": "Gate review (high, step 12): an ESC cancelled by CAN, SUB or the line break after it is silent; each break's verdict comes from the match that found it (rich-control-codes-xh4n.lyr)\n"
-        },
-        {
-          "sha": "9f3e1335be15cfa097fc5dde87631bc405def463",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:21:46-07:00",
-          "message": "Gate review (medium): the cursor column carries across writes, the scan judges at the card's own width, one line splitter, a mark joins only what the segmenter joins, a multi-row CNL is reported (rich-control-codes-xh4n.lyr)\n"
-        },
-        {
-          "sha": "945dcb0ba931a4446a9078a9586cf0971bf4b5ee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:12:52-07:00",
-          "message": "Gate review: a mark finishes a cluster across writes, REP cut at the card margin, VT/FF/LS/PS and a cancelled ESC judged as a terminal draws them (rich-control-codes-xh4n.lyr)\n"
-        },
-        {
-          "sha": "d91594b45773a2cae17bc8201c0f76ca8b253b86",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T14:58:04-07:00",
-          "message": "The docs gate asks the decoder which escapes it drew as no terminal would (rich-control-codes-xh4n.lyr)\n\nThe gate kept a regex copy of decodeAnsi's rules, which missed C1 forms\n(a C1 restore off its line, a C1 vertical move) and ended a save's line at\na U+2028 inside a link URI. The decoder now reports the first escape it\nperforms other than a terminal does (scanUndrawn), from its own line\nbreaks and the branches that decide each escape, carrying its line state\nacross writes. The gate's mirror and the exports only it read are gone.\n\nA save does not hold the open OSC 8 link: DECSC saves position, SGR and\nthe character sets (DEC STD 070, Ghostty's DECSC reference).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5",
-      "timestamp": "2026-11-06T21:48:55.625Z",
+      "sha": "bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10",
+      "timestamp": "2026-11-06T22:48:07.676Z",
       "commits": [
         {
-          "sha": "dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5",
+          "sha": "bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T14:46:19-07:00",
-          "message": "Right-to-left text through a Group, Viewport, scroll or view stands at its start edge (rich-control-codes-xh4n.5ya) (#584)\n\n* Right-to-left text through a Group, a Viewport, a scroll or a view stands at its start edge (rich-control-codes-xh4n.5ya)\n\nEvery row-filling container hands its body justify \"default\", not only a\ntext body: Padding, Layout, Viewport, scroll, Console.print's renderable\nblocks and drawView (Live, App). Group and Constrain forward it. A Tree\nlabel and a traceback frame sit beside other drawing, so they drop only\nthe default (besideDrawing) and keep a justify the print named.\nLeft-to-right output is unchanged: RichText alone reads justify, and\n\"default\" draws a left-to-right row as no justify does.\n\n* The filled-row default edge reaches text and what passes options on, not every renderable (rich-control-codes-xh4n.5ya)\n\nReview of #584: opt-out justify \"default\" moved Pretty, JSON, Align and a\nTraceback's message. PASSES_EDGE in core/protocol marks RichText,\nEmbeddedText, Group and Constrain; renderFilling starts the default, renderPassing\nforwards it, and anything unmarked loses only the default. besideDrawing removed.\n\n* Animations, effects, function views and print fragments pass the edge as text does (rich-control-codes-xh4n.5ya)\n\nMedium review of #584. The mark stays opt-in: a pass-through that misses it\nleaves text unplaced (master's behavior), where a missed opt-out moves a\nlayout. The mark is a prototype getter; passingOptions returns the options\nunchanged unless it drops a default.\n\n* A transition, a spinner and a WidgetApp view pass the edge; an effect and a renderable print do not change it (rich-control-codes-xh4n.5ya)\n\nSecond high review of #584. Recolored and Reglyphed drop the mark so an\neffect never sees a right-to-left text's pad cells; a printed renderable's\nrows are closed lines whatever its end."
+          "timestamp": "2026-11-06T15:45:52-07:00",
+          "message": "The docs gate asks the decoder which escapes it drew as no terminal would (lyr) (#587)\n\n* The docs gate asks the decoder which escapes it drew as no terminal would (rich-control-codes-xh4n.lyr)\n\nThe gate kept a regex copy of decodeAnsi's rules, which missed C1 forms\n(a C1 restore off its line, a C1 vertical move) and ended a save's line at\na U+2028 inside a link URI. The decoder now reports the first escape it\nperforms other than a terminal does (scanUndrawn), from its own line\nbreaks and the branches that decide each escape, carrying its line state\nacross writes. The gate's mirror and the exports only it read are gone.\n\nA save does not hold the open OSC 8 link: DECSC saves position, SGR and\nthe character sets (DEC STD 070, Ghostty's DECSC reference).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Gate review: a mark finishes a cluster across writes, REP cut at the card margin, VT/FF/LS/PS and a cancelled ESC judged as a terminal draws them (rich-control-codes-xh4n.lyr)\n\n* Gate review (medium): the cursor column carries across writes, the scan judges at the card's own width, one line splitter, a mark joins only what the segmenter joins, a multi-row CNL is reported (rich-control-codes-xh4n.lyr)\n\n* Gate review (high, step 12): an ESC cancelled by CAN, SUB or the line break after it is silent; each break's verdict comes from the match that found it (rich-control-codes-xh4n.lyr)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     },
