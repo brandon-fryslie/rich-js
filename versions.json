@@ -4,15 +4,22 @@
     {
       "version": "pr-573",
       "ref": "refs/pull/573/merge",
-      "sha": "5b132c7c90def7230ca7465f1fe90a46f35b369d",
-      "timestamp": "2026-11-06T08:03:43.193Z",
+      "sha": "677fef927bb22960e34b2bc58762db2b8502fcc5",
+      "timestamp": "2026-11-06T08:20:01.417Z",
       "commits": [
         {
-          "sha": "5b132c7c90def7230ca7465f1fe90a46f35b369d",
+          "sha": "677fef927bb22960e34b2bc58762db2b8502fcc5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T01:01:14-07:00",
-          "message": "Merge 7ed95c0a54d90d92f2232129f52b69449a427607 into b9e25db7fb558c55741ee1805a4255b4788a1264\n"
+          "timestamp": "2026-11-06T08:16:59Z",
+          "message": "Merge 1f45b72624d6f51a2ae4d95cd825483beb82710d into b9e25db7fb558c55741ee1805a4255b4788a1264\n"
+        },
+        {
+          "sha": "1f45b72624d6f51a2ae4d95cd825483beb82710d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T01:16:47-07:00",
+          "message": "An 8-bit OSC 8 is a link, a lone 8-bit string introducer costs one character, and ESC E ends a line (rich-control-codes-xh4n.187 review)\n"
         },
         {
           "sha": "7ed95c0a54d90d92f2232129f52b69449a427607",
