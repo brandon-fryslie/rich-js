@@ -126,7 +126,7 @@ interface Cluster {
 }
 
 /**
- * `style` with its caret, if it marks one, standing on the side of its cell the
+ * `style` with its bar caret, if it marks one — the only shape with a side — standing on the side of its cell the
  * insertion point is on at `level`: the glyph's leading edge, its right in a
  * right-to-left run. [LAW:one-source-of-truth] Set where the row's levels are
  * finished, so the side is read off the levels the row is ordered by, from the
@@ -134,7 +134,7 @@ interface Cluster {
  */
 function sided(style: Style | undefined, level: number, turned: Map<Style, Style>): Style | undefined {
   const mark = style?.caret;
-  if (mark === undefined || !(level & 1)) return style;
+  if (mark?.shape !== "bar" || !(level & 1)) return style;
   let right = turned.get(style!);
   if (right === undefined) turned.set(style!, right = style!.withCaret(caretMarkOn(mark.shape, "right")));
   return right;

@@ -156,7 +156,9 @@ describe("TextInput on the terminal's own cursor", () => {
       const app = new WidgetApp({ host, surface: "alternate", clock: fakeClock(0), textOrder: "visual", view: () => field });
       void app.run();
       app.stop();
-      return /\r\x1b\[(\d+)C\x1b\[5 q\x1b\[\?25h(?![\s\S]*\x1b\[5 q)/.exec(host.output())![1]!;
+      const shown = /\r\x1b\[(\d+)C\x1b\[5 q\x1b\[\?25h(?![\s\S]*\x1b\[5 q)/.exec(host.output());
+      expect(shown, "a bar shown past column 0").not.toBeNull();
+      return shown![1]!;
     };
 
     it("stands a masked right-to-left value's bar as a left-to-right one's", () => {

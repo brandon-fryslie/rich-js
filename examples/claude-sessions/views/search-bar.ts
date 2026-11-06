@@ -37,9 +37,11 @@ export function buildSearchBar(state: AppState): Renderable {
         out.append("    [⏎] search  [esc] cancel", "dim");
         return out;
       };
+      const marked = line(true);
+      const drawn = line(false);
       const bar: Renderable & Measurable = {
-        render: (options: RenderOptions): Iterable<Segment> => render(line(options.caret === true), options),
-        measure: (options: RenderOptions) => Measurement.get(options, line(options.caret === true)),
+        render: (options: RenderOptions): Iterable<Segment> => render(options.caret === true ? marked : drawn, options),
+        measure: (options: RenderOptions) => Measurement.get(options, options.caret === true ? marked : drawn),
       };
       return bar;
     }

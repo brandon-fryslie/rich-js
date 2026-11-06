@@ -14,7 +14,7 @@
  * is handed back.
  */
 
-import { cellLen, graphemes } from "./cells.js";
+import { asCodePoint, cellLen, nextGrapheme } from "./cells.js";
 import type { OutputTarget } from "./color.js";
 import type { Height } from "./protocol.js";
 import { segmentsToString, shownOn } from "./render.js";
@@ -126,7 +126,7 @@ function caretIn(rows: readonly Segment[][]): Caret | undefined {
     for (const segment of line) {
       const mark = segment.style?.caret;
       if (mark !== undefined && segment.text.length > 0) {
-        const past = mark.shape === "bar" && mark.side === "right" ? cellLen(graphemes(segment.text)[0]!) : 0;
+        const past = mark.shape === "bar" && mark.side === "right" ? cellLen(segment.text.slice(0, nextGrapheme(segment.text, asCodePoint(0)))) : 0;
         return { row, col: col + past, shape: mark.shape };
       }
       col += segment.cellLength;
