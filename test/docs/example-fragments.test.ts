@@ -49,6 +49,8 @@ describe("scanEscapes", () => {
     expect(first.repeatable).toBe(true);
     expect(scanEscapes("\x1b[3b", first).dropped).toBeNull();
     expect(scanEscapes("\x1b[3b", scanEscapes("a\x1b[1m")).dropped).toBe("\x1b[3b");
+    // One cluster however long, as the decoder repeats it.
+    expect(scanEscapes(`a${"́".repeat(70)}\x1b[2b`).dropped).toBeNull();
   });
 
   it.each([

@@ -64,7 +64,7 @@
  * character just before it that many more times, up to the right margin as a
  * move forward stops there; after any control function, REP included, there is
  * no preceding graphic character and it draws nothing, as ECMA-48 reads it
- * (`REPEAT`).
+ * (`repeatable`).
  *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
@@ -202,8 +202,16 @@ const finalClass = (table: object): string => `[${hex(finals(Object.keys(table).
  */
 export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(EDITS).join("");
 
-/** REP's CSI final byte, which the docs' output gate reads too: it draws one only after a graphic character. */
-export const REPEAT = "b";
+/** REP's CSI final byte, which the docs' output gate reads too. */
+export const REPEAT_FINAL = "b";
+
+/**
+ * Whether REP repeats `cluster`, the last one drawn before it with no control
+ * function between: a graphic character, so one that takes a cell. A tab moves
+ * the cursor, and a mark with nothing under it takes none. The docs' output
+ * gate asks this of the bytes it reads, so the two cannot disagree on it.
+ */
+export const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.test(cluster) && cellLen(cluster) > 0;
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
@@ -223,7 +231,7 @@ export const REPEAT = "b";
  * may not hold or a terminal draws nothing for (`control`), silent too.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<silent>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<silent>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
@@ -618,18 +626,17 @@ export class AnsiDecoder {
             column += draw(cells, column, cluster, style);
             final = cluster;
           }
-          if (final !== "" && final !== "\t") last = [final, style];
+          if (repeatable(final)) last = [final, style];
           break;
         }
         case "repeat": {
-          // A mark with nothing under it takes no cell, and xterm repeats only what does.
-          const width = preceding === undefined ? 0 : cellLen(preceding[0]);
-          if (width === 0) break;
+          if (preceding === undefined) break;
+          const width = cellLen(preceding[0]);
           // A terminal wraps what passes the right margin onto the next row; the
           // decoder holds one row, so the repeats stop at the margin, or where
           // the cursor already stands past it, as a move forward does.
           const room = Math.floor(Math.max(0, this.width - (column - 1)) / width);
-          for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding!);
+          for (let at = 0; at < Math.min(token.count, room); at += 1) column += draw(cells, column, ...preceding);
           break;
         }
         case "overstrike": {
@@ -639,7 +646,7 @@ export class AnsiDecoder {
           const emphasis = character === token.character ? token.emphasis : NULL_STYLE;
           column += draw(cells, column, character, this.sgr.add(emphasis).withLink(this.link));
           // The emphasis is this decoder's reading of the overstrike; a terminal repeats the character in the SGR style.
-          last = [character, this.sgr.withLink(this.link)];
+          if (repeatable(character)) last = [character, this.sgr.withLink(this.link)];
           break;
         }
         case "reset":
