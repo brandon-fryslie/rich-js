@@ -4,15 +4,22 @@
     {
       "version": "pr-578",
       "ref": "refs/pull/578/merge",
-      "sha": "5ec3a4534db4b9c13d2dc7c95d5debd24b1e2d55",
-      "timestamp": "2026-11-06T11:49:27.837Z",
+      "sha": "2ea9dbea4fe3b133ee4c2695f77552f6e8f8b556",
+      "timestamp": "2026-11-06T11:57:54.941Z",
       "commits": [
         {
-          "sha": "5ec3a4534db4b9c13d2dc7c95d5debd24b1e2d55",
+          "sha": "2ea9dbea4fe3b133ee4c2695f77552f6e8f8b556",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T04:47:38-07:00",
-          "message": "Merge e5cd7a1a998f80202593868541ed3502bdc34a77 into a949c97513c1c182d3ddda4fa21cc4d6bde1e3df\n"
+          "timestamp": "2026-11-06T11:55:28Z",
+          "message": "Merge 86cddd171747991830bfa9908e0e3a44c92e5f61 into a949c97513c1c182d3ddda4fa21cc4d6bde1e3df\n"
+        },
+        {
+          "sha": "86cddd171747991830bfa9908e0e3a44c92e5f61",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T04:55:16-07:00",
+          "message": "CNL's rule rests on the decoder holding no cursor row; the docs gate reads LINE_BREAK_ESCAPES (rich-control-codes-xh4n.llj)\n\nMedium review: the bottom-row argument was backwards (CNL never scrolls). DRAWN no longer copies the line-break pattern, and a test pins CNL and ESC E as drawn, CPL dropped. decodeLine's CNL drop is documented beside its form-feed drop.\n"
         },
         {
           "sha": "e5cd7a1a998f80202593868541ed3502bdc34a77",
