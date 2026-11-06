@@ -4,15 +4,22 @@
     {
       "version": "pr-583",
       "ref": "refs/pull/583/merge",
-      "sha": "53f178e8ecaab3d95b54141411dd1fc42c36e4c9",
-      "timestamp": "2026-11-06T14:12:21.038Z",
+      "sha": "39c76e1a6ef63ce6b788e68c5535d45b53c3b6f3",
+      "timestamp": "2026-11-06T14:24:54.843Z",
       "commits": [
         {
-          "sha": "53f178e8ecaab3d95b54141411dd1fc42c36e4c9",
+          "sha": "39c76e1a6ef63ce6b788e68c5535d45b53c3b6f3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:09:50-07:00",
-          "message": "Merge 26afa31200c3c5a3f575ffef997ba2f7841f2076 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
+          "timestamp": "2026-11-06T14:22:19Z",
+          "message": "Merge 801ee7eb6faf0bde1153e057db834fd01b5f76c5 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
+        },
+        {
+          "sha": "801ee7eb6faf0bde1153e057db834fd01b5f76c5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T07:22:07-07:00",
+          "message": "Review: REP is one constant, the docs gate draws it only after a graphic character, an overstrike repeats in the SGR style, the header names REP (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "26afa31200c3c5a3f575ffef997ba2f7841f2076",
