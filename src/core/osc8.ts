@@ -35,12 +35,21 @@ import { fnv1a } from "./fnv1a.js";
 import { pattern } from "./pattern.js";
 
 /**
- * What ends a string escape's payload, as a regex class body: ESC (`\x1b`,
- * which begins ST `ESC \` or any other escape), BEL (`\x07`), and every C1
- * control, the 8-bit ST (`\x9c`) and each introducer of a sequence of its own
- * among them. OSC 8 and `decodeAnsi`'s other string escapes both stop here.
+ * CAN (`\x18`) and SUB (`\x1a`), as a regex class body: the bytes at which a
+ * VT500 parser abandons whatever sequence it is in — CSI, an escape's
+ * intermediates, a string — and draws what follows. Every escape `decodeAnsi`
+ * and `osc8Sequences` read ends here.
  */
-export const STRING_STOPS = "\\x1b\\x07\\x80-\\x9f";
+export const ABORTS = "\\x18\\x1a";
+
+/**
+ * What ends a string escape's payload, as a regex class body: ESC (`\x1b`,
+ * which begins ST `ESC \` or any other escape), BEL (`\x07`), every C1
+ * control, the 8-bit ST (`\x9c`) and each introducer of a sequence of its own
+ * among them, and `ABORTS`. OSC 8 and `decodeAnsi`'s other string escapes both
+ * stop here.
+ */
+export const STRING_STOPS = `\\x1b\\x07${ABORTS}\\x80-\\x9f`;
 
 /**
  * `text` an OSC carries — a link's address, a title, a notification — without a
