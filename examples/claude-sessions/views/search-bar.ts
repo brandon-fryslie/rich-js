@@ -1,5 +1,5 @@
-import { RichText } from "@promptctl/rich-js";
-import type { Renderable } from "@promptctl/rich-js";
+import { Measurement, RichText, Style, caretMark, render } from "@promptctl/rich-js";
+import type { Measurable, Renderable, RenderOptions, Segment } from "@promptctl/rich-js";
 import type { AppState } from "../state.js";
 
 /**
@@ -22,12 +22,28 @@ export function buildSearchBar(state: AppState): Renderable {
     case "typing-local":
     case "typing-global": {
       const [sigil, label] = scopePrefix(s.mode);
-      text.append(`${sigil} `, "bold yellow on black");
-      text.append(`${label}: `, "dim yellow on black");
-      text.append(s.query, "white on black");
-      text.append("█", "bold yellow on black");
-      text.append("    [⏎] search  [esc] cancel", "dim");
-      return text;
+      const query = s.query;
+      // The editing point is the terminal's own cursor where the painter shows
+      // one, so an IME and a screen reader follow it; elsewhere it is drawn.
+      // The blank past the query is a neutral between it and the hint, so it is
+      // shown at the line's own level: the bar stands on its left edge.
+      const line = (marked: boolean): RichText => {
+        const out = new RichText("", { end: "" });
+        out.append(`${sigil} `, "bold yellow on black");
+        out.append(`${label}: `, "dim yellow on black");
+        out.append(query, "white on black");
+        if (marked) out.append(" ", Style.parse("on black").withCaret(caretMark("bar")));
+        else out.append("█", "bold yellow on black");
+        out.append("    [⏎] search  [esc] cancel", "dim");
+        return out;
+      };
+      const marked = line(true);
+      const drawn = line(false);
+      const bar: Renderable & Measurable = {
+        render: (options: RenderOptions): Iterable<Segment> => render(options.caret === true ? marked : drawn, options),
+        measure: (options: RenderOptions) => Measurement.get(options, options.caret === true ? marked : drawn),
+      };
+      return bar;
     }
     case "results-local": {
       const total = s.matches.length;

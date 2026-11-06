@@ -66,7 +66,7 @@
 import { action, runInAction } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
-import { Style, type CaretShape } from "../core/style.js";
+import { Style, caretMark, type CaretShape } from "../core/style.js";
 import type { PointerShape } from "../core/terminal-requests.js";
 import {
   cellLen,
@@ -188,7 +188,10 @@ interface Seen {
   readonly cells: number;
 }
 
-/** The caret a row is drawn with: the cursor it stands for, and its cell drawn over a glyph. */
+/**
+ * The caret a row is drawn with: the cursor it stands for, and its cell drawn
+ * over a glyph — its side set where the row is ordered (`orient`).
+ */
 interface Caret {
   readonly at: CodePoint;
   readonly draw: (glyph: string) => Iterable<Segment>;
@@ -1614,7 +1617,7 @@ export class TextInput extends ThemedWidget {
   // blinks its own, and an IME's candidate window and a screen reader follow
   // it to the editing point.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(this.caretShape))];
+    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape)))];
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 

@@ -16,6 +16,7 @@ import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { TextInput, type TextInputOptions } from "../../src/widgets/text-input.js";
 import { Group } from "../../src/renderables/group.js";
 import { Style } from "../../src/core/style.js";
+import { asCodeUnit } from "../../src/core/cells.js";
 import type { Surface } from "../../src/core/paint.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
 import { fakeClock } from "../core/fake-clock.js";
@@ -112,6 +113,61 @@ describe("TextInput on the terminal's own cursor", () => {
     clock.advance(3);
     expect(host.output()).toBe(painted);
     app.stop();
+  });
+
+  describe("in a right-to-left run, on a terminal that shows the frame's order", () => {
+    // A right-to-left value is set at the field's right: "[", four cells of
+    // pad, the end's blank at column 5, then "אבג" reversed — ג at 6, ב at 7,
+    // א at 8 — and "]".
+    const at = (cursor: number, caretShape: TextInputOptions["caretShape"] = "bar"): string => {
+      const host = scriptedHost({ cols: 20, rows: 2 });
+      const field = new TextInput({ value: "אבג", caretShape });
+      field.focus(0);
+      field.cursorPosition = asCodeUnit(cursor);
+      const app = new WidgetApp({ host, surface: "alternate", clock: fakeClock(0), textOrder: "visual", view: () => field });
+      void app.run();
+      app.stop();
+      return host.output();
+    };
+
+    it("stands a bar on the right edge of the glyph the next character goes before", () => {
+      // Offset 1 is the gap between א and ב: the right edge of ב, column 8.
+      expect(at(1)).toContain(`\r\x1b[8C\x1b[5 q${SHOW}`);
+    });
+
+    it("stands a bar on the text's left edge at its end, not a cell outside it", () => {
+      // The end is left of ג: column 6, not the blank's left edge at 5.
+      expect(at(3)).toContain(`\r\x1b[6C\x1b[5 q${SHOW}`);
+    });
+
+    it("covers the glyph itself with a block", () => {
+      expect(at(1, "block")).toContain(`\r\x1b[7C\x1b[1 q${SHOW}`);
+    });
+  });
+
+  describe("where the row shows other glyphs than its value", () => {
+    // The side is read off the glyphs the row is ordered as, so a row shown
+    // left to right puts the bar where a left-to-right value would.
+    const caretOf = (options: Partial<TextInputOptions>, cursor: number): string => {
+      const host = scriptedHost({ cols: 20, rows: 2 });
+      const field = new TextInput({ caretShape: "bar", ...options });
+      field.focus(0);
+      field.cursorPosition = asCodeUnit(cursor);
+      const app = new WidgetApp({ host, surface: "alternate", clock: fakeClock(0), textOrder: "visual", view: () => field });
+      void app.run();
+      app.stop();
+      const shown = /\r\x1b\[(\d+)C\x1b\[5 q\x1b\[\?25h(?![\s\S]*\x1b\[5 q)/.exec(host.output());
+      expect(shown, "a bar shown past column 0").not.toBeNull();
+      return shown![1]!;
+    };
+
+    it("stands a masked right-to-left value's bar as a left-to-right one's", () => {
+      expect(caretOf({ value: "אבג", password: true }, 1)).toBe(caretOf({ value: "abc", password: true }, 1));
+    });
+
+    it("stands the bar after a pictured override as after any glyph", () => {
+      expect(caretOf({ value: "\u202Eabc" }, 2)).toBe(caretOf({ value: "xabc" }, 2));
+    });
   });
 
   it("goes home from the caret's row on an inline surface, and back to the frame's last row on hand-back", async () => {

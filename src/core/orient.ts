@@ -15,7 +15,7 @@ import { isBidi, lineLevels, mirroredCluster, openersAlong, paragraph, paragraph
 import { cellLen, graphemes } from "./cells.js";
 import { pattern } from "./pattern.js";
 import { Segment } from "./segment.js";
-import { NULL_STYLE, type Style } from "./style.js";
+import { caretMarkOn, NULL_STYLE, type Style } from "./style.js";
 import type { BidiStamp, ParagraphLevel, TextOrder } from "./text-order.js";
 
 const TRAILING_WHITESPACE_RE = pattern(/\s+$/);
@@ -125,6 +125,21 @@ interface Cluster {
   readonly level: number;
 }
 
+/**
+ * `style` with its bar caret, if it marks one — the only shape with a side — standing on the side of its cell the
+ * insertion point is on at `level`: the glyph's leading edge, its right in a
+ * right-to-left run. [LAW:one-source-of-truth] Set where the row's levels are
+ * finished, so the side is read off the levels the row is ordered by, from the
+ * text it shows, and never derived beside them.
+ */
+function sided(style: Style | undefined, level: number, turned: Map<Style, Style>): Style | undefined {
+  const mark = style?.caret;
+  if (mark?.shape !== "bar" || !(level & 1)) return style;
+  let right = turned.get(style!);
+  if (right === undefined) turned.set(style!, right = style!.withCaret(caretMarkOn(mark.shape, "right")));
+  return right;
+}
+
 /** L1, L2 and L4 on a row: its grapheme clusters in display order, each carrying its style. */
 function displayed(shown: readonly Segment[], levels: readonly number[], paragraphLevel: ParagraphLevel): Segment[] {
   const text = Segment.plainOf(shown);
@@ -135,9 +150,10 @@ function displayed(shown: readonly Segment[], levels: readonly number[], paragra
   const glyphs = graphemes(text);
   const levelOf = clusterLevels(glyphs, finished, paragraphLevel);
   const clusters: Cluster[] = [];
+  const turned = new Map<Style, Style>();
   let unit = 0;
   for (const [index, cluster] of glyphs.entries()) {
-    clusters.push({ text: cluster, style: styles[unit], level: levelOf[index]! });
+    clusters.push({ text: cluster, style: sided(styles[unit], levelOf[index]!, turned), level: levelOf[index]! });
     unit += cluster.length;
   }
   const forms = shaped(clusters.map((cluster) => cluster.text));

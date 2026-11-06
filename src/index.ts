@@ -141,7 +141,8 @@ export {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "./core/style.js";
-export type { Attributes, CaretShape, ValidityInterval, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
+export { caretMark } from "./core/style.js";
+export type { Attributes, CaretMark, CaretShape, ValidityInterval, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
 export type { PointerShape } from "./core/terminal-requests.js";
 
 export {

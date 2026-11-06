@@ -11,7 +11,7 @@ import { describe, it, expect } from "vitest";
 
 import { SurfaceRenderer } from "../../src/core/paint.js";
 import { Segment, ControlType } from "../../src/core/segment.js";
-import { Style } from "../../src/core/style.js";
+import { Style, caretMark, caretMarkOn } from "../../src/core/style.js";
 import type { OutputTarget } from "../../src/core/color.js";
 import type { TextOrder } from "../../src/core/text-order.js";
 
@@ -21,7 +21,7 @@ const screen = { rows: 4, cols: 20 };
 
 const target = (textOrder: TextOrder = "plain"): OutputTarget => ({ colorSystem: null, hyperlinks: false, reducedMotion: false, textOrder });
 
-const field = (before: Segment[] = []): Segment[][] => [[...before, new Segment("ab"), new Segment(" ", Style.null().withCaret("bar"))], [new Segment("status")]];
+const field = (before: Segment[] = []): Segment[][] => [[...before, new Segment("ab"), new Segment(" ", Style.null().withCaret(caretMark("bar")))], [new Segment("status")]];
 
 function painter(): { renderer: SurfaceRenderer; out: () => string } {
   let bytes = "";
@@ -63,9 +63,20 @@ describe("the terminal's cursor on a painted frame", () => {
     expect(bytes).toContain(`\x1b[1A\r\x1b[2C${SHOW}`);
   });
 
+  it.each([
+    ["bar", 5, "\x1b[4C"],
+    ["block", 1, "\x1b[2C"],
+  ] as const)("puts a %s marked on its cell's right side where that shape stands (DECSCUSR %i)", (shape, code, to) => {
+    const { renderer, out } = painter();
+    // A two-cell glyph at column 2: a bar stands past it, a block covers it.
+    const row = [[new Segment("ab"), new Segment("日", Style.null().withCaret(caretMarkOn(shape, "right")))], [new Segment("status")]];
+    renderer.paint(() => row, screen, target("visual"));
+    expect(out()).toContain(`\x1b[1A\r${to}\x1b[${code} q${SHOW}`);
+  });
+
   it("stands on the last column when its cell is cut off past the screen's edge", () => {
     const { renderer, out } = painter();
-    const wide = [[new Segment("x".repeat(20)), new Segment(" ", Style.null().withCaret("bar"))], [new Segment("status")]];
+    const wide = [[new Segment("x".repeat(20)), new Segment(" ", Style.null().withCaret(caretMark("bar")))], [new Segment("status")]];
     renderer.paint(() => wide, screen, target());
     expect(out()).toContain(`\x1b[1A\r\x1b[19C${BAR}${SHOW}`);
   });
