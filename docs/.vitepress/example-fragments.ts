@@ -56,9 +56,9 @@ export interface EscapeScan {
  * (theme/static-run.ts), `before` what the last one left the line holding;
  * `undrawnEscape` reads a program's whole output by it.
  */
-export function scanEscapes(bytes: string, before: LineState = LINE_START): EscapeScan {
-  // At the width the card draws them at, so a rule that reads the margin agrees with the drawing.
-  const { undrawn, unread, after } = scanUndrawn(bytes, before, EXAMPLE_TERMINAL.columns);
+export function scanEscapes(bytes: string, before: LineState = LINE_START, columns: number = EXAMPLE_TERMINAL.columns): EscapeScan {
+  // At the width `drawOutput` draws them at, so a rule that reads the margin agrees with the drawing.
+  const { undrawn, unread, after } = scanUndrawn(bytes, before, columns);
   const open = bytes.slice(unread);
   return { dropped: undrawn ?? (open.length > LONGEST_OPEN_ESCAPE ? open : null), unread, after };
 }
@@ -69,8 +69,8 @@ export function scanEscapes(bytes: string, before: LineState = LINE_START): Esca
  * build holds a static block to this (example-runner.ts), and the page's
  * static run a program that has ended (theme/static-run.ts).
  */
-export function undrawnEscape(output: string): string | null {
-  const { dropped, unread } = scanEscapes(output);
+export function undrawnEscape(output: string, columns: number = EXAMPLE_TERMINAL.columns): string | null {
+  const { dropped, unread } = scanEscapes(output, LINE_START, columns);
   return dropped ?? (unread < output.length ? output.slice(unread) : null);
 }
 

@@ -259,9 +259,10 @@ const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${CSI}[0-?]*[ -/]*|${either
 /**
  * Whether a terminal performs `control`, one `ESCAPES` matched alone, and
  * `next` the character after it: a C1 control, which some terminals do, and an
- * ESC that begins an escape the decoder does not read. An ESC the next ESC or
- * C1 control cancels, as the VT500 parser does, a terminal drops as the
- * decoder does.
+ * ESC no escape here begins. A VT500 parser stays in its escape state past such
+ * an ESC, running a C0 control and ignoring DEL there, and takes a later byte as
+ * the escape's final, which the decoder draws as text. Only the next ESC or C1
+ * control cancels it, and then a terminal drops it as the decoder does.
  */
 const performed = (control: string, next: string): boolean =>
   isC1(control.charCodeAt(0)) || (control === "\x1b" && next !== "\x1b" && !isC1(next.charCodeAt(0)));
@@ -571,17 +572,18 @@ interface Rendition {
 const DEFAULT_RENDITION: Rendition = { sgr: NULL_STYLE, sets: ["B", "B"], shifted: 0 };
 
 /**
- * What a line holds for bytes written later on it: the column a save on it
- * holds, and the graphic character drawn last with nothing after it, which a REP
- * repeats.
+ * What a line holds for bytes written later on it: the cursor's column, the
+ * column a save on it holds, and the graphic character drawn last with nothing
+ * after it, which a REP repeats.
  */
 export interface LineState {
+  readonly column: number;
   readonly savedColumn: number | undefined;
   readonly last: readonly [string, Style] | undefined;
 }
 
 /** A line nothing has been written on. */
-export const LINE_START: LineState = { savedColumn: undefined, last: undefined };
+export const LINE_START: LineState = { column: 1, savedColumn: undefined, last: undefined };
 
 /** A line drawn: its cells, what it holds for bytes written after it, and the first escape on it no terminal draws this way. */
 interface DrawnLine {
@@ -617,9 +619,8 @@ export class AnsiDecoder {
 
   /** One `RichText` per line of `ansi`; a final newline ends a line rather than starting one. */
   decode(ansi: string): RichText[] {
-    return (lined(ansi).match(/[^\n]*\n|[^\n]+/g) ?? []).map((line) =>
-      this.decodeLine(line.replace(/\r?\n$/, "")),
-    );
+    const { ended, last } = linesOf(ansi);
+    return [...ended.map(({ line }) => line), ...(last === "" ? [] : [last])].map((line) => this.decodeLine(line));
   }
 
   /**
@@ -648,8 +649,21 @@ function streamOf(width: number): Stream {
   return { sgr: NULL_STYLE, link: undefined, width, sets: ["B", "B"], shifted: 0, saved: DEFAULT_RENDITION };
 }
 
-/** `ansi` with every line end `decode` ends a line at written `\n`, one inside a string escape's payload left there. */
-const lined = (ansi: string): string => ansi.replace(lineBreaks(), (_found, escape?: string) => escape ?? "\n");
+/**
+ * [LAW:one-source-of-truth] Each line of `ansi` as `decode` draws it and the
+ * break that ends it, the last line ended by none; a break inside a string
+ * escape's payload ends nothing. `decode` and `scanUndrawn` both split here.
+ */
+function linesOf(ansi: string): { readonly ended: readonly { readonly line: string; readonly end: string }[]; readonly last: string } {
+  const ended: { line: string; end: string }[] = [];
+  let start = 0;
+  for (const found of ansi.matchAll(lineBreaks())) {
+    if (found[1] !== undefined) continue;
+    ended.push({ line: ansi.slice(start, found.index), end: found[0] });
+    start = found.index + found[0].length;
+  }
+  return { ended, last: ansi.slice(start) };
+}
 
 /**
  * `line` drawn after `start`, what the same line held before it. The branches
@@ -659,7 +673,7 @@ const lined = (ansi: string): string => ansi.replace(lineBreaks(), (_found, esca
  */
 function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
   const cells: Cell[] = [ORIGIN];
-  let column = 1;
+  let column = start.column;
   // A column saved on this line; a save on another names a row this one is not.
   let savedColumn = start.savedColumn;
   // The graphic character drawn last and its style, while nothing has come
@@ -679,12 +693,17 @@ function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
         const text = drawnIn(stream.sets[stream.shifted], token.text);
         last = preceding;
         for (const cluster of graphemes(text)) {
-          const width = draw(cells, column, cluster, style);
-          column += width;
-          // A mark joins the cluster drawn before it, as `draw` sets it on that
-          // cluster's cell, even one an earlier write drew.
-          if (width === 0) last = last && [last[0] + cluster, last[1]];
-          else last = repeatable(cluster) ? [cluster, style] : undefined;
+          column += draw(cells, column, cluster, style);
+          // A mark the segmenter joins to the cluster drawn before it finishes
+          // that cluster, even one an earlier write drew; whatever it does not
+          // join, a ZWSP or a variation selector after a space, is no graphic
+          // character of its own.
+          last =
+            last !== undefined && cellLen(cluster) === 0 && graphemes(last[0] + cluster).length === 1
+              ? [last[0] + cluster, last[1]]
+              : repeatable(cluster)
+                ? [cluster, style]
+                : undefined;
         }
         break;
       }
@@ -772,7 +791,7 @@ function drawLine(stream: Stream, line: string, start: LineState): DrawnLine {
         break;
     }
   }
-  return { cells, end: { savedColumn, last }, undrawn };
+  return { cells, end: { column, savedColumn, last }, undrawn };
 }
 
 /** A line's cells as the text they show, a run per style. */
@@ -810,18 +829,16 @@ export function scanUndrawn(bytes: string, before: LineState = LINE_START, width
   const complete = bytes.slice(0, unread);
   const stream = streamOf(width);
   let undrawn: string | undefined = undefined;
-  let start = 0;
   let state = before;
-  // Each line, then the break that ends it; the first continues the one `before` ended on, and each after it starts fresh.
-  for (const found of complete.matchAll(lineBreaks())) {
-    if (found[1] !== undefined) continue;
-    undrawn ??= drawLine(stream, complete.slice(start, found.index), state).undrawn;
-    if (RELOCATING_BREAK.test(found[0])) undrawn ??= found[0];
-    start = found.index + found[0].length;
+  // The first line continues the one `before` ended on, and each after it starts fresh.
+  const { ended, last } = linesOf(complete);
+  for (const { line, end } of ended) {
+    undrawn ??= drawLine(stream, line, state).undrawn;
+    if (RELOCATING_BREAK.test(end) || Number(CNL_COUNT.exec(end)?.[1]) > 1) undrawn ??= end;
     state = LINE_START;
   }
-  const end = drawLine(stream, complete.slice(start), state);
-  return { undrawn: undrawn ?? end.undrawn ?? null, unread, after: end.end };
+  const drawn = drawLine(stream, last, state);
+  return { undrawn: undrawn ?? drawn.undrawn ?? null, unread, after: drawn.end };
 }
 
 /**
@@ -832,6 +849,12 @@ export function scanUndrawn(bytes: string, before: LineState = LINE_START, width
  * NEL, which is CR LF.
  */
 const RELOCATING_BREAK = pattern(new RegExp(`^(?![\\n\\x85])${controlClass((disposition) => disposition === "line-break")}$`, "u"));
+
+/**
+ * CNL's count. Once is CR LF off the bottom row; more passes rows the decoder,
+ * ending its line once, never draws.
+ */
+const CNL_COUNT = pattern(new RegExp(`^${CSI}([0-9]*)(?:;[0-9;]*)?E$`, "u"));
 
 /**
  * `ansi` as one `RichText`, its lines joined by `\n` — Rich's

@@ -27,8 +27,12 @@ describe("scanEscapes", () => {
     expect(scanEscapes(bytes)).toMatchObject({ dropped: null, unread: bytes.length });
   });
 
-  it.each(["\x1b[E", "\x1b[3E", "\x1bE", "\x9b2E", "\x85"])("passes %j, a line break the drawing draws", (escape) => {
+  it.each(["\x1b[E", "\x1b[1E", "\x1bE", "\x9bE", "\x85"])("passes %j, a line break the drawing draws", (escape) => {
     expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
+  });
+
+  it.each(["\x1b[3E", "\x9b2E"])("finds %j, a CNL past rows the drawing never draws", (escape) => {
+    expect(scanEscapes(`a${escape}b`).dropped).toBe(escape);
   });
 
   it.each([["\x1b7", "\x1b8"], ["\x1b[s", "\x1b[u"], ["\x9bs", "\x9bu"]])("passes %j then %j, a save and a restore on one line, which the drawing performs", (save, restore) => {
@@ -41,7 +45,7 @@ describe("scanEscapes", () => {
     ["from a later line, where a terminal goes up to the saved row", "a\x1b7b\nc\x1b8d", "\x1b8"],
     ["after a line-break escape", "a\x1b7b\x1bEc\x1b8d", "\x1b8"],
     ["after a C1 next line, NEL", "a\x1b7b\x85c\x1b8d", "\x1b8"],
-    ["after a C1 CNL", "a\x1b7b\x9b3Ec\x1b8d", "\x1b8"],
+    ["after a C1 CNL", "a\x1b7b\x9bEc\x1b8d", "\x1b8"],
     ["after a soft reset forgot the save", "a\x1b7b\x1b[!pc\x1b8d", "\x1b8"],
     ["in its C1 form, from a later line", "a\x9bsb\nc\x9bud", "\x9bu"],
   ])("finds a restore %s", (_, bytes, restore) => {
@@ -73,6 +77,21 @@ describe("scanEscapes", () => {
   it("repeats a cluster a mark finished in a later write, as it does the cluster whole", () => {
     expect(streamed("e", "́\x1b[2b")).toBeNull();
     expect(streamed("é", "́\x1b[2b")).toBeNull();
+  });
+
+  it("finds a REP after a code point the segmenter joins to nothing, in one write or two", () => {
+    expect(scanEscapes("a​\x1b[2b").dropped).toBe("\x1b[2b");
+    expect(streamed("a", "​\x1b[2b")).toBe("\x1b[2b");
+  });
+
+  it("carries the cursor's column across writes, so the margin cuts a REP where it does in the whole output", () => {
+    expect(streamed("a".repeat(74), "\x1b[5b")).toBe("\x1b[5b");
+    expect(streamed("a".repeat(70), "\x1b[4b")).toBeNull();
+  });
+
+  it("judges the margin at the width it is given, the one the card draws at", () => {
+    expect(scanEscapes("a\x1b[60b", undefined, 40).dropped).toBe("\x1b[60b");
+    expect(scanEscapes("a\x1b[90b", undefined, 120).dropped).toBeNull();
   });
 
   it("finds a REP the drawing cuts at the card's right margin, where a terminal wraps the rest", () => {

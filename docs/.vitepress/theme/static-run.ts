@@ -86,7 +86,7 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
     };
   });
   // Its output is whole once it has ended, so an escape it left unfinished is one a drawing drops, as the build reads it.
-  const ended = (end: StaticEnd): void => finish(undrawnEscape(unread) === null ? end : { kind: "dropped" });
+  const ended = (end: StaticEnd): void => finish(undrawnEscape(unread, options.terminal.columns) === null ? end : { kind: "dropped" });
   const run = sandbox(parent, options.runtime, (message) => {
     switch (message.kind) {
       case "output": {
@@ -94,7 +94,7 @@ export function runStatic(parent: HTMLElement, options: StaticRunOptions): Stati
         chunks.push(chunk);
         printed += chunk.length;
         const seen = `${unread}${chunk}`;
-        const scan = scanEscapes(seen, carried);
+        const scan = scanEscapes(seen, carried, options.terminal.columns);
         if (scan.dropped !== null) return finish({ kind: "dropped" });
         unread = seen.slice(scan.unread);
         carried = scan.after;
