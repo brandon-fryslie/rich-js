@@ -15,6 +15,9 @@ import { SEPARATOR_STYLES, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
+import { render, type Renderable } from "../../src/core/protocol.js";
+import { Align } from "../../src/renderables/align.js";
+import { Traceback } from "../../src/renderables/traceback.js";
 import { Markdown } from "../../src/renderables/markdown.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Live } from "../../src/renderables/live.js";
@@ -472,12 +475,13 @@ describe("a paragraph starts at its own edge", () => {
     expect(padded(shown(new Layout("abc"), order, 20)[0]!)).toBe("right");
   });
 
-  test("a renderable a Padding holds is handed the default edge, and a justify the Padding was handed as it stands", () => {
+  test("a renderable that sets its own lines is not handed a Padding's default edge, through a Group or not, and a justify the Padding was handed reaches it", () => {
     const handed: unknown[] = [];
     const probe = { render: (options: { justify?: unknown }) => (handed.push(options.justify), [new Segment("x")]) };
     plainBytes(new Padding(probe, 0), "visual", 20);
+    plainBytes(new Padding(new Group(probe), 0), "visual", 20);
     [...new Padding(probe, 0).render({ maxWidth: 20, textOrder: "visual", justify: "center" })];
-    expect(handed).toEqual(["default", "center"]);
+    expect(handed).toEqual([undefined, undefined, "center"]);
   });
 
   // What passes its options through — a Group, a Constrain — leaves the row's
@@ -591,7 +595,16 @@ describe("a paragraph starts at its own edge", () => {
     live.refresh();
     live.stop();
     const row = chunks.join("").slice(before).replace(/\x1b\[[0-9;?]*[A-Za-z]|\r/g, "").split("\n")[0]!;
-    expect(row.startsWith(" ".repeat(20 - cellLen(HEBREW)))).toBe(true);
+    expect(row).toBe(" ".repeat(20 - cellLen(HEBREW)) + printed(new RichText(HEBREW), 20)[0]!.trimStart());
+  });
+
+  test("a printed value, data or block that sets its own lines keeps them where it set them", () => {
+    expect(printed(new Pretty(["שלום", "abc"]), 40).every((row) => !row.startsWith(" ".repeat(10)))).toBe(true);
+    expect(printed(JSONRenderable.fromString('{"שם":"x"}'), 40).every((row) => !row.startsWith(" ".repeat(10)))).toBe(true);
+    expect(printed(new Panel(JSONRenderable.fromString('{"שם":"x"}')), 40).every((row) => !row.slice(1).startsWith(" ".repeat(10)))).toBe(true);
+    const natural: Renderable = { render: (options) => render(new RichText("שלום"), options) };
+    expect(printed(new Align(natural, "center"), 40)[0]!.trimEnd()).toBe(`${" ".repeat(18)}םולש`);
+    expect(printed(new Traceback(new Error("first line\nשורה שנייה")), 60).some((row) => row.startsWith(" ".repeat(20)))).toBe(false);
   });
 
   test("a print that leaves its line open is a fragment, and is not placed", () => {

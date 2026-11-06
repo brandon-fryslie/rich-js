@@ -9,9 +9,10 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { PASSES_EDGE, renderPassing } from "../core/protocol.js";
 
 export class Constrain implements Renderable, Measurable {
+  readonly [PASSES_EDGE] = true;
   readonly renderable: Renderable;
   readonly width: number | undefined;
 
@@ -32,7 +33,7 @@ export class Constrain implements Renderable, Measurable {
       maxWidth: constrainedWidth,
     };
 
-    yield* render(this.renderable, innerOptions);
+    yield* renderPassing(this.renderable, innerOptions);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

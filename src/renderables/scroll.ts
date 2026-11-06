@@ -38,9 +38,8 @@ import { Animation } from "../core/animation.js";
 import { passAt, positiveSeconds, stepSequence } from "../core/easing.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { withBoundedWidth } from "../core/protocol.js";
+import { renderFilling, withBoundedWidth } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import { renderFilling } from "./embed.js";
 
 /** The slot a scroll draws, and how far the content is moved in it. */
 export interface ScrollOptions {

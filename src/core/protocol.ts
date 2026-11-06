@@ -570,6 +570,46 @@ export function render(renderable: Renderable, options: RenderOptions): Iterable
 }
 
 /**
+ * The mark of a renderable a filled row's default edge reaches: text, which
+ * starts each paragraph at its own edge under `"default"`, and what hands its
+ * options on whole (a `Group`, a `Constrain`), which leaves the row to what it
+ * holds. Anything else sets its text at a width of its own choosing — a
+ * `Pretty`'s indent, a `Tree`'s guides, an `Align`'s block — and the default,
+ * which pads a right-to-left line out to the full width, would move it.
+ */
+export const PASSES_EDGE: unique symbol = Symbol("passesEdge");
+
+// [LAW:single-enforcer] The one rule for who receives `"default"`: what is
+// marked keeps the justify it is handed, and anything else loses only the
+// default, so a justify the caller named still reaches every text in it, as
+// Rich hands a print's justify on.
+const edgeFor = (content: Renderable, justify: RenderOptions["justify"]): RenderOptions["justify"] =>
+  PASSES_EDGE in content || justify !== "default" ? justify : undefined;
+
+/**
+ * `content` drawn into rows its holder fills — a `Padding`, a leaf `Layout`, a
+ * `Viewport`, a `scroll`, a printed line, a view's frame: unasked, what it
+ * holds starts at its paragraph's own edge, so a right-to-left body stands at
+ * the right of the rows rather than wherever the padding falls.
+ */
+export function renderFilling(content: Renderable, options: RenderOptions): Iterable<Segment> {
+  return render(content, fillingOptions(content, options));
+}
+
+/** The options `renderFilling` draws `content` under. */
+export function fillingOptions(content: Renderable, options: RenderOptions): RenderOptions {
+  return { ...options, justify: edgeFor(content, options.justify ?? "default") };
+}
+
+/**
+ * `content` drawn by a holder that passes its options on whole: a default
+ * edge it was handed reaches `content` only if `content` passes it too.
+ */
+export function renderPassing(content: Renderable, options: RenderOptions): Iterable<Segment> {
+  return render(content, { ...options, justify: edgeFor(content, options.justify) });
+}
+
+/**
  * Where a hidden renderable is drawn, and the options it is drawn under: what
  * it draws is dropped, and everything it draws is reported hidden, whatever
  * width it hands it. What it tells of its validity (`onValidity`) still reaches the

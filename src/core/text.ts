@@ -10,7 +10,7 @@ import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
 import { stripOscControls } from "./osc8.js";
-import { betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
+import { PASSES_EDGE, betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Justify, Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
@@ -213,6 +213,7 @@ interface TextFormat {
 }
 
 export class RichText implements Renderable, Measurable {
+  readonly [PASSES_EDGE] = true;
   // Rich's `Text` is changed in place — appended to, stylized, padded — so its
   // characters, spans and format are state, and a write to one while
   // something is drawn throws. Four holders rather than one per field: a
