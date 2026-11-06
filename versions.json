@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-573",
-      "ref": "refs/pull/573/merge",
-      "sha": "9eb79a3335ab86b816a74ff7696a891b06d64f17",
-      "timestamp": "2026-11-06T08:30:44.426Z",
-      "commits": [
-        {
-          "sha": "9eb79a3335ab86b816a74ff7696a891b06d64f17",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:29:08Z",
-          "message": "Merge 7d52f46b3b16b76822c85234144ff1249d418637 into b9e25db7fb558c55741ee1805a4255b4788a1264\n"
-        },
-        {
-          "sha": "7d52f46b3b16b76822c85234144ff1249d418637",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T01:28:58-07:00",
-          "message": "A string escape's payload ends at ESC or any C1 control, as the VT500 parser ends it; one STRING_STOPS for OSC 8 and decodeAnsi (rich-control-codes-xh4n.187 review)\n"
-        },
-        {
-          "sha": "bd53f249f428f07f062eea0202fdb6e6aad7e66c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T01:22:40-07:00",
-          "message": "A C1 string introducer reads as its ESC form, cut at the line's end, and ESC E's line break is derived from CONTROL_CODES (rich-control-codes-xh4n.187 review)\n"
-        },
-        {
-          "sha": "1f45b72624d6f51a2ae4d95cd825483beb82710d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T01:16:47-07:00",
-          "message": "An 8-bit OSC 8 is a link, a lone 8-bit string introducer costs one character, and ESC E ends a line (rich-control-codes-xh4n.187 review)\n"
-        },
-        {
-          "sha": "7ed95c0a54d90d92f2232129f52b69449a427607",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T01:00:54-07:00",
-          "message": "decodeAnsi reads the 8-bit C1 introducers as the sequences they start (rich-control-codes-xh4n.187)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b9e25db7fb558c55741ee1805a4255b4788a1264",
-      "timestamp": "2026-11-06T07:48:34.729Z",
+      "sha": "8d57b1ba27053e83cf02807bd2efa0fa43afb9aa",
+      "timestamp": "2026-11-06T08:46:35.709Z",
       "commits": [
         {
-          "sha": "b9e25db7fb558c55741ee1805a4255b4788a1264",
+          "sha": "8d57b1ba27053e83cf02807bd2efa0fa43afb9aa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T00:46:22-07:00",
-          "message": "isPrepend reads a vendored Prepend table at the pinned Unicode version, not the engine's segmenter (rich-control-codes-xh4n.7cz) (#572)\n\n* isPrepend reads a vendored Prepend table at the pinned Unicode version, not the engine's segmenter (rich-control-codes-xh4n.7cz)\n\n* The Prepend table is the union from the Node floor's Unicode through the pinned one, so the cut is the same on every Node; the data module answers the lookup (rich-control-codes-xh4n.7cz review)\n\n* Prepend lookup takes a code point; the table's test pins both cross-version Prepends and skips unassigned code points (rich-control-codes-xh4n.7cz review)\n\n* Prepend comments state the table's bounds; test titles name code points (rich-control-codes-xh4n.7cz review)"
+          "timestamp": "2026-11-06T01:44:05-07:00",
+          "message": "decodeAnsi reads the 8-bit C1 introducers as the sequences they start (rich-control-codes-xh4n.187) (#573)\n\n* decodeAnsi reads the 8-bit C1 introducers as the sequences they start (rich-control-codes-xh4n.187)\n\n* An 8-bit OSC 8 is a link, a lone 8-bit string introducer costs one character, and ESC E ends a line (rich-control-codes-xh4n.187 review)\n\n* A C1 string introducer reads as its ESC form, cut at the line's end, and ESC E's line break is derived from CONTROL_CODES (rich-control-codes-xh4n.187 review)\n\n* A string escape's payload ends at ESC or any C1 control, as the VT500 parser ends it; one STRING_STOPS for OSC 8 and decodeAnsi (rich-control-codes-xh4n.187 review)"
         }
       ]
     }
