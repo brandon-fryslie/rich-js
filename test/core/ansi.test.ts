@@ -191,7 +191,22 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(text.spans).toEqual([]);
   });
 
-  it("moves along the line for CUB, CUF, CHA, HPR and HPA as it does for a backspace", () => {
+  it("erases, deletes and inserts cells at the cursor for ECH, DCH and ICH", () => {
+    expect(decodeAnsi("abcdef\x1b[5G\x1b[2Xz").plain).toBe("abcdz");
+    expect(decodeAnsi("abcdef\x1b[2G\x1b[2Xz").plain).toBe("az def");
+    expect(decodeAnsi("abc\x1b[3D\x1b[3Xxy").plain).toBe("xy");
+    expect(decodeAnsi("abcdef\x1b[2G\x1b[2P").plain).toBe("adef");
+    expect(decodeAnsi("abcdef\x1b[2G\x1b[Pz").plain).toBe("azdef");
+    expect(decodeAnsi("abc\x1b[2G\x1b[2@xy").plain).toBe("axybc");
+    expect(decodeAnsi("abc\x1b[9@").plain).toBe("abc");
+    // A wide character cut by an edit leaves a blank, as a draw there does.
+    expect(decodeAnsi("日本\x1b[2G\x1b[P").plain).toBe(" 本");
+    // What an insert pushes past the right margin is lost.
+    expect(decodeAnsi("abcd\x1b[2G\x1b[2@", { width: 4 }).plain).toBe("a  b");
+    expect(decodeAnsi(`ab\x1b[1G\x1b[${"9".repeat(400)}@`, { width: 4 }).plain).toBe("    ");
+  });
+
+  it("moves along the line for every move ECMA-48 names on it, as it does for a backspace", () => {
     expect(decodeAnsi("abc\x1b[2D\x1b[Kz").plain).toBe("az");
     expect(decodeAnsi("abc\x1b[Dz").plain).toBe("abz");
     expect(decodeAnsi("abc\x1b[0Dz").plain).toBe("abz");
@@ -222,10 +237,15 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(styleAt(gap, 5).bgcolor).toEqual(styleAt(gap, 0).bgcolor);
     // A mark past the drawn end sits on the blank before it, as on a terminal.
     expect(decodeAnsi("a\x1b[Ć").plain).toBe("a ́");
-    // A count is bounded, so a short escape cannot pad a line without end.
-    expect(decodeAnsi(`\x1b[${"9".repeat(400)}Cz`).plain.length).toBe(9999);
-    expect(decodeAnsi("\x1b[4294967295Gz").plain.length).toBe(9999);
-    // The bound never turns a move around on a line already longer than it.
+    // A move forward stops at the right margin, so a short escape cannot pad a
+    // line without end, and the right-edge idiom lands where a terminal puts it.
+    expect(decodeAnsi(`\x1b[${"9".repeat(400)}Cz`).plain.length).toBe(80);
+    expect(decodeAnsi("\x1b[4294967295Gz").plain.length).toBe(80);
+    expect(decodeAnsi("ok\x1b[999C\x1b[3Ddone", { width: 20 }).plain).toBe(`ok${" ".repeat(14)}done`);
+    expect(decodeAnsi("ab\x1b[Iz", { width: 4 }).plain).toBe("ab z");
+    // A mark with nothing to sit on, moved away from, is gone.
+    expect(decodeAnsi("́\x1b[3Cz").plain).toBe("   z");
+    // The margin never turns a move around on a line already longer than it.
     const long = "x".repeat(12000);
     expect(decodeAnsi(`${long}\bz`).plain).toBe(`${"x".repeat(11999)}z`);
     expect(decodeAnsi(`${long}\x1b[Cz`).plain).toBe(`${long}z`);
