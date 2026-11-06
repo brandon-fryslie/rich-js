@@ -11,7 +11,7 @@ import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
 import { stripOscControls } from "./osc8.js";
 import { betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
-import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
+import type { Justify, Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
 import { laidOutVisually, type ParagraphLevel, type TextOrder } from "./text-order.js";
@@ -172,7 +172,7 @@ export class Span {
 
 export interface RichTextOptions {
   style?: TextStyle;
-  justify?: "left" | "center" | "right" | "full";
+  justify?: Justify;
   overflow?: OverflowMethod;
   end?: string;
   tabSize?: number;
@@ -205,7 +205,7 @@ export type WrapOptions = RenderOptions & { readonly textOrder?: "plain" | "logi
 /** What a `RichText` says about how it is drawn, as Rich's `Text` lets a caller change it after construction. */
 interface TextFormat {
   readonly style: TextStyle;
-  readonly justify: "left" | "center" | "right" | "full" | undefined;
+  readonly justify: Justify | undefined;
   readonly overflow: OverflowMethod | undefined;
   readonly end: string;
   readonly noWrap: boolean;
@@ -303,11 +303,11 @@ export class RichText implements Renderable, Measurable {
     this._reformat({ style: admitStyle(value) });
   }
 
-  get justify(): "left" | "center" | "right" | "full" | undefined {
+  get justify(): Justify | undefined {
     return this._format.get().justify;
   }
 
-  set justify(value: "left" | "center" | "right" | "full" | undefined) {
+  set justify(value: Justify | undefined) {
     this._reformat({ justify: value });
   }
 
@@ -1023,6 +1023,12 @@ export class RichText implements Renderable, Measurable {
       // and the row states it.
       const level = order === "logical" && directed ? paragraphLevelOf(line.text, stated) : stated;
       const direction = level === undefined ? format.direction : DIRECTION_OF[level];
+      // The edge a row starts at is its paragraph's under every order that lays
+      // the row out, not only the one that states it on the wire. Under `plain`
+      // the bytes are logical, where a line starts at its first character and
+      // padding after it is already at its start, wherever the destination
+      // shows that: it is the destination's own bidi, if any, that turns it.
+      const startLevel = order !== "plain" && directed ? paragraphLevelOf(line.text, stated) : 0;
       const openersAt = openersAlong(line.text);
 
       divided(line, ranges).forEach((cut, index) => {
@@ -1042,6 +1048,7 @@ export class RichText implements Renderable, Measurable {
           // [LAW:single-enforcer] A span that adds nothing is no span, as `_addSpan` admits them.
           draft: { text: opened.text, spans: opened.spans.filter((span) => !isEmptyStyle(span.style)) },
           direction,
+          startLevel,
           orient: ordered === undefined ? ownOrientation(order, level) : (shown) => ({ line: shown, oriented: true, orient: (segments) => ordered.orient(segments, start, source) }),
         });
       });
@@ -1200,6 +1207,8 @@ interface OrientedRow {
 interface Row {
   readonly draft: Draft;
   readonly direction: Direction | undefined;
+  /** The level of the paragraph the row is a line of: the edge `"start"` names. */
+  readonly startLevel: ParagraphLevel;
   readonly orient: (segments: Segment[]) => OrientedRow;
 }
 
@@ -1208,7 +1217,7 @@ interface Layout {
   readonly rows: readonly Row[];
   readonly maxWidth: number;
   readonly base: Style;
-  readonly justify: "left" | "center" | "right" | "full" | undefined;
+  readonly justify: Justify | undefined;
 }
 
 /** What covers characters `spliced` writes: the spans over what they replace, or one style alone. */
@@ -1227,7 +1236,26 @@ function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
   // An oriented row's cells are not where `free` counted them, and a pad
   // joined to one would land inside its isolate.
   const free = oriented ? NEVER_FREE : spanFree(segments, covered);
-  return [...placed({ segments: [...line], free, orient }, layout.maxWidth, layout.base, layout.justify === "full" ? undefined : layout.justify)];
+  return [...placed({ segments: [...line], free, orient }, layout.maxWidth, layout.base, edgeOf(layout.justify, row.startLevel))];
+}
+
+/**
+ * The edge a row is placed against. `"start"` is the paragraph's own edge, and so
+ * is no justify at all for a right-to-left row: unpadded, it would be drawn at
+ * the left, the edge its reader ends at. A `full` row's gaps are already in
+ * its text, so only its last row is placed, as no justify places one.
+ */
+function edgeOf(justify: Justify | undefined, level: ParagraphLevel): "left" | "center" | "right" | undefined {
+  const rightToLeft = level === 1;
+  switch (justify) {
+    case "start":
+      return rightToLeft ? "right" : "left";
+    case "full":
+    case undefined:
+      return rightToLeft ? "right" : undefined;
+    default:
+      return justify;
+  }
 }
 
 /** A row ordered by what it holds: under every order but a directed `visual` line's, all a row needs. */

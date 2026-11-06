@@ -192,6 +192,7 @@ export {
 export type {
   RenderOptions,
   OverflowMethod,
+  Justify,
   Height,
   Renderable,
   Measurable,
