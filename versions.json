@@ -4,15 +4,22 @@
     {
       "version": "pr-568",
       "ref": "refs/pull/568/merge",
-      "sha": "ef93b64a6faadfdce3d590b279a6edf45a08328f",
-      "timestamp": "2026-11-06T02:48:00.123Z",
+      "sha": "ad6c842bf0ebab2524782dde6c3e59751d1033ba",
+      "timestamp": "2026-11-06T03:20:39.941Z",
       "commits": [
         {
-          "sha": "ef93b64a6faadfdce3d590b279a6edf45a08328f",
+          "sha": "ad6c842bf0ebab2524782dde6c3e59751d1033ba",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T02:45:36Z",
-          "message": "Merge 36966c63ea2c9e82e2b50d3fd0bc2cbbabedd0c0 into e10e52e187beaa25544769690371364ed04439a3\n"
+          "timestamp": "2026-11-06T03:18:30Z",
+          "message": "Merge aa3e260795ffde9c5eed6dc882d7b8bcd6d6da5f into e10e52e187beaa25544769690371364ed04439a3\n"
+        },
+        {
+          "sha": "aa3e260795ffde9c5eed6dc882d7b8bcd6d6da5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T20:18:06-07:00",
+          "message": "The end past the text is drawn only under the caret, a probe otherwise, so no row shows a blank its value lacks; the probe is found by index now that padding follows it; a press on a single-line bracket is one on the cell inside it; the claude-sessions search bar marks its end cell; Style.textEnd has its own tests (rich-control-codes-xh4n.tmh)\n"
         },
         {
           "sha": "36966c63ea2c9e82e2b50d3fd0bc2cbbabedd0c0",
