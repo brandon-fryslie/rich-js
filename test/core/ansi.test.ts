@@ -205,6 +205,7 @@ describe("decodeAnsi links", () => {
     expect(styleAt(red, 1).color?.number).toBe(1);
     expect(decodeAnsi("a\x1b\x0c[31mb").plain).toBe("a\nb");
     expect(decodeAnsi("\x1b[3\n1\n2mx").plain).toBe("\n\nx");
+    expect(decodeAnsi("a\x1b[3\x7fb").plain).toBe("aaaa");
   });
 
   it("runs a control inside an escape after the string escape that escape cuts off has ended", () => {

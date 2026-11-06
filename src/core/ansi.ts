@@ -271,7 +271,10 @@ const CNL = "(?<rows>[0-9]*)(?:;[0-9;]*)?E";
  * Everything `decode` ends a line at, `\n`, C1 forms and the census's
  * line-break controls (`census`) included.
  */
-const LINE_ENDS = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|(?<census>${controlClass((disposition) => disposition === "line-break")})`;
+const CENSUS_BREAKS = controlClass((disposition) => disposition === "line-break");
+const LINE_ENDS = `\\n|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|(?<census>${CENSUS_BREAKS})`;
+/** A line break the census ends a line at: of the C0 controls, those a terminal performs other than as CR LF. */
+const CENSUS_BREAK = pattern(new RegExp(CENSUS_BREAKS, "u"));
 
 // A string escape goes first so a line break its payload holds stays in it. A
 // CSI or an escape cut by a C0 line break (`held`) is the next line's: a
@@ -317,7 +320,8 @@ function* escapeTokens(bytes: string, following: string): Generator<Token> {
   for (let found = INTERRUPTED.exec(rest); found !== null; found = INTERRUPTED.exec(rest)) {
     const sequence = found[0].slice(0, -1);
     yield* drawnTokens(rest.slice(0, found.index), sequence.charAt(0));
-    yield* drawnTokens(found[0].slice(-1), sequence.charAt(0));
+    const control = found[0].slice(-1);
+    if (control !== "\x7f") yield* drawnTokens(control, sequence.charAt(0));
     rest = sequence + rest.slice(found.index + found[0].length);
   }
   yield* drawnTokens(rest, following);
@@ -735,12 +739,16 @@ function linesOf(ansi: string): { readonly ended: readonly EndedLine[]; readonly
       ended.push({ line, end: found[0], relocates });
       continue;
     }
-    // Each break the sequence holds ends a line of its own; only LF is CR LF.
-    for (const end of [...held.split("").filter((byte) => BREAK_IN_SEQUENCE.test(byte)), cut!]) {
-      ended.push({ line, end, relocates: end !== "\n" });
+    // Each break the sequence holds ends a line of its own, and the rest of it goes on.
+    carried = "";
+    for (const byte of held + cut!) {
+      if (!BREAK_IN_SEQUENCE.test(byte)) {
+        carried += byte;
+        continue;
+      }
+      ended.push({ line, end: byte, relocates: CENSUS_BREAK.test(byte) });
       line = "";
     }
-    carried = held.split("").filter((byte) => !BREAK_IN_SEQUENCE.test(byte)).join("");
   }
   return { ended, last: carried + ansi.slice(start) };
 }
