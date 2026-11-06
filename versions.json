@@ -2,32 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "80644906c32a0f0fac5b1a61d7aaa72b5f672677",
-      "timestamp": "2026-11-06T15:36:48.742Z",
-      "commits": [
-        {
-          "sha": "80644906c32a0f0fac5b1a61d7aaa72b5f672677",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:34:18-07:00",
-          "message": "A stated component text is held on its ground, opaque or tint (rich-unfiled-791c.h35m) (#585)\n\n* A stated component text is held on its ground, opaque or tint: an author's color that reads is kept, one that does not keeps its hue (rich-unfiled-791c.h35m)\n\n* A footer key's text is held on the footer bar its ground sits on; buildPalette's contract names held component text (rich-unfiled-791c.h35m)\n\n* A stated component text is held on its own side of its ground, on the footer item a footer key sits on; contrast page says so (rich-unfiled-791c.h35m)\n\n* A held component text that must cross its ground keeps its hue (rich-unfiled-791c.h35m)"
-        }
-      ]
-    },
-    {
       "version": "pr-584",
       "ref": "refs/pull/584/merge",
-      "sha": "0763a88e3c6f148ae5428e8957f29055c10acd8c",
-      "timestamp": "2026-11-06T15:28:57.191Z",
+      "sha": "6ccfe910bf8cd865a089f85312085b403d911d2f",
+      "timestamp": "2026-11-06T15:37:30.933Z",
       "commits": [
         {
-          "sha": "0763a88e3c6f148ae5428e8957f29055c10acd8c",
+          "sha": "6ccfe910bf8cd865a089f85312085b403d911d2f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T15:26:16Z",
-          "message": "Merge 040953873e13f9f3482da260f7528868d3c86602 into 0f0e2b67ec0449800b781c88e674866f6d824f9e\n"
+          "timestamp": "2026-11-06T15:34:56Z",
+          "message": "Merge cc72b98248056fdce8dff1c557179fc9031ddce9 into 80644906c32a0f0fac5b1a61d7aaa72b5f672677\n"
+        },
+        {
+          "sha": "cc72b98248056fdce8dff1c557179fc9031ddce9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:34:46-07:00",
+          "message": "A transition, a spinner and a WidgetApp view pass the edge; an effect and a renderable print do not change it (rich-control-codes-xh4n.5ya)\n\nSecond high review of #584. Recolored and Reglyphed drop the mark so an\neffect never sees a right-to-left text's pad cells; a printed renderable's\nrows are closed lines whatever its end.\n"
         },
         {
           "sha": "040953873e13f9f3482da260f7528868d3c86602",
@@ -49,6 +41,21 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T08:04:34-07:00",
           "message": "Right-to-left text through a Group, a Viewport, a scroll or a view stands at its start edge (rich-control-codes-xh4n.5ya)\n\nEvery row-filling container hands its body justify \"default\", not only a\ntext body: Padding, Layout, Viewport, scroll, Console.print's renderable\nblocks and drawView (Live, App). Group and Constrain forward it. A Tree\nlabel and a traceback frame sit beside other drawing, so they drop only\nthe default (besideDrawing) and keep a justify the print named.\nLeft-to-right output is unchanged: RichText alone reads justify, and\n\"default\" draws a left-to-right row as no justify does.\n"
+        }
+      ]
+    },
+    {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "80644906c32a0f0fac5b1a61d7aaa72b5f672677",
+      "timestamp": "2026-11-06T15:36:48.742Z",
+      "commits": [
+        {
+          "sha": "80644906c32a0f0fac5b1a61d7aaa72b5f672677",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:34:18-07:00",
+          "message": "A stated component text is held on its ground, opaque or tint (rich-unfiled-791c.h35m) (#585)\n\n* A stated component text is held on its ground, opaque or tint: an author's color that reads is kept, one that does not keeps its hue (rich-unfiled-791c.h35m)\n\n* A footer key's text is held on the footer bar its ground sits on; buildPalette's contract names held component text (rich-unfiled-791c.h35m)\n\n* A stated component text is held on its own side of its ground, on the footer item a footer key sits on; contrast page says so (rich-unfiled-791c.h35m)\n\n* A held component text that must cross its ground keeps its hue (rich-unfiled-791c.h35m)"
         }
       ]
     }
