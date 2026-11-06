@@ -4,6 +4,7 @@
 
 import { codePointWidth, widensToEmoji } from "./cell-widths.js";
 import { controlClass, dispositionOf, SUBDIVISION_FLAG } from "./control-codes.js";
+import { PREPEND_RANGES } from "./grapheme-data.js";
 import { Memo } from "./memo.js";
 import { pattern } from "./pattern.js";
 
@@ -22,15 +23,25 @@ const PRINTABLE_ASCII = pattern(/^[ -~]*$/);
 const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 const WORD_JOINER = "\u2060";
 
-const prependMemo = new Memo<boolean>();
-
 /**
  * Whether `character` is a Prepend (UAX #29 GB9b), which a segmenter joins to
- * whatever follows it. Asked of the segmenter itself — nothing but GB9b joins a
- * character to a following letter — so the set split below is the set it joins.
+ * whatever follows it. Read off the vendored table at the pinned Unicode
+ * version, not the engine's ICU, so the cut below falls in one place on every
+ * Node, and a lookup costs no segmentation and fills no cache.
  */
 function isPrepend(character: string): boolean {
-  return prependMemo.get(character, (c) => SEGMENTER.segment(c + "a").containing(0)!.segment.length > c.length);
+  const codePoint = character.codePointAt(0)!;
+  if (codePoint < PREPEND_RANGES[0]![0]) return false;
+  let low = 0;
+  let high = PREPEND_RANGES.length - 1;
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const [first, last] = PREPEND_RANGES[mid]!;
+    if (codePoint < first) high = mid - 1;
+    else if (codePoint > last) low = mid + 1;
+    else return true;
+  }
+  return false;
 }
 
 interface Cluster {
