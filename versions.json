@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-568",
+      "ref": "refs/pull/568/merge",
+      "sha": "90344dd47690d50f7cae62c987d0b186192e3941",
+      "timestamp": "2026-11-06T02:24:41.191Z",
+      "commits": [
+        {
+          "sha": "90344dd47690d50f7cae62c987d0b186192e3941",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T19:22:16-07:00",
+          "message": "Merge 3c3b34068ce40569d15e9fe307abc6cdc7e868ee into e10e52e187beaa25544769690371364ed04439a3\n"
+        },
+        {
+          "sha": "3c3b34068ce40569d15e9fe307abc6cdc7e868ee",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-05T19:22:05-07:00",
+          "message": "The caret past a mixed-direction text stands beside the last character typed: CaretMark.after marks the blank a widget adds past the text, and ordering gives it the level before it (rich-control-codes-xh4n.tmh)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e10e52e187beaa25544769690371364ed04439a3",
