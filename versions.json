@@ -4,15 +4,22 @@
     {
       "version": "pr-589",
       "ref": "refs/pull/589/merge",
-      "sha": "347e62b788d80ecdf17f58a70297e6fc0cf2f9a2",
-      "timestamp": "2026-11-06T23:23:53.414Z",
+      "sha": "4b19f9aeba497a5d7e5acb2dea57b83a4a479b69",
+      "timestamp": "2026-11-06T23:35:02.336Z",
       "commits": [
         {
-          "sha": "347e62b788d80ecdf17f58a70297e6fc0cf2f9a2",
+          "sha": "4b19f9aeba497a5d7e5acb2dea57b83a4a479b69",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T16:21:41-07:00",
-          "message": "Merge 695407a993a09f6d562a90f2f01a86a42b8f8fe7 into f5cb509f1c072161a33d4f5deb776c9d4e56b2ff\n"
+          "timestamp": "2026-11-06T23:32:55Z",
+          "message": "Merge deed5075ffa52dd8163dfd132adfbf857319c0ef into f5cb509f1c072161a33d4f5deb776c9d4e56b2ff\n"
+        },
+        {
+          "sha": "deed5075ffa52dd8163dfd132adfbf857319c0ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T16:32:44-07:00",
+          "message": "A control inside a sequence runs in the tokenizer, after any string the sequence cuts off; a C0 break there ends the line and carries the sequence on (rich-control-codes-xh4n.8qs)\n\nReplaces the executedFirst text rewrite, which moved a BEL or FF into a cut-off\nstring's payload. decodeLine now follows the rule too, and LF joins VT and FF.\nSequence patterns come from one builder; RUN_IN_SEQUENCE derives from ABORTS.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "695407a993a09f6d562a90f2f01a86a42b8f8fe7",
