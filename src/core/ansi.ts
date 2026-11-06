@@ -135,7 +135,10 @@ const CSI = either("[");
 // it, the cut a capture's line makes. A stray C1 byte that is windows-1252 read
 // as Latin-1 decodes as such a terminal shows it; no rule local to the byte can
 // tell the two apart, so repairing it is the caller's.
-const STRING_ESCAPE = String.raw`${either("]P_^X")}[^${STRING_STOPS}\n]*(?:\x07|\x1b\\|\x9c)?`;
+const STRING_SO_FAR = String.raw`${either("]P_^X")}[^${STRING_STOPS}\n]*`;
+const STRING_ESCAPE = String.raw`${STRING_SO_FAR}(?:\x07|\x1b\\|\x9c)?`;
+/** A CSI or an escape so far: parameters, then intermediates, short of its final byte. */
+const SEQUENCE_SO_FAR = String.raw`(?:${CSI}[0-?]*|\x1b)[ -/]*`;
 
 // The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
 const ESC_LINE_BREAKS = hex(
@@ -222,8 +225,9 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * undrawn escapes (`undrawn`) — any other CSI sequence, any other string escape
  * (OSC, DCS, APC, PM, SOS) run to a terminator or cut off where `STRING_ESCAPE`
  * says, and any other escape, ECMA-48's intermediates and one final byte
- * (`\x1b#8`, `\x1b(%5`); a CSI, string escape or escape cut off by one of `ABORTS`
- * (`aborted`), silent with its abort as on a terminal, so what follows draws; a character struck over itself (`struck`), over an
+ * (`\x1b#8`, `\x1b(%5`); the escapes a terminal does nothing with (`inert`), silent: a CSI, string
+ * escape or escape cut off by one of `ABORTS`, abort and all, so what follows
+ * draws, and an ST with no string to end, such as the one an abort leaves; a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
  * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line
  * may not hold or a terminal draws nothing for (`control`): undrawn when it is an
@@ -231,7 +235,7 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * otherwise.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<aborted>(?:(?:${CSI}[0-?]*|\x1b)[ -/]*|${either("]P_^X")}[^${STRING_STOPS}\n]*)[${ABORTS}])|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<inert>(?:${SEQUENCE_SO_FAR}|${STRING_SO_FAR})[${ABORTS}]|\x1b\\|\x9c)|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
@@ -260,7 +264,7 @@ const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "
  * escape short of its terminator (an ESC at its end may be the first byte of
  * ST), or an ESC so far only intermediates.
  */
-const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${CSI}[0-?]*[ -/]*|${either("]P_^X")}[^${STRING_STOPS}\n]*\x1b?|\x1b[ -/]*)$`, "u"));
+const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${SEQUENCE_SO_FAR}|${STRING_SO_FAR}\x1b?)$`, "u"));
 
 /**
  * Whether a terminal performs `control`, one `ESCAPES` matched alone, and
@@ -269,7 +273,7 @@ const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${CSI}[0-?]*[ -/]*|${either
  * an ESC, running a C0 control and ignoring DEL there, and takes a later byte as
  * the escape's final, which the decoder draws as text. Only the next ESC or C1
  * control cancels it, and then a terminal drops it as the decoder does; an
- * abort after it is the aborted escape `ESCAPES` takes whole.
+ * abort after it is the inert escape `ESCAPES` takes whole.
  */
 const performed = (control: string, next: string): boolean =>
   isC1(control.charCodeAt(0)) || (control === "\x1b" && next !== "\x1b" && !isC1(next.charCodeAt(0)));
@@ -278,12 +282,12 @@ const performed = (control: string, next: string): boolean =>
 function* escapeTokens(bytes: string, following: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, aborted, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
+    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, inert, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
     const escape = match[0];
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     const next = bytes[match.index + escape.length] ?? following;
     if (undrawn !== undefined || (control !== undefined && performed(control, next))) yield { kind: "undrawn", escape };
-    else if (control !== undefined || aborted !== undefined) yield { kind: "silent" };
+    else if (control !== undefined || inert !== undefined) yield { kind: "silent" };
     if (escape === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined, escape };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };

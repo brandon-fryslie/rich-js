@@ -175,6 +175,8 @@ describe("decodeAnsi links", () => {
       expect(decodeAnsi(`a\x1b(${abort}Bc`).plain).toBe("aBc");
       expect(decodeAnsi(`a\x1b${abort}Bc`).plain).toBe("aBc");
       expect(styleAt(decodeAnsi(`\x1b[31${abort}mx`), 1).color).toBeUndefined();
+      expect(decodeAnsi(`\x1b]8;;http://a${abort}vis\x1b\\x`).plain).toBe("visx");
+      expect(decodeAnsi(`\x9d8;;http://a${abort}vis\x9cx`).plain).toBe("visx");
     }
   });
 

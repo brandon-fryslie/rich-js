@@ -32,7 +32,7 @@ describe("scanEscapes", () => {
   });
 
   it.each(["\x18", "\x1a"])("passes a string, a CSI or an escape a %j aborts, which a terminal drops as the drawing does", (abort) => {
-    for (const bytes of [`\x1b]8;;http://a${abort}visible\x07x`, `\x1b]0;title${abort}rest`, `x\x1bP${abort}y`, `\x1b[31${abort}mx`]) {
+    for (const bytes of [`\x1b]8;;http://a${abort}visible\x07x`, `\x1b]8;;http://a${abort}visible\x1b\\x`, `\x9d8;;http://a${abort}vis\x9cx`, `\x1b]0;title${abort}rest`, `x\x1bP${abort}y`, `\x1b[31${abort}mx`]) {
       expect(scanEscapes(bytes).dropped).toBeNull();
     }
   });
