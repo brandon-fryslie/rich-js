@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e8ee9d2d00559fb249809ef4103d270a9269551c",
-      "timestamp": "2026-11-06T10:58:13.580Z",
+      "sha": "a949c97513c1c182d3ddda4fa21cc4d6bde1e3df",
+      "timestamp": "2026-11-06T11:24:49.937Z",
       "commits": [
         {
-          "sha": "e8ee9d2d00559fb249809ef4103d270a9269551c",
+          "sha": "a949c97513c1c182d3ddda4fa21cc4d6bde1e3df",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T03:56:03-07:00",
-          "message": "decodeAnsi moves along the line for CUB, CUF, CHA, HPR and HPA as it does for BS and CR (rich-control-codes-xh4n.9pb) (#576)\n\n* decodeAnsi moves along the line for CUB, CUF, CHA, HPR and HPA as it does for BS and CR (rich-control-codes-xh4n.9pb)\n\n* decodeAnsi bounds a motion count, reads a move's first parameter, and moves on CHT, CBT and HPB (rich-control-codes-xh4n.9pb review)\n\n* A move's bound stops a forward move and never turns one around past column 9999 (rich-control-codes-xh4n.9pb review)\n\n* decodeAnsi moves against a right margin it is given, edits cells for ECH, DCH and ICH, and the docs gate reads its finals (rich-control-codes-xh4n.9pb review)"
+          "timestamp": "2026-11-06T04:22:27-07:00",
+          "message": "decodeAnsi draws DEC Special Graphics: ESC ( 0 maps q to ─ until ESC ( B (rich-control-codes-xh4n.hdm) (#577)\n\n* decodeAnsi draws the designated character set: DEC Special Graphics in G0 or G1, shifted by SO and SI (rich-control-codes-xh4n.hdm)\n\n* decodeAnsi resets its charsets at RIS and DECSTR, and overstrikes as emphasis only in ASCII; the docs box closes (review of #577)\n\n* RIS clears the line and ends the link, DECSTR keeps the link, and overstrike stays emphasis on a character the set leaves ASCII (review of #577)"
         }
       ]
     }
