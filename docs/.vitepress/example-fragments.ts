@@ -38,9 +38,10 @@ const LINE = [...LINE_FINALS].map((final) => `\\x${final.charCodeAt(0).toString(
 
 /**
  * The escapes `decodeAnsi` draws: SGR, erase in line, a move along the line or
- * an edit of it (`LINE_FINALS`), and an OSC 8 link. It drops every other.
+ * an edit of it (`LINE_FINALS`), a G0 or G1 designation, and an OSC 8 link. It
+ * drops every other.
  */
-const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|${OSC8.source})$`);
+const DRAWN = new RegExp(`^(?:\\x1b\\[[0-9;:]*m|\\x1b\\[[012]?K|\\x1b\\[[0-9]*(?:;[0-9;]*)?[${LINE}]|\\x1b[()][0-~]|${OSC8.source})$`);
 
 /**
  * The start of an escape `DRAWN` may yet match once the rest of it is written:

@@ -21,7 +21,8 @@ does. The measure reads that decision, so `cellLen` is the width of what is writ
 | BEL | An alert: `Console.bell()`, which rings only for a person at a terminal | `␇` |
 | BS | Overstrike, through `decodeAnsi` | `␈` |
 | ESC | Styling, through `decodeAnsi` | `␛` |
-| NUL–ACK, SO–SUB, FS–US, DEL | None in text | Its picture, `␀` to `␟` and `␡` |
+| SO, SI | Switching the character set, through `decodeAnsi` | `␎`, `␏` |
+| NUL–ACK, DLE–SUB, FS–US, DEL | None in text | Its picture, `␀` to `␟` and `␡` |
 
 A picture is one cell, so the reader sees something was there, and nothing in the
 text can act on the terminal. `new RichText` never decodes a sequence: a string
@@ -40,6 +41,19 @@ import { Console, decodeAnsi } from "@promptctl/rich-js";
 
 const output = new Console({ width: 30 });
 output.print(decodeAnsi("N\bNA\bAM\bME\bE  _\bm_\ba_\bn\n12%\b\b\b13%"));
+```
+
+The character set a program designates is drawn too. `\x1b(0` puts DEC Special
+Graphics in G0, the line drawing tmux, ncurses and `dialog` write, until
+`\x1b(B` puts ASCII back; `\x1b)0` puts it in G1, which SO shifts in and SI
+shifts out. The decoder keeps the designation across lines and calls, as it
+keeps a style:
+
+```typescript
+import { Console, decodeAnsi } from "@promptctl/rich-js";
+
+const output = new Console({ width: 30 });
+output.print(decodeAnsi("\x1b(0lqqqqk\nx\x1b(Bok \x1b(0x\nmqqqqj\x1b(B"));
 ```
 
 A link URL holds no control, line separator or bidi control: RFC 3986 admits no

@@ -40,6 +40,12 @@
  * are T.416's own form, neovim writes `4:3` for undercurl, and every terminal
  * that reads them draws the underline and the color, so this reads them too.
  *
+ * Character sets are the fifth. Rich drops `\x1b(0`; it changes which glyph a
+ * byte draws, so dropping it shows `qqq` where a terminal draws `───`. The
+ * decoder holds G0 and G1 (`\x1b(F`, `\x1b)F`) and which SO and SI have shifted
+ * in, across lines and calls as it holds the SGR style, and draws text in that
+ * set (`CHARSETS`).
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator: movement along the line
@@ -65,6 +71,8 @@ type Token =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
+  | { readonly kind: "designate"; readonly set: 0 | 1; readonly charset: string }
+  | { readonly kind: "shift"; readonly set: 0 | 1 }
   | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
   | { readonly kind: "move"; readonly motion: Motion; readonly count: number }
   | { readonly kind: "edit"; readonly edit: Edit; readonly count: number }
@@ -163,16 +171,16 @@ export const LINE_FINALS: string = Object.keys(MOTIONS).join("") + Object.keys(E
  * reading the first parameter (`count`) as a terminal does; an SGR sequence (`sgr`, its parameters — a private
  * marker such as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line
  * (`mode`); any other CSI sequence; any other string escape — OSC, DCS, APC, PM,
- * SOS — run to a terminator or cut off where `STRING_ESCAPE` says;
- * any other escape, ECMA-48's intermediates and one final byte (`\x1b(B`,
+ * SOS — run to a terminator or cut off where `STRING_ESCAPE` says; a G0 or G1
+ * designation (`designate`, its `charset`); any other escape, ECMA-48's intermediates and one final byte (`\x1b(B`,
  * `\x1b)0`, `\x1b#8`, `\x1bc`); a character struck over itself (`struck`), over an
  * underscore first or not (`underscore`); a character struck over an underscore
- * alone (`underlined`); a backspace; and every control a line may not hold or a
+ * alone (`underlined`); a backspace; SO or SI (`shift`); and every control a line may not hold or a
  * terminal draws nothing for. The silent ones are the two "any other" escapes and
  * that last class.
  */
 const ESCAPES = [
-  String.raw`\r|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~]`,
+  String.raw`\r|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b(?<designate>[()])(?<charset>[0-~])|\x1b[ -/]*[0-~]|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth"),
 ].join("|");
@@ -186,12 +194,14 @@ const lineBreaks = (): RegExp =>
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
-    const { count, motion, edit, sgr, mode, underscore, struck, underlined } = match.groups!;
+    const { count, motion, edit, sgr, mode, designate, charset, shift, underscore, struck, underlined } = match.groups!;
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "move", motion: "G", count: 1 };
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
+    if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charset! };
+    if (shift !== undefined) yield { kind: "shift", set: shift === "\x0e" ? 1 : 0 };
     if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
     if (struck !== undefined) yield { kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED };
     if (underlined !== undefined) yield { kind: "overstrike", character: underlined, emphasis: UNDERLINED };
@@ -434,6 +444,29 @@ function insertCells(cells: Cell[], column: number, count: number, margin: numbe
 }
 
 /**
+ * The glyphs a 94-character set draws in place of ASCII, by its designation's
+ * final byte: DEC Special Graphics (`0`), the line drawing tmux, ncurses and
+ * dialog write, and the United Kingdom set (`A`), whose one change is `#` for
+ * `£`. A final this does not name is ASCII, as `B` is, since every other set
+ * is a national one no capture this decodes has been seen to use.
+ */
+const CHARSETS: Readonly<Record<string, ReadonlyMap<string, string>>> = {
+  "0": new Map(
+    [..."_`abcdefghijklmnopqrstuvwxyz{|}~"].map((ascii, at) => [
+      ascii,
+      " ◆▒␉␌␍␊°±␤␋┘┐┌└┼⎺⎻─⎼⎽├┤┴┬│≤≥π≠£·"[at]!,
+    ]),
+  ),
+  A: new Map([["#", "£"]]),
+};
+
+/** `text` as the character set `charset` draws it. */
+function drawnIn(charset: string, text: string): string {
+  const glyphs = CHARSETS[charset];
+  return glyphs === undefined ? text : text.replace(/[\x21-\x7e]/g, (ascii) => glyphs.get(ascii) ?? ascii);
+}
+
+/**
  * The right margin a decoder moves the cursor against when none is given: the
  * width `Console` falls back to when it cannot read a terminal's.
  */
@@ -460,6 +493,9 @@ export class AnsiDecoder {
   private sgr: Style = NULL_STYLE;
   private link: string | undefined = undefined;
   private readonly width: number;
+  /** G0 and G1, each a designation's final byte, and which of them SO and SI have shifted in. */
+  private readonly sets: [string, string] = ["B", "B"];
+  private shifted: 0 | 1 = 0;
 
   constructor(options: AnsiDecoderOptions = {}) {
     this.width = options.width ?? DEFAULT_WIDTH;
@@ -484,11 +520,20 @@ export class AnsiDecoder {
       switch (token.kind) {
         case "text": {
           const style = this.sgr.withLink(this.link);
-          for (const cluster of graphemes(token.text)) column += draw(cells, column, cluster, style);
+          const text = drawnIn(this.sets[this.shifted], token.text);
+          for (const cluster of graphemes(text)) column += draw(cells, column, cluster, style);
           break;
         }
-        case "overstrike":
-          column += draw(cells, column, token.character, this.sgr.add(token.emphasis).withLink(this.link));
+        case "overstrike": {
+          const character = drawnIn(this.sets[this.shifted], token.character);
+          column += draw(cells, column, character, this.sgr.add(token.emphasis).withLink(this.link));
+          break;
+        }
+        case "designate":
+          this.sets[token.set] = token.charset;
+          break;
+        case "shift":
+          this.shifted = token.set;
           break;
         case "move":
           column = moved(column, token.motion, token.count, this.width);

@@ -191,6 +191,30 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(text.spans).toEqual([]);
   });
 
+  it("draws DEC Special Graphics while G0 holds it, as a terminal does", () => {
+    expect(decodeAnsi("\x1b(0qx\x1b(Bq").plain).toBe("─│q");
+    expect(decodeAnsi("\x1b(0lqqk\x1b(B").plain).toBe("┌──┐");
+    expect(decodeAnsi("\x1b(0`afgjkmnotuvwxyz{|}~_\x1b(B").plain).toBe("◆▒°±┘┐└┼⎺├┤┴┬│≤≥π≠£· ");
+    // Outside the mapped range, and with its letters upper case, text is itself.
+    expect(decodeAnsi("\x1b(0ABC 123\x1b(B").plain).toBe("ABC 123");
+    // The set carries across lines and calls, as the SGR style does.
+    expect(decodeAnsi("\x1b(0q\nq\x1b(B\nq").plain).toBe("─\n─\nq");
+    const decoder = new AnsiDecoder();
+    decoder.decode("\x1b(0");
+    expect(decoder.decode("x")[0]!.plain).toBe("│");
+    // The United Kingdom set draws # as £; any other set is ASCII.
+    expect(decodeAnsi("\x1b(A#\x1b(B#").plain).toBe("£#");
+    expect(decodeAnsi("\x1b(Kq").plain).toBe("q");
+    // An overstruck character is drawn in the set too.
+    expect(decodeAnsi("\x1b(0q\bq").plain).toBe("─");
+  });
+
+  it("shifts G1 in at SO and G0 back at SI", () => {
+    expect(decodeAnsi("\x1b)0a\x0eqqq\x0fq").plain).toBe("a───q");
+    // SO with G1 unset draws ASCII, and shifting does not touch G0's designation.
+    expect(decodeAnsi("\x0eq\x0f\x1b(0q").plain).toBe("q─");
+  });
+
   it("erases, deletes and inserts cells at the cursor for ECH, DCH and ICH", () => {
     expect(decodeAnsi("abcdef\x1b[5G\x1b[2Xz").plain).toBe("abcdz");
     expect(decodeAnsi("abcdef\x1b[2G\x1b[2Xz").plain).toBe("az def");
