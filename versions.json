@@ -4,65 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "820c40296fc5841cb8b5028d7f7706acaaf920b7",
-      "timestamp": "2026-11-06T14:52:17.805Z",
+      "sha": "0f0e2b67ec0449800b781c88e674866f6d824f9e",
+      "timestamp": "2026-11-06T15:04:30.224Z",
       "commits": [
         {
-          "sha": "820c40296fc5841cb8b5028d7f7706acaaf920b7",
+          "sha": "0f0e2b67ec0449800b781c88e674866f6d824f9e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:49:52-07:00",
-          "message": "decodeAnsi draws REP (CSI n b) (rich-control-codes-xh4n.m2d) (#583)\n\n* decodeAnsi draws REP (CSI n b): the preceding graphic character n more times, to the margin (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review: REP is one constant, the docs gate draws it only after a graphic character, an overstrike repeats in the SGR style, the header names REP (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review: AnsiDecoder refuses a width that is not a positive whole number, the docs decode at the example terminal's width, REP's last character is set once per text run (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review: what REP repeats is one predicate, repeatable, which the decoder and the docs gate both ask; a static run draws at its own terminal's width (rich-control-codes-xh4n.m2d)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-581",
-      "ref": "refs/pull/581/merge",
-      "sha": "a4ac0637d0fcad574ae3038716cd6212fa6a0aec",
-      "timestamp": "2026-11-06T14:27:49.999Z",
-      "commits": [
-        {
-          "sha": "a4ac0637d0fcad574ae3038716cd6212fa6a0aec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T14:25:36Z",
-          "message": "Merge 102f5238609c11892c4544033751cdb4582a9058 into 700e048980d8aec60545d6aef96c8a57ccac4496\n"
-        },
-        {
-          "sha": "102f5238609c11892c4544033751cdb4582a9058",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:25:24-07:00",
-          "message": "e2e: the studio card lists text-on.ts, section 9's file (rich-palette-xovz.5rt)\n"
-        },
-        {
-          "sha": "b02c5026851a319fc4df153f233d42379cf3c704",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T07:07:57-07:00",
-          "message": "Every component's text is chosen and held on its own ground, disabled text tints on the ground it is on, and a removed role points at textOn wherever it is read (rich-palette-xovz.5rt)\n"
-        },
-        {
-          "sha": "819a3118fa5cf45c4d6b0189c84b439718f47c21",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:51:18-07:00",
-          "message": "Medium-review fixes: a stated role is drawn on its own ground, named walks nearest rungs first, TEXT_FITS is the one road to a fit (rich-palette-xovz.5rt)\n"
-        },
-        {
-          "sha": "ccc6ad216ffe17f5ba4d4737888af4fd4dc2835a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:39:01-07:00",
-          "message": "Review fixes: one floor per intent, shades built only on a miss, cursor text on the cursor, removed roles point at textOn (rich-palette-xovz.5rt)\n"
-        },
-        {
-          "sha": "11e8c622abc68d56d228cca74400bb48d21cf701",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:23:06-07:00",
-          "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
+          "timestamp": "2026-11-06T08:01:59-07:00",
+          "message": "Theme text is drawn on its ground: textOn with swappable fits (rich-palette-xovz.5rt) (#581)\n\n* Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n\n* Review fixes: one floor per intent, shades built only on a miss, cursor text on the cursor, removed roles point at textOn (rich-palette-xovz.5rt)\n\n* Medium-review fixes: a stated role is drawn on its own ground, named walks nearest rungs first, TEXT_FITS is the one road to a fit (rich-palette-xovz.5rt)\n\n* Every component's text is chosen and held on its own ground, disabled text tints on the ground it is on, and a removed role points at textOn wherever it is read (rich-palette-xovz.5rt)\n\n* e2e: the studio card lists text-on.ts, section 9's file (rich-palette-xovz.5rt)"
         }
       ]
     }
