@@ -95,10 +95,27 @@ describe("decodeAnsi SGR parameters", () => {
     expect(styleAt(text, 2).color!.value).toEqual(new ColorRgba(255, 0, 0));
   });
 
-  it("skips parameters that are not numbers", () => {
-    const text = decodeAnsi("\x1b[1;38:5:3mx");
-    expect(styleAt(text, 0).bold).toBe(true);
-    expect(styleAt(text, 0).color).toBeUndefined();
+  it("reads a colon-form color with its arguments inside its own group", () => {
+    const palette = styleAt(decodeAnsi("\x1b[1;38:5:200;3mx"), 0);
+    expect([palette.bold, palette.italic, palette.color!.type, palette.color!.number]).toEqual([true, true, ColorDepth.EIGHT_BIT, 200]);
+    for (const form of ["38:2::1:2:3", "38:2:0:1:2:3", "38:2:1:2:3"]) {
+      const tc = styleAt(decodeAnsi(`\x1b[1;${form};4mx`), 0);
+      expect([tc.bold, tc.underline, tc.color!.value]).toEqual([true, true, new ColorRgba(1, 2, 3)]);
+    }
+    expect(styleAt(decodeAnsi("\x1b[48:5:200mx"), 0).bgcolor!.number).toBe(200);
+  });
+
+  it("reads 4:n as the underline a terminal draws, the curly kinds as plain underline", () => {
+    for (const kind of [1, 3, 4, 5]) expect(styleAt(decodeAnsi(`\x1b[4:${kind}mx`), 0).underline).toBe(true);
+    expect(styleAt(decodeAnsi("\x1b[4:2mx"), 0).doubleUnderline).toBe(true);
+    const cleared = decodeAnsi("\x1b[4ma\x1b[4:0mb\x1b[21mc\x1b[4:0md");
+    expect(styleAt(cleared, 1).underline).toBe(false);
+    expect(styleAt(cleared, 3).doubleUnderline).toBe(false);
+  });
+
+  it("lets no sub-parameter act as a code of its own", () => {
+    const text = decodeAnsi("\x1b[58:2::1:3:4;9:1mx");
+    expect(styleAt(text, 0).isNull).toBe(true);
   });
 
   it("turns attributes off with their 2x codes", () => {

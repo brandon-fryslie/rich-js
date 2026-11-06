@@ -36,6 +36,10 @@
  * alone cannot tell `1\b1` the redraw from `1\b1` the bold, and `less` reads them
  * as overstrike with no other evidence, so this does.
  *
+ * Colon sub-parameters are the fourth. Rich skips `4:3` and `38:2::r:g:b`; they
+ * are T.416's own form, neovim writes `4:3` for undercurl, and every terminal
+ * that reads them draws the underline and the color, so this reads them too.
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator — any other cursor movement is
@@ -219,18 +223,47 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
 const identity: SgrOp = (style) => style;
 
 /**
+ * The T.416 colon form of an extended color: `5:n`, `2:r:g:b`, or `2:cs:r:g:b`,
+ * whose colour-space slot, empty or not, names no color a terminal draws.
+ */
+function subColor([kind, ...args]: readonly number[]): ColorSpec | undefined {
+  return extendedColor([kind!, ...(kind === 2 && args.length > 3 ? args.slice(1) : args)].values());
+}
+
+/**
+ * What a code carrying colon sub-parameters does: its arguments are its own, so
+ * the codes after it are untouched. `4:n` picks an underline's kind; a curly,
+ * dotted or dashed one (3–5) is the underline `Style` can hold.
+ */
+const SUB_OPS: ReadonlyMap<number, (style: Style, subs: readonly number[]) => Style> = new Map([
+  [4, (style: Style, [kind]: readonly number[]) =>
+    kind === 0 ? style.add(new Style({ underline: false, doubleUnderline: false }))
+    : kind === 2 ? style.add(new Style({ doubleUnderline: true }))
+    : kind !== undefined && kind >= 1 && kind <= 5 ? style.add(UNDERLINED)
+    : style],
+  [38, (style: Style, subs: readonly number[]) => style.add(new Style({ color: subColor(subs) }))],
+  [48, (style: Style, subs: readonly number[]) => style.add(new Style({ bgcolor: subColor(subs) }))],
+]);
+
+const parameter = (code: string): number => Math.min(255, Number(code));
+
+/**
  * `params` applied to `style`. An empty parameter is 0 and one above 255 is
- * 255; one that is not a number — a colon sub-parameter — is skipped, as in
- * Rich.
+ * 255. A `;` group with `:` sub-parameters (`4:3`, `38:2::r:g:b`) is one code
+ * with its arguments inside it, as T.416 writes it and terminals read it; Rich
+ * skips the group. The `;` arguments of `38` stop at such a group.
  */
 function applySgr(style: Style, params: string): Style {
-  const codes = params
-    .split(";")
-    .filter((code) => /^\d*$/.test(code))
-    .map((code) => Math.min(255, Number(code)))
-    .values();
+  const groups = params.split(";").map((group) => group.split(":").map(parameter));
+  let at = 0;
+  const rest: Iterator<number> = {
+    next: () => (at < groups.length && groups[at]!.length === 1 ? { done: false, value: groups[at++]![0]! } : { done: true, value: undefined }),
+  };
   let result = style;
-  for (const code of codes) result = (SGR_OPS.get(code) ?? identity)(result, codes);
+  while (at < groups.length) {
+    const [code, ...subs] = groups[at++]!;
+    result = subs.length === 0 ? (SGR_OPS.get(code!) ?? identity)(result, rest) : (SUB_OPS.get(code!)?.(result, subs) ?? result);
+  }
   return result;
 }
 
