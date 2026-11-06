@@ -131,7 +131,8 @@ and a `Live` or `App` view, is handed no `justify`, so a text inside one states
 its own. A container that pads every row of its body to its width — a
 `Panel`, a `Padding`, a `Layout` pane — hands a string or `RichText` body
 `"default"` as a print does, so a right-to-left body sits at its right inner
-edge. `"left"` and `"right"` mean those edges whatever the
+edge. That is the body itself: a text inside another renderable the
+container holds, a `Group`'s included, still states its own. `"left"` and `"right"` mean those edges whatever the
 direction, and a stated `direction` decides the edge as it decides the order.
 
 A text with no `justify` at all is not placed. Containers that set a line down
