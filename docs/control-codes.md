@@ -64,9 +64,18 @@ no pictures for C1, so each one shows as U+2426, the symbol for a substituted
 character: one cell and one code unit like the C0 pictures, and never mistaken
 for the replacement character a decoding error leaves.
 
+`decodeAnsi` reads output the way those terminals do: an 8-bit CSI styles, erases
+and moves as `ESC [` does, an 8-bit OSC 8 opens and closes a link as `ESC ]8` does,
+and every other 8-bit string escape is silent, payload and all. In either form a
+string runs to its terminator, the end of its line, or an `ESC` or C1 control,
+which ends it and then acts as itself, as in those terminals' parser. `ESC E`
+ends a line as NEL does.
+
 A C1 control in text is often a Windows-1252 byte decoded as Latin-1: `\x85` was
 meant as `…`. Telling that from a planted sequence takes the whole string, so
-repairing it is the caller's to do before the text reaches `RichText`.
+repairing it is the caller's to do before the text reaches `RichText` or
+`decodeAnsi`, which reads a stray `›` or `ž` as the sequence a terminal reading
+C1 would, and hides what that terminal hides.
 
 ## Format characters
 
