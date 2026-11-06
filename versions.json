@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "80644906c32a0f0fac5b1a61d7aaa72b5f672677",
+      "timestamp": "2026-11-06T15:36:48.742Z",
+      "commits": [
+        {
+          "sha": "80644906c32a0f0fac5b1a61d7aaa72b5f672677",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:34:18-07:00",
+          "message": "A stated component text is held on its ground, opaque or tint (rich-unfiled-791c.h35m) (#585)\n\n* A stated component text is held on its ground, opaque or tint: an author's color that reads is kept, one that does not keeps its hue (rich-unfiled-791c.h35m)\n\n* A footer key's text is held on the footer bar its ground sits on; buildPalette's contract names held component text (rich-unfiled-791c.h35m)\n\n* A stated component text is held on its own side of its ground, on the footer item a footer key sits on; contrast page says so (rich-unfiled-791c.h35m)\n\n* A held component text that must cross its ground keeps its hue (rich-unfiled-791c.h35m)"
+        }
+      ]
+    },
+    {
       "version": "pr-584",
       "ref": "refs/pull/584/merge",
       "sha": "0763a88e3c6f148ae5428e8957f29055c10acd8c",
@@ -34,21 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T08:04:34-07:00",
           "message": "Right-to-left text through a Group, a Viewport, a scroll or a view stands at its start edge (rich-control-codes-xh4n.5ya)\n\nEvery row-filling container hands its body justify \"default\", not only a\ntext body: Padding, Layout, Viewport, scroll, Console.print's renderable\nblocks and drawView (Live, App). Group and Constrain forward it. A Tree\nlabel and a traceback frame sit beside other drawing, so they drop only\nthe default (besideDrawing) and keep a justify the print named.\nLeft-to-right output is unchanged: RichText alone reads justify, and\n\"default\" draws a left-to-right row as no justify does.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "0f0e2b67ec0449800b781c88e674866f6d824f9e",
-      "timestamp": "2026-11-06T15:04:30.224Z",
-      "commits": [
-        {
-          "sha": "0f0e2b67ec0449800b781c88e674866f6d824f9e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:01:59-07:00",
-          "message": "Theme text is drawn on its ground: textOn with swappable fits (rich-palette-xovz.5rt) (#581)\n\n* Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n\n* Review fixes: one floor per intent, shades built only on a miss, cursor text on the cursor, removed roles point at textOn (rich-palette-xovz.5rt)\n\n* Medium-review fixes: a stated role is drawn on its own ground, named walks nearest rungs first, TEXT_FITS is the one road to a fit (rich-palette-xovz.5rt)\n\n* Every component's text is chosen and held on its own ground, disabled text tints on the ground it is on, and a removed role points at textOn wherever it is read (rich-palette-xovz.5rt)\n\n* e2e: the studio card lists text-on.ts, section 9's file (rich-palette-xovz.5rt)"
         }
       ]
     }
