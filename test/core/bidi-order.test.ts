@@ -31,6 +31,7 @@ import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Constrain } from "../../src/renderables/constrain.js";
 import { Group } from "../../src/renderables/group.js";
+import { Spinner } from "../../src/renderables/spinner.js";
 import { scroll } from "../../src/renderables/scroll.js";
 import { Viewport } from "../../src/renderables/viewport.js";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
@@ -615,10 +616,14 @@ describe("a paragraph starts at its own edge", () => {
     expect(shown(new Padding(Animation.constant(text()), 0), "visual", 20)).toEqual(shown(new Padding(text(), 0), "visual", 20));
   });
 
-  test("a renderable a print leaves its line open after is not placed", () => {
+  test("a renderable's rows are closed lines, so a print places them whatever its end", () => {
     const recording = new Console({ width: 20, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
     recording.print(new Group(new RichText("שלום")), { end: " | " });
-    expect(recording.exportText().split("\n")[0]).toBe("םולש");
+    expect(padded(recording.exportText().split("\n")[0]!)).toBe("left");
+  });
+
+  test("a spinner's right-to-left label in a Group stands at the right of the row a Padding fills", () => {
+    expect(padded(shown(new Padding(new Group(new Spinner("line", "טוען")), 0), "visual", 20)[0]!)).toBe("left");
   });
 
   test("a printed value, data or block that sets its own lines keeps them where it set them", () => {

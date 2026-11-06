@@ -689,14 +689,14 @@ export class Console {
     // start of a line.
     // Unasked, what a print closes a line on starts at each paragraph's own
     // edge: the text it sets itself, and a renderable's rows, which are always
-    // closed, as a `Padding`'s are (`renderFilling`). A print whose `end` does
-    // not break the line is a fragment of one, whose edge is unknown until
-    // the line is whole, and stays unplaced.
+    // closed, as a `Padding`'s are (`renderFilling`), whatever its `end`. Text
+    // whose `end` does not break the line is a fragment of one, whose edge is
+    // unknown until the line is whole, and stays unplaced.
     const askedOpts: RenderOptions = { ...renderOpts, justify: opts.justify };
-    const placing = end.endsWith("\n") ? fillingOptions : passingOptions;
+    const placing = (block: PrintBlock): typeof fillingOptions => (block.kind === "text" && !end.endsWith("\n") ? passingOptions : fillingOptions);
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
       const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
-      const blockOpts = placing(renderable, askedOpts);
+      const blockOpts = placing(block)(renderable, askedOpts);
       if (align) return { lines: placeBlock(renderable, align, blockOpts), closed: true };
       const drawn = [...render(renderable, blockOpts)];
       // A text run's last segment is always its `end`, yielded even when
