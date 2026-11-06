@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-582",
+      "ref": "refs/pull/582/merge",
+      "sha": "4259da53906e8f00b15765ebb41c275e5ece5b2c",
+      "timestamp": "2026-11-06T13:43:25.587Z",
+      "commits": [
+        {
+          "sha": "4259da53906e8f00b15765ebb41c275e5ece5b2c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T13:41:38Z",
+          "message": "Merge 7068497a0e73cee770a63658fa3675a862282e74 into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
+        },
+        {
+          "sha": "7068497a0e73cee770a63658fa3675a862282e74",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:41:27-07:00",
+          "message": "A restore is drawn statically only back to a save on its line; save and restore are two named groups; e2e and text docs follow (rich-control-codes-xh4n.d9w review)\n"
+        },
+        {
+          "sha": "d13ef70ea2e2a4f3d3e0e79d5022e54c4977b10b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T06:27:13-07:00",
+          "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-581",
       "ref": "refs/pull/581/merge",
       "sha": "020c2d7c696edcf360e2d91cc238c7be3d28153a",
@@ -27,28 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T06:23:06-07:00",
           "message": "Theme text is drawn on its ground: textOn, with swappable fits, replaces the frozen text and on-* roles (rich-palette-xovz.5rt)\n\nTextual's $text, $text-muted and $text-disabled are rules over the ground the\ntext sits on; rich-js froze them against `background`, so every consumer\npainting another ground (cc-candybar's bar paints every ladder rung) rebuilt\ntext choice by hand. textOn(palette, intent, ground) now draws any of a\ntheme's text intents on any ground, held to WCAG floors as the terminal draws\nthe pair; text missing its floor goes to a TextFit — slide, named, tinted, or\nthe caller's own function. Widgets and the `textOn` template function draw\nthrough it; a bare accent is not an intent.\n\nBreaking: the on-*, text, text-muted and text-disabled palette roles are gone.\nbuildPalette now holds text-* at 4.5:1 on background, surface, panel and its\n*-muted, and foreground-muted at 3:1 on the three grounds, for every theme.\nThe themes studio draws every bundled theme under each fit; docs/text-on.md.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-582",
-      "ref": "refs/pull/582/merge",
-      "sha": "27be9317549eae1da2488392f3bebbf511595fe3",
-      "timestamp": "2026-11-06T13:29:50.127Z",
-      "commits": [
-        {
-          "sha": "27be9317549eae1da2488392f3bebbf511595fe3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:27:24-07:00",
-          "message": "Merge d13ef70ea2e2a4f3d3e0e79d5022e54c4977b10b into c92c321cc7035dfe27312c8023b9f75dc54494d8\n"
-        },
-        {
-          "sha": "d13ef70ea2e2a4f3d3e0e79d5022e54c4977b10b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T06:27:13-07:00",
-          "message": "decodeAnsi restores a saved cursor: ESC 7/8 and CSI s/u bring back the column on its line, and the style and sets on any (rich-control-codes-xh4n.d9w)\n"
         }
       ]
     },
