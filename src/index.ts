@@ -250,6 +250,7 @@ export type { Osc8Sequence } from "./core/osc8.js";
 
 // ANSI bytes back into styled text
 export { AnsiDecoder, decodeAnsi } from "./core/ansi.js";
+export type { AnsiDecoderOptions } from "./core/ansi.js";
 
 // Markup plugin tags
 export {

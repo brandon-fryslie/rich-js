@@ -191,6 +191,68 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(text.spans).toEqual([]);
   });
 
+  it("erases, deletes and inserts cells at the cursor for ECH, DCH and ICH", () => {
+    expect(decodeAnsi("abcdef\x1b[5G\x1b[2Xz").plain).toBe("abcdz");
+    expect(decodeAnsi("abcdef\x1b[2G\x1b[2Xz").plain).toBe("az def");
+    expect(decodeAnsi("abc\x1b[3D\x1b[3Xxy").plain).toBe("xy");
+    expect(decodeAnsi("abcdef\x1b[2G\x1b[2P").plain).toBe("adef");
+    expect(decodeAnsi("abcdef\x1b[2G\x1b[Pz").plain).toBe("azdef");
+    expect(decodeAnsi("abc\x1b[2G\x1b[2@xy").plain).toBe("axybc");
+    expect(decodeAnsi("abc\x1b[9@").plain).toBe("abc");
+    // A wide character cut by an edit leaves a blank, as a draw there does.
+    expect(decodeAnsi("日本\x1b[2G\x1b[P").plain).toBe(" 本");
+    // What an insert pushes past the right margin is lost.
+    expect(decodeAnsi("abcd\x1b[2G\x1b[2@", { width: 4 }).plain).toBe("a  b");
+    expect(decodeAnsi(`ab\x1b[1G\x1b[${"9".repeat(400)}@`, { width: 4 }).plain).toBe("    ");
+  });
+
+  it("moves along the line for every move ECMA-48 names on it, as it does for a backspace", () => {
+    expect(decodeAnsi("abc\x1b[2D\x1b[Kz").plain).toBe("az");
+    expect(decodeAnsi("abc\x1b[Dz").plain).toBe("abz");
+    expect(decodeAnsi("abc\x1b[0Dz").plain).toBe("abz");
+    expect(decodeAnsi("ab\x1b[9Dz").plain).toBe("zb");
+    expect(decodeAnsi("abcd\x1b[2Gz").plain).toBe("azcd");
+    expect(decodeAnsi("abcd\x1b[Gz").plain).toBe("zbcd");
+    expect(decodeAnsi("abcd\x1b[3`z").plain).toBe("abzd");
+    expect(decodeAnsi("abcd\r\x1b[2Cz").plain).toBe("abzd");
+    expect(decodeAnsi("ab\x1b[3Cz").plain).toBe("ab   z");
+    expect(decodeAnsi("ab\x1b[2az").plain).toBe("ab  z");
+    expect(decodeAnsi("ab\x1b[6Gz").plain).toBe("ab   z");
+    expect(decodeAnsi("ab\x1b[3C").plain).toBe("ab");
+    expect(decodeAnsi("\x9b2Cz").plain).toBe("  z");
+    // A wide character half overwritten leaves a blank, as text drawn there does.
+    expect(decodeAnsi("日本\x1b[2Gz").plain).toBe(" z本");
+    // A move with further parameters reads its first, as a terminal does.
+    expect(decodeAnsi("ab\x1b[2;5Gz").plain).toBe("az");
+    expect(decodeAnsi("abc\x1b[1;Dz").plain).toBe("abz");
+    // Back one cell, and by tab stops forward and back.
+    expect(decodeAnsi("abc\x1b[jz").plain).toBe("abz");
+    expect(decodeAnsi("abc\x1b[Iz").plain).toBe("abc     z");
+    expect(decodeAnsi("abc\x1b[2Iz").plain).toBe(`abc${" ".repeat(13)}z`);
+    expect(decodeAnsi("abcdefghij\x1b[Zz").plain).toBe("abcdefghzj");
+    expect(decodeAnsi("abc\x1b[Zz").plain).toBe("zbc");
+    // The gap a forward move leaves is unstyled, as a terminal leaves it.
+    const gap = decodeAnsi("\x1b[44mab\x1b[3Cz");
+    expect(styleAt(gap, 3).bgcolor).toBeUndefined();
+    expect(styleAt(gap, 5).bgcolor).toEqual(styleAt(gap, 0).bgcolor);
+    // A mark past the drawn end sits on the blank before it, as on a terminal.
+    expect(decodeAnsi("a\x1b[Ć").plain).toBe("a ́");
+    // A move forward stops at the right margin, so a short escape cannot pad a
+    // line without end, and the right-edge idiom lands where a terminal puts it.
+    expect(decodeAnsi(`\x1b[${"9".repeat(400)}Cz`).plain.length).toBe(80);
+    expect(decodeAnsi("\x1b[4294967295Gz").plain.length).toBe(80);
+    expect(decodeAnsi("ok\x1b[999C\x1b[3Ddone", { width: 20 }).plain).toBe(`ok${" ".repeat(14)}done`);
+    expect(decodeAnsi("ab\x1b[Iz", { width: 4 }).plain).toBe("ab z");
+    // A mark with nothing to sit on, moved away from, is gone.
+    expect(decodeAnsi("́\x1b[3Cz").plain).toBe("   z");
+    // The margin never turns a move around on a line already longer than it.
+    const long = "x".repeat(12000);
+    expect(decodeAnsi(`${long}\bz`).plain).toBe(`${"x".repeat(11999)}z`);
+    expect(decodeAnsi(`${long}\x1b[Cz`).plain).toBe(`${long}z`);
+    // Vertical motion stays dropped.
+    expect(decodeAnsi("ab\x1b[1Ac\x1b[2Bd\x1b[Ee").plain).toBe("abcde");
+  });
+
   it("erases within the line from the cursor, up to it, or all of it", () => {
     expect(decodeAnsi("Downloading 100%\r\x1b[KDone").plain).toBe("Done");
     expect(decodeAnsi("Downloading\r\x1b[2KDone").plain).toBe("Done");
