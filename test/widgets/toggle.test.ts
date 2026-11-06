@@ -14,8 +14,8 @@ const enterEvent = () => new WidgetKeyEvent({ key: "enter", character: "\r", shi
 const spaceEvent = () => new WidgetKeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false }, 0);
 const escapeEvent = () => new WidgetKeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false }, 0);
 
-const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
-const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, time: 0 };
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, frame: [], time: 0 };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: undefined, frame: [], time: 0 };
 
 describe("Toggle", () => {
   it("constructs with defaults", () => {

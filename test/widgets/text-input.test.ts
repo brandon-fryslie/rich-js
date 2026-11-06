@@ -95,6 +95,7 @@ const pressIn = (frame: readonly (readonly Segment[])[], t: TextInput, x: number
   ctrl: false,
   over: true,
   cell: cellOf(frame, t, x, y),
+  frame,
   time: 0,
 });
 

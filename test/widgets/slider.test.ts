@@ -37,6 +37,7 @@ const mouseAt = (
   ctrl: false,
   over: true,
   cell: undefined,
+  frame: [],
   time: 0,
 });
 

@@ -15,6 +15,8 @@ import { shownWritten } from "../../src/core/seal.js";
 import { cellOf } from "../../src/widgets/hit.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Columns } from "../../src/renderables/columns.js";
+import { RichText } from "../../src/core/text.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
 import { parserFor } from "./feed.js";
@@ -57,7 +59,7 @@ function field(value = ""): TextInput {
 
 const press = (input: TextInput, x: number, order: TextOrder): WidgetMouseEvent => {
   const frame = Segment.splitLines(render(input, options(order)));
-  return { type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 };
+  return { type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 };
 };
 
 describe("TextInput with right-to-left text", () => {
@@ -208,7 +210,7 @@ function stops(value: string): number[] {
 }
 
 const pressOn = (frame: Segment[][], input: TextInput, x: number): WidgetMouseEvent =>
-  ({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+  ({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 });
 
 describe("a press reads the frame it lands on", () => {
   it("lands a press past a wrapped right-to-left row's cells on the stop shown beside it, under logical as under visual", () => {
@@ -332,19 +334,27 @@ function reported(frame: readonly (readonly Segment[])[], order: TextOrder, x: n
 function screenOf(input: TextInput, order: TextOrder) {
   let frame: Segment[][] = [];
   const focusManager = new DefaultFocusManager({ mounted: () => [input], onScreen: () => [input], frameTime: () => 0 });
-  const router = parserFor(new EventRouter({
+  const routes = new EventRouter({
     source: { focusManager, get frame() { return frame; }, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
     focusOnClick: false,
-  }));
+  });
+  const router = parserFor(routes);
+  // A key goes to the widget the manager holds focus on, as in an app.
+  if (input.focused) focusManager.focus(input);
   return {
-    paint(drawn: RenderOptions, view: TextInput | Panel = input): { frame: Segment[][]; bytes: string } {
+    paint(drawn: RenderOptions, view: TextInput | Panel | Columns = input): { frame: Segment[][]; bytes: string } {
       const segments = [...render(view, drawn)];
       frame = Segment.splitLines(segments);
+      // As an app does once it has painted.
+      routes.framePainted();
       return { frame, bytes: segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: order }) };
     },
     press(x: number, y: number): void {
       const at = reported(frame, order, x, y);
       router.feed(`\x1b[<0;${at + 1};${y + 1}M\x1b[<0;${at + 1};${y + 1}m`);
+    },
+    step(way: "left" | "right"): void {
+      router.feed(way === "left" ? "\x1b[D" : "\x1b[C");
     },
   };
 }
@@ -441,7 +451,7 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
     const frame = Segment.splitLines(render(input, drawn));
     const x = Segment.getLineLength(frame[0]!) - 1;
     expect(x).toBeGreaterThan(cellLen(HEBREW));
-    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 });
     expect(input.cursorPosition).toBe(HEBREW.length);
   });
 
@@ -582,6 +592,54 @@ describe("under logical, a press reads the column the terminal reports", () => {
   });
 });
 
+describe("under logical, a step walks the stops the terminal shows on the whole composed line", () => {
+  // The terminal orders the whole line, the neighbour's text with the field's
+  // row, so a step must walk the stops where that line shows them. Every stop
+  // has a cell in the frame painted with the caret at the end — each glyph its
+  // own, the end the caret's blank — so that frame says where each one is
+  // shown; a step from one goes to the stop shown beside it on its side.
+  it.each([
+    ["a right-to-left field beside right-to-left text", "אב", (input: TextInput) => new Columns([input, new RichText("שם")])],
+    ["a field opening on a neutral right of a right-to-left label", "- אב", (input: TextInput) => new Columns([new RichText("שם"), input])],
+    ["digits and a space right of a right-to-left label", "1 2", (input: TextInput) => new Columns([new RichText("שם"), input])],
+    ["alone", "אב", (input: TextInput) => new Columns([input])],
+  ])("%s", (_, value, compose) => {
+    const input = new TextInput({ value, multiline: true });
+    input.cursorStyleOverride = Style.parse("bold reverse");
+    input.focus(0);
+    const view = compose(input);
+    const drawn: RenderOptions = { maxWidth: 30, textOrder: "logical" };
+    const screen = screenOf(input, "logical");
+    input.cursorPosition = asCodeUnit(value.length);
+    const { bytes } = screen.paint(drawn, view);
+    const { y, unit: end } = caretUnit(bytes);
+    const row = rows(bytes)[y]!;
+    // The field's glyphs, as written, are the units from where its text starts up to the caret's blank.
+    const start = end - value.length;
+    const columnOf = new Map(stops(value).map((stop) => [stop, screenColumn(row, stop === value.length ? end : start + stop)]));
+    const leftToRight = [...columnOf].sort(([, a], [, b]) => a - b).map(([stop]) => stop);
+    leftToRight.forEach((stop, index) => {
+      for (const [way, beside] of [["left", leftToRight[index - 1]], ["right", leftToRight[index + 1]]] as const) {
+        if (beside === undefined) continue;
+        input.cursorPosition = asCodeUnit(stop);
+        screen.paint(drawn, view);
+        screen.step(way);
+        expect(input.cursorPosition, `${way} from ${stop}`).toBe(beside);
+      }
+    });
+    // Keys that arrive before a repaint, a held arrow's: each step cuts the
+    // line at the row the frame on screen drew, not the row as drawn since.
+    for (const [way, from, order] of [["left", leftToRight.at(-1)!, [...leftToRight].reverse()], ["right", leftToRight[0]!, leftToRight]] as const) {
+      input.cursorPosition = asCodeUnit(from);
+      screen.paint(drawn, view);
+      for (const beside of order.slice(1)) {
+        screen.step(way);
+        expect(input.cursorPosition, `${way} unpainted, toward ${beside}`).toBe(beside);
+      }
+    }
+  });
+});
+
 describe("the insertion point past the text, under visual order", () => {
   // The row's cells and the index of the one the caret stands on, on the
   // terminal's cursor or drawn by the field.
@@ -625,7 +683,7 @@ describe("the insertion point past the text, under visual order", () => {
     input.cursorPosition = asCodeUnit(1);
     const frame = Segment.splitLines(render(input, options("visual")));
     const x = Segment.getLineLength(frame[0]!) - 1;
-    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), time: 0 });
+    input.handleMouse({ type: "mouse_down", x, y: 0, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, 0), frame, time: 0 });
     expect(input.cursorPosition).toBe(0);
   });
 

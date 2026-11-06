@@ -15,6 +15,9 @@ import type { KeyEvent, TerminalMouseEvent } from "../host/input.js";
 
 // --- Event types ---
 
+/** A painted frame: its rows of segments, top to bottom. */
+export type Frame = readonly (readonly Segment[])[];
+
 // Every event a widget hears carries `time`: when it was heard, on the clock
 // the frame's cells are read on (`RenderOptions.frame`), so a widget
 // keeping the moment of its last interaction — a caret's blink restarting —
@@ -34,15 +37,18 @@ export class WidgetKeyEvent implements KeyEvent {
   readonly ctrl: boolean;
   readonly meta: boolean;
   readonly time: number;
+  /** The frame on screen when it was heard, which the key acts on: none, for a key no frame was painted under. */
+  readonly frame: Frame;
   private _stopped = false;
 
-  constructor(init: KeyEvent, time: number) {
+  constructor(init: KeyEvent, time: number, frame: Frame = []) {
     this.key = init.key;
     this.character = init.character;
     this.shift = init.shift;
     this.ctrl = init.ctrl;
     this.meta = init.meta;
     this.time = time;
+    this.frame = frame;
   }
 
   get stopped(): boolean { return this._stopped; }
@@ -66,12 +72,14 @@ export interface KeyHandlerOptions {
 // relative to where it is painted now — so they fall outside the widget once
 // the pointer leaves it. `over` is whether it drew the cell under the pointer,
 // and `cell` what its own draw stamped there, inside its stamp — so a widget
-// reads the layout of the frame the pointer is on, not of one drawn since.
+// reads the layout of the frame the pointer is on, not of one drawn since;
+// `frame` is that frame whole, the line around the cell included.
 // The wheel is not a widget's: it scrolls the innermost `Scrollable` under the
 // pointer, whatever widget it shows there.
 export type WidgetMouseEvent = Extract<TerminalMouseEvent, { type: "mouse_down" | "mouse_up" | "mouse_move" }> & {
   readonly over: boolean;
   readonly cell: Anchor | undefined;
+  readonly frame: Frame;
   readonly time: number;
 };
 
@@ -174,7 +182,7 @@ export interface FocusManager {
 // the wheel moved.
 export interface FrameSource {
   readonly focusManager: FocusManager;
-  readonly frame: readonly (readonly Segment[])[];
+  readonly frame: Frame;
   frameNow(): HostFrame;
   refresh(): void;
 }
