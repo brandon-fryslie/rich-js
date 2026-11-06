@@ -36,6 +36,10 @@
  * alone cannot tell `1\b1` the redraw from `1\b1` the bold, and `less` reads them
  * as overstrike with no other evidence, so this does.
  *
+ * Colon sub-parameters are the fourth. Rich skips `4:3` and `38:2::r:g:b`; they
+ * are T.416's own form, neovim writes `4:3` for undercurl, and every terminal
+ * that reads them draws the underline and the color, so this reads them too.
+ *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
  * draws nothing for. It is not a terminal emulator — any other cursor movement is
@@ -190,6 +194,10 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   // [LAW:one-source-of-truth] The codes that turn an attribute on are the
   // ones `Style.toSgrCodes` writes; only the codes that turn one off are ours.
   ...ATTRIBUTE_NAMES.map((name): [number, SgrOp] => [ATTRIBUTE_SGR[name], adding({ [name]: true })]),
+  // A terminal draws one underline kind, so a single and a double underline
+  // each replace the other; Rich's table adds them. Later entries win.
+  [ATTRIBUTE_SGR.underline, adding({ underline: true, doubleUnderline: false })],
+  [ATTRIBUTE_SGR.doubleUnderline, adding({ underline: false, doubleUnderline: true })],
   [22, adding({ bold: false, dim: false })],
   [23, adding({ italic: false })],
   // ECMA-48: 24 is "neither singly nor doubly underlined", 25 "steady" at
@@ -218,19 +226,63 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
 
 const identity: SgrOp = (style) => style;
 
+const parameter = (code: string): number => Math.min(255, Number(code));
+
+/**
+ * The T.416 colon form of an extended color as the `;` arguments `SGR_OPS`
+ * reads: `5:n`, `2:r:g:b`, or `2:cs:r:g:b`, whose colour-space slot, empty or
+ * not, names no color a terminal draws. The slot is told by count, trailing
+ * empty arguments aside since they carry no channel, or by being empty, so it
+ * is read before an empty argument becomes 0.
+ */
+function colorArguments([kind = "", ...args]: readonly string[]): number[] {
+  let end = args.length;
+  while (end > 0 && args[end - 1] === "") end -= 1;
+  const slot = parameter(kind) === 2 && (end > 3 || args[0] === "");
+  return [kind, ...args.slice(slot ? 1 : 0, end)].map(parameter);
+}
+
+/**
+ * A code carrying colon sub-parameters, as the plain code and arguments
+ * `SGR_OPS` applies: its arguments are its own, so the codes after it are
+ * untouched. `4:n` is an underline's kind; a curly, dotted or dashed one (3–5)
+ * is the underline `Style` can hold. A code T.416 gives no sub-parameters is
+ * skipped, as is a kind past 5.
+ */
+function subCode(code: number, subs: readonly string[]): readonly [number, number[]] | undefined {
+  if (code === 38 || code === 48 || code === 58) return [code, colorArguments(subs)];
+  if (code !== 4) return undefined;
+  const kind = parameter(subs[0] ?? "");
+  return kind > 5 ? undefined : [kind === 0 ? 24 : kind === 2 ? 21 : 4, []];
+}
+
 /**
  * `params` applied to `style`. An empty parameter is 0 and one above 255 is
- * 255; one that is not a number — a colon sub-parameter — is skipped, as in
- * Rich.
+ * 255. A `;` group with `:` sub-parameters (`4:3`, `38:2::r:g:b`) is one code
+ * with its arguments inside it, as T.416 writes it and terminals read it; Rich
+ * skips the group. The `;` arguments of `38` stop at such a group.
  */
 function applySgr(style: Style, params: string): Style {
-  const codes = params
-    .split(";")
-    .filter((code) => /^\d*$/.test(code))
-    .map((code) => Math.min(255, Number(code)))
-    .values();
+  const groups = params.split(";").map((group) => group.split(":"));
+  let at = 0;
+  // The next group, while it is a plain code; a colon group ends the run.
+  const plain = (): IteratorResult<number> => {
+    const group = groups[at];
+    if (group === undefined || group.length > 1) return { done: true, value: undefined };
+    at += 1;
+    return { done: false, value: parameter(group[0]!) };
+  };
+  const rest: Iterator<number> = { next: plain };
   let result = style;
-  for (const code of codes) result = (SGR_OPS.get(code) ?? identity)(result, codes);
+  while (at < groups.length) {
+    const [code = "", ...subs] = groups[at++]!;
+    if (subs.length === 0) {
+      result = (SGR_OPS.get(parameter(code)) ?? identity)(result, rest);
+      continue;
+    }
+    const sub = subCode(parameter(code), subs);
+    if (sub !== undefined) result = (SGR_OPS.get(sub[0]) ?? identity)(result, sub[1].values());
+  }
   return result;
 }
 
