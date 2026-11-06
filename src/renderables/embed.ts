@@ -118,17 +118,28 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
 /**
  * A body drawn by a container that pads every row of it to the container's
  * width — a `Padding`, so a `Panel` and every `Table` cell (whose column
- * always names a justify, so never reaches the default here), and a leaf
- * `Layout`. There the container
- * places the row, so text starts at its paragraph's own edge, as the text a
- * `Console.print` sets itself does: a right-to-left body sits at the right
- * inner edge rather than wherever the padding happens to fall. Any other
- * renderable is handed the options untouched, since one that sets a child at
- * its natural width reads an absent `justify` as exactly that.
+ * always names a justify, so never reaches the default here), a leaf
+ * `Layout`, a `Viewport`, a `scroll` — or by `Console.print`. There the
+ * container places the row, so text starts at its paragraph's own edge: a
+ * right-to-left body sits at the right inner edge rather than wherever the
+ * padding happens to fall. The default is handed to whatever the body is,
+ * since what passes its options on (a `Group`, a `Constrain`) leaves the
+ * row's placement to whatever fills it; a container that sets a child beside
+ * other drawing at its natural width clears it, as `Strip` does.
  */
 export function renderFilling(content: Renderable, options: RenderOptions): Iterable<Segment> {
-  if (!(content instanceof EmbeddedText)) return render(content, options);
   return render(content, { ...options, justify: options.justify ?? "default" });
+}
+
+/**
+ * The justify a child set beside other drawing is handed — a `Tree` label
+ * beside its guides, a traceback frame beside its indent — whose row nobody
+ * fills: the default edge is dropped, since a right-to-left child would pad
+ * itself out to its width, and a justify the caller named still reaches it,
+ * as Rich hands a print's justify to every `Text` in what it prints.
+ */
+export function besideDrawing(justify: RenderOptions["justify"]): RenderOptions["justify"] {
+  return justify === "default" ? undefined : justify;
 }
 
 /**

@@ -147,7 +147,9 @@ export function drawView(
   };
   // Made before the render opens: the one time the frame has.
   const frame = frameNow(drawnBy, time);
-  const lines = draw(view, { ...options, frame, onValidity });
+  // A frame is the screen's rows, so the view's text starts at its
+  // paragraph's own edge, as the text a `Console.print` closes a line on does.
+  const lines = draw(view, { ...options, justify: options.justify ?? "default", frame, onValidity });
   const validity = frameValidity(lines, told);
   // The frame as the sample of the view it is, on the timeline's clock; the
   // timeline says when the host's clock leaves its validity interval.

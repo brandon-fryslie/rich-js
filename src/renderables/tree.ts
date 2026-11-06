@@ -6,7 +6,7 @@ import { Segment } from "../core/segment.js";
 import { cellFit, cellLen, asCellCol } from "../core/cells.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
-import { embed } from "./embed.js";
+import { besideDrawing, embed } from "./embed.js";
 import type {
   Renderable,
   Measurable,
@@ -102,7 +102,7 @@ const labelRoom = (options: RenderOptions, columns: number): number =>
  * labels `highlight=False`.
  */
 function drawLabel(options: RenderOptions, label: Renderable, width: number): Iterable<Segment> {
-  const labelOptions = { ...options, highlight: false, maxWidth: width, height: stackedHeight(options.height) };
+  const labelOptions = { ...options, highlight: false, justify: besideDrawing(options.justify), maxWidth: width, height: stackedHeight(options.height) };
   return Segment.cropLines(render(label, labelOptions), width);
 }
 

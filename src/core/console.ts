@@ -658,7 +658,6 @@ export class Console {
       ...options,
       ...strings,
       frame: opts.frame,
-      justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
     };
@@ -684,14 +683,16 @@ export class Console {
     // `Panel` ends in a line break and a bare `ProgressBar` does not (a line
     // fragment — test/seam/line-ends.ts), and both leave the next print at the
     // start of a line.
-    // Unasked, the text a print sets itself starts at each paragraph's own
-    // edge. A renderable is handed no justify: the containers inside it that
-    // set a child down at its natural width read absent as exactly that. A
-    // print whose `end` does not break the line is a fragment of one, whose
-    // edge is unknown until the line is whole, and stays unplaced.
-    const textOpts: RenderOptions = { ...renderOpts, justify: opts.justify ?? (end.endsWith("\n") ? "default" : undefined) };
+    // Unasked, what a print closes a line on starts at each paragraph's own
+    // edge: the text it sets itself, and every renderable, whose lines are
+    // always closed — a container in it that sets a child beside other
+    // drawing drops that default itself (`besideDrawing`). A print whose
+    // `end` does not break the line is a fragment of one, whose edge is
+    // unknown until the line is whole, and stays unplaced.
+    const closedOpts: RenderOptions = { ...renderOpts, justify: opts.justify ?? "default" };
+    const textOpts: RenderOptions = end.endsWith("\n") ? closedOpts : { ...renderOpts, justify: opts.justify };
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
-      const [renderable, blockOpts] = block.kind === "text" ? [new TextRun(block.items, terminator), textOpts] : [block.renderable, renderOpts];
+      const [renderable, blockOpts] = block.kind === "text" ? [new TextRun(block.items, terminator), textOpts] : [block.renderable, closedOpts];
       if (align) return { lines: placeBlock(renderable, align, blockOpts), closed: true };
       const drawn = [...render(renderable, blockOpts)];
       // A text run's last segment is always its `end`, yielded even when

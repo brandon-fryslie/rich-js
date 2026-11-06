@@ -126,13 +126,14 @@ output.print(table);
 `Table` column and `Markdown` use unless told otherwise, so a right-to-left cell
 sits at its cell's right. `justify: "default"` names the same edge without
 filling the width, so a left-to-right line keeps its natural width; it is what
-`Console.print` asks for, for the text it sets itself; a renderable it prints,
-and a `Live` or `App` view, is handed no `justify`, so a text inside one states
-its own. A container that pads every row of its body to its width — a
-`Panel`, a `Padding`, a `Layout` pane — hands a string or `RichText` body
-`"default"` as a print does, so a right-to-left body sits at its right inner
-edge. That is the body itself: a text inside another renderable the
-container holds, a `Group`'s included, still states its own. `"left"` and `"right"` mean those edges whatever the
+`Console.print` asks for, for everything it ends a line on, and what a `Live`
+or `App` view is drawn with. A container that pads every row of its body to
+its width — a `Panel`, a `Padding`, a `Layout` pane, a `Viewport`, a `scroll` —
+hands its body `"default"` the same way, so a right-to-left body sits at its
+right inner edge. What passes its options on, a `Group` or a `Constrain`, hands
+it on too, so a text inside one is placed as it would be held bare. A `Tree`
+label and a traceback frame are set beside other drawing, so they drop the
+default and keep a `justify` the print named. `"left"` and `"right"` mean those edges whatever the
 direction, and a stated `direction` decides the edge as it decides the order.
 
 A text with no `justify` at all is not placed. Containers that set a line down
