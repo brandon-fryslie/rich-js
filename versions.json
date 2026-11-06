@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-576",
-      "ref": "refs/pull/576/merge",
-      "sha": "e523812b752482107c5e66900713433f055eb616",
-      "timestamp": "2026-11-06T10:48:23.044Z",
-      "commits": [
-        {
-          "sha": "e523812b752482107c5e66900713433f055eb616",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T10:46:40Z",
-          "message": "Merge ee038a8ed7398362502c648209ac844cd4c72aed into e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd\n"
-        },
-        {
-          "sha": "ee038a8ed7398362502c648209ac844cd4c72aed",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T03:46:29-07:00",
-          "message": "A move's bound stops a forward move and never turns one around past column 9999 (rich-control-codes-xh4n.9pb review)\n"
-        },
-        {
-          "sha": "33c590da9b0231e1b676c76f036d101198d40ad6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T03:43:39-07:00",
-          "message": "decodeAnsi bounds a motion count, reads a move's first parameter, and moves on CHT, CBT and HPB (rich-control-codes-xh4n.9pb review)\n"
-        },
-        {
-          "sha": "f2c75ee70e3ec973f19b5187ed54b5e99b9c9bf7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T03:36:48-07:00",
-          "message": "decodeAnsi moves along the line for CUB, CUF, CHA, HPR and HPA as it does for BS and CR (rich-control-codes-xh4n.9pb)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e0e4a5afb7fa85d0fabc46e6dcf6f025ba00accd",
