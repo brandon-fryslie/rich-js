@@ -4,15 +4,22 @@
     {
       "version": "pr-588",
       "ref": "refs/pull/588/merge",
-      "sha": "5634ee9a6fe9183ded81da760656c3e8f2b4715b",
-      "timestamp": "2026-11-06T23:05:14.430Z",
+      "sha": "9a68bb37a0ad9d3bbd8021870302c87eb639b80f",
+      "timestamp": "2026-11-06T23:12:45.127Z",
       "commits": [
         {
-          "sha": "5634ee9a6fe9183ded81da760656c3e8f2b4715b",
+          "sha": "9a68bb37a0ad9d3bbd8021870302c87eb639b80f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:03:08Z",
-          "message": "Merge 3199d57e9a3866a4bba4886b2f738d39d3498c9e into bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10\n"
+          "timestamp": "2026-11-06T23:10:39Z",
+          "message": "Merge 3f4b45d9fdcadbc079e330ff9a3928b9a323fff5 into bffd5cf4bc7c1ecdddc2073183f3a0e2784e1c10\n"
+        },
+        {
+          "sha": "3f4b45d9fdcadbc079e330ff9a3928b9a323fff5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T16:10:30-07:00",
+          "message": "An ST with no string to end is inert, as the one a CAN or SUB leaves; one prefix per sequence so far (rich-control-codes-xh4n.52p)\n"
         },
         {
           "sha": "3199d57e9a3866a4bba4886b2f738d39d3498c9e",
