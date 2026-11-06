@@ -535,7 +535,7 @@ describe("Dropdown", () => {
       const baseWidth = headerText(d).length;
       d.handleKey(charKey("a"));
       expect(headerText(d).length).toBe(baseWidth);
-      // Long filter (longer than maxLabelLen) is right-clipped, width still invariant.
+      // Long filter (longer than maxLabelLen) shows its end, width still invariant.
       for (const ch of "supercalifragilistic") d.handleKey(charKey(ch));
       expect(headerText(d).length).toBe(baseWidth);
     });
@@ -617,6 +617,21 @@ describe("Dropdown filter on the terminal's own cursor", () => {
     typed(d, "abcdefgh");
     const segs = header(d, { caret: true });
     expect(segs.slice(0, caretAt(segs)).map((s) => s.text).join("")).toBe("[ gh");
+  });
+
+  it("shows the end of a long query beside the drawn caret glyph too", () => {
+    const d = new Dropdown({ options: ["abcd"] });
+    d.focus(0);
+    typed(d, "abcdefgh");
+    expect(header(d, {}).map((s) => s.text).join("")).toContain(" gh│");
+  });
+
+  it("gives the query's last glyph the cell before the gutter", () => {
+    const d = new Dropdown({ options: ["ab"] });
+    d.focus(0);
+    typed(d, "xyz");
+    const segs = header(d, { caret: true });
+    expect(segs.slice(0, caretAt(segs)).map((s) => s.text).join("")).toBe("[z");
   });
 
   it("keeps the caret cell when the header has room for nothing else", () => {

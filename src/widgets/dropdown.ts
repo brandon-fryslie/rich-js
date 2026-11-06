@@ -19,7 +19,7 @@
  * mutation.
  *
  * Width invariant: measure() always returns maxLabelLen(options) + 4
- * regardless of filter state — the query is right-clipped, never wider
+ * regardless of filter state — a long query shows its end, never wider
  * than the header. See docs/widgets.md → Dropdown.
  */
 
@@ -29,7 +29,7 @@ import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style, caretMark } from "../core/style.js";
-import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
+import { cellLen, cellFitEnd, setCellSize, asCellCol } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import { moveSelection } from "../core/selection.js";
 import type { TerminalTheme } from "../core/color.js";
@@ -299,7 +299,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   // doesn't jitter horizontally while typing.
   //
   // [LAW:one-source-of-truth] All width math is in terminal cells via
-  // cellLen / setCellSize / splitText — plain `.length` would miscount
+  // cellLen / setCellSize / cellFitEnd — plain `.length` would miscount
   // wide / emoji characters and break the width invariant.
   private headerText(maxLabelLen: number, caret: Segment | undefined, style: Style): Segment[] {
     if (this.filter === "") {
@@ -313,11 +313,11 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     }
     // Leading space gives the filter input a small gutter from the [ chrome,
     // matching the visual breathing room of the centered label. The caret is
-    // fitted first and the gutter only where a cell is left for it: a cropped
+    // fitted first, then the query's last glyph, and the gutter only where a cell is left after both: a cropped
     // caret cell would take the terminal's cursor off the field. A query wider
     // than its room shows its tail, so the caret stays at the editing point.
     const caretCells = caret?.cellLength ?? 0;
-    const gutter = maxLabelLen - caretCells >= 1 ? " " : "";
+    const gutter = maxLabelLen - caretCells >= 2 ? " " : "";
     const filterRoom = Math.max(0, maxLabelLen - caretCells - gutter.length);
     const filterText = this.filterTail(filterRoom);
     const query = [new Segment(gutter + filterText, style), ...(caret === undefined ? [] : [caret])];
@@ -327,11 +327,8 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   // The end of the filter that fits `room` cells, padded on its left where a
   // wide glyph at the cut fits neither side, so its last glyph meets the caret.
   private filterTail(room: number): string {
-    let cut = cellLen(this.filter) - room;
-    if (cut <= 0) return this.filter;
-    let tail = this.filter;
-    while (cellLen(tail) > room) [, tail] = splitText(this.filter, asCellCol(cut++));
-    return " ".repeat(room - cellLen(tail)) + tail;
+    const tail = cellFitEnd(this.filter, asCellCol(room));
+    return tail === this.filter ? tail : " ".repeat(room - cellLen(tail)) + tail;
   }
 
   renderOverlay(options: RenderOptions): Iterable<Segment> | null {
