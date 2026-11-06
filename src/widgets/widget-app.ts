@@ -33,6 +33,7 @@ import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { Clock, FrameRate } from "../core/clock.js";
 import type { Timeline } from "../core/timeline.js";
+import type { TextOrder } from "../core/text-order.js";
 import { hostView } from "../core/view.js";
 import { App, type AppOptions, type AppPhase, type WheelEvent } from "../host/app.js";
 import { DefaultFocusManager } from "./focus-manager.js";
@@ -164,6 +165,10 @@ export class WidgetApp implements FrameSource, FrameHost {
   /** The rows on screen now, as painted: what a pointer event lands on. */
   get frame(): readonly (readonly Segment[])[] {
     return this.app.frame;
+  }
+
+  get textOrder(): TextOrder {
+    return this.app.textOrder;
   }
 
   /** The frame this app draws now (`FrameHost`): the App's time, on a frame this app is the host of, as its frames say. */

@@ -11,8 +11,13 @@ import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
 import type { TextOrder } from "../../src/core/text-order.js";
+import { writtenColumn } from "../../src/core/seal.js";
 import { cellOf } from "../../src/widgets/hit.js";
 import { TextInput } from "../../src/widgets/text-input.js";
+import { Panel } from "../../src/renderables/panel.js";
+import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
+import { EventRouter } from "../../src/widgets/event-router.js";
+import { parserFor } from "./feed.js";
 import { WidgetKeyEvent, type WidgetMouseEvent } from "../../src/widgets/types.js";
 import { implicit, none, rows } from "../core/bidi-terminal.js";
 import { lineLevels, paragraph, visualOrder } from "../../src/core/bidi.js";
@@ -280,6 +285,10 @@ function screenColumn(row: string, unit: number): number {
   throw new Error(`unit ${unit} is not on the row`);
 }
 
+// The frame's column a press at screen column `x` of row `y` reaches, as the router maps it.
+const framedAt = (frame: readonly (readonly Segment[])[], x: number, y: number, order: TextOrder): number =>
+  order === "logical" ? writtenColumn(frame[y]!, x) : x;
+
 // The caret's row, and the code unit it starts at in what a terminal keeps of that row.
 function caretUnit(bytes: string): { y: number; unit: number } {
   for (const [y, line] of bytes.split("\n").entries()) {
@@ -308,9 +317,11 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
           if (order === "logical") {
             const bytes = segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: order });
             const { y, unit } = caretUnit(bytes);
-            at!.x = screenColumn(rows(bytes)[y]!, unit);          }
+            at!.x = screenColumn(rows(bytes)[y]!, unit);
+          }
+          const x = framedAt(frame, at!.x, at!.y, order);
           input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
-          input.handleMouse({ type: "mouse_down", x: at!.x, y: at!.y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, at!.x, at!.y), time: 0 });
+          input.handleMouse({ type: "mouse_down", x, y: at!.y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, at!.y), time: 0 });
           expect(input.cursorPosition, what).toBe(stop);
           for (const step of ["left", "right"]) {
             input.cursorPosition = asCodeUnit(stop);
@@ -396,7 +407,8 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
         }
         const drawnTo = Math.max(...frame[at.y]!.flatMap((segment, index) =>
           segment.text.trim() !== "" || segment.style?.reverse === true ? [Segment.getLineLength(frame[at.y]!.slice(0, index + 1))] : []));
-        const pressed = (x: number): number => {
+        const pressed = (screenX: number): number => {
+          const x = framedAt(frame, screenX, at.y, order);
           input.handleMouse({ type: "mouse_down", x, y: at.y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, at.y), time: 0 });
           return input.cursorPosition;
         };
@@ -443,7 +455,7 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
       const bytes = segmentsToString(render(input, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "logical" });
       const { y, unit } = caretUnit(bytes);
       expect(rows(bytes)[y]).toContain("▼");
-      const x = screenColumn(rows(bytes)[y]!, unit);
+      const x = framedAt(frame, screenColumn(rows(bytes)[y]!, unit), y, "logical");
       input.cursorPosition = asCodeUnit(0);
       input.handleMouse({ type: "mouse_down", x, y, button: 0, shift: false, ctrl: false, over: true, cell: cellOf(frame, input, x, y), time: 0 });
       expect(input.cursorPosition, `at ${stop}`).toBe(stop);
@@ -482,5 +494,37 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
     input.focus(0);
     const [row] = Segment.splitLines(render(input, { maxWidth: 40, textOrder: "visual" }));
     expect(row!.map((segment) => segment.text).join("")).toContain("...שפח");
+  });
+});
+
+describe("under logical, a press reads the terminal's order of the whole composed line", () => {
+  // The terminal orders the whole line it is written, a Panel's border with
+  // it, so the router maps the press through the line, never the field's row.
+  it("presses every stop of a right-to-left field inside a Panel where the terminal shows it", () => {
+    const value = "אבג";
+    const input = new TextInput({ value, multiline: true });
+    input.cursorStyleOverride = Style.parse("bold reverse");
+    const panel = new Panel(input);
+    const drawn: RenderOptions = { maxWidth: 12, textOrder: "logical" };
+    const fm = new DefaultFocusManager({ mounted: () => [input], onScreen: () => [input], frameTime: () => 0 });
+    fm.settle();
+    fm.focus(input);
+    // The frame on screen is the one painted with the caret at the stop; the
+    // press reads that one, as an app's router does, not a frame drawn after.
+    let painted: Segment[][] = [];
+    const router = parserFor(new EventRouter({
+      source: { focusManager: fm, get frame() { return painted; }, textOrder: "logical", frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
+      focusOnClick: false,
+    }));
+    for (const stop of stops(value)) {
+      input.cursorPosition = asCodeUnit(stop);
+      painted = Segment.splitLines(render(panel, drawn));
+      const bytes = segmentsToString(render(panel, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "logical" });
+      const { y, unit } = caretUnit(bytes);
+      const x = screenColumn(rows(bytes)[y]!, unit);
+      input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
+      router.feed(`\x1b[<0;${x + 1};${y + 1}M\x1b[<0;${x + 1};${y + 1}m`);
+      expect(input.cursorPosition, `at ${stop}`).toBe(stop);
+    }
   });
 });

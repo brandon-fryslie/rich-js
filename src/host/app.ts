@@ -34,6 +34,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
+import type { TextOrder } from "../core/text-order.js";
 import type { PointerShape } from "../core/terminal-requests.js";
 import { Segment } from "../core/segment.js";
 import { SurfaceRenderer, type Surface } from "../core/paint.js";
@@ -374,6 +375,14 @@ export class App implements FrameHost {
   set rate(rate: FrameRate) {
     this._rate = rate;
     this.tick();
+  }
+
+  /**
+   * The order the terminal is written in: under `logical` it orders each of
+   * `frame`'s lines itself, so a pointer's column is not the frame's.
+   */
+  get textOrder(): TextOrder {
+    return this.console.destination.textOrder;
   }
 
   /** The rows on screen now, as painted: what a pointer event lands on. */

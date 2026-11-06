@@ -121,6 +121,34 @@ export function shownWritten(line: readonly Segment[]): number[] {
   return [...shown];
 }
 
+/**
+ * The column of `line`, one row of a frame, that a terminal which orders what
+ * it is written (`logical`) shows at screen column `x`: a press reads the
+ * frame there. The row is cut into its glyphs and ordered by `shownWritten`, so
+ * the whole line — every container's frame cells with it — is what is ordered,
+ * never one widget's row. Past the line's cells a column is its own.
+ */
+export function writtenColumn(line: readonly Segment[], x: number): number {
+  const pieces: Segment[] = [];
+  const starts: number[] = [];
+  let col = 0;
+  for (const segment of line) {
+    for (const glyph of segment.isControl ? [segment.text] : graphemes(segment.text)) {
+      const piece = segment.isControl ? segment : new Segment(glyph, segment.style);
+      pieces.push(piece);
+      starts.push(col);
+      col += piece.cellLength;
+    }
+  }
+  let screen = 0;
+  for (const index of shownWritten(pieces)) {
+    const cells = pieces[index]!.cellLength;
+    if (x < screen + cells) return starts[index]! + (x - screen);
+    screen += cells;
+  }
+  return x;
+}
+
 /** `segments` with each one's edges judged on the text as laid out (`edged`). */
 function* withEdges(segments: Iterable<Segment>): Iterable<Segment> {
   let reaches = false;
