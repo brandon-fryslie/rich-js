@@ -15,6 +15,7 @@ import { exactWeights, ratioDistribute, ratioReduce } from "./ratio.js";
 import type {
   Renderable,
   Measurable,
+  Justify,
   OverflowMethod,
   RenderOptions,
 } from "../core/protocol.js";
@@ -398,7 +399,7 @@ export interface ColumnOptions {
   readonly headerStyle?: string | Style;
   readonly footerStyle?: string | Style;
   readonly style?: string | Style;
-  readonly justify?: "left" | "center" | "right" | "full";
+  readonly justify?: Justify;
   readonly width?: number;
   readonly minWidth?: number;
   readonly maxWidth?: number;
@@ -440,7 +441,7 @@ export class Column {
   readonly headerStyle: string | Style;
   readonly footerStyle: string | Style;
   readonly style: string | Style;
-  readonly justify: "left" | "center" | "right" | "full";
+  readonly justify: Justify;
   readonly width: number | undefined;
   readonly minWidth: number | undefined;
   readonly maxWidth: number | undefined;
@@ -455,7 +456,7 @@ export class Column {
     this.headerStyle = options?.headerStyle ?? NULL_STYLE;
     this.footerStyle = options?.footerStyle ?? NULL_STYLE;
     this.style = options?.style ?? NULL_STYLE;
-    this.justify = options?.justify ?? "left";
+    this.justify = options?.justify ?? "start";
     this.width = options?.width;
     this.minWidth = options?.minWidth;
     this.maxWidth = options?.maxWidth;
@@ -544,8 +545,8 @@ export interface TableOptions {
   borderStyle?: string | Style;
   titleStyle?: string | Style;
   captionStyle?: string | Style;
-  titleJustify?: "left" | "center" | "right" | "full";
-  captionJustify?: "left" | "center" | "right" | "full";
+  titleJustify?: Justify;
+  captionJustify?: Justify;
   width?: number;
   minWidth?: number;
   rowStyles?: readonly string[];
@@ -579,8 +580,8 @@ export class Table implements Renderable, Measurable {
   readonly borderStyle: string | Style;
   readonly titleStyle: string | Style;
   readonly captionStyle: string | Style;
-  readonly titleJustify: "left" | "center" | "right" | "full";
-  readonly captionJustify: "left" | "center" | "right" | "full";
+  readonly titleJustify: Justify;
+  readonly captionJustify: Justify;
   readonly tableWidth: number | undefined;
   readonly minWidth: number | undefined;
   readonly rowStyles: readonly string[];
@@ -1208,7 +1209,7 @@ export class Table implements Renderable, Measurable {
     text: EmbeddedText,
     tableWidth: number,
     ownStyle: string | Style,
-    justify: "left" | "center" | "right" | "full",
+    justify: Justify,
   ): Iterable<Segment> {
     // The table owns the canvas; the caller's text still says how it meets the
     // edge. A `RichText`'s own `justify` outranks `titleJustify`, as a `Text`'s

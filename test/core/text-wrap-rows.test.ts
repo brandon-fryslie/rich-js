@@ -138,9 +138,10 @@ describe("RichText.wrap: a row says all it draws in its text, spans and format",
 
   it("a stated direction decides the paragraph, P3, for placing and ordering alike", () => {
     const bytes = (text: RichText) => segmentsToString([...text.render({ maxWidth: 20, textOrder: "logical" })], destination("logical"));
-    // Left to right by its first strong character; stated right to left, its isolate says so.
+    // Left to right by its first strong character; stated right to left, its
+    // isolate says so and it stands at its paragraph's right edge.
     expect(bytes(new RichText("abc", { end: "" }))).toBe("abc");
-    expect(bytes(new RichText("abc", { end: "", direction: "rtl" }))).toBe(`${RLI}abc${PDI}`);
+    expect(bytes(new RichText("abc", { end: "", direction: "rtl", justify: "start" }))).toBe(`${" ".repeat(17)}${RLI}abc${PDI}`);
     // The edge a separator meets is the one the stated direction shows there.
     const mixed = new RichText("abc שלום", { end: "" });
     mixed.stylize("bold", 0, 3);

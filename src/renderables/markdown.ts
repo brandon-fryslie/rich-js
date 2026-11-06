@@ -22,6 +22,7 @@ import { Table } from "./table.js";
 import { parseMarkdown, type CellAlign, type HeadingLevel, type Inline, type MdToken } from "./markdown-parse.js";
 import { SIMPLE } from "../core/box.js";
 import type {
+  Justify,
   Renderable,
   Measurable,
   RenderOptions,
@@ -36,11 +37,9 @@ export interface MarkdownOptions {
    * in parentheses, for a reader who cannot click it. Default `true`.
    */
   hyperlinks?: boolean;
-  /** How body text — paragraphs, list items, quotes — is placed in its width. Default `"left"`; headings keep their own. */
+  /** How body text — paragraphs, list items, quotes — is placed in its width. Default `"start"`; headings keep their own. */
   justify?: Justify;
 }
-
-type Justify = NonNullable<RenderOptions["justify"]>;
 
 /** What the options say about inline text, which every block's text is drawn with. */
 interface InlineSettings {
@@ -512,7 +511,7 @@ export class Markdown implements Renderable, Measurable {
     this.parsed = parseMarkdown(markdown);
     this.inlineCodeStyle = options?.inlineCodeStyle ?? "markdown.code";
     this.hyperlinks = options?.hyperlinks !== false;
-    this.justify = options?.justify ?? "left";
+    this.justify = options?.justify ?? "start";
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {

@@ -101,6 +101,44 @@ start of the sentence. In right-to-left text that is its right-hand side, and th
 Lam-alef stays two cells in `visual`, as two joined letters rather than the
 one-cell ligature, because the ligature would change a line's width after layout.
 
+## Alignment
+
+A paragraph starts at the edge its direction begins at. Under `logical`, `visual`
+and `words`, a right-to-left line is placed against the right edge of its width,
+and the ragged edge is on its left, where its reader finishes it. Each line of a
+text finds its own direction, so an English line and an Arabic line in one text
+each start at their own edge.
+
+```typescript
+import { Console, RichText, Table } from "@promptctl/rich-js";
+
+const output = new Console({ width: 30, textOrder: "visual" });
+output.print(new RichText("مرحبا بالعالم"));
+
+const table = new Table();
+table.addColumn("name");
+table.addRow("שלום עולם");
+table.addRow("hello");
+output.print(table);
+```
+
+`justify: "start"` names this edge and fills the rest of the width. It is what a
+`Table` column and `Markdown` use unless told otherwise, so a right-to-left cell
+sits at its cell's right. `justify: "default"` names the same edge without
+filling the width, so a left-to-right line keeps its natural width; it is what
+`Console.print` asks for, for the text it sets itself; a renderable it prints,
+and a `Live` or `App` view, is handed no `justify`, so a text inside one states
+its own. `"left"` and `"right"` mean those edges whatever the
+direction, and a stated `direction` decides the edge as it decides the order.
+
+A text with no `justify` at all is not placed. Containers that set a line down
+at its own width — a `Strip` item, a `Syntax` line, a soft-wrapped print — rely
+on that, and a right-to-left line in one keeps its own cells.
+
+Under `plain`, rich-js writes logical order. There a line's start is its first
+character, so padding goes after the text, as it always has. The terminal's own
+bidi, if it has any, decides which side that is.
+
 ## Stating a paragraph's direction
 
 A paragraph's direction normally comes from its first strong character. Set a
@@ -135,10 +173,11 @@ const rows = Segment.splitLines(render(line, { maxWidth: 12, textOrder: "visual"
 ## Known limits
 
 - **VTE at column 0.** VTE discards zero-width characters at the start of a row,
-  so a bare `console.print` loses its isolate and the terminal resolves the row
-  as left to right. An Arabic sentence keeps its full stop on the wrong side, as
-  it always has here. Containment still holds, and anything after a border or
-  padding, such as a table cell, reads correctly.
+  so a right-to-left line that fills the whole width loses its isolate and the
+  terminal resolves the row as left to right. An Arabic sentence keeps its full
+  stop on the wrong side there. Containment still holds, and a shorter line,
+  which starts after its padding, reads correctly, as does anything after a
+  border, such as a table cell.
 - **Mixed text at a cut.** A terminal resolves one row and cannot see the rest of
   the paragraph, so under `logical` a neutral or a number right beside a cut can
   land differently than under `visual`.

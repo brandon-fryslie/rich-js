@@ -36,7 +36,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { activePass, isRenderable, measure, render, type HostFrame, type Pass } from "./protocol.js";
+import { activePass, isRenderable, measure, render, type HostFrame, type Justify, type Pass } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
 import { ListState, State, refuseRenderWrite } from "./state.js";
 
@@ -189,7 +189,7 @@ export interface PrintOptions {
    * decided; absent, the print is drawn for no moment, 0 (`frameTimeOf`).
    */
   frame?: HostFrame;
-  justify?: "default" | "left" | "center" | "right" | "full";
+  justify?: Justify;
   overflow?: OverflowMethod;
   highlight?: boolean;
   markup?: boolean;
@@ -234,12 +234,14 @@ function logTime(time: Date): string {
   return `[${two(time.getHours())}:${two(time.getMinutes())}:${two(time.getSeconds())}] `;
 }
 
-// Three of the five justify methods place what a print draws as a block, the
-// way Rich's `print` wraps each renderable in `Align`. The other two leave it
-// where it was drawn: `"default"` asks for no placement, and `"full"` is a way
-// of setting a paragraph's words, which only text can do.
-const PLACED_BY: Record<NonNullable<PrintOptions["justify"]>, Alignment | undefined> = {
+// Three of the six justify methods place what a print draws as a block, the
+// way Rich's `print` wraps each renderable in `Align`. The other three leave it
+// where it was drawn: `"default"` and `"start"` name an edge each paragraph
+// finds for itself, and `"full"` is a way of setting a paragraph's words, all
+// of which only text can do.
+const PLACED_BY: Record<Justify, Alignment | undefined> = {
   default: undefined,
+  start: undefined,
   full: undefined,
   left: "left",
   center: "center",
@@ -682,10 +684,16 @@ export class Console {
     // `Panel` ends in a line break and a bare `ProgressBar` does not (a line
     // fragment — test/seam/line-ends.ts), and both leave the next print at the
     // start of a line.
+    // Unasked, the text a print sets itself starts at each paragraph's own
+    // edge. A renderable is handed no justify: the containers inside it that
+    // set a child down at its natural width read absent as exactly that. A
+    // print whose `end` does not break the line is a fragment of one, whose
+    // edge is unknown until the line is whole, and stays unplaced.
+    const textOpts: RenderOptions = { ...renderOpts, justify: opts.justify ?? (end.endsWith("\n") ? "default" : undefined) };
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
-      const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
-      if (align) return { lines: placeBlock(renderable, align, renderOpts), closed: true };
-      const drawn = [...render(renderable, renderOpts)];
+      const [renderable, blockOpts] = block.kind === "text" ? [new TextRun(block.items, terminator), textOpts] : [block.renderable, renderOpts];
+      if (align) return { lines: placeBlock(renderable, align, blockOpts), closed: true };
+      const drawn = [...render(renderable, blockOpts)];
       // A text run's last segment is always its `end`, yielded even when
       // empty, and `splitLines` drops the empty line after a final break only
       // when nothing follows it — so the run is closed exactly when `end` is.

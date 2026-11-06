@@ -11,6 +11,7 @@ import { Console } from "../../src/core/console.js";
 import { renderToString, segmentToString, segmentsToString } from "../../src/core/render.js";
 import { ColorDepth, resolveOutputTarget } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
+import { SEPARATOR_STYLES, Strip } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
@@ -21,6 +22,7 @@ import { Syntax } from "../../src/renderables/syntax.js";
 import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
+import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Button } from "../../src/widgets/button.js";
 import { balancedControls, implicit, implicitVte, kitty, none, rows } from "./bidi-terminal.js";
 
@@ -384,6 +386,138 @@ describe("reading on a terminal that does not reorder", () => {
     for (const text of [ARABIC, HEBREW, "لا إله إلا الله", "مَرْحَبًا", "سلام 👨\u200d👩\u200d👧 عليكم"]) {
       expect(new Set(widths(text)).size).toBe(1);
     }
+  });
+});
+
+describe("a paragraph starts at its own edge", () => {
+  const SENTENCE = "مرحبا بالعالم هذا نص";
+  const laidOut = ["logical", "visual", "words"] as const;
+  const shownBy = { logical: implicit, visual: none, words: kitty } as const;
+  const shown = (renderable: Parameters<typeof renderToString>[0], order: (typeof laidOut)[number], width: number): string[] =>
+    rows(plainBytes(renderable, order, width)).map(shownBy[order]);
+  /** Where a drawn row's padding stands: the side its text is not on. */
+  const padded = (row: string): "left" | "right" | "none" =>
+    row.startsWith(" ") ? "left" : row.endsWith(" ") ? "right" : "none";
+
+  test.each(laidOut)("a wrapped right-to-left paragraph is ragged on its left, under %s", (order) => {
+    const lines = shown(new RichText(SENTENCE, { end: "", justify: "default" }), order, 12);
+    expect(lines.length).toBeGreaterThan(1);
+    for (const line of lines) {
+      expect(cellLen(line)).toBe(12);
+      expect(padded(line)).not.toBe("right");
+    }
+  });
+
+  test("the ticket's console prints every row against the right edge", () => {
+    const recording = new Console({ width: 12, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(new RichText(SENTENCE));
+    for (const line of recording.exportText().split("\n").filter((row) => row !== "")) {
+      expect(cellLen(line)).toBe(12);
+      expect(line.endsWith(" ")).toBe(false);
+    }
+  });
+
+  test.each(laidOut)("an explicit left or right still means that edge, under %s", (order) => {
+    expect(padded(shown(new RichText(HEBREW, { end: "", justify: "left" }), order, 20)[0]!)).toBe("right");
+    expect(padded(shown(new RichText(HEBREW, { end: "", justify: "right" }), order, 20)[0]!)).toBe("left");
+    expect(padded(shown(new RichText("abc", { end: "", justify: "right" }), order, 20)[0]!)).toBe("left");
+  });
+
+  test.each(laidOut)("start is the left edge of a left-to-right paragraph and the right of a stated rtl one, under %s", (order) => {
+    expect(padded(shown(new RichText("abc", { end: "", justify: "start" }), order, 20)[0]!)).toBe("right");
+    expect(padded(shown(new RichText("abc", { end: "", justify: "start", direction: "rtl" }), order, 20)[0]!)).toBe("left");
+    // At the default edge, a left-to-right line is still left at its natural width.
+    expect(shown(new RichText("abc", { end: "", justify: "default" }), order, 20)[0]).toBe("abc");
+  });
+
+  test("each line of a text takes its own paragraph's edge", () => {
+    const lines = shown(new RichText(`abc\n${HEBREW}`, { end: "", justify: "default" }), "visual", 20);
+    expect(lines[0]).toBe("abc");
+    expect(padded(lines[1]!)).toBe("left");
+  });
+
+  test.each(laidOut)("a Table cell of right-to-left text is placed at the cell's right, a Latin one at its left, under %s", (order) => {
+    const table = new Table({ showHeader: false, box: undefined, showEdge: false, padding: 0 });
+    table.addColumn("", { width: 12 });
+    table.addRow(HEBREW);
+    table.addRow("abc");
+    const [hebrew, latin] = shown(table, order, 40).filter((row) => row.trim() !== "");
+    expect(padded(hebrew!)).toBe("left");
+    expect(padded(latin!)).toBe("right");
+  });
+
+  test("a Markdown paragraph in Arabic stands at the right edge", () => {
+    const [row] = shown(new Markdown(ARABIC), "visual", 30).filter((line) => line.trim() !== "");
+    expect(padded(row!)).toBe("left");
+  });
+
+  test("plain writes logical order, whose start is the line's first character: today's bytes", () => {
+    const table = new Table({ showHeader: false, box: undefined, showEdge: false, padding: 0 });
+    table.addColumn("", { width: 12 });
+    table.addRow(HEBREW);
+    expect(plainBytes(table, "plain").split("\n")[0]).toBe(`${HEBREW}   `);
+  });
+
+  // Absent, justify places nothing, so what sets a line down at its natural
+  // width keeps it there whatever the script and the order.
+  test.each(laidOut)("unjustified, a right-to-left line keeps its natural width, under %s", (order) => {
+    expect(plainBytes(new RichText(HEBREW, { end: "" }), order, 30)).toBe(plainBytes(new RichText(HEBREW, { end: "" }), order, cellLen(HEBREW)));
+  });
+
+  test("a Strip item in Hebrew takes its own cells, not the row", () => {
+    const strip = new Strip([new RichText("שלום"), new RichText("x")], SEPARATOR_STYLES.powerline);
+    expect(cellLen(rows(plainBytes(strip, "visual", 20))[0]!.trimEnd())).toBe(cellLen(rows(plainBytes(strip, "plain", 20))[0]!.trimEnd()));
+  });
+
+  test("a soft-wrapped print of Hebrew is not padded", () => {
+    const recording = new Console({ width: 20, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(new RichText("שלום"), { softWrap: true });
+    expect(recording.exportText()).toBe("םולש\n");
+  });
+
+  test("a Hebrew comment in Syntax is its own cells, not set against the block's right edge", () => {
+    const [, comment] = rows(plainBytes(new Syntax("def f():\n    # שלום\n    return 1", "python"), "visual", 30));
+    expect(comment).toBe("םולש #    ");
+  });
+
+  const printed = (renderable: Parameters<Console["print"]>[0], width: number): string[] => {
+    const recording = new Console({ width, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print(renderable);
+    return recording.exportText().split("\n").filter((row) => row !== "");
+  };
+
+  test("print sets its own text at the paragraph's edge, and hands a container no justify", () => {
+    expect(printed(new FlexStrip([new RichText("שלום"), new RichText("abc"), new RichText("עולם")]), 30).map(cellLen)).toEqual([4, 3, 4]);
+    const tree = new Tree("root");
+    tree.add("שלום");
+    expect(printed(tree, 30)[1]).toBe("└── םולש");
+  });
+
+  test("a print that leaves its line open is a fragment, and is not placed", () => {
+    const recording = new Console({ width: 20, textOrder: "visual", record: true, colorSystem: null, file: { write: () => true } });
+    recording.print("שלום", { end: " | " });
+    recording.print("x");
+    expect(recording.exportText()).toBe("םולש | x\n");
+  });
+
+  test.each(["start", "left", "default"] as const)("a FlexStrip packs its items the same under justify %s as under none", (justify) => {
+    const strip = new FlexStrip([new RichText("abc"), new RichText("שלום")], { gap: 1 });
+    const drawn = (given: typeof justify | undefined) => Segment.plainOf([...strip.render({ maxWidth: 18, textOrder: "visual", justify: given })]);
+    expect(drawn(justify)).toBe(drawn(undefined));
+  });
+
+  test.each(laidOut)("the last row of a full right-to-left paragraph starts at its right, under %s", (order) => {
+    const lines = shown(new RichText(SENTENCE, { end: "", justify: "full" }), order, 12);
+    expect(padded(lines.at(-1)!)).toBe("left");
+  });
+
+  test("unjustified, a stated right-to-left line is its isolate and nothing more", () => {
+    expect(plainBytes(new RichText("abc", { end: "", direction: "rtl" }), "logical", 20)).toBe("⁧abc⁩");
+  });
+
+  test("a leading RLM decides the edge under visual, as it decides the order", () => {
+    const [row] = rows(plainBytes(new RichText("\u200Fhello", { end: "", justify: "start" }), "visual", 20));
+    expect(padded(row!)).toBe("left");
   });
 });
 

@@ -51,6 +51,22 @@ export interface FrameHost {
   frameNow(): HostFrame;
 }
 
+/**
+ * How a line meets the edges of its width. `"start"` fills from the edge its
+ * paragraph begins at — the left of a left-to-right paragraph, the right of a
+ * right-to-left one (UAX #9 P2/P3, or a stated direction) — as CSS's
+ * `text-align: start` does; `"left"` and `"right"` mean those edges whatever
+ * the direction. `"default"` is a paragraph's start edge without filling the
+ * width: a left-to-right line is left as it is, and a right-to-left one is set
+ * against its right edge, since an unpadded line is drawn at the left. It is
+ * what `Console.print` asks for. Absent places nothing, so a container that
+ * sets a line down at its natural width — a `Strip` item, a `Syntax` line, a
+ * soft-wrapped print — gets that width under every order and script.
+ * Under the `plain` text order every line starts at the left: its bytes are in
+ * logical order, where padding after a line is already at its start.
+ */
+export type Justify = "default" | "start" | "left" | "center" | "right" | "full";
+
 export interface RenderOptions {
   /**
    * The cells this renderable may occupy. A count of cells, so a non-negative
@@ -73,7 +89,7 @@ export interface RenderOptions {
    * glyph.
    */
   asciiOnly?: boolean;
-  justify?: "left" | "center" | "right" | "full";
+  justify?: Justify;
   overflow?: OverflowMethod;
   noWrap?: boolean;
   /**

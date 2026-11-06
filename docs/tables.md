@@ -186,7 +186,7 @@ Configure columns individually:
 
 | Option | Description |
 |---|---|
-| `justify` | Cell alignment: `"left"`, `"center"`, `"right"`, `"full"` |
+| `justify` | Cell alignment: `"start"` (the default — left for a left-to-right cell, right for a right-to-left one), `"left"`, `"center"`, `"right"`, `"full"` |
 | `width` | Fixed column width |
 | `minWidth`, `maxWidth` | Width constraints |
 | `ratio` | Proportional width allocation; a ratio that is not positive is no ratio, and the column sizes to its content |

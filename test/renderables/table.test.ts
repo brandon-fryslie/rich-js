@@ -662,7 +662,7 @@ describe("Table", () => {
 describe("Column", () => {
   it("constructs with defaults", () => {
     const col = new Column();
-    expect(col.justify).toBe("left");
+    expect(col.justify).toBe("start");
     expect(col.noWrap).toBe(false);
     expect(col.highlight).toBe(false);
   });

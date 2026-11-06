@@ -141,7 +141,7 @@ it with [`Syntax`](./syntax) instead.
 |--------|---------|--------|
 | `inlineCodeStyle` | `"markdown.code"` | The style of `` `inline code` ``: a theme name, a style definition such as `"bold magenta"`, or a `Style` |
 | `hyperlinks` | `true` | A link's text is the link, drawn in `markdown.link_url`. With `false` the text is drawn plain in `markdown.link`, its own styles dropped, and the URL is written after it in parentheses, for a reader who cannot click it |
-| `justify` | `"left"` | Where paragraphs, list items and quoted text sit in the width: `"left"`, `"center"`, `"right"` or `"full"`. Headings keep their own placement, as Rich's do: an h1 is centred and every other level is left |
+| `justify` | `"start"` | Where paragraphs, list items and quoted text sit in the width: `"start"` (the edge the paragraph's direction begins at, so a right-to-left paragraph sits at the right), `"left"`, `"center"`, `"right"` or `"full"`. Headings keep their own placement, as Rich's do: an h1 is centred and every other level is left |
 
 ```typescript
 import { Console, Markdown } from "@promptctl/rich-js";
