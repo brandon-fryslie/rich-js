@@ -13,8 +13,13 @@ describe("scanEscapes", () => {
     expect(scanEscapes(bytes)).toEqual({ dropped: null, unread: bytes.length });
   });
 
+  it.each(["\x1b[E", "\x1b[3E", "\x1bE"])("passes %j, a line break the drawing draws", (escape) => {
+    expect(scanEscapes(`a${escape}b`).dropped).toBeNull();
+  });
+
   it.each([
     ["a cursor move", "\x1b[2A"],
+    ["a move up to a line's start, CPL", "\x1b[F"],
     ["a screen clear", "\x1b[2J"],
     ["a mode switch", "\x1b[?1049h"],
     ["a cursor save, which is no CSI", "\x1b7"],

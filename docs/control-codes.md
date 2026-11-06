@@ -85,11 +85,11 @@ and moves as `ESC [` does, an 8-bit OSC 8 opens and closes a link as `ESC ]8` do
 and every other 8-bit string escape is silent, payload and all. In either form a
 string runs to its terminator, the end of its line, or an `ESC` or C1 control,
 which ends it and then acts as itself, as in those terminals' parser. `ESC E`
-ends a line as NEL does, and so does CNL (`\x1b[nE`), once whatever its count:
-lines are decoded in order with no screen height, so the rows a count would pass
-are rows no terminal is known to have, and a terminal on its bottom row passes
-none. CPL (`\x1b[nF`) goes up to a line already decoded, and is dropped with the
-other vertical moves.
+ends a line as NEL does, and so does CNL (`\x1b[nE`), once whatever its count.
+On a terminal CNL passes `n` rows, or none on the bottom row, where it does not
+scroll; the decoder holds no cursor row and no screen height, so it keeps only
+that what follows is on a line of its own. CPL (`\x1b[nF`) goes up to a line
+already decoded, and is dropped with the other vertical moves.
 
 A C1 control in text is often a Windows-1252 byte decoded as Latin-1: `\x85` was
 meant as `…`. Telling that from a planted sequence takes the whole string, so

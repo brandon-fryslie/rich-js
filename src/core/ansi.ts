@@ -46,9 +46,10 @@
  * in, across lines and calls as it holds the SGR style, and draws text in that
  * set (`CHARSETS`).
  *
- * CNL is the sixth. Rich drops `\x1b[E`; it ends a line as NEL does, so it
- * ends one here, once whatever its count. Lines are decoded in order with no
- * screen height, so CPL, which goes up to a line already decoded, stays dropped.
+ * CNL is the sixth. Rich drops `\x1b[E`, gluing the text after it to the line
+ * before; here it ends the line, once whatever its count, since the decoder
+ * holds no cursor row or screen height to count rows against (`CNL`). CPL goes
+ * up to a line already decoded, so it stays dropped.
  *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped, with every control a terminal
@@ -194,13 +195,22 @@ const ESCAPES = [
 
 const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
 
+// CNL after its introducer. On a terminal it passes `count` rows, or none on
+// the bottom row, where it does not scroll; the decoder holds no cursor row and
+// no screen height, so no count has an answer it could give, and CNL decodes as
+// NEL does: what follows is on a line of its own.
+const CNL = "[0-9;]*E";
+
+/**
+ * The escapes `decode` ends a line at, in their `ESC` form: CNL and `ESC E`.
+ * The docs' output gate reads this rather than a copy of it.
+ */
+export const LINE_BREAK_ESCAPES: string = String.raw`\x1b\[${CNL}|\x1b[${ESC_LINE_BREAKS}]`;
+
 // A string escape goes first so a line break its payload holds stays in it.
-// CNL ends a line once, whatever its count, as NEL does: lines are decoded in
-// order with no screen height, so the rows a count would pass are ones no
-// terminal is known to have, and a terminal on its bottom row moves none.
 const lineBreaks = (): RegExp =>
   new RegExp(
-    `(${STRING_ESCAPE})|${CSI}[0-9;]*E|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`,
+    `(${STRING_ESCAPE})|${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}]|${controlClass((disposition) => disposition === "line-break")}`,
     "gu",
   );
 
