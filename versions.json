@@ -4,15 +4,22 @@
     {
       "version": "pr-587",
       "ref": "refs/pull/587/merge",
-      "sha": "2635c8f1cdf57eda2283b7031381b1a9c6581684",
-      "timestamp": "2026-11-06T22:00:45.386Z",
+      "sha": "3d689d5a2d64dceb7a3f3383159509fa9f51ec66",
+      "timestamp": "2026-11-06T22:15:23.317Z",
       "commits": [
         {
-          "sha": "2635c8f1cdf57eda2283b7031381b1a9c6581684",
+          "sha": "3d689d5a2d64dceb7a3f3383159509fa9f51ec66",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T14:58:15-07:00",
-          "message": "Merge d91594b45773a2cae17bc8201c0f76ca8b253b86 into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
+          "timestamp": "2026-11-06T22:13:03Z",
+          "message": "Merge 945dcb0ba931a4446a9078a9586cf0971bf4b5ee into dcf0f1f4ad3b2d58446b8b616f69b45f94ce7bd5\n"
+        },
+        {
+          "sha": "945dcb0ba931a4446a9078a9586cf0971bf4b5ee",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T15:12:52-07:00",
+          "message": "Gate review: a mark finishes a cluster across writes, REP cut at the card margin, VT/FF/LS/PS and a cancelled ESC judged as a terminal draws them (rich-control-codes-xh4n.lyr)\n"
         },
         {
           "sha": "d91594b45773a2cae17bc8201c0f76ca8b253b86",
