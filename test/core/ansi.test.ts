@@ -185,8 +185,8 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(new AnsiDecoder().decodeLine("\x1b[32mok\r").plain).toBe("ok");
   });
 
-  it("drops cursor movement, titles, charset designations and other escapes", () => {
-    const text = decodeAnsi("\x1b[2K\x1b[1Aa\x1b]0;title\x07b\x1b(Bc\x1b7d\x1b[?25le\x1bcf\x1b)0g\x1b#8h\x1b%Gi");
+  it("drops cursor movement, titles and other escapes, and draws nothing for a designation", () => {
+    const text = decodeAnsi("\x1b[2K\x1b[1Aa\x1b]0;title\x07b\x1b(Bc\x1b7d\x1b[?25lef\x1b)0g\x1b#8h\x1b%Gi");
     expect(text.plain).toBe("abcdefghi");
     expect(text.spans).toEqual([]);
   });
@@ -212,11 +212,22 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(struck.spans).toEqual([]);
   });
 
-  it("puts ASCII back in G0 and G1 at a full or soft reset, with the style", () => {
-    expect(decodeAnsi("\x1b(0q\x1bcq").plain).toBe("─q");
+  it("keeps overstrike's emphasis on a character the set leaves ASCII", () => {
+    expect(decodeAnsi("\x1b(0A\bA").spans).not.toEqual([]);
+    expect(decodeAnsi("\x1b(Ax\bx").spans).not.toEqual([]);
+  });
+
+  it("puts ASCII back in G0 and G1 at a soft reset, with the style, and keeps the link", () => {
     expect(decodeAnsi("\x1b)0\x0eq\x1b[!pq").plain).toBe("─q");
     const reset = decodeAnsi("\x1b[1ma\x1b[!pb");
     expect(reset.spans.map((span) => [span.start, span.end])).toEqual([[0, 1]]);
+    const linked = decodeAnsi("\x1b]8;;http://x\x1b\\a\x1b[!pb\x1b]8;;\x1b\\");
+    expect(styleAt(linked, 1).link).toBe("http://x");
+  });
+
+  it("clears the line and every state at a full reset, as a terminal clears its screen", () => {
+    expect(decodeAnsi("\x1b(0q\x1bcq").plain).toBe("q");
+    expect(decodeAnsi("\x1b(0qq\nq\x1bcq").plain).toBe("──\nq");
   });
 
   it("shifts G1 in at SO and G0 back at SI", () => {

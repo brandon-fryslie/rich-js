@@ -72,7 +72,8 @@ type Token =
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
   | { readonly kind: "designate"; readonly set: 0 | 1; readonly charset: Charset }
-  | { readonly kind: "reset" }
+  /** DECSTR (`soft`) resets the style and the sets; RIS also ends a link and clears the screen. */
+  | { readonly kind: "reset"; readonly soft: boolean }
   | { readonly kind: "shift"; readonly set: 0 | 1 }
   | { readonly kind: "overstrike"; readonly character: string; readonly emphasis: Style }
   | { readonly kind: "move"; readonly motion: Motion; readonly count: number }
@@ -202,7 +203,7 @@ function* escapeTokens(bytes: string): Generator<Token> {
     if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
     if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
     if (sgr !== undefined) yield { kind: "sgr", params: sgr };
-    if (reset !== undefined) yield { kind: "reset" };
+    if (reset !== undefined) yield { kind: "reset", soft: reset !== "\x1bc" };
     if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charsetOf(charset!) };
     if (shift !== undefined) yield { kind: "shift", set: shift === "\x0e" ? 1 : 0 };
     if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
@@ -533,18 +534,22 @@ export class AnsiDecoder {
           break;
         }
         case "overstrike": {
-          // Overstrike is nroff's, and nroff writes ASCII; struck in another set,
-          // the later glyph only overwrites the earlier, as on a terminal.
-          const set = this.sets[this.shifted];
-          const emphasis = set === "B" ? token.emphasis : NULL_STYLE;
-          column += draw(cells, column, drawnIn(set, token.character), this.sgr.add(emphasis).withLink(this.link));
+          // Overstrike is nroff's, and nroff writes ASCII; a glyph struck over
+          // itself only overwrites the earlier, as on a terminal.
+          const character = drawnIn(this.sets[this.shifted], token.character);
+          const emphasis = character === token.character ? token.emphasis : NULL_STYLE;
+          column += draw(cells, column, character, this.sgr.add(emphasis).withLink(this.link));
           break;
         }
         case "reset":
           this.sgr = NULL_STYLE;
-          this.link = undefined;
           this.sets.fill("B");
           this.shifted = 0;
+          if (token.soft) break;
+          this.link = undefined;
+          cells.length = 1;
+          cells[0] = ORIGIN;
+          column = 1;
           break;
         case "designate":
           this.sets[token.set] = token.charset;
