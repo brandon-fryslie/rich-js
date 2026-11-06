@@ -1,5 +1,5 @@
 import { ColorRgba, blendRgb, contrastRatio, relativeLuminance } from "../core/color.js";
-import { alphaBlend, contrastFor, ensureContrast, ensureContrastToward, shiftLightness } from "./colorMath.js";
+import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
 import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
 import { groundRelativeHint, neutralAlpha, neutralText, textFloor, withAlpha, type NeutralIntent } from "./text-on.js";
 
@@ -80,7 +80,7 @@ const isComponentText = (role: PaletteRole): role is ComponentTextRole => Object
 
 /** `role` as it is drawn: on what `GROUND` says it sits on, down to `background`. */
 const drawnAs = (role: PaletteRole, at: At): ColorRgba =>
-  at(role).compositeOver(role === "background" ? at("background") : drawnAs(GROUND[role] ?? "background", at));
+  role === "background" ? at(role) : at(role).compositeOver(drawnAs(GROUND[role] ?? "background", at));
 
 /** A component's ground as it is drawn, so a transparent one is the surface under it. */
 const groundOf = (role: ComponentTextRole, at: At): ColorRgba => drawnAs(COMPONENT_TEXT[role].ground, at);
@@ -98,8 +98,7 @@ const heldOnGround = (role: ComponentTextRole, color: ColorRgba, at: At): ColorR
   const floor = componentFloor(COMPONENT_TEXT[role]);
   const drawn = color.compositeOver(ground);
   const own = relativeLuminance(drawn) >= relativeLuminance(ground) ? WHITE : BLACK;
-  const kept = ensureContrastToward(drawn, ground, floor, own);
-  return contrastRatio(kept, ground) >= floor ? kept : ensureContrast(drawn, ground, floor);
+  return ensureContrastToward(drawn, ground, floor, contrastRatio(own, ground) >= floor ? own : contrastFor(ground));
 };
 
 /** A component's text as derived: its weight on its ground, or its role's color held there. */

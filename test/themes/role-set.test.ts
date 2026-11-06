@@ -189,6 +189,15 @@ describe("what buildPalette is given", () => {
     const turn = Math.abs(Oklch.fromRgba(held).h - Oklch.fromRgba(chosen).h) % 360;
     expect(Math.min(turn, 360 - turn)).toBeLessThan(10);
   });
+  it("a stated text whose side cannot read crosses to the other, keeping its hue", () => {
+    const lavender = new ColorRgba(187, 154, 247);
+    const chosen = new ColorRgba(200, 170, 255);
+    const held = buildPalette("t", true, { ...dark, "link-background": lavender, "link-color": chosen }).get("link-color");
+    expect(contrastRatio(held, lavender)).toBeGreaterThanOrEqual(4.5);
+    expect(relativeLuminance(held)).toBeLessThan(relativeLuminance(lavender));
+    const turn = Math.abs(Oklch.fromRgba(held).h - Oklch.fromRgba(chosen).h) % 360;
+    expect(Math.min(turn, 360 - turn)).toBeLessThan(10);
+  });
   it("a stated light text on a mid ground stays light where light can read", () => {
     const mid = new ColorRgba(40, 90, 160);
     const held = buildPalette("t", true, { ...dark, "link-background": mid, "link-color": new ColorRgba(150, 170, 200) }).get("link-color");
