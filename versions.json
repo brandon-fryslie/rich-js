@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-579",
+      "ref": "refs/pull/579/merge",
+      "sha": "0c23a5f8732fe3c1f2694c16e7d196a1afe6f6fa",
+      "timestamp": "2026-11-06T12:21:52.551Z",
+      "commits": [
+        {
+          "sha": "0c23a5f8732fe3c1f2694c16e7d196a1afe6f6fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T05:19:24-07:00",
+          "message": "Merge 68a7c036ea3f70e26e7f2d3607022efd598830fa into 22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03\n"
+        },
+        {
+          "sha": "68a7c036ea3f70e26e7f2d3607022efd598830fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T05:19:06-07:00",
+          "message": "A pointer shape is parsed where it enters, so no caller writes a second OSC through OSC 22 (rich-control-codes-xh4n.19b)\n\nPointerShape is derived from one runtime list; Console.setPointerShape and the App.pointerShape setter parse first, attended or not, running or not.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "22f7c0a455b2e9b872a7bcb0a9d6e7c6694aed03",
