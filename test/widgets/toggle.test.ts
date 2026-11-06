@@ -3,11 +3,13 @@ import { Segment } from "../../src/core/segment.js";
 import { Toggle } from "../../src/widgets/toggle.js";
 import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
-import { ColorSpec } from "../../src/core/color.js";
+import { ColorSpec, contrastRatio } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { textOn } from "../../src/themes/text-on.js";
 
 // What every widget draws a disabled cell in.
-const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
+// Disabled text is the theme's foreground at Textual's disabled weight, on the ground it is drawn on.
+const DISABLED = ColorSpec.fromRgba(textOn(DEFAULT_TERMINAL_THEME.palette, "foreground-disabled", DEFAULT_TERMINAL_THEME.palette.get("background")));
 
 // Factories — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
 const enterEvent = () => new WidgetKeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false }, 0);
@@ -125,13 +127,13 @@ describe("Toggle", () => {
       expect(offBg!.name).not.toBe(onBg!.name);
     });
 
-    it("ON state uses on-${accent} contrast color as fg, not text-${accent}", () => {
+    it("ON state draws its label in `text` on the full accent, readable there, not in text-${accent}", () => {
       const on = new Toggle({ label: "Go", variant: "primary", on: true });
-      const fg = Segment.splitLines(on.render({ maxWidth: 80 }))[0]![0]!.style!.color!;
-      // on-primary is pure black or pure white (WCAG contrast).
-      const isBlack = fg.name === "#000000";
-      const isWhite = fg.name === "#ffffff";
-      expect(isBlack || isWhite).toBe(true);
+      const style = Segment.splitLines(on.render({ maxWidth: 80 }))[0]![0]!.style!;
+      const palette = DEFAULT_TERMINAL_THEME.palette;
+      expect(style.bgcolor!.getTruecolor()).toEqual(palette.get("primary"));
+      expect(contrastRatio(style.color!.getTruecolor(), style.bgcolor!.getTruecolor())).toBeGreaterThanOrEqual(4.5);
+      expect(style.color!.getTruecolor()).not.toEqual(palette.get("text-primary"));
     });
 
     it("ON state's fg differs from its bg (no same-hue clash)", () => {

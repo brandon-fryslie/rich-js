@@ -383,13 +383,13 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     const isHighlighted = fpos === this.highlightedIndex;
 
     // Highlighted: muted bg → text-primary (mostly-accent fg) is readable.
-    // Selected:    full primary bg → on-primary (WCAG contrast) for fg.
+    // Selected:    full primary bg → `text` drawn on it (`textOn`) for fg.
     const rowStyle = this.disabled
       ? new Style(this.disabledInk)
       : isHighlighted
         ? new Style(ink(this.theme, "text-primary", "primary-muted"))
         : isSelected
-          ? new Style(ink(this.theme, "on-primary", "primary"))
+          ? new Style(ink(this.theme, "text", "primary"))
           : new Style(ink(this.theme, "foreground", "surface"));
 
     return [

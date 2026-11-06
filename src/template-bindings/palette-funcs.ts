@@ -1,6 +1,6 @@
 /**
- * The palette-dependent template functions: `color`, and `ramp` whose stops
- * are color references.
+ * The palette-dependent template functions: `color`, `ramp` whose stops
+ * are color references, and `textOn`, the text a theme draws on a ground.
  *
  * ### Why `color` is the one name resolver
  *
@@ -58,7 +58,7 @@
  * engine and their bodies run at *evaluate* time, so reading the palette
  * through a getter leaves parse-once/evaluate-many completely intact. What the
  * getter must not change is *which functions exist* — and it cannot, because
- * the two names here do not depend on the palette's contents. That was not
+ * the names here do not depend on the palette's contents. That was not
  * true of the generated per-variable functions, which is the second reason
  * they are gone.
  */
@@ -68,7 +68,8 @@ import type { Palette } from "../themes/palette.js";
 import { resolveColorRef } from "../themes/colorRef.js";
 import { parseEasing } from "../core/easing.js";
 import { ColorRamp, type ColorStop } from "../themes/ramp.js";
-import { computable } from "./color-funcs.js";
+import { asColor, computable } from "./color-funcs.js";
+import { isTextIntent, slide, textOn, TEXT_INTENTS, DRAWN_AT_TRUECOLOR, type DrawnAt, type TextFit } from "../themes/text-on.js";
 
 /**
  * The `(position, color-ref)` pairs a `ramp` call's tail spells, as stops.
@@ -128,7 +129,8 @@ function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
  * });
  * ```
  */
-export function paletteFuncs(getPalette: () => Palette): FuncMap {
+export function paletteFuncs(getPalette: () => Palette, place: TextPlace = {}): FuncMap {
+  const { fit = () => slide, drawnAt = () => DRAWN_AT_TRUECOLOR } = place;
   const colorFunc: TemplateFunc = {
     fn: ((ref: string) => resolveColorRef(getPalette(), ref).hex) as TemplateFunc["fn"],
     argTypes: ["string"],
@@ -149,5 +151,31 @@ export function paletteFuncs(getPalette: () => Palette): FuncMap {
     arity: { kind: "alternating", minimum: 4 },
     returnType: "string",
   };
-  return { color: colorFunc, ramp: rampFunc };
+  // `textOn "intent" ground` — the text the intent draws in on `ground`, as a
+  // color. The intent is parsed here against the one list; the ground is any
+  // color, a palette name already resolved through `color`.
+  const textOnFunc: TemplateFunc = {
+    fn: ((intent: string, groundHex: string) => {
+      if (!isTextIntent(intent)) {
+        throw new RangeError(`textOn: ${JSON.stringify(intent)} is not a text intent — one of ${TEXT_INTENTS.map((i) => JSON.stringify(i)).join(", ")}`);
+      }
+      return textOn(getPalette(), intent, asColor(groundHex, "textOn"), { fit: fit(), drawnAt: drawnAt() }).hex;
+    }) as TemplateFunc["fn"],
+    argTypes: ["string", "string"],
+    arity: { kind: "exact" },
+    returnType: "string",
+  };
+  return { color: colorFunc, ramp: rampFunc, textOn: textOnFunc };
+}
+
+/**
+ * Where a template's `textOn` text lands and what it becomes when it misses
+ * its floor, each read when the template is evaluated, for the reason the
+ * palette is: a consumer whose setting changes at runtime must not be frozen
+ * to the one in force when the engine was built. `drawnAt` is the same
+ * destination `colorFuncs` is given for `ensureContrast`.
+ */
+export interface TextPlace {
+  readonly fit?: () => TextFit;
+  readonly drawnAt?: () => DrawnAt;
 }

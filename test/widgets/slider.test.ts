@@ -5,9 +5,11 @@ import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { textOn } from "../../src/themes/text-on.js";
 
 // What every widget draws a disabled cell in.
-const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
+// Disabled text is the theme's foreground at Textual's disabled weight, on the ground it is drawn on.
+const DISABLED = ColorSpec.fromRgba(textOn(DEFAULT_TERMINAL_THEME.palette, "foreground-disabled", DEFAULT_TERMINAL_THEME.palette.get("background")));
 
 // Factory — WidgetKeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string): WidgetKeyEvent => new WidgetKeyEvent({

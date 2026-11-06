@@ -25,6 +25,7 @@ import {
 import { cellLen, graphemes } from "../../../src/core/cells.js";
 import { runDemo } from "../../../examples/effects-feel/app.js";
 import { shares } from "../../../src/renderables/effects.js";
+import { textOn } from "../../../src/themes/text-on.js";
 import { JOIN, SEAM_MIN_DELTA_E } from "../../../src/core/strip.js";
 import { drawnSubject, stripSubject, textSubject } from "../../../examples/effects-feel/subjects.js";
 import { parseSettings } from "../../../examples/effects-feel/settings.js";
@@ -209,8 +210,9 @@ describe("a strip under a pulse", () => {
 
   it("is measured on the colors it sets in the cells it letters, and none of the terminal's", () => {
     const strip = drawnIn(stripSubject(CATPPUCCIN_MOCHA));
-    expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("foreground")!.hex)).toBe(true);
-    expect(strip.colors.has(CATPPUCCIN_MOCHA.palette.get("secondary-muted")!.hex)).toBe(true);
+    const mocha = CATPPUCCIN_MOCHA.palette;
+    expect(strip.colors.has(textOn(mocha, "text-secondary", mocha.get("secondary-muted")).hex)).toBe(true);
+    expect(strip.colors.has(mocha.get("secondary-muted").hex)).toBe(true);
     const text = drawnIn(textSubject(CATPPUCCIN_MOCHA, ColorDepth.TRUECOLOR));
     expect(text.colors.has(CATPPUCCIN_MOCHA.backgroundColor.hex)).toBe(false);
   });

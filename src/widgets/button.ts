@@ -5,7 +5,7 @@
  *
  * Four visual states:
  *   normal  — variant colors from theme semantic palette (muted)
- *   hover   — full variant accent bg + on-accent fg (WCAG contrast)
+ *   hover   — full variant accent bg + `text` drawn on it (`textOn`)
  *   focus   — brackets [ label ] surrounding the button
  *   active  — same color pair as hover, plus bold (pressed cue)
  *
@@ -24,12 +24,11 @@ import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import type { PaletteRole } from "../themes/palette.js";
 import { ThemedWidget } from "./themed-widget.js";
-import { ink } from "./ink.js";
+import { ink, VARIANT_INK, type InkVariant } from "./ink.js";
 import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
-export type ButtonVariant = "default" | "primary" | "success" | "warning" | "danger";
+export type ButtonVariant = InkVariant;
 
 export interface ButtonOptions {
   label: string;
@@ -38,20 +37,6 @@ export interface ButtonOptions {
   disabled?: boolean;
   theme?: TerminalTheme;
 }
-
-// Variant → palette key mapping. Per variant:
-//   bg / fg     — normal state. Muted accent bg + mostly-accent fg → readable.
-//   hover       — full accent bg; pair with hoverFg, NOT with `fg`. The
-//                 text-* keys are mostly-accent and would clash on a full
-//                 accent bg.
-//   hoverFg     — WCAG-correct contrast color (on-${accent}) for full bg.
-const VARIANT_KEYS: Record<ButtonVariant, { bg: PaletteRole; fg: PaletteRole; hover: PaletteRole; hoverFg: PaletteRole }> = {
-  default:  { bg: "surface",       fg: "foreground",   hover: "primary", hoverFg: "on-primary" },
-  primary:  { bg: "primary-muted", fg: "text-primary", hover: "primary", hoverFg: "on-primary" },
-  success:  { bg: "success-muted", fg: "text-success", hover: "success", hoverFg: "on-success" },
-  warning:  { bg: "warning-muted", fg: "text-warning", hover: "warning", hoverFg: "on-warning" },
-  danger:   { bg: "error-muted",   fg: "text-error",   hover: "error",   hoverFg: "on-error" },
-};
 
 export class Button extends ThemedWidget {
   readonly id: string;
@@ -120,16 +105,16 @@ export class Button extends ThemedWidget {
       return drawn(new Style(this.disabledInk));
     }
 
-    // Active and hover share the same color pair (full accent bg + on-accent fg).
-    // Active is differentiated by bold, not by inverting fg/bg — inversion gives
-    // mostly-accent text on mostly-bg-tinted background, which is unreadable for
-    // accents whose contrast partner depends on luminance.
-    const keys = VARIANT_KEYS[this.variant];
+    // Active and hover share the lit pair. Active is differentiated by bold,
+    // not by inverting fg/bg — inversion gives mostly-accent text on
+    // mostly-bg-tinted background, which is unreadable for accents whose
+    // contrast partner depends on luminance.
+    const pairs = VARIANT_INK[this.variant];
     if (this.active || this.hovered) {
-      return drawn(new Style({ ...ink(this.theme, keys.hoverFg, keys.hover), bold: this.active }));
+      return drawn(new Style({ ...ink(this.theme, ...pairs.lit), bold: this.active }));
     }
 
-    return drawn(new Style(ink(this.theme, keys.fg, keys.bg)));
+    return drawn(new Style(ink(this.theme, ...pairs.quiet)));
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

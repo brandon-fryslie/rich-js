@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { ColorRgba, TerminalTheme, blendRgb, contrastRatio, relativeLuminance } from "../../src/core/color.js";
+import { ColorRgba, TerminalTheme, blendRgb, contrastRatio, parseHexColor, relativeLuminance } from "../../src/core/color.js";
+import { ensureContrast } from "../../src/themes/colorMath.js";
+import { resolveColorRef } from "../../src/themes/colorRef.js";
+import { THEMES } from "../../src/themes/data/index.js";
 import { IDENTITY } from "../../src/core/oklch.js";
 import { BASE_KEYS, PALETTE_ROLES, buildPalette } from "../../src/themes/buildPalette.js";
 import type { Palette, PaletteRole, ShadedRole } from "../../src/themes/palette.js";
@@ -51,7 +54,6 @@ describe("every palette has the same roles", () => {
   it("the roles the cc-candybar bar asked for are on an authored theme", () => {
     const tokyo = getThemePalette("tokyo-night");
     expect(tokyo.get("background-muted")).toBeInstanceOf(ColorRgba);
-    expect(tokyo.get("on-primary")).toBeInstanceOf(ColorRgba);
   });
 });
 
@@ -104,7 +106,79 @@ describe("what buildPalette is given", () => {
 
   it("a key that names no role is refused by name", () => {
     const overrides = { "scrollbar-color": new ColorRgba(1, 2, 3) };
-    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/"t": "scrollbar-color" is not a role/);
+    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/"t": "scrollbar-color" is not a role$/);
+  });
+
+  it.each(["text", "text-muted", "text-disabled", "on-primary"])("Textual's ground-relative %s points at textOn", (role) => {
+    const overrides = { [role]: new ColorRgba(1, 2, 3) };
+    expect(() => buildPalette("t", true, { ...base, ...overrides })).toThrow(/is not a role — text drawn relative to its ground is `textOn/);
+  });
+
+  it.each(["text", "text-muted", "text-disabled", "on-primary"])("a reference to %s points at textOn too", (role) => {
+    expect(() => resolveColorRef(getThemePalette("dracula"), role)).toThrow(/no such variable in palette "dracula" — text drawn relative to its ground is `textOn/);
+  });
+
+  it("a cursor's text is chosen on the cursor", () => {
+    const cursor = new ColorRgba(250, 250, 240);
+    const palette = buildPalette("t", true, { ...base, "block-cursor-background": cursor });
+    // A light cursor on a dark palette whose primary is mid-blue: text chosen
+    // for `primary` would be white, and white does not read on this cursor.
+    expect(contrastRatio(palette.get("block-cursor-foreground"), cursor)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("a stated translucent text-* composites over its own *-muted", () => {
+    const tint = new ColorRgba(235, 242, 255, 0xdd / 255);
+    const palette = buildPalette("t", true, { ...base, "text-primary": tint });
+    expect(palette.get("text-primary").hex).toBe(tint.compositeOver(palette.get("primary-muted")).hex);
+  });
+
+  // Every bundled theme that states a cursor or hovered link's text as a tint
+  // shows it on the cursor and the hovered link, not on `background`.
+  const drawnOnItsGround = listThemePalettes().flatMap((name) =>
+    (
+      [
+        ["block-cursor-foreground", "block-cursor-background"],
+        ["link-color-hover", "link-background-hover"],
+      ] as const
+    ).flatMap(([text, ground]) => {
+      const stated = THEMES[name].vars[text];
+      return stated === undefined || parseHexColor(stated).alpha === 1 ? [] : [{ name, text, ground, stated }];
+    }),
+  );
+  it.each(drawnOnItsGround)("$name draws $text on $ground, held to its floor there", ({ name, text, ground, stated }) => {
+    const palette = getThemePalette(name);
+    const on = palette.get(ground).compositeOver(palette.get("background"));
+    expect(palette.get(text).hex).toBe(ensureContrast(parseHexColor(stated).compositeOver(on), on, 4.5).hex);
+    expect(contrastRatio(palette.get(text), on)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // Every component's text is chosen on its own ground, derived or stated as a tint.
+  const dark = { ...base, background: new ColorRgba(20, 20, 24), foreground: new ColorRgba(230, 230, 230) };
+  const paleGround = new ColorRgba(240, 240, 240);
+  const components = [
+    ["link-color", "link-background", 4.5],
+    ["link-color-hover", "link-background-hover", 4.5],
+    ["markdown-h1-color", "markdown-h1-background", 4.5],
+    ["markdown-h4-color", "markdown-h4-background", 4.5],
+    ["markdown-h6-color", "markdown-h6-background", 3],
+    ["footer-foreground", "footer-background", 4.5],
+    ["footer-description-foreground", "footer-description-background", 4.5],
+    ["footer-key-foreground", "footer-key-background", 4.5],
+    ["input-cursor-foreground", "input-cursor-background", 4.5],
+    ["block-cursor-foreground", "block-cursor-background", 4.5],
+    ["block-cursor-blurred-foreground", "block-cursor-blurred-background", 4.5],
+  ] as const;
+  it.each(components)("derived %s reads on a stated %s", (text, ground, floor) => {
+    const palette = buildPalette("t", true, { ...dark, [ground]: paleGround });
+    expect(contrastRatio(palette.get(text), palette.get(ground))).toBeGreaterThanOrEqual(floor);
+  });
+  it.each(components)("a stated tint for %s is held on a stated %s", (text, ground, floor) => {
+    const palette = buildPalette("t", true, { ...dark, [ground]: new ColorRgba(255, 255, 255, 0.9), [text]: new ColorRgba(255, 255, 255, 0.5) });
+    expect(contrastRatio(palette.get(text), palette.get(ground))).toBeGreaterThanOrEqual(floor);
+  });
+  it("a stated opaque component text is the author's, kept", () => {
+    const chosen = new ColorRgba(250, 250, 250);
+    expect(buildPalette("t", true, { ...dark, "link-background": paleGround, "link-color": chosen }).get("link-color")).toEqual(chosen);
   });
 });
 

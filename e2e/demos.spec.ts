@@ -127,7 +127,7 @@ test("a printed demo opens on its first line: themes-and-color-studio", async ({
 test("themes-and-color-studio's card shows its entry and every section file as tabs, and not its Node entry", async ({ page }) => {
   await openDemo(page, "themes-and-color-studio");
   await expect(card(page).getByRole("tab")).toHaveText(
-    ["main.ts", "tour.ts", "look.ts", "values.ts", "themes.ts", "adjustment.ts", "contrast.ts"],
+    ["main.ts", "tour.ts", "look.ts", "values.ts", "themes.ts", "adjustment.ts", "contrast.ts", "text-on.ts"],
     LOADED,
   );
 });

@@ -428,7 +428,7 @@ export function section5ColorRefs(out: Console): void {
   out.print(
     bold("    buildPalette(\"indigo-night\", dark=true, base) — derived vars:"),
   );
-  for (const role of ["primary", "primary-muted", "text-primary", "on-primary"]) {
+  for (const role of ["primary", "primary-muted", "text-primary", "foreground-muted"]) {
     const c = built.get(role)!;
     out.print(
       new RichText(`      ${role.padEnd(18)} → `).append(

@@ -3,11 +3,13 @@ import { Segment } from "../../src/core/segment.js";
 import { Button } from "../../src/widgets/button.js";
 import { WidgetKeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
-import { ColorSpec } from "../../src/core/color.js";
+import { ColorSpec, contrastRatio } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+import { textOn } from "../../src/themes/text-on.js";
 
 // What every widget draws a disabled cell in.
-const DISABLED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-disabled")!);
+// Disabled text is the theme's foreground at Textual's disabled weight, on the ground it is drawn on.
+const DISABLED = ColorSpec.fromRgba(textOn(DEFAULT_TERMINAL_THEME.palette, "foreground-disabled", DEFAULT_TERMINAL_THEME.palette.get("background")));
 
 // Factories — WidgetKeyEvent carries a mutable `stopped` flag, so each call site
 // must get a fresh instance.
@@ -97,15 +99,14 @@ describe("Button", () => {
       expect(style.bgcolor!.name).not.toBe("#4a4a4a");
     });
 
-    it("hover uses the on-${accent} contrast color as fg, not text-${accent}", () => {
+    it("hover draws its label in `text` on the full accent, readable there, not in text-${accent}", () => {
       const btn = new Button({ label: "Go", variant: "primary" });
       btn.setHovered(true);
       const style = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]![0]!.style!;
-      // on-primary is pure black or pure white (WCAG contrast).
-      const fg = style.color!;
-      const isBlack = fg.name === "#000000";
-      const isWhite = fg.name === "#ffffff";
-      expect(isBlack || isWhite).toBe(true);
+      const palette = DEFAULT_TERMINAL_THEME.palette;
+      expect(style.bgcolor!.getTruecolor()).toEqual(palette.get("primary"));
+      expect(contrastRatio(style.color!.getTruecolor(), style.bgcolor!.getTruecolor())).toBeGreaterThanOrEqual(4.5);
+      expect(style.color!.getTruecolor()).not.toEqual(palette.get("text-primary"));
     });
 
     it("renders active state with bold and full accent bg (no fg/bg inversion)", () => {
@@ -115,7 +116,7 @@ describe("Button", () => {
       expect(segments).toHaveLength(1);
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
-      // bg should be the full accent (same as hover), fg should be on-${accent}.
+      // bg should be the full accent (same as hover), fg is `text` drawn on that accent.
       // Both should be different — no inversion that would put fg = mostly-bg.
       expect(style.color!.name).not.toBe(style.bgcolor!.name);
     });

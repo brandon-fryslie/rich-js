@@ -3,7 +3,7 @@
 rich-js can hand its entire styling vocabulary to a template engine, so styled text is authored as a template instead of assembled in code. Colors, attributes, and links become ordinary template functions:
 
 ```handlebars
-{{ "deploy paused" | fg (color "warning") | bold }}
+{{ "deploy paused" | fg (color "text-warning") | bold }}
 ```
 
 There is no second markup grammar here. The syntax is standard [Go template](https://pkg.go.dev/text/template) syntax, parsed by [`@promptctl/go-template-js`](https://www.npmjs.com/package/@promptctl/go-template-js) — one parser, one AST, one error dialect. This module contributes only the styling functions. The engine is a peer dependency rather than a bundled one, so you install it alongside rich-js — `npm install @promptctl/rich-js @promptctl/go-template-js` — before reaching for this subpath. Without it, the import itself fails with `ERR_MODULE_NOT_FOUND`; the main entry point is unaffected.
@@ -39,7 +39,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `richTextFuncs()` is everything that does not: the color sinks `fg` and `bg`, the palette-free color math, every text attribute, `link`, and `style`. It is safe to register unconditionally. Its one optional argument, `drawnAt: () => DrawnAt`, says where the text lands — `{ depth, terminal? }`, the depth the terminal will draw at and, when you know it, the `TerminalTheme` drawing it: `ensureContrast` measures its floor on the colors actually drawn, at sixteen colors in that terminal's own — what that guarantees, fallback included, is stated once in [Contrast](/contrast). Omitted, it is truecolor. A host that swaps `ensureContrast` alone — per segment, say — registers `ensureContrastFunc(drawnAt)` over the key instead. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
 
-`paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists.
+`paletteFuncs(getPalette, place?)` is the ones that do: `color`, which turns a palette variable name into a color, `ramp`, whose stops are palette names, and `textOn`, a theme's text on a ground. It is the only registration that knows a palette exists. `textOn` holds its floor where `place.drawnAt` says the text lands, so a host drawing below truecolor hands the same `drawnAt` getter to both registrations — `richTextFuncs(drawnAt)` and `paletteFuncs(getPalette, { drawnAt })` — and `ensureContrast` and `textOn` measure the one destination.
 
 Animation is not a third map to merge. It answers a different question — what moment is the template drawn for? — and `withAnimation(config, frame)` takes the engine config those maps went into and returns it with `tween`, `loop`, `glyphs`, `frames` and `stepped` registered, drawn for the time your clock hands in, and the two engine hooks that carry what they drew to the frame. A config that already has one of those five names is refused. [Animating a template](#animating-a-template) covers them.
 
@@ -73,7 +73,7 @@ The two bridge functions are what bind the engine's generic output type to `Rich
 
 `paletteFuncs` asks for `() => Palette` rather than a `Palette`, because templates are parsed once and evaluated many times. An engine that captured a palette at construction would be frozen to whichever theme happened to be current then — and that freeze outlives every later theme change while the rest of the application's colors move on. A live preview or a theme picker would render half its colors from the new theme and half from the old.
 
-The getter costs nothing structurally. Function bodies run at evaluate time, so reading the palette through a getter leaves parse-once/evaluate-many intact. What a getter must never change is *which functions exist* — and it cannot, because the two names do not depend on the palette's contents.
+The getter costs nothing structurally. Function bodies run at evaluate time, so reading the palette through a getter leaves parse-once/evaluate-many intact. What a getter must never change is *which functions exist* — and it cannot, because the names do not depend on the palette's contents.
 
 ## Writing templates
 
@@ -140,6 +140,7 @@ A color that can be held is a color that can be composed. `color` names one, the
 | `darken c n` / `lighten c n` | slide HSL lightness by `n` 10% levels (`n` a whole number) |
 | `mix a b pct` | blend `a` toward `b` by `pct`% (0 → `a`, 100 → `b`) |
 | `contrastOn bg` | black or white, whichever is readable on `bg` |
+| `textOn intent bg` | a theme's text on `bg` — `"text"`, `"text-muted"`, `"text-error"`, … ([Text on a ground](/text-on)); registered by `paletteFuncs` |
 | `ensureContrast fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |
 | `shiftHue c deg` | rotate hue in OKLCH |
 | `scaleChroma c f` | multiply chroma (0 → gray, 1 → identity) |
@@ -235,13 +236,15 @@ const engine = createEngine<RichText>({
 });
 
 const source = `{{- $who := color "primary" -}}
-{{- $topic := color "accent" -}}
-{{ " bmf " | fg (contrastOn $who) | bg $who | bold }} → {{ " rework the demo " | fg (contrastOn $topic) | bg $topic }}
-{{ " alice " | fg (contrastOn $who) | bg $who | bold }} → {{ " tighten measure() " | fg (contrastOn $topic) | bg $topic }}`;
+{{- $topic := color "accent-muted" -}}
+{{ " bmf " | fg (textOn "text" $who) | bg $who | bold }} → {{ " rework the demo " | fg (textOn "text-accent" $topic) | bg $topic }}
+{{ " alice " | fg (textOn "text" $who) | bg $who | bold }} → {{ " tighten measure() " | fg (textOn "text-accent" $topic) | bg $topic }}`;
 
 const compiled = engine.compile(source);
 console.print(RichText.fromFragments(compiled({})));
 ```
+
+A theme's accent is a fill or a border, never text: text on a full `primary` is `text` on it, and an accent's own text is `text-accent`, drawn on its muted form. `textOn "intent" ground` is the color a theme's text draws in on any ground, in the pairings Textual draws its widgets in; [Text on a ground](/text-on) lists the intents and what happens on a ground the text does not read on. `contrastOn` stays for a ground no theme named.
 
 An unknown name throws, carrying near-miss suggestions drawn from the live palette. In a template that surfaces as an evaluation error at the exact call site — the signal an author, or an agent editing a config file, needs in order to fix it.
 

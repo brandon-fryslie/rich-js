@@ -57,10 +57,13 @@
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { blendRgb, ColorDepth, ColorParseError, parseHexColor, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { blendRgb, ColorParseError, parseHexColor, type ColorRgba } from "../core/color.js";
 import { Oklch, IDENTITY } from "../core/oklch.js";
 import type { ColorAdjustment } from "../core/oklch.js";
 import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
+import { DRAWN_AT_TRUECOLOR, type DrawnAt } from "../themes/text-on.js";
+
+export type { DrawnAt };
 
 /**
  * The gate every color argument crosses. [LAW:parse-dont-validate] — the
@@ -208,21 +211,6 @@ const contrastOnFunc = colorFunc(["string"], ((bgHex: string) =>
   contrastFor(asColor(bgHex, "contrastOn")).hex) as TemplateFunc["fn"]);
 
 /**
- * Where `ensureContrast`'s text will be drawn: the depth the output is encoded at,
- * and the terminal that draws it when that is known. At sixteen colors a
- * terminal paints each slot in its own theme's color, so the floor is measured
- * in `terminal`'s sixteen; without one, in the VGA defaults (the Windows
- * console's at `WINDOWS`). Both are facts about the one place the text lands,
- * so they arrive together.
- */
-export interface DrawnAt {
-  readonly depth: ColorDepth;
-  readonly terminal?: TerminalTheme;
-}
-
-const TRUECOLOR: DrawnAt = { depth: ColorDepth.TRUECOLOR };
-
-/**
  * The `ensureContrast` binding, measuring where `drawnAt` says the text lands when
  * it is evaluated — a consumer that renders to a per-call destination
  * registers its own.
@@ -301,7 +289,7 @@ function oklchAxisFuncs(): FuncMap {
  *   when known — read on every `ensureContrast` evaluation so a host that learns
  *   its destination per render passes one getter; defaults to truecolor.
  */
-export function colorFuncs(drawnAt: () => DrawnAt = () => TRUECOLOR): FuncMap {
+export function colorFuncs(drawnAt: () => DrawnAt = () => DRAWN_AT_TRUECOLOR): FuncMap {
   return {
     darken: darkenFunc,
     lighten: lightenFunc,

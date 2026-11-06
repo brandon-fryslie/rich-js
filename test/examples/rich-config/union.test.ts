@@ -18,6 +18,10 @@ import { PassThrough, Writable } from "stream";
 import { NodeTerminalHost } from "../../../src/node/terminal-host.js";
 import { cellLen } from "../../../src/core/cells.js";
 import { runDemo, type DemoHandle } from "../../../examples/rich-config/app.js";
+import { PALETTE_ROLES } from "../../../src/themes/buildPalette.js";
+
+// The demo counts every role a palette holds; the role list is the authority.
+const ALL_ROLES = `palette ${PALETTE_ROLES.length}/${PALETTE_ROLES.length}`;
 
 const ALT_ON = "\x1b[?1049h";
 const ALT_OFF = "\x1b[?1049l";
@@ -153,7 +157,7 @@ describe("rich-config, full-screen, its widgets in a Panel in a Layout pane", ()
 
   it("types into the text input a click focused", async () => {
     const session = start();
-    await shows(session, "palette 158/158");
+    await shows(session, ALL_ROLES);
     // Unfocused and empty, the search box draws its brackets and nothing else.
     session.send(click(find(session, /\[ +\]/)));
     await shows(session, "▸ in-search ");
@@ -161,7 +165,7 @@ describe("rich-config, full-screen, its widgets in a Panel in a Layout pane", ()
     session.send("err\r");
 
     await shows(session, 'Palette search: "err"');
-    expect(screen(session).join("\n")).not.toContain("palette 158/158");
+    expect(screen(session).join("\n")).not.toContain(ALL_ROLES);
   });
 
   it("opens the dropdown's list over the panel, and a click on an option picks it", async () => {

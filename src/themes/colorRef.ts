@@ -1,5 +1,6 @@
 import { ColorParseError, type ColorRgba, parseHexColor } from "../core/color.js";
 import type { Palette } from "./palette.js";
+import { groundRelativeHint } from "./text-on.js";
 
 /**
  * A **color reference** is the one string form an author uses to name a
@@ -70,7 +71,7 @@ export function resolveColorRef(palette: Palette, ref: string): ColorRgba {
     throw new ColorRefError(
       ref,
       `no such variable in palette ${JSON.stringify(palette.name)}` +
-        suggest(palette, trimmed),
+        (groundRelativeHint(trimmed) || suggest(palette, trimmed)),
     );
   }
   return hit;
