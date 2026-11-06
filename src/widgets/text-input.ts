@@ -270,9 +270,11 @@ type Layout = { readonly drawn: Drawn } & (
 /**
  * A row's stops two ways: left to right as the terminal shows them (`shown`),
  * which a step walks, and left to right as the frame holds them (`framed`),
- * which a press reads — the router hands a widget the frame's column, under
- * `logical` too, where it maps the screen through the whole line. Off
- * `logical` the two are one.
+ * which a press reads. A terminal that orders what it is written (`logical`)
+ * reports a pointer at the column of what it was written, not where it shows
+ * it — the BiDi recommendation's "the reported column is the model's column",
+ * VTE's `vis2log` — so a press is already in the frame's order. Off `logical`
+ * the two are one.
  */
 type Stops = { readonly shown: readonly Seen[]; readonly framed: readonly Seen[] };
 

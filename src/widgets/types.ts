@@ -175,8 +175,6 @@ export interface FocusManager {
 export interface FrameSource {
   readonly focusManager: FocusManager;
   readonly frame: readonly (readonly Segment[])[];
-  /** The column of `frame`'s row `y` shown at screen column `x` (`App.frameColumn`). */
-  frameColumn(x: number, y: number): number;
   frameNow(): HostFrame;
   refresh(): void;
 }

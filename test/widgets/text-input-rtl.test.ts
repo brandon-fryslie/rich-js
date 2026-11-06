@@ -11,7 +11,7 @@ import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
 import type { TextOrder } from "../../src/core/text-order.js";
-import { frameColumn } from "../../src/core/seal.js";
+import { shownWritten } from "../../src/core/seal.js";
 import { cellOf } from "../../src/widgets/hit.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { Panel } from "../../src/renderables/panel.js";
@@ -285,15 +285,39 @@ function screenColumn(row: string, unit: number): number {
   throw new Error(`unit ${unit} is not on the row`);
 }
 
-// A left press and release at screen column `x` of row `y` of the painted
-// `frame`, through an app's router, which maps the screen to the frame.
+// The column a terminal reports for a pointer at screen column `x` of row `y`.
+// One that orders what it is written (`logical`) orders the whole line and
+// reports the column of what it was written there — the BiDi recommendation's
+// "the reported column is the model's column", VTE's `vis2log` — so this models
+// that terminal; every other order reports the screen's own column.
+function reported(frame: readonly (readonly Segment[])[], order: TextOrder, x: number, y: number): number {
+  if (order !== "logical") return x;
+  const pieces: Segment[] = [];
+  const starts: number[] = [];
+  let col = 0;
+  for (const segment of frame[y]!) {
+    if (segment.isControl) continue;
+    for (const glyph of graphemes(segment.text)) {
+      pieces.push(new Segment(glyph, segment.style));
+      starts.push(col);
+      col += pieces.at(-1)!.cellLength;
+    }
+  }
+  const columns = shownWritten(pieces).flatMap((index) => Array.from({ length: pieces[index]!.cellLength }, (_, cell) => starts[index]! + cell));
+  return columns[x] ?? x;
+}
+
+// A left press and release where the user points at screen column `x` of row
+// `y` of the painted `frame`, reported as the terminal reports it, through an
+// app's router.
 function pressOnScreen(input: TextInput, frame: readonly (readonly Segment[])[], order: TextOrder, x: number, y: number): void {
   const focusManager = new DefaultFocusManager({ mounted: () => [input], onScreen: () => [input], frameTime: () => 0 });
   const router = parserFor(new EventRouter({
-    source: { focusManager, frame, frameColumn: (sx, sy) => frameColumn(frame, order, sx, sy), frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
+    source: { focusManager, frame, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
     focusOnClick: false,
   }));
-  router.feed(`\x1b[<0;${x + 1};${y + 1}M\x1b[<0;${x + 1};${y + 1}m`);
+  const at = reported(frame, order, x, y);
+  router.feed(`\x1b[<0;${at + 1};${y + 1}M\x1b[<0;${at + 1};${y + 1}m`);
 }
 
 // The caret's row, and the code unit it starts at in what a terminal keeps of that row.
@@ -501,9 +525,9 @@ describe("every stop of every row is drawn, pressed and stepped from", () => {
   });
 });
 
-describe("under logical, a press reads the terminal's order of the whole composed line", () => {
+describe("under logical, a press reads the column the terminal reports", () => {
   // The terminal orders the whole line it is written, a Panel's border with
-  // it, so the router maps the press through the line, never the field's row.
+  // it, and reports a press at the column of what it was written there.
   it("presses every stop of a right-to-left field inside a Panel where the terminal shows it", () => {
     const value = "אבג";
     const input = new TextInput({ value, multiline: true });
@@ -517,7 +541,7 @@ describe("under logical, a press reads the terminal's order of the whole compose
     // press reads that one, as an app's router does, not a frame drawn after.
     let painted: Segment[][] = [];
     const router = parserFor(new EventRouter({
-      source: { focusManager: fm, get frame() { return painted; }, frameColumn: (x, y) => frameColumn(painted, "logical", x, y), frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
+      source: { focusManager: fm, get frame() { return painted; }, frameNow: () => ({ time: 0, host: {} }), refresh: () => {} },
       focusOnClick: false,
     }));
     for (const stop of stops(value)) {
@@ -525,7 +549,7 @@ describe("under logical, a press reads the terminal's order of the whole compose
       painted = Segment.splitLines(render(panel, drawn));
       const bytes = segmentsToString(render(panel, drawn), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, reducedMotion: false, textOrder: "logical" });
       const { y, unit } = caretUnit(bytes);
-      const x = screenColumn(rows(bytes)[y]!, unit);
+      const x = reported(painted, "logical", screenColumn(rows(bytes)[y]!, unit), y);
       input.cursorPosition = asCodeUnit(stop === 0 ? value.length : 0);
       router.feed(`\x1b[<0;${x + 1};${y + 1}M\x1b[<0;${x + 1};${y + 1}m`);
       expect(input.cursorPosition, `at ${stop}`).toBe(stop);

@@ -35,7 +35,7 @@ With `keyboard: "kitty"` the app asks the terminal for the kitty keyboard protoc
 
 `onPaste(handler)` hears a paste as the text pasted, each line break `\n`. The app turns on the terminal's bracketed paste while it holds it and off when it hands it back, so a paste arrives as one event and never as the keys it holds: a pasted line break submits nothing, and a pasted Ctrl+C quits nothing. A paste whose end never arrives ends after two seconds without a byte, still one paste. A terminal without bracketed paste sends a paste as keys, as before.
 
-`onMouse(handler)` hears every pointer event but the vertical wheel — presses, releases, motion and sideways scrolling — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. That cell is the screen's: where the terminal reorders right-to-left text itself ([`logical` order](/right-to-left)), it shows each line of `app.frame` reordered as a whole, and `app.frameColumn(x, y)` is the column of the frame it shows there. Each returns a function that stops the handler hearing.
+`onMouse(handler)` hears every pointer event but the vertical wheel — presses, releases, motion and sideways scrolling — at the terminal cell under the pointer, counted from 0. Only the alternate surface reports the pointer. Each returns a function that stops the handler hearing.
 
 `app.pointerShape` sets the pointer's shape over the terminal by its CSS `cursor` name — `"pointer"`, `"text"`, `"default"` and the rest of `PointerShape` — on a terminal that reads OSC 22, while the app runs; the shape it already has writes nothing, and the app gives the terminal its default back when it hands it back. A [`WidgetApp`](/widgets) sets it from the widget under the pointer.
 

@@ -166,10 +166,6 @@ export class WidgetApp implements FrameSource, FrameHost {
     return this.app.frame;
   }
 
-  frameColumn(x: number, y: number): number {
-    return this.app.frameColumn(x, y);
-  }
-
   /** The frame this app draws now (`FrameHost`): the App's time, on a frame this app is the host of, as its frames say. */
   frameNow(): HostFrame {
     return { time: this.app.frameNow().time, host: this };
