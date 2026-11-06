@@ -4,15 +4,22 @@
     {
       "version": "pr-589",
       "ref": "refs/pull/589/merge",
-      "sha": "c2e202e287f724e0dd1c8505e85e4c0a9d47e75e",
-      "timestamp": "2026-11-06T23:40:43.760Z",
+      "sha": "373f968e6a7090b6965a248f24dca4fb16b9a783",
+      "timestamp": "2026-11-06T23:48:02.015Z",
       "commits": [
         {
-          "sha": "c2e202e287f724e0dd1c8505e85e4c0a9d47e75e",
+          "sha": "373f968e6a7090b6965a248f24dca4fb16b9a783",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:38:50Z",
-          "message": "Merge c210a1c40c9c179e577eb581f6e6199a157f35f0 into f5cb509f1c072161a33d4f5deb776c9d4e56b2ff\n"
+          "timestamp": "2026-11-06T23:46:19Z",
+          "message": "Merge 75bedd445ee0ace26d3c7f9728fb527c618e973b into f5cb509f1c072161a33d4f5deb776c9d4e56b2ff\n"
+        },
+        {
+          "sha": "75bedd445ee0ace26d3c7f9728fb527c618e973b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T16:46:06-07:00",
+          "message": "A line break inside a sequence is left to the lexing pass (rich-control-codes-xh4n.gux); the carry linesOf held is removed (rich-control-codes-xh4n.8qs)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "c210a1c40c9c179e577eb581f6e6199a157f35f0",
