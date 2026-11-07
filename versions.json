@@ -4,15 +4,22 @@
     {
       "version": "pr-595",
       "ref": "refs/pull/595/merge",
-      "sha": "3e606ed3438654f5a768e62fbf367ff5524486d6",
-      "timestamp": "2026-11-07T06:37:49.460Z",
+      "sha": "56cea56e557b9fc0f90b6699b828e0d14a529f3c",
+      "timestamp": "2026-11-07T06:46:26.866Z",
       "commits": [
         {
-          "sha": "3e606ed3438654f5a768e62fbf367ff5524486d6",
+          "sha": "56cea56e557b9fc0f90b6699b828e0d14a529f3c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T06:35:10Z",
-          "message": "Merge 05442b4be4d211cfbebcd42c0ce3897062060edd into e8ccaa344a8e212c55b5d252d065534fb5b7a315\n"
+          "timestamp": "2026-11-07T06:43:49Z",
+          "message": "Merge a3dcfd00d3e8d59efc5f569e6ade49b28b569e25 into e8ccaa344a8e212c55b5d252d065534fb5b7a315\n"
+        },
+        {
+          "sha": "a3dcfd00d3e8d59efc5f569e6ade49b28b569e25",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T23:43:22-07:00",
+          "message": "Disabled text is held under what muted text shows as an export draws dim, never vanishing into the ground (rich-palette-xovz.qg7)\n\nReview (medium): the bound assumed dimmed muted stood at its floor, and the\nfallback dimmed the faintest slot to near-invisibility. dimShown in\nexport-lines is now the one reading of SGR dim's strength; writeText weighs\nevery slot plain then dimmed against it, and the test measures through it.\nHELD_UNDER is built once; floorOn and textOn docs say what indexed depths do.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "05442b4be4d211cfbebcd42c0ce3897062060edd",
