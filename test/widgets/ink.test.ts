@@ -78,6 +78,12 @@ describe("ink", () => {
     expect(muted.color.getTruecolor(terminal).hex).toBe(ink(GRUVBOX, "foreground", "background", at).color.getTruecolor(terminal).hex);
   });
 
+  it("refuses, by name, a terminal that shows every color as its ground", () => {
+    const black = new ColorRgba(0, 0, 0);
+    const terminal = new TerminalColors(black, black, new ColorTable(Array.from({ length: 16 }, () => black)));
+    expect(() => ink(GRUVBOX, "foreground", "background", { fit: slide, depth: ColorDepth.STANDARD, terminal })).toThrow(/no text can be seen/);
+  });
+
   describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("on %s", (_name, theme) => {
     it.each([
       ["sixteen colors", ColorDepth.STANDARD, "background"],

@@ -420,6 +420,8 @@ function slotted(palette: Palette, text: TextIntent, ground: ColorRgba, fit: Tex
   };
   const named: readonly Slot[] = drawnAt.terminal === undefined ? [] : [[ColorSpec.default(), terminal.foregroundColor]];
   const visible = [...named, ...table].filter(([, shown]) => shown.hex !== groundShown.hex);
+  // [LAW:no-silent-failure] A table that shows every slot as the ground's color has no text to offer.
+  if (visible.length === 0) throw new RangeError(`writeText: every color this table writes shows as the ground ${groundShown.hex}, so no text can be seen on it`);
   const drawn = (intent: TextIntent): Slot => {
     const statedColor = stated(intent);
     // Where no slot reads, the one standing furthest off the ground: the most legible the table has.
