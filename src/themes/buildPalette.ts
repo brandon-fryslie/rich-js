@@ -1,7 +1,7 @@
 import { ColorRgba, blendRgb, contrastRatio, relativeLuminance } from "../core/color.js";
 import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
 import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
-import { groundRelativeHint, neutralAlpha, neutralText, textFloor, withAlpha, type NeutralIntent } from "./text-on.js";
+import { disabledInk, groundRelativeHint, neutralText, textFloor, withAlpha, type NeutralIntent } from "./text-on.js";
 
 /**
  * Base colors required to build a full semantic palette.
@@ -189,7 +189,7 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
 
   "background-muted": (at) => blendRgb(at("background"), at("foreground"), MUTED_BLEND),
   "foreground-muted": (at) => blendRgb(at("foreground"), at("background"), MUTED_BLEND),
-  "foreground-disabled": (at) => withAlpha(at("foreground"), neutralAlpha("text-disabled")),
+  "foreground-disabled": (at) => disabledInk(at("foreground")),
 
   surface: (at) => blendRgb(at("background"), at("foreground"), SURFACE_LIFT),
   "surface-active": (at) => shiftLightness(at("surface"), SURFACE_ACTIVE_LIFT),
@@ -237,6 +237,9 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "scrollbar-corner-color": same("scrollbar-background"),
 };
 
+/** How much more contrast muted text holds on a ground than disabled text draws there. */
+const MUTED_OVER_DISABLED = 0.25;
+
 export const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "foreground"];
 
 /** Every role of every palette, read off the rules. */
@@ -276,9 +279,15 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
   const side = contrastFor(at("background"));
   for (const key of ACCENT_KEYS) {
     const muted = at(`${key}-muted`).compositeOver(at("background"));
-    known.set(`text-${key}`, heldOn(at(`text-${key}`), [...grounds, muted], textFloor(`text-${key}`), side));
+    known.set(`text-${key}`, heldOn(at(`text-${key}`), [...grounds, muted], () => textFloor(`text-${key}`), side));
   }
-  known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, textFloor("foreground-muted"), side));
+  // Muted is secondary text and disabled is text that cannot be used, so on
+  // each ground muted is held past the disabled text `textOn` draws there —
+  // foreground's tint, never the stated role.
+  const disabled = disabledInk(at("foreground"));
+  const mutedFloor = (ground: ColorRgba): number =>
+    Math.max(textFloor("foreground-muted"), contrastRatio(disabled.compositeOver(ground), ground) + MUTED_OVER_DISABLED);
+  known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, mutedFloor, side));
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
 }
 
@@ -339,7 +348,7 @@ function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRg
 
 /**
  * Text Textual promises legible on several grounds: `color` moved in lightness
- * toward the palette's own text side until it clears `floor` on each, in turn.
+ * toward the palette's own text side until it clears its `floor` on each, in turn.
  * The grounds of one palette sit on one side of its text, so a step that clears
  * a later ground loses none of the earlier ones. The last ground is the
  * promise: where no lightness on the text side clears it, the color that does
@@ -349,6 +358,6 @@ function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRg
  * [LAW:single-enforcer] The one rule for a palette's fixed text, for the
  * palettes derived from a tint and the authored ones alike.
  */
-function heldOn(color: ColorRgba, grounds: readonly ColorRgba[], floor: number, side: ColorRgba): ColorRgba {
-  return grounds.reduce((held, ground) => ensureContrastToward(held, ground, floor, side), color);
+function heldOn(color: ColorRgba, grounds: readonly ColorRgba[], floor: (ground: ColorRgba) => number, side: ColorRgba): ColorRgba {
+  return grounds.reduce((held, ground) => ensureContrastToward(held, ground, floor(ground), side), color);
 }

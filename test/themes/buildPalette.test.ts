@@ -72,8 +72,8 @@ describe("buildPalette", () => {
   it("derives foreground-muted and background-muted for the two base roles", () => {
     const p = buildPalette("test", true, TEST_BASE);
     const fgMuted = p.get("foreground-muted")!;
-    // Muted foreground (white, blended 70% toward black bg) should be
-    // dimmer than plain foreground but still brighter than background.
+    // Muted foreground, held to its floor on the grounds, is dimmer than
+    // plain foreground but still brighter than background.
     expect(fgMuted.red).toBeLessThan(TEST_BASE.foreground.red);
     expect(fgMuted.red).toBeGreaterThan(TEST_BASE.background.red);
 
@@ -100,4 +100,10 @@ describe("buildPalette", () => {
       expect(p.get(`text-${key}`)).toBeDefined();
     }
   });
+});
+
+it("orders foreground-muted against the disabled text drawn, not a stated foreground-disabled", () => {
+  const plain = buildPalette("test", true, TEST_BASE);
+  const stated = buildPalette("test", true, { ...TEST_BASE, "foreground-disabled": new ColorRgba(255, 255, 255) });
+  expect(stated.get("foreground-muted").hex).toBe(plain.get("foreground-muted").hex);
 });

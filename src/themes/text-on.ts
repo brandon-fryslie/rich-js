@@ -146,6 +146,9 @@ const RELATIVE: Readonly<Record<NeutralIntent, { readonly alpha: number; readonl
 /** `color` at `alpha`, its channels kept. */
 export const withAlpha = (color: ColorRgba, alpha: number): ColorRgba => new ColorRgba(color.red, color.green, color.blue, alpha);
 
+/** Disabled text in a theme's `foreground`: Textual's tint, before any ground. */
+export const disabledInk = (foreground: ColorRgba): ColorRgba => withAlpha(foreground, RELATIVE["text-disabled"].alpha);
+
 /** Textual's ground-relative weights, by name. */
 export const NEUTRAL_INTENTS = Object.keys(RELATIVE) as readonly NeutralIntent[];
 
@@ -227,7 +230,7 @@ const neutralShades = (palette: Palette, ground: ColorRgba, own: readonly Palett
 const disabled = (own: readonly PaletteRole[]): IntentRule => ({
   floor: RELATIVE["text-disabled"].floor,
   on: (palette, ground) => ({
-    candidate: withAlpha(palette.get("foreground"), RELATIVE["text-disabled"].alpha),
+    candidate: disabledInk(palette.get("foreground")),
     miss: () => ({ tint: palette.get("foreground"), shades: neutralShades(palette, ground, own) }),
   }),
 });
