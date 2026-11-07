@@ -32,7 +32,12 @@ export interface TerminalState {
   readonly cursorColor: ColorRgba | undefined;
 }
 
-/** A terminal showing nothing a frame declared: what a take starts from and a hand-back returns to. */
+/**
+ * A terminal showing nothing a frame declared: what a take starts from and a
+ * hand-back returns to. Its key order is the order a commit sends the parts
+ * in, so `titleSaved` stands before `title`: the terminal's title is pushed
+ * before a program's goes over it.
+ */
 export const EMPTY_TERMINAL_STATE: TerminalState = {
   progress: { state: "none" },
   pointer: pointerShape("default"),
@@ -94,20 +99,21 @@ const sameProgress = (a: TerminalProgress, b: TerminalProgress): boolean =>
 
 const sameColor = (a: ColorRgba | undefined, b: ColorRgba | undefined): boolean =>
   (a === undefined ? undefined : wireHex(a)) === (b === undefined ? undefined : wireHex(b));
+// A status is replaced whole, every field written, so two that write the same are the same.
 const sameStatus = (a: SessionStatus | undefined, b: SessionStatus | undefined): boolean =>
-  a === b || (a !== undefined && b !== undefined && a.text === b.text && sameColor(a.indicator, b.indicator) && sameColor(a.color, b.color));
+  a === b || SESSION_STATUS.encodings[0]!.encode(a) === SESSION_STATUS.encodings[0]!.encode(b);
 
 type DecidingFeatures = Pick<TerminalFeatures, "capabilities" | "policy" | "layers">;
 
 interface Part<V> {
-  /** The sends that bring the terminal from `from` to `to`; the last decides whether it got there, and none means nothing need be sent. */
-  sends(from: V, to: V, features: DecidingFeatures): readonly TerminalSend[];
+  /** The send that brings the terminal to `to`, or `undefined` where nothing need be sent. */
+  send(to: V, features: DecidingFeatures): TerminalSend | undefined;
   same(a: V, b: V): boolean;
 }
 
 // A part one feature sends whole, whatever it held before.
 const whole = <V>(feature: TerminalFeature<V>, same: (a: V, b: V) => boolean): Part<V> => ({
-  sends: (_from, to, features) => [pick(feature, to, features)],
+  send: (to, features) => pick(feature, to, features),
   same,
 });
 
@@ -115,17 +121,17 @@ const whole = <V>(feature: TerminalFeature<V>, same: (a: V, b: V) => boolean): P
 // popping it gives that one back: the title is taken away by the pop, so taking
 // it away sends nothing of its own.
 const TITLE_SAVED_PART: Part<boolean> = {
-  sends: (_from, to, features) => [pick(TITLE_STACK, to ? "push" : "pop", features)],
+  send: (to, features) => pick(TITLE_STACK, to ? "push" : "pop", features),
   same: (a, b) => a === b,
 };
 
 const TITLE_PART: Part<string | undefined> = {
-  sends: (_from, to, features) => (to === undefined ? [] : [pick(TITLE, to, features)]),
+  send: (to, features) => (to === undefined ? undefined : pick(TITLE, to, features)),
   same: (a, b) => a === b,
 };
 
 const BADGE_PART: Part<string | undefined> = {
-  sends: (_from, to, features) => [pick(BADGE, to ?? "", features)],
+  send: (to, features) => pick(BADGE, to ?? "", features),
   same: (a, b) => (a ?? "") === (b ?? ""),
 };
 
@@ -199,7 +205,7 @@ function commit(committed: Committed, named: Partial<TerminalState>, features: D
   const decide = <K extends keyof TerminalState>(part: K): void => {
     if (!(part in named)) return;
     const value = named[part];
-    const { sends: sendsOf, same } = PARTS[part];
+    const { send, same } = PARTS[part];
     const refusal = committed.refused[part];
     if (same(committed.sent[part], value as TerminalState[K])) {
       if (refusal !== undefined) {
@@ -209,17 +215,16 @@ function commit(committed: Committed, named: Partial<TerminalState>, features: D
       return;
     }
     if (refusal !== undefined && refusal.by === features && same(refusal.wanted, value as TerminalState[K])) return;
-    const decided = sendsOf(committed.sent[part], value as TerminalState[K], features);
-    sends.push(...decided);
+    const decided = send(value as TerminalState[K], features);
+    if (decided !== undefined) sends.push(decided);
     changed = true;
-    const last = decided.at(-1);
-    if (last !== undefined && last.bytes === undefined) {
+    if (decided !== undefined && decided.bytes === undefined) {
       const refusal: Refusal<TerminalState[K]> = { wanted: value as TerminalState[K], by: features };
       (refused as { [Q in K]?: Refusal<TerminalState[K]> })[part] = refusal;
     } else {
       sent[part] = value as TerminalState[K];
       delete refused[part];
-      if (last?.wrapped === true) wrapped.add(part);
+      if (decided?.wrapped === true) wrapped.add(part);
       else wrapped.delete(part);
     }
   };
@@ -242,5 +247,8 @@ export function resendWrapped(committed: Committed, features: DecidingFeatures):
     wanted[part] = committed.sent[part];
   };
   committed.wrapped.forEach(forget);
-  return commit({ ...committed, sent: forgotten }, wanted, features);
+  // A resend decides what was sent, not what was wanted since: the refusal of
+  // a later change stands, so the next frame does not decide it again.
+  const { next, sends } = commit({ ...committed, sent: forgotten, refused: {} }, wanted, features);
+  return { next: { ...next, refused: { ...next.refused, ...committed.refused } }, sends };
 }

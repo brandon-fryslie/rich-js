@@ -20,7 +20,7 @@ import type { Height } from "./protocol.js";
 import { segmentsToString, shownOn } from "./render.js";
 import { Segment } from "./segment.js";
 import type { CaretShape } from "./style.js";
-import type { TerminalFeatures } from "./terminal-capabilities.js";
+import { notSent, type TerminalFeatures } from "./terminal-capabilities.js";
 import type { TerminalDeclaration } from "./terminal-requests.js";
 import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState, resendWrapped, type Committed, type TerminalState } from "./terminal-state.js";
 
@@ -240,7 +240,7 @@ class DeclaredState {
     let bytes = "";
     for (const decided of sends) {
       if (!this.terminal) {
-        features.onSend?.({ ...decided, bytes: undefined, reason: `not sent: not a terminal (would be ${decided.reason})` });
+        features.onSend?.(notSent(decided.feature, `not sent: not a terminal (would be ${decided.reason})`));
         continue;
       }
       bytes += decided.bytes ?? "";

@@ -95,6 +95,14 @@ describe("iTerm2's chrome", () => {
     expect(BADGE.encodings[0]!.encode("\\(x)")).toBe(`${ESC}]1337;SetBadgeFormat=${btoa("\\\\(x)")}${ST}`);
   });
 
+  it("sends a status once however it is spelled, when two spellings write the same", () => {
+    const commit = committer();
+    commit(iterm2(), { status: { text: "a;b" } });
+    expect(commit(iterm2(), { status: { text: "a,b" } })).toBe("");
+    expect(commit(iterm2(), { status: {} })).not.toBe("");
+    expect(commit(iterm2(), { status: { text: "" } })).toBe("");
+  });
+
   it("is sent to iTerm2 and refused for any other terminal", () => {
     expect(committer()(iterm2(), { tabColor: purple })).toContain("]6;1;bg;red");
     expect(committer()(xterm, { tabColor: purple, badge: "prod" })).toBe("");
@@ -143,6 +151,15 @@ describe("a reattach", () => {
     expect(resent.sends.map((send) => send.feature)).toEqual(["tab color"]);
     expect(bytes(resent.sends)).toContain(`${ESC}Ptmux;`);
     expect(resent.next.sent).toEqual(next.sent);
+  });
+
+  it("keeps the refusal of a later change, so the next frame does not decide it again", () => {
+    const wrapping = iterm2([tmux]);
+    const refusing = { ...xterm, layers: [tmux] };
+    const shown = commitTerminalState(NOTHING_COMMITTED, { tabColor: purple }, wrapping).next;
+    const refused = commitTerminalState(shown, { tabColor: green }, refusing).next;
+    const resent = resendWrapped(refused, wrapping).next;
+    expect(commitTerminalState(resent, { tabColor: green }, refusing).sends).toEqual([]);
   });
 
   it("re-sends nothing on a bare terminal, which forgets nothing", () => {
