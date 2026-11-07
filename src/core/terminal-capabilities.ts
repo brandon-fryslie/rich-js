@@ -13,7 +13,7 @@
  * painter and the console write what `pick` returns.
  */
 
-import type { Intermediary, TerminalIdentity, TerminalName } from "./terminal-identity.js";
+import type { Intermediary, TerminalIdentity, TerminalName, VersionAnswer } from "./terminal-identity.js";
 
 /** The wire's escape and string terminator, for every encoder in this layer. */
 export const ESC = "\x1b";
@@ -140,6 +140,31 @@ export function inferCapabilities(identity: TerminalIdentity): { capabilities: T
     },
     layers: identity.intermediary === undefined ? [] : [{ kind: identity.intermediary, passthrough: "unknown" }],
   };
+}
+
+// The multiplexers that answer XTVERSION themselves: a pane inside one hears
+// it, never the terminal past it.
+const ANSWERS_FOR_ITSELF: ReadonlySet<Intermediary> = new Set(["tmux", "zellij"]);
+
+/**
+ * What the terminal's own answer to XTVERSION makes of `known`, or `known`
+ * when it gave none — not every terminal implements it, so silence says
+ * nothing. A terminal that answers is `identified`, and no multiplexer that
+ * answers for itself sits in front of it, whatever the environment inherited.
+ * A multiplexer that answers is the innermost layer; the terminal past it
+ * stays what was known, since its answer cannot be heard through the
+ * multiplexer (tmux#5530: the reply arrives as keystrokes).
+ */
+export function identifiedBy(answer: VersionAnswer | undefined, known: { capabilities: TerminalCapabilities; layers: readonly Layer[] }): { capabilities: TerminalCapabilities; layers: readonly Layer[] } {
+  if (answer === undefined) return known;
+  const source = `XTVERSION ${answer.text}`;
+  if (answer.kind === "terminal") {
+    return {
+      capabilities: { ...known.capabilities, terminal: { name: answer.name, evidence: "identified", source } },
+      layers: known.layers.filter((layer) => !ANSWERS_FOR_ITSELF.has(layer.kind)),
+    };
+  }
+  return { capabilities: known.capabilities, layers: known.layers[0]?.kind === answer.layer ? known.layers : [{ kind: answer.layer, passthrough: "unknown" }, ...known.layers] };
 }
 
 /**

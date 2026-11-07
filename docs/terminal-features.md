@@ -53,6 +53,27 @@ confirmed, and no policy acts on that, so nothing that needs tmux's or screen's
 passthrough is sent until the program passes the layer in with its passthrough
 `declared`.
 
+## Asking the terminal who it is
+
+`askTerminalIdentity(app)`, from `@promptctl/rich-js/host`, asks the terminal
+an `App` runs on with XTVERSION (`CSI > 0 q`) and returns the app's features
+with the answer weighed in; set it as `app.terminalFeatures`. A terminal that
+names itself (`kitty(0.35.2)`, `foot(1.16.2)`, `WezTerm …`, `iTerm2 …`,
+`ghostty …`) becomes `identified`, which `strict` acts on, so foot gets OSC 777
+and kitty OSC 99 instead of the OSC 9 fallback. Its answer also proves no tmux
+or zellij sits in front of it, so a layer the environment inherited is dropped.
+A terminal that does not implement XTVERSION answers DA1 alone, and nothing
+changes.
+
+Under tmux or zellij, the multiplexer answers for itself and becomes the
+innermost layer. The terminal past it cannot be asked. A query wrapped in
+tmux's passthrough reaches it, but tmux takes the reply for one of its own and
+hands its body to the pane as keystrokes
+([tmux#5530](https://github.com/tmux/tmux/issues/5530)), so no wrapped query is
+sent. The terminal past a multiplexer, and whether its passthrough is on, stay
+what the environment infers or what the program declares — a program that runs
+`tmux display -p '#{client_termname}'` itself can pass the answer in.
+
 ## The send log
 
 Every decision is reported to `onSend`, including the ones that write nothing,

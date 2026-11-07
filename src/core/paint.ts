@@ -204,7 +204,9 @@ class DeclaredState {
   private believed: TerminalState = EMPTY_TERMINAL_STATE;
 
   constructor(
-    private readonly features: TerminalFeatures,
+    // [LAW:one-source-of-truth] Read from whoever holds them at each commit,
+    // so what the terminal is learned to be reaches a painter mid-take.
+    private readonly featuresOf: () => TerminalFeatures,
     private readonly terminal: boolean,
   ) {}
 
@@ -223,16 +225,17 @@ class DeclaredState {
 
   /** The frame's declarations committed: `handBack` commits none, so what a frame set is taken away. */
   commit(declarations: readonly TerminalDeclaration[] = this.pending.splice(0)): string {
-    const { next, sends } = commitTerminalState(this.believed, declaredState(declarations), this.features);
+    const features = this.featuresOf();
+    const { next, sends } = commitTerminalState(this.believed, declaredState(declarations), features);
     this.believed = next;
     let bytes = "";
     for (const decided of sends) {
       if (!this.terminal) {
-        this.features.onSend?.({ ...decided, bytes: undefined, reason: `not sent: not a terminal (would be ${decided.reason})` });
+        features.onSend?.({ ...decided, bytes: undefined, reason: `not sent: not a terminal (would be ${decided.reason})` });
         continue;
       }
       bytes += decided.bytes ?? "";
-      this.features.onSend?.(decided);
+      features.onSend?.(decided);
     }
     return bytes;
   }
@@ -270,7 +273,7 @@ export class SurfaceRenderer implements Renderer {
   constructor(
     surface: Surface,
     private readonly write: (bytes: string) => void,
-    features: TerminalFeatures,
+    features: () => TerminalFeatures,
     // Whether `write` reaches a terminal: a host's output redirected to a file does not.
     terminal = true,
   ) {
@@ -405,7 +408,7 @@ export class FinalFrameRenderer implements Renderer {
 
   constructor(
     private readonly print: (frame: Segment[][]) => void,
-    features: TerminalFeatures,
+    features: () => TerminalFeatures,
   ) {
     this.state = new DeclaredState(features, false);
     this.declare = this.state.declare;

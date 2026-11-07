@@ -86,6 +86,36 @@ function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
   return ["other", undefined];
 }
 
+/**
+ * Who answered XTVERSION (`CSI > q`): a terminal, or a multiplexer that
+ * answers for itself in place of the terminal past it. `text` is the answer
+ * as sent, `kitty(0.35.2)` or `tmux 3.4`.
+ */
+export type VersionAnswer =
+  | { readonly kind: "terminal"; readonly name: TerminalName; readonly text: string }
+  | { readonly kind: "layer"; readonly layer: Intermediary; readonly text: string };
+
+// How each answers, as yazi's `Brand::from_csi` (yazi-emulator/src/brand.rs)
+// and vtdn.dev's XTVERSION table record it: a name, then its version.
+const VERSION_NAMES: readonly (readonly [Pattern, TerminalName | { readonly layer: Intermediary }])[] = [
+  [pattern(/^kitty\(/), "kitty"],
+  [pattern(/^foot\(/), "foot"],
+  [pattern(/^WezTerm /), "wezterm"],
+  [pattern(/^iTerm2 /), "iterm2"],
+  [pattern(/^ghostty /), "ghostty"],
+  [pattern(/^tmux /), { layer: "tmux" }],
+  [pattern(/^Zellij/), { layer: "zellij" }],
+];
+
+/** Who `text`, the body of an XTVERSION answer after its `>|`, says answered. */
+export function readVersionAnswer(text: string): VersionAnswer {
+  for (const [name, answered] of VERSION_NAMES) {
+    if (text.match(name) === null) continue;
+    return typeof answered === "string" ? { kind: "terminal", name: answered, text } : { kind: "layer", layer: answered.layer, text };
+  }
+  return { kind: "terminal", name: "other", text };
+}
+
 /** The terminal and intermediary `env` gives evidence for. */
 export function identifyTerminal(env: Env): TerminalIdentity {
   const intermediary = intermediaryOf(env);

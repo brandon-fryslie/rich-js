@@ -35,6 +35,7 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { pointerShape, type PointerShape } from "../core/terminal-requests.js";
+import type { TerminalFeatures } from "../core/terminal-capabilities.js";
 import { Segment } from "../core/segment.js";
 import { SurfaceRenderer, type Surface } from "../core/paint.js";
 import { fitHeight, render, type HostFrame, type FrameHost, type Renderable } from "../core/protocol.js";
@@ -262,9 +263,9 @@ export class App implements FrameHost {
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.drawing = drawOptions(options);
     this.console = this.drawingConsole();
-    // A console made again for new colors keeps these options, so the
-    // painter's features are the same whichever console drew the frame.
-    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes), this.console.terminalFeatures, this.host.writesToTerminal);
+    // The painter reads the features of the console that draws now, so what
+    // `terminalFeatures` learns reaches the next commit.
+    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes), () => this.console.terminalFeatures, this.host.writesToTerminal);
   }
 
   /**
@@ -281,6 +282,18 @@ export class App implements FrameHost {
     // [LAW:one-source-of-truth] The console is the one holder of how a frame
     // draws, so the terminal changes by a new console, not beside the old one.
     this.drawing = { ...this.drawing, terminal };
+    this.console = this.drawingConsole();
+    this.refresh();
+  }
+
+  /** What the app may send its terminal, and how it knows: its console's. */
+  get terminalFeatures(): TerminalFeatures {
+    return this.console.terminalFeatures;
+  }
+
+  /** Decide what to send from `features` from the next send on — what `askTerminalIdentity` learned, say. */
+  set terminalFeatures(features: TerminalFeatures) {
+    this.drawing = { ...this.drawing, terminalFeatures: features };
     this.console = this.drawingConsole();
     this.refresh();
   }

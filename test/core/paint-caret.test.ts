@@ -26,7 +26,7 @@ const field = (before: Segment[] = []): Segment[][] => [[...before, new Segment(
 
 function painter(): { renderer: SurfaceRenderer; out: () => string } {
   let bytes = "";
-  const renderer = new SurfaceRenderer("inline", (written) => (bytes += written), { capabilities: declareCapabilities([], "other"), policy: "strict", layers: [], onSend: undefined });
+  const renderer = new SurfaceRenderer("inline", (written) => (bytes += written), () => ({ capabilities: declareCapabilities([], "other"), policy: "strict", layers: [], onSend: undefined }));
   renderer.take();
   return { renderer, out: () => bytes };
 }

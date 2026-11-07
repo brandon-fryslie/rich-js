@@ -11,6 +11,7 @@ import { Console } from "../../src/core/console.js";
 import {
   accepts,
   declareCapabilities,
+  identifiedBy,
   inferCapabilities,
   pick,
   type Encoding,
@@ -21,7 +22,7 @@ import {
   type TerminalPolicy,
   type TerminalSend,
 } from "../../src/core/terminal-capabilities.js";
-import { identifyTerminal, type Intermediary } from "../../src/core/terminal-identity.js";
+import { identifyTerminal, readVersionAnswer, type Intermediary } from "../../src/core/terminal-identity.js";
 import { EMPTY_TERMINAL_STATE, commitTerminalState, declaredState } from "../../src/core/terminal-state.js";
 import { App } from "../../src/host/app.js";
 import { Progress } from "../../src/renderables/progress.js";
@@ -246,5 +247,24 @@ describe("a Progress's terminal indicator", () => {
       expect(log.every((send) => send.bytes === undefined)).toBe(true);
       expect(log[0]?.reason).toBe(`fallback: OSC 9;4 misread where unsupported; TERM_PROGRAM=iTerm.app is inferred, ${policy}`);
     }
+  });
+});
+
+describe("identifiedBy", () => {
+  const known = inferCapabilities(identifyTerminal({ TERM: "screen-256color", STY: "1.pts", ZELLIJ: "0" }));
+
+  it("identifies a terminal off the table as other", () => {
+    expect(readVersionAnswer("XTerm(388)")).toEqual({ kind: "terminal", name: "other", text: "XTerm(388)" });
+    expect(identifiedBy(readVersionAnswer("XTerm(388)"), known).capabilities.terminal).toEqual({ name: "other", evidence: "identified", source: "XTVERSION XTerm(388)" });
+  });
+
+  it("keeps a layer that does not answer for itself when the terminal answers", () => {
+    expect(identifiedBy(readVersionAnswer("kitty(0.35.2)"), known).layers).toEqual([{ kind: "screen", passthrough: "unknown" }]);
+  });
+
+  it("puts a multiplexer that answers for itself innermost, once", () => {
+    const zellij = identifiedBy(readVersionAnswer("Zellij 0.41.2"), known);
+    expect(zellij.layers.map((layer) => layer.kind)).toEqual(["zellij", "screen"]);
+    expect(identifiedBy(readVersionAnswer("Zellij 0.41.2"), zellij).layers).toEqual(zellij.layers);
   });
 });
