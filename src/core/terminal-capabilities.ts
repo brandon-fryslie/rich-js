@@ -97,6 +97,26 @@ export interface TerminalFeatures {
   readonly onSend: ((send: TerminalSend) => void) | undefined;
 }
 
+/**
+ * A layer as a program states it: that it is there is the program's word, so
+ * the console holds it as `declared` and the program has no evidence to give.
+ */
+export type LayerDeclaration = Omit<Layer, "evidence"> & { readonly evidence?: never };
+
+/**
+ * What a program may state of its terminal features, each part it leaves out
+ * the environment's: or a whole `TerminalFeatures`, as a console reports
+ * them, taken as they are.
+ */
+export type TerminalFeaturesOption =
+  | TerminalFeatures
+  | (Partial<Omit<TerminalFeatures, "capabilities" | "layers">> & { readonly capabilities?: Partial<TerminalCapabilities>; readonly layers?: readonly LayerDeclaration[] });
+
+/** `layers` as a console holds them: a stated one is `declared`, one already weighed keeps its evidence. */
+export function heldLayers(layers: readonly (Layer | LayerDeclaration)[]): readonly Layer[] {
+  return layers.map((layer) => (layer.evidence === undefined ? { ...layer, evidence: "declared" } : layer));
+}
+
 /** One decision the send log records: the bytes written, or `undefined` and why not. */
 export interface TerminalSend {
   readonly feature: string;
@@ -144,9 +164,10 @@ export function inferCapabilities(identity: TerminalIdentity): { capabilities: T
   };
 }
 
-const STRENGTH: readonly Evidence[] = ["declared", "confirmed", "identified", "inferred", "unknown"];
+// How strongly each is known, strongest first.
+const STRENGTH: Readonly<Record<Evidence, number>> = { declared: 0, confirmed: 1, identified: 2, inferred: 3, unknown: 4 };
 // Whether `a` is known more strongly than `b`.
-const stronger = (a: Evidence, b: Evidence): boolean => STRENGTH.indexOf(a) < STRENGTH.indexOf(b);
+const stronger = (a: Evidence, b: Evidence): boolean => STRENGTH[a] < STRENGTH[b];
 
 /**
  * What an answer to XTVERSION makes of `known`. Nothing known more strongly
@@ -168,6 +189,8 @@ export function identifiedBy(answer: VersionAnswer, known: { capabilities: Termi
     };
   }
   const existing = known.layers.find((layer) => layer.kind === answer.layer);
+  // A layer the program declared keeps the place it was declared in.
+  if (existing?.evidence === "declared") return known;
   const answered: Layer = existing === undefined
     ? { kind: answer.layer, evidence: "identified", passthrough: "unknown" }
     : { ...existing, evidence: stronger(existing.evidence, "identified") ? existing.evidence : "identified" };

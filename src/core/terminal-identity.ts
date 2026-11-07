@@ -98,7 +98,8 @@ export type VersionAnswer =
   | { readonly kind: "layer"; readonly layer: Intermediary; readonly text: string };
 
 // How each answers, as yazi's `Brand::from_csi` (yazi-emulator/src/brand.rs)
-// and vtdn.dev's XTVERSION table record it: a name, then its version.
+// and vtdn.dev's XTVERSION table record it: a name, then its version. zellij
+// answers for itself, `Zellij(<version>)` (zellij-server/src/panes/grid.rs).
 const VERSION_NAMES: readonly (readonly [Pattern, Exclude<TerminalName, "other"> | { readonly layer: Intermediary }])[] = [
   [pattern(/^kitty\(/), "kitty"],
   [pattern(/^foot\(/), "foot"],

@@ -118,3 +118,42 @@ describe("an App whose features are learned while it runs", () => {
     expect(after).toContain(`${ESC}]22;pointer`);
   });
 });
+
+describe("an App whose learned features decide as the old ones did", () => {
+  const ESC = "\x1b";
+  const later = () => new Promise((resolve) => setTimeout(resolve));
+
+  async function swapped(session: ProbeSession, setUp: (app: App) => void): Promise<{ app: App; before: string; after: string }> {
+    const host = replayHost(session);
+    const app = new App({ host, surface: "inline", clock: fakeClock(0), view: () => new RichText("x") });
+    setUp(app);
+    const done = app.run();
+    await later();
+    const before = host.output();
+    app.terminalFeatures = (await askTerminalIdentity(app))!;
+    await later();
+    const after = host.output().slice(before.length);
+    app.stop();
+    await done;
+    return { app, before, after };
+  }
+
+  // ghostty identified may show progress, but an app that declares none has nothing to clear.
+  it("sends no progress clear when nothing was ever shown", async () => {
+    const { after } = await swapped(SESSIONS.ghostty, () => undefined);
+    expect(after).not.toContain(`${ESC}]9;4`);
+  });
+
+  // kitty with no layer between: OSC 22 is sent before and after it names itself.
+  it("does not send the pointer shape again when it was already sent", async () => {
+    const { before, after } = await swapped(SESSIONS.kitty, (app) => (app.pointerShape = "pointer"));
+    expect(before).toContain(`${ESC}]22;pointer`);
+    expect(after).not.toContain(`${ESC}]22;`);
+  });
+
+  it("refuses features set once the app has stopped, as it refuses a pointer shape", async () => {
+    const { app } = await swapped(SESSIONS.kitty, () => undefined);
+    expect(() => (app.terminalFeatures = app.terminalFeatures)).toThrow(/stopped/);
+    expect(() => (app.pointerShape = "pointer")).toThrow(/stopped/);
+  });
+});

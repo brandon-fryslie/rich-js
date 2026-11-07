@@ -3,7 +3,7 @@
  * progress indicator — and the commit that brings the terminal from what it
  * holds to what the last frame declared. A view is drawn every frame, so a
  * declaration repeats; the commit sends only what changed, and a commit
- * against `EMPTY_TERMINAL_STATE` re-sends everything, which is how a terminal
+ * against `NOTHING_COMMITTED` re-sends everything, which is how a terminal
  * that forgot (a tmux reattach) is brought back. Pure: the painter that owns
  * the terminal writes what it returns.
  */
@@ -34,19 +34,40 @@ export function declaredState(declarations: readonly TerminalDeclaration[]): Ter
 const sameProgress = (a: TerminalProgress, b: TerminalProgress): boolean =>
   a.state === b.state && ("percent" in a ? shownPercent(a.percent) : -1) === ("percent" in b ? shownPercent(b.percent) : -1);
 
+type DecidingFeatures = Pick<TerminalFeatures, "capabilities" | "policy" | "layers">;
+
 /**
- * The terminal brought from `believed` to `wanted`: what it holds after, and
- * every send decided on the way, those that write nothing included. A
- * `believed` of `undefined` is a terminal whose state is unknown — what was
- * decided under features since replaced — so `wanted` is sent whatever it is,
- * a clear included. Each change decided against is decided once: the same
- * capabilities would refuse it on every frame, so the log records it at the change and not sixty times a second.
+ * What a commit remembers: what the terminal was actually sent, and the last
+ * change refused, with the features that refused it. A refusal writes
+ * nothing, so `sent` stays what the terminal holds, and the next commit under
+ * other features decides that change again on its own.
+ */
+export interface Committed {
+  readonly sent: TerminalState;
+  readonly refused: { readonly wanted: TerminalState; readonly by: DecidingFeatures } | undefined;
+}
+
+/** Nothing sent and nothing refused: what a take starts from. */
+export const NOTHING_COMMITTED: Committed = { sent: EMPTY_TERMINAL_STATE, refused: undefined };
+
+/**
+ * The terminal brought from what it was sent to `wanted`: what is remembered
+ * after, and every send decided on the way, those that write nothing
+ * included. Each change decided against is decided once per features: the
+ * same ones would refuse it on every frame, so the log records it at the
+ * change and not sixty times a second. A clear the features refuse — a hand-back
+ * under features that no longer allow the indicator — leaves it shown, since
+ * sending what they refuse is what they exist to prevent.
  */
 export function commitTerminalState(
-  believed: TerminalState | undefined,
+  committed: Committed,
   wanted: TerminalState,
-  features: Pick<TerminalFeatures, "capabilities" | "policy" | "layers">,
-): { readonly next: TerminalState; readonly sends: readonly TerminalSend[] } {
-  if (believed !== undefined && sameProgress(believed.progress, wanted.progress)) return { next: believed, sends: [] };
-  return { next: wanted, sends: [pick(PROGRESS, wanted.progress, features)] };
+  features: DecidingFeatures,
+): { readonly next: Committed; readonly sends: readonly TerminalSend[] } {
+  if (sameProgress(committed.sent.progress, wanted.progress)) return { next: { sent: committed.sent, refused: undefined }, sends: [] };
+  const { refused } = committed;
+  if (refused !== undefined && refused.by === features && sameProgress(refused.wanted.progress, wanted.progress)) return { next: committed, sends: [] };
+  const send = pick(PROGRESS, wanted.progress, features);
+  const next = send.bytes === undefined ? { sent: committed.sent, refused: { wanted, by: features } } : { sent: wanted, refused: undefined };
+  return { next, sends: [send] };
 }

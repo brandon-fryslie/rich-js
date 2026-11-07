@@ -9,7 +9,7 @@ import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
 import { BELL, CLIPBOARD, NOTIFICATION, POINTER, TITLE, pointerShape, type PointerShape } from "./terminal-requests.js";
-import { inferCapabilities, pick, type TerminalCapabilities, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
+import { heldLayers, inferCapabilities, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -135,7 +135,7 @@ export interface ConsoleOptions {
    * policy, no log. State what the terminal reads (`declareCapabilities`) to
    * have it sent on your word; `bestGuess` acts on inference where a miss is ignored.
    */
-  terminalFeatures?: Partial<Omit<TerminalFeatures, "capabilities">> & { capabilities?: Partial<TerminalCapabilities> };
+  terminalFeatures?: TerminalFeaturesOption;
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
@@ -454,7 +454,7 @@ export class Console {
         terminal: options?.terminalFeatures?.capabilities?.terminal ?? inferred.capabilities.terminal,
         declared: options?.terminalFeatures?.capabilities?.declared ?? inferred.capabilities.declared,
       },
-      layers: options?.terminalFeatures?.layers ?? inferred.layers,
+      layers: options?.terminalFeatures?.layers === undefined ? inferred.layers : heldLayers(options.terminalFeatures.layers),
       policy: options?.terminalFeatures?.policy ?? "strict",
       onSend: options?.terminalFeatures?.onSend,
     };
@@ -803,9 +803,9 @@ export class Console {
     this._request(CLIPBOARD, text);
   }
 
-  /** Sets the mouse pointer's shape over the terminal (OSC 22). */
-  setPointerShape(shape: PointerShape): void {
-    this._request(POINTER, pointerShape(shape));
+  /** Sets the mouse pointer's shape over the terminal (OSC 22): `true` when it was sent, `false` when it was decided against. */
+  setPointerShape(shape: PointerShape): boolean {
+    return this._request(POINTER, pointerShape(shape));
   }
 
   /** Raises a desktop notification, in the protocol this console's terminal reads. */
@@ -819,7 +819,8 @@ export class Console {
   // reaches whoever is at the terminal and no one else, straight to the sink, because it moves no cursor and a live region
   // would repaint its frame.
   // Every decision lands in the send log, those that write nothing included.
-  private _request<A>(feature: TerminalFeature<A>, value: A): void {
+  // Whether it was sent.
+  private _request<A>(feature: TerminalFeature<A>, value: A): boolean {
     refuseRenderWrite(this._madeIn);
     const send: TerminalSend = !this._attended
       ? { feature: feature.name, bytes: undefined, reason: "not sent: no one is at a terminal" }
@@ -828,6 +829,7 @@ export class Console {
         : pick(feature, value, this._features);
     if (send.bytes !== undefined) this.file.write(send.bytes);
     this._features.onSend?.(send);
+    return send.bytes !== undefined;
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

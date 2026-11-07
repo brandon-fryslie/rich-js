@@ -17,7 +17,7 @@ const log: TerminalSend[] = [];
 const console = new Console({
   terminalFeatures: {
     ...(flags.has("--declare") ? { capabilities: declareCapabilities(["OSC 9;4"]) } : {}),
-    ...(flags.has("--tmux") ? { layers: [{ kind: "tmux", evidence: "declared", passthrough: "declared" }] } : {}),
+    ...(flags.has("--tmux") ? { layers: [{ kind: "tmux", passthrough: "declared" }] } : {}),
     onSend: (send) => log.push(send),
   },
 });

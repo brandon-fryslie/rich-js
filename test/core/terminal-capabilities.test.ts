@@ -23,7 +23,7 @@ import {
   type TerminalSend,
 } from "../../src/core/terminal-capabilities.js";
 import { identifyTerminal, readVersionAnswer, type Intermediary } from "../../src/core/terminal-identity.js";
-import { EMPTY_TERMINAL_STATE, commitTerminalState, declaredState } from "../../src/core/terminal-state.js";
+import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState } from "../../src/core/terminal-state.js";
 import { App } from "../../src/host/app.js";
 import { Progress } from "../../src/renderables/progress.js";
 import { scriptedHost } from "../host/scripted-host.js";
@@ -52,20 +52,32 @@ describe("commitTerminalState", () => {
 
   it("sends nothing for a frame that declares what the terminal already shows", () => {
     const shown = { progress: { state: "normal" as const, percent: 50.2 } };
-    expect(commitTerminalState(shown, { progress: { state: "normal", percent: 49.9 } }, features).sends).toEqual([]);
+    expect(commitTerminalState({ sent: shown, refused: undefined }, { progress: { state: "normal", percent: 49.9 } }, features).sends).toEqual([]);
   });
 
   it.each([[150, 160], [Number.NaN, Number.NaN], [-5, 0]])("sends nothing between %s%% and %s%%, which are sent as the same bytes", (from, to) => {
-    expect(commitTerminalState({ progress: { state: "normal", percent: from } }, { progress: { state: "normal", percent: to } }, features).sends).toEqual([]);
+    expect(commitTerminalState({ sent: { progress: { state: "normal", percent: from } }, refused: undefined }, { progress: { state: "normal", percent: to } }, features).sends).toEqual([]);
   });
 
   it("re-sends everything against an empty terminal, as one that forgot it needs", () => {
-    const { sends } = commitTerminalState(EMPTY_TERMINAL_STATE, { progress: { state: "paused", percent: 30 } }, features);
+    const { sends } = commitTerminalState(NOTHING_COMMITTED, { progress: { state: "paused", percent: 30 } }, features);
     expect(sends.map((send) => send.bytes)).toEqual(["\x1b]9;4;4;30\x1b\\"]);
   });
 
-  it("sends what a frame declares, a clear included, to a terminal whose state is unknown", () => {
-    expect(commitTerminalState(undefined, EMPTY_TERMINAL_STATE, features).sends.map((send) => send.bytes)).toEqual(["\x1b]9;4;0\x1b\\"]);
+  it("remembers a refused change as unsent, deciding it once per features and again under new ones", () => {
+    const refusing = { capabilities: declareCapabilities([], "other"), policy: "strict" as const, layers: [] };
+    const wanted = { progress: { state: "indeterminate" as const } };
+    const first = commitTerminalState(NOTHING_COMMITTED, wanted, refusing);
+    expect(first.sends.map((send) => send.bytes)).toEqual([undefined]);
+    expect(first.next.sent).toBe(EMPTY_TERMINAL_STATE);
+    expect(commitTerminalState(first.next, wanted, refusing).sends).toEqual([]);
+    const allowed = commitTerminalState(first.next, wanted, features);
+    expect(allowed.sends.map((send) => send.bytes)).toEqual(["\x1b]9;4;3\x1b\\"]);
+    expect(allowed.next.sent).toBe(wanted);
+  });
+
+  it("sends nothing under new features when what is wanted is what was sent", () => {
+    expect(commitTerminalState(NOTHING_COMMITTED, EMPTY_TERMINAL_STATE, features).sends).toEqual([]);
   });
 });
 
@@ -241,7 +253,7 @@ describe("a Progress's terminal indicator", () => {
   });
 
   it("reaches the terminal through a tmux whose passthrough is declared on", () => {
-    const log = run({ terminalFeatures: { capabilities: declareCapabilities(["OSC 9;4"]), layers: [{ kind: "tmux", evidence: "declared", passthrough: "declared" }] } });
+    const log = run({ terminalFeatures: { capabilities: declareCapabilities(["OSC 9;4"]), layers: [{ kind: "tmux", passthrough: "declared" }] } });
     expect(log[0]?.bytes).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;4;1;50${ESC}${ESC}\\${ESC}\\`);
   });
 
@@ -296,10 +308,16 @@ describe("identifiedBy", () => {
     expect(identifiedBy(answer("Zellij 0.41.2"), zellij).layers).toEqual(zellij.layers);
   });
 
-  it("moves a multiplexer found deeper to the front without a second copy, keeping stronger evidence", () => {
+  it("leaves a multiplexer the program declared where it was declared", () => {
     const tmux: Layer = { kind: "tmux", evidence: "declared", passthrough: "declared" };
     const editor: Layer = { kind: "editor", evidence: "inferred", passthrough: "unknown" };
-    expect(identifiedBy(answer("tmux 3.4"), withLayers([editor, tmux])).layers).toEqual([tmux, editor]);
+    expect(identifiedBy(answer("tmux 3.4"), withLayers([editor, tmux])).layers).toEqual([editor, tmux]);
+  });
+
+  it("moves an inferred multiplexer found deeper to the front, identified, without a second copy", () => {
+    const tmux: Layer = { kind: "tmux", evidence: "inferred", passthrough: "unknown" };
+    const editor: Layer = { kind: "editor", evidence: "inferred", passthrough: "unknown" };
+    expect(identifiedBy(answer("tmux 3.4"), withLayers([editor, tmux])).layers).toEqual([{ ...tmux, evidence: "identified" }, editor]);
   });
 
   it("raises an inferred multiplexer to identified, keeping its passthrough", () => {

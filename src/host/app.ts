@@ -233,6 +233,10 @@ export class App implements FrameHost {
   private held: { pushed: boolean } | null = null;
   // The pointer's shape this take has set, given back on hand-back.
   private pointer: PointerShape = "default";
+  // [LAW:one-source-of-truth] The shape the terminal was last actually sent:
+  // one the features refused sent nothing, so it is decided again whenever
+  // what is wanted differs from this, under whatever features hold then.
+  private pointerSent: PointerShape = "default";
   private readonly keyboard: KeyboardProtocol;
   private _frame: readonly (readonly Segment[])[] = [];
   private readonly painter: SurfaceRenderer;
@@ -293,13 +297,18 @@ export class App implements FrameHost {
 
   /** Decide what to send from `features` from the next send on — what `askTerminalIdentity` learned, say. */
   set terminalFeatures(features: TerminalFeatures) {
+    if (this._phase === "stopped") throw new Error("App.terminalFeatures: a stopped app has handed its terminal back for good");
     this.drawing = { ...this.drawing, terminalFeatures: features };
     this.console = this.drawingConsole();
-    // What the old features decided, refused included, is decided again: the
-    // painter's declarations at the next paint, the pointer's shape now.
-    this.painter.featuresChanged();
-    if (this._phase === "running" && this.pointer !== "default") this.console.setPointerShape(this.pointer);
+    // What the old features refused is still unsent, so it is decided again
+    // under these: the pointer now, the painter's declarations at the next paint.
+    if (this._phase === "running") this.showPointer(this.pointer);
     this.refresh();
+  }
+
+  // The terminal shown `shape`, unless it was last sent that already.
+  private showPointer(shape: PointerShape): void {
+    if (shape !== this.pointerSent && this.console.setPointerShape(shape)) this.pointerSent = shape;
   }
 
   /**
@@ -582,7 +591,7 @@ export class App implements FrameHost {
     if (shape === this.pointer) return;
     this.pointer = shape;
     // Before the run or while suspended, the shape waits for the take that shows it.
-    if (this._phase === "running") this.console.setPointerShape(shape);
+    if (this._phase === "running") this.showPointer(shape);
   }
 
   // --- the terminal ---
@@ -591,7 +600,7 @@ export class App implements FrameHost {
     this.host.setRawMode(true);
     this.painter.take();
     this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
-    if (this.pointer !== "default") this.console.setPointerShape(this.pointer);
+    this.showPointer(this.pointer);
     const take = { pushed: false };
     this.held = take;
     if (this.keyboard !== "kitty") return;
@@ -611,7 +620,7 @@ export class App implements FrameHost {
     this.owedDa1 = 0;
     this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
     this.held = null;
-    if (this.pointer !== "default") this.console.setPointerShape("default");
+    this.showPointer("default");
     this.painter.handBack();
     this.host.setRawMode(false);
   }

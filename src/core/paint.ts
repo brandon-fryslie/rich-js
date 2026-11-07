@@ -22,7 +22,7 @@ import { Segment } from "./segment.js";
 import type { CaretShape } from "./style.js";
 import type { TerminalFeatures } from "./terminal-capabilities.js";
 import type { TerminalDeclaration } from "./terminal-requests.js";
-import { EMPTY_TERMINAL_STATE, commitTerminalState, declaredState, type TerminalState } from "./terminal-state.js";
+import { NOTHING_COMMITTED, commitTerminalState, declaredState, type Committed } from "./terminal-state.js";
 
 /**
  * Where a frame is painted. `alternate` is the whole terminal, in the
@@ -201,8 +201,7 @@ export interface Renderer {
  */
 class DeclaredState {
   private pending: TerminalDeclaration[] = [];
-  // `undefined`: unknown, since what was committed was decided under features since replaced.
-  private believed: TerminalState | undefined = EMPTY_TERMINAL_STATE;
+  private committed: Committed = NOTHING_COMMITTED;
 
   constructor(
     // [LAW:one-source-of-truth] Read from whoever holds them at each commit,
@@ -227,8 +226,8 @@ class DeclaredState {
   /** The frame's declarations committed: `handBack` commits none, so what a frame set is taken away. */
   commit(declarations: readonly TerminalDeclaration[] = this.pending.splice(0)): string {
     const features = this.featuresOf();
-    const { next, sends } = commitTerminalState(this.believed, declaredState(declarations), features);
-    this.believed = next;
+    const { next, sends } = commitTerminalState(this.committed, declaredState(declarations), features);
+    this.committed = next;
     let bytes = "";
     for (const decided of sends) {
       if (!this.terminal) {
@@ -249,16 +248,7 @@ class DeclaredState {
   /** The terminal is believed to show nothing, with nothing sent or logged: what was committed never reached it. */
   forget(): void {
     this.pending = [];
-    this.believed = EMPTY_TERMINAL_STATE;
-  }
-
-  /**
-   * The features changed: what the old ones refused, or chose an encoding
-   * for, may be decided otherwise now, so the next commit sends what its
-   * frame declares whatever was committed before.
-   */
-  featuresChanged(): void {
-    this.believed = undefined;
+    this.committed = NOTHING_COMMITTED;
   }
 }
 
@@ -400,11 +390,6 @@ export class SurfaceRenderer implements Renderer {
     this.at = 0;
     this.shown = false;
     this.shaped = undefined;
-  }
-
-  /** The features it reads changed: the next paint re-sends what its frame declares, decided under them. */
-  featuresChanged(): void {
-    this.state.featuresChanged();
   }
 }
 

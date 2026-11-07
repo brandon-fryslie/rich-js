@@ -53,7 +53,8 @@ layer is there at all, and `passthrough`, how it is known that it forwards a
 wrapped sequence. A layer found in the environment is `inferred` and its
 passthrough is one nothing has confirmed, and no policy acts on that, so nothing that needs tmux's or screen's
 passthrough is sent until the program passes the layer in with its passthrough
-`declared`.
+`declared`. A layer the program passes in is `declared` by being passed, so it
+names only its `kind` and `passthrough`.
 
 ## Asking the terminal who it is
 
@@ -94,7 +95,7 @@ const console = new Console({
   file: { write: () => {} },
   terminalFeatures: {
     capabilities: declareCapabilities(["OSC 9;4"]),
-    layers: [{ kind: "tmux", evidence: "declared", passthrough: "declared" }],
+    layers: [{ kind: "tmux", passthrough: "declared" }],
     onSend: (send) => log.push(send),
   },
 });
