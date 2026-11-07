@@ -22,7 +22,9 @@
  * `asIs` ship, and a caller's own function is one more with no change here.
  */
 
-import { ColorDepth, ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, type TerminalColors } from "../core/color.js";
+import { Memo, WeakMemo } from "../core/memo.js";
+import { Oklch } from "../core/oklch.js";
 import { alphaBlend, compositedColor, contrastFor, contrastRatio, ensureContrast } from "./colorMath.js";
 import type { AccentRole, Palette, PaletteRole } from "./palette.js";
 
@@ -35,7 +37,7 @@ import type { AccentRole, Palette, PaletteRole } from "./palette.js";
  */
 export interface DrawnAt {
   readonly depth: ColorDepth;
-  readonly terminal?: TerminalTheme;
+  readonly terminal?: TerminalColors;
 }
 
 export const DRAWN_AT_TRUECOLOR: DrawnAt = { depth: ColorDepth.TRUECOLOR };
@@ -309,6 +311,13 @@ export function textTint(palette: Palette, intent: TextIntent, ground: ColorRgba
   return INTENTS[intent].on(palette, ground.compositeOver(palette.get("background"))).miss().tint;
 }
 
+/** The text and ground a pair is written as, and `dim` where the table had no color for text that recedes. */
+export interface WrittenText {
+  readonly color: ColorSpec;
+  readonly bgcolor: ColorSpec;
+  readonly dim?: true;
+}
+
 /**
  * The text `intent` draws in on `ground`. A translucent ground is drawn on the
  * palette's background first, as every palette color is.
@@ -316,12 +325,56 @@ export function textTint(palette: Palette, intent: TextIntent, ground: ColorRgba
  * @param fit what text missing its floor becomes; `slide` unless stated.
  * @param drawnAt where the pair is drawn; truecolor unless stated.
  */
-export function textOn(
+export function textOn(palette: Palette, intent: TextIntent, ground: ColorRgba, place: TextPlace = {}): ColorRgba {
+  // [LAW:one-source-of-truth] The color the pair's text is written as, as the
+  // terminal shows it: one engine, read in RGBA.
+  const { drawnAt = DRAWN_AT_TRUECOLOR } = place;
+  return writeText(palette, intent, ground, place).color.getTruecolor(resolveTerminal(drawnAt.terminal, drawnAt.depth), true);
+}
+
+/** What text missing its floor becomes, and where the pair is drawn. */
+export interface TextPlace {
+  readonly fit?: TextFit;
+  readonly drawnAt?: DrawnAt;
+}
+
+/**
+ * The pair `intent` on `ground` is written as. At a depth that writes colors
+ * itself, the text is held to its floor in the palette's colors. At a depth
+ * that writes them by index, both are slots of the table `drawnAt`'s terminal
+ * shows there — the VGA sixteen the depth assumes where none is named:
+ *
+ * - the ground is the slot that stands for it, never the terminal's default,
+ *   so a light theme on a dark terminal still paints its own ground;
+ * - text is never written in its ground's color, disabled text included; its
+ *   candidate is the slot standing for the color the theme states, one that
+ *   misses its floor goes to the fit, and a color the fit makes up is written
+ *   as the slot that stands for it among those that read — the most legible
+ *   slot where none reads;
+ * - text that recedes from another intent is a slot other than the default and
+ *   that intent's, standing off its ground less than that intent does; at
+ *   sixteen colors its candidate is the slot the terminal states for muted
+ *   text (`TerminalColors.mutedSlot`), and where no slot recedes and reads it
+ *   is that intent's color with SGR dim — the table has no room for it.
+ */
+export function writeText(
   palette: Palette,
   intent: TextIntent,
   ground: ColorRgba,
-  { fit = slide, drawnAt = DRAWN_AT_TRUECOLOR }: { readonly fit?: TextFit; readonly drawnAt?: DrawnAt } = {},
-): ColorRgba {
+  { fit = slide, drawnAt = DRAWN_AT_TRUECOLOR }: TextPlace = {},
+): WrittenText {
+  const terminal = resolveTerminal(drawnAt.terminal, drawnAt.depth);
+  const table = slotsOf(terminal, drawnAt.depth);
+  // [LAW:one-type-per-behavior] The depth's own discriminator: a depth that
+  // writes colors itself draws the palette's; one that writes them by index
+  // draws the terminal's table.
+  return table.length === 0
+    ? { color: ColorSpec.fromRgba(heldTo(palette, intent, ground, fit, drawnAt)), bgcolor: ColorSpec.fromRgba(ground) }
+    : slotted(palette, intent, ground, fit, drawnAt.depth, terminal, table);
+}
+
+/** `intent`'s color on `ground`, held to its floor through `fit` in the palette's own colors. */
+function heldTo(palette: Palette, intent: TextIntent, ground: ColorRgba, fit: TextFit, drawnAt: DrawnAt): ColorRgba {
   const drawnGround = ground.compositeOver(palette.get("background"));
   const { floor, on } = INTENTS[intent];
   const { candidate, miss } = on(palette, drawnGround);
@@ -329,4 +382,70 @@ export function textOn(
   if (readsOn(drawn, drawnGround, floor, drawnAt)) return drawn;
   const { tint, shades } = miss();
   return fit({ candidate: drawn, ground: drawnGround, floor, drawnAt, tint, shades: shades.map((s) => s.compositeOver(drawnGround)) });
+}
+
+/** A color a depth writes by index: how it is written, what the terminal shows, and that in OKLab. */
+interface Slot {
+  readonly spec: ColorSpec;
+  readonly shown: ColorRgba;
+  readonly lab: Oklch;
+}
+
+const slot = (spec: ColorSpec, shown: ColorRgba): Slot => ({ spec, shown, lab: Oklch.fromRgba(shown) });
+
+// [LAW:one-source-of-truth] `ColorSpec.indexed`'s table, each color's OKLab
+// taken once per terminal and depth rather than on every comparison.
+const SLOTS = new WeakMemo<Memo<readonly Slot[]>, TerminalColors>();
+const slotsOf = (terminal: TerminalColors, depth: ColorDepth): readonly Slot[] =>
+  SLOTS.get(terminal, () => new Memo()).get(`${depth}`, () => ColorSpec.indexed(depth, terminal).map(([spec, shown]) => slot(spec, shown)));
+
+// How much chroma a slot may add past the color it stands for, and what each
+// unit beyond that costs against ΔE_OK: a grey stays grey, a hue keeps its hue.
+const HUE_SLACK = 0.04;
+const HUE_COST = 10;
+
+/**
+ * The slot of `pool` that stands for `color`: nearest by ΔE_OK, a slot that
+ * adds a hue `color` lacks counted that much further off, so a dark grey
+ * ground is never written as the table's maroon or navy.
+ */
+function nearest(pool: readonly Slot[], color: ColorRgba): Slot | undefined {
+  const seen = Oklch.fromRgba(color);
+  let best: Slot | undefined;
+  let bestCost = Infinity;
+  for (const s of pool) {
+    const cost = seen.deltaE(s.lab) + HUE_COST * Math.max(0, s.lab.c - seen.c - HUE_SLACK);
+    if (cost < bestCost) [best, bestCost] = [s, cost];
+  }
+  return best;
+}
+
+/** The pair written by index: `writeText`'s rules for a depth with a table. */
+function slotted(palette: Palette, text: TextIntent, rgba: ColorRgba, fit: TextFit, depth: ColorDepth, terminal: TerminalColors, table: readonly Slot[]): WrittenText {
+  const ground = nearest(table, rgba.compositeOver(palette.get("background")))!;
+  const contrast = (s: Slot): number => contrastRatio(s.shown, ground.shown);
+  const stated = (intent: TextIntent): ColorRgba => heldTo(palette, intent, rgba, asIs, DRAWN_AT_TRUECOLOR);
+  const write = (intent: TextIntent, pool: readonly Slot[], candidate: Slot): Slot | undefined => {
+    const floor = textFloor(intent);
+    if (contrast(candidate) >= floor) return candidate;
+    // The theme's shades are the pool, nearest the stated color first, as `named` reads them.
+    const seen = Oklch.fromRgba(stated(intent));
+    const shades = [...pool].sort((a, b) => seen.deltaE(a.lab) - seen.deltaE(b.lab)).map((s) => s.shown);
+    const picked = fit({ candidate: candidate.shown, ground: ground.shown, floor, drawnAt: DRAWN_AT_TRUECOLOR, tint: textTint(palette, intent, rgba), shades });
+    return picked === candidate.shown ? candidate : nearest(pool.filter((s) => contrast(s) >= floor), picked);
+  };
+  const visible = [slot(ColorSpec.default(), terminal.foregroundColor), ...table].filter((s) => s.shown.hex !== ground.shown.hex);
+  const drawn = (intent: TextIntent): Slot =>
+    // Where no slot reads, the one standing furthest off the ground: the most legible the table has.
+    write(intent, visible, nearest(visible, stated(intent))!) ?? visible.reduce((a, b) => (contrast(b) > contrast(a) ? b : a));
+  const body = recedesFrom(text);
+  if (body === undefined) return { color: drawn(text).spec, bgcolor: ground.spec };
+  const over = drawn(body);
+  const receding = table.filter((s) => s.shown.hex !== ground.shown.hex && s.shown.hex !== over.shown.hex && contrast(s) < contrast(over));
+  const sixteen = depth === ColorDepth.STANDARD || depth === ColorDepth.WINDOWS;
+  const candidate = (sixteen ? receding.find((s) => s.spec.number === terminal.mutedSlot) : undefined) ?? nearest(receding, stated(text));
+  const chosen = candidate === undefined ? undefined : write(text, receding, candidate);
+  // A table with no slot that both recedes and reads has no room for muted
+  // text, and SGR's own answer is the text it recedes from, dimmed.
+  return chosen === undefined ? { color: over.spec, bgcolor: ground.spec, dim: true } : { color: chosen.spec, bgcolor: ground.spec };
 }

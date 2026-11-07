@@ -63,16 +63,16 @@ The [Themes & Color Studio](/demos/themes-and-color-studio) draws every bundled 
 
 ## Where the text is drawn
 
-A floor is measured on the pair the terminal draws. Below truecolor the terminal rounds text and ground separately, so `textOn` takes the same `drawnAt` that [`ensureContrast`](/contrast) does — the depth and, at sixteen colors, the terminal's own theme — and each fit holds its floor on the rounded pair.
+A floor is measured on the pair the terminal draws. Below truecolor a pair is written as two colors of the table the terminal shows, so `textOn` takes the same `drawnAt` that [`ensureContrast`](/contrast) does — the depth and the terminal, the VGA sixteen where none is named — and returns the color the terminal shows for the text's slot. The ground is the slot that stands for it, never the terminal's default and never a hue a grey ground lacks; text is never its ground's color, and is held to its floor among the table's colors through the fit, or is the most legible one where none reads. Muted text recedes: a slot that stands off its ground less than its body text and is neither that text's color nor the default — at sixteen colors the terminal's stated `mutedSlot` first. Widgets and the template `textOn` write these same slots.
 
 ```typescript
-import { ColorDepth, getThemePalette, readsOn, textOn } from "@promptctl/rich-js";
+import { ColorDepth, getThemePalette, textOn } from "@promptctl/rich-js";
 
 const palette = getThemePalette("nord");
 const ground = palette.get("secondary-lighten-2");
 const drawnAt = { depth: ColorDepth.EIGHT_BIT };
 const text = textOn(palette, "text-error", ground, { drawnAt });
-console.print(`[${text.hex} on ${ground.hex}] reads at 256 colors [/] ${readsOn(text, ground, 4.5, drawnAt)}`);
+console.print(`text-error at 256 colors is shown as ${text.hex}`);
 ```
 
 ## In a template

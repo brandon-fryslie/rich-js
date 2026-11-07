@@ -8,7 +8,7 @@ import { ColorDepth, ColorRgba } from "../../src/core/color.js";
 import { contrastRatio } from "../../src/themes/colorMath.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
 import { getThemePalette, listThemePalettes, type ThemeName } from "../../src/themes/registry.js";
-import { named, neutralAlpha, readsOn, slide, textFloor, textOn, tinted, withAlpha, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
+import { named, neutralAlpha, slide, textFloor, textOn, tinted, withAlpha, writeText, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
 
 const FLOOR: Readonly<Record<TextIntent, number>> = {
   foreground: 4.5,
@@ -160,7 +160,8 @@ describe("below truecolor the floor holds on the pair the terminal draws", () =>
     const { palette, grounds: all } = grounds(name);
     const drawnAt = { depth: ColorDepth.EIGHT_BIT };
     for (const ground of all) {
-      expect(readsOn(textOn(palette, "text-error", ground, { drawnAt }), ground, 4.5, drawnAt), ground.hex).toBe(true);
+      const { color, bgcolor } = writeText(palette, "text-error", ground, { drawnAt });
+      expect(contrastRatio(color.getTruecolor(undefined, true), bgcolor.getTruecolor(undefined, false)), ground.hex).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

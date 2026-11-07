@@ -11,11 +11,12 @@ import {
   contrastRatio,
 } from "../../src/themes/colorMath.js";
 import { parseHexColor } from "../../src/core/color.js";
-import { GRUVBOX, DRACULA, ROSE_PINE_DAWN } from "../../src/themes/terminalThemes.js";
+import { GRUVBOX, DRACULA, ROSE_PINE_DAWN, SOLARIZED_DARK } from "../../src/themes/terminalThemes.js";
 import { EASES } from "../../src/core/easing.js";
 import { getThemePalette } from "../../src/themes/registry.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
-import { slide, textOn, tinted } from "../../src/themes/text-on.js";
+import { slide, tinted, writeText } from "../../src/themes/text-on.js";
+import { ink } from "../../src/widgets/ink.js";
 import { baseStyleOf } from "../core/base-style.js";
 
 // [LAW:behavior-not-structure] Every assertion below compares what a template
@@ -331,7 +332,16 @@ describe("textOn: a theme's text on a ground, from a template", () => {
   it("is the library's textOn on the same ground, fit and destination", () => {
     const drawnAt: DrawnAt = { depth: ColorDepth.STANDARD };
     const got = run(paletteFuncs(() => palette, { fit: () => tinted, drawnAt: () => drawnAt }), `{{ textOn "text-error" "${ground.hex}" }}`);
-    expect(got).toBe(textOn(palette, "text-error", ground, { fit: tinted, drawnAt }).hex);
+    expect(got).toBe(writeText(palette, "text-error", ground, { fit: tinted, drawnAt }).color.name);
+  });
+
+  it("writes at sixteen colors the slot a widget on the same terminal is drawn in", () => {
+    const theme = SOLARIZED_DARK;
+    const at: DrawnAt = { depth: ColorDepth.STANDARD, terminal: theme };
+    const got = run(paletteFuncs(() => theme.palette, { fit: () => slide, drawnAt: () => at }), `{{ textOn "foreground-muted" "${theme.palette.get("background").hex}" }}`);
+    const widget = ink(theme, "foreground-muted", "background", { fit: slide, depth: ColorDepth.STANDARD, terminal: theme }).color.name;
+    expect(widget).toMatch(/^color\(\d+\)$/);
+    expect(got).toBe(widget);
   });
 
   it("reads its fit each time it is evaluated", () => {

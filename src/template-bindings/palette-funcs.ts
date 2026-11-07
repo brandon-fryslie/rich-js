@@ -69,7 +69,7 @@ import { resolveColorRef } from "../themes/colorRef.js";
 import { parseEasing } from "../core/easing.js";
 import { ColorRamp, type ColorStop } from "../themes/ramp.js";
 import { asColor, computable } from "./color-funcs.js";
-import { isTextIntent, slide, textOn, TEXT_INTENTS, DRAWN_AT_TRUECOLOR, type DrawnAt, type TextFit } from "../themes/text-on.js";
+import { isTextIntent, slide, writeText, TEXT_INTENTS, DRAWN_AT_TRUECOLOR, type DrawnAt, type TextFit } from "../themes/text-on.js";
 
 /**
  * The `(position, color-ref)` pairs a `ramp` call's tail spells, as stops.
@@ -159,7 +159,8 @@ export function paletteFuncs(getPalette: () => Palette, place: TextPlace = {}): 
       if (!isTextIntent(intent)) {
         throw new RangeError(`textOn: ${JSON.stringify(intent)} is not a text intent — one of ${TEXT_INTENTS.map((i) => JSON.stringify(i)).join(", ")}`);
       }
-      return textOn(getPalette(), intent, asColor(groundHex, "textOn"), { fit: fit(), drawnAt: drawnAt() }).hex;
+      // The color as it is written where the template lands — a slot at an indexed depth — as widgets write it.
+      return writeText(getPalette(), intent, asColor(groundHex, "textOn"), { fit: fit(), drawnAt: drawnAt() }).color.name;
     }) as TemplateFunc["fn"],
     argTypes: ["string", "string"],
     arity: { kind: "exact" },
