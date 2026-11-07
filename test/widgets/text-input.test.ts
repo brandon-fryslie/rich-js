@@ -1614,6 +1614,8 @@ describe("TextInput", () => {
 
 describe("a word motion takes time linear in the word it crosses", () => {
   // Stepping a cluster at a time, each step segmenting the value again, a motion across one long word was quadratic.
+  // The size is a starting point just above the helper's floor, which grows it on a runner fast enough to dip under:
+  // at 256,000 the five pairs crossed the 30s hang limit in a saturated full suite (rich-unfiled-791c.jac3).
   const across = (motion: (t: TextInput) => void, from: "start" | "end") => (n: number) => {
     const t = new TextInput({ value: "a".repeat(n) });
     t.cursorPosition = asCodePoint(from === "start" ? 0 : n);
@@ -1626,6 +1628,6 @@ describe("a word motion takes time linear in the word it crosses", () => {
     ["deleteWordBack", (t: TextInput) => t.deleteWordBack(), "end"],
     ["deleteWordForward", (t: TextInput) => t.deleteWordForward(), "start"],
   ] as const)("%s", (_, motion, from) => {
-    expectLinearTime(across(motion, from), 256_000);
+    expectLinearTime(across(motion, from), 64_000);
   });
 });
