@@ -66,6 +66,10 @@ describe("effects-feel", () => {
     expect(host.raw()).toBe(false);
   });
 
+  it.each([[{ periods: 0, samples: 12 }], [{ periods: 1, samples: 0 }]])("refuses a contrast sampling with no moments in it: %j", (sampling) => {
+    expect(() => started([], sampling)).toThrow(RangeError);
+  });
+
   it("draws every effect, with the worst contrast of each loop measured between the frames", async ({ task }) => {
     // Frames cost the same each second however loaded the machine is; the
     // measuring gets what is left, and at 30 a second under a loaded suite

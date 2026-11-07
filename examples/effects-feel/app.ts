@@ -320,6 +320,10 @@ export function runDemo(host: TerminalHost, settings: Settings, sampling: Contra
     const name = resolved === null ? "none" : resolved === undefined ? "nothing" : ColorDepth[resolved];
     throw new Error(`asked for ${settings.depth} but the terminal resolved ${name}`);
   }
+  // A sampling with no moments leaves a loop's worst contrast at infinity, which the heading would state as a measurement.
+  if (!(sampling.periods > 0 && sampling.samples > 0)) {
+    throw new RangeError(`contrast sampling needs periods and samples above 0, got ${JSON.stringify(sampling)}`);
+  }
   const { curves } = settings;
 
   // [LAW:no-ambient-temporal-coupling] The app owns the frames and hands each
