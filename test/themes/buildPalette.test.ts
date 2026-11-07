@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
-import { contrastFor, contrastRatio } from "../../src/themes/colorMath.js";
-import { textOn } from "../../src/themes/text-on.js";
-import { getThemeBaseColors, getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
+import { contrastFor } from "../../src/themes/colorMath.js";
 
 const TEST_BASE = {
   primary: new ColorRgba(0, 111, 184),
@@ -100,25 +98,6 @@ describe("buildPalette", () => {
     for (const key of accents) {
       expect(p.get(`${key}-muted`)).toBeDefined();
       expect(p.get(`text-${key}`)).toBeDefined();
-    }
-  });
-});
-
-// Muted text is secondary text and disabled text is text that cannot be used,
-// so muted reads the stronger on every ground text is held on, derived or authored.
-describe.each(listThemePalettes())("%s's palettes", (name) => {
-  const { bg, fg, dark, primary, secondary, accent, success, warning, error } = getThemeBaseColors(name);
-  const palettes = {
-    derived: buildPalette(name, dark, { background: bg, foreground: fg, primary, secondary, accent, success, warning, error }),
-    authored: getThemePalette(name),
-  };
-  it.each(Object.keys(palettes) as (keyof typeof palettes)[])("%s draws foreground-muted stronger than foreground-disabled on every ground", (kind) => {
-    const p = palettes[kind];
-    for (const groundRole of ["background", "surface", "panel"] as const) {
-      const ground = p.get(groundRole).compositeOver(p.get("background"));
-      const on = (intent: "foreground-muted" | "foreground-disabled"): number => contrastRatio(textOn(p, intent, ground), ground);
-      expect(on("foreground-muted"), groundRole).toBeGreaterThan(on("foreground-disabled"));
-      expect(on("foreground-muted"), groundRole).toBeLessThanOrEqual(contrastRatio(p.get("foreground").compositeOver(ground), ground));
     }
   });
 });

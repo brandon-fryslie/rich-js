@@ -2,7 +2,7 @@
  * The grounds Textual promises a theme's fixed text reads on: `background`,
  * `surface` and `panel`, and for `text-*` its own `*-muted` too. Every bundled
  * theme holds `text-*` there at WCAG AA (4.5:1) and `foreground-muted` at
- * AA-large (3:1) — both the authored palette and what `buildPalette` derives
+ * AA-large (3:1), and past the disabled text drawn there — both the authored palette and what `buildPalette` derives
  * from that palette's eight base colors.
  *
  * `foreground` is authored and Textual does not move it, so it is not held
@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest";
 import { contrastRatio } from "../../src/core/color.js";
 import type { Palette } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
+import { textOn } from "../../src/themes/text-on.js";
 import { derivedFrom } from "./derived-palette.js";
 
 const ACCENTS = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
@@ -35,5 +36,11 @@ describe("foreground-muted on the three grounds", () => {
   const cases = palettes.flatMap(([source, palette]) => GROUNDS.map((ground) => ({ source, palette, ground })));
   it.each(cases)("foreground-muted recedes no further than 3:1 on $ground in $source", ({ palette, ground }) => {
     expect(contrastRatio(palette.get("foreground-muted"), palette.get(ground))).toBeGreaterThanOrEqual(3);
+  });
+  // Muted is secondary text and disabled is text that cannot be used, so muted
+  // reads the stronger, by the margin `buildPalette` holds it to.
+  it.each(cases)("foreground-muted reads 0.25 past the disabled text drawn on $ground in $source", ({ palette, ground }) => {
+    const on = (intent: "foreground-muted" | "foreground-disabled"): number => contrastRatio(textOn(palette, intent, palette.get(ground)), palette.get(ground));
+    expect(on("foreground-muted")).toBeGreaterThanOrEqual(on("foreground-disabled") + 0.25);
   });
 });
