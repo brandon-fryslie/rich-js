@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-603",
+      "ref": "refs/pull/603/merge",
+      "sha": "2f0ef0b6b9e87bbd02345d5f3845ea928eadb30d",
+      "timestamp": "2026-11-07T11:32:19.743Z",
+      "commits": [
+        {
+          "sha": "2f0ef0b6b9e87bbd02345d5f3845ea928eadb30d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:30:27-07:00",
+          "message": "Merge 68d801a0b81f86e59fd11ca009eb7a14007548c3 into ba1f926de931afe7e301e891e21d863ca6d21da7\n"
+        },
+        {
+          "sha": "68d801a0b81f86e59fd11ca009eb7a14007548c3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:29:36-07:00",
+          "message": "The word-motion linearity tests start at 64,000 characters, so a saturated suite no longer reaches the hang limit (rich-unfiled-791c.jac3)\n\nEach motion timed five pairs at 256,000 and 1,024,000 characters: 11-15s of CPU\nalone, 35s and a 30s timeout in a full-suite run on a machine at load 56-100.\nA motion made quadratic still fails at the new size (ratio 10.3 against the bar of 8).\n"
+        }
+      ]
+    },
+    {
       "version": "pr-602",
       "ref": "refs/pull/602/merge",
       "sha": "34e5e6ed925b66f6c8f94dbf2b7d695185ac12b5",
