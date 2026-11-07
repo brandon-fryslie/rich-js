@@ -111,17 +111,17 @@ function magnifiedLoops(curves: Settings["curves"], magnitude: number): Settings
 const MEASURE_SLICE = 0.008;
 
 /**
- * How a looping effect's worst contrast is measured: over this many of its
- * periods — no loop repeats exactly, so one period is only a slice of the
- * states it reaches — at this many samples each.
+ * How a looping effect's worst contrast is measured: over `periods` of it — no
+ * loop repeats exactly, so one period is only a slice of the states it reaches
+ * — at `samples` moments each.
  */
-const CONTRAST: ContrastSampling = { periods: 8, samples: 60 };
-
-/** How much of a loop its contrast is measured over: `periods` of it, at `samples` moments each. */
 export interface ContrastSampling {
   readonly periods: number;
   readonly samples: number;
 }
+
+/** What the demo measures with; `runDemo` takes another so a test need not draw every moment. */
+const CONTRAST: ContrastSampling = { periods: 8, samples: 60 };
 
 /** An element's name for `Effected`. No curve here reads a cell's seed: a subject's `z` keeps it apart. */
 const seedKey = (effect: EffectName, subject: Subject): string => `${effect}:${subject.name}`;
