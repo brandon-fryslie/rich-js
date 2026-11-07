@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-600",
-      "ref": "refs/pull/600/merge",
-      "sha": "a5240945b668802a27c2d31c676d7f65d994068e",
-      "timestamp": "2026-11-07T10:31:10.061Z",
-      "commits": [
-        {
-          "sha": "a5240945b668802a27c2d31c676d7f65d994068e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T10:28:14Z",
-          "message": "Merge 251b409c98f340fabd53b3ebb893c6ff815713eb into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
-        },
-        {
-          "sha": "251b409c98f340fabd53b3ebb893c6ff815713eb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T03:27:58-07:00",
-          "message": "High-pass fixes (rich-control-codes-xh4n.6ch.zgr): the pointer shape is terminal state the painter commits, one sent/refused record for it and progress (App's pointerSent/showPointer and setPointerShape's boolean gone); VTE answers VTE(<n>) and a VTE before 0.54 is not asked; askTerminalIdentity returns undefined when the answer changes nothing; refusals decided once per features object handed over; one option shape, a layer without evidence held declared; a multiplexer the env never saw resets the terminal to other; any layer stronger than identified keeps its place; Zellij( pattern; a steady commit allocates nothing; the demo guards its race\n"
-        },
-        {
-          "sha": "d3295a3d1002023705b4323b419ab52ed68b7a5f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T03:11:06-07:00",
-          "message": "Medium-pass fixes (rich-control-codes-xh4n.6ch.zgr): the painter remembers what the terminal was actually sent, so a refused change is decided again under new features and nothing is re-sent that already went (featuresChanged and the undefined state are gone); App tracks the pointer shape sent the same way, and its terminalFeatures setter refuses a stopped app as pointerShape does; identifiedBy keeps a declared multiplexer where it was declared; a layer passed in names no evidence and the console holds it as declared; evidence strength is a Record, no indexOf. zellij stays in HIDES_TERMINAL_VERSION: verified it answers XTVERSION itself as Zellij(<version>) in zellij-server/src/panes/grid.rs\n"
-        },
-        {
-          "sha": "75ee1defc320a493bbf607ffe5160508a8593a18",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T02:58:15-07:00",
-          "message": "Review fixes (rich-control-codes-xh4n.6ch.zgr): learned features re-send what the old ones refused; an XTVERSION answer never outweighs declared or confirmed evidence, drops only inferred tmux/zellij/screen layers, never duplicates a layer; an unrecognized answer learns nothing; askTerminalIdentity returns undefined when nothing was learned; Layer carries its own evidence\n"
-        },
-        {
-          "sha": "b5896c26891af8887756c4c8239419e982104b75",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T02:33:00-07:00",
-          "message": "The terminal identifies itself: askTerminalIdentity asks XTVERSION and raises what the env inferred to identified; tmux answers for itself, so no passthrough-wrapped probe is sent (tmux#5530); painters read features from their console; a replay host answers recorded probe sessions (rich-control-codes-xh4n.6ch.zgr)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7bd2026865ac6724af99e798ed1b25c3bfe1238a",
-      "timestamp": "2026-11-07T09:11:34.903Z",
+      "sha": "2e6ed8da6b799ab74285f8791c0a4f794f736655",
+      "timestamp": "2026-11-07T10:45:58.129Z",
       "commits": [
         {
-          "sha": "7bd2026865ac6724af99e798ed1b25c3bfe1238a",
+          "sha": "2e6ed8da6b799ab74285f8791c0a4f794f736655",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T02:09:39-07:00",
-          "message": "Clipboard, pointer and notification chosen by pick over the console's TerminalFeatures (6ch.a28) (#599)\n\n* Clipboard, pointer and notification are chosen by pick over the console's TerminalFeatures: one fact for layers and terminal, passthrough evidence weighed, the route in the send log (rich-control-codes-xh4n.6ch.a28)\n\n* Review: a tmux or screen pane's TERM names no terminal past it; declaring an encoding keeps the inferred terminal; bell and title are pick rows; docs say no policy passes an unconfirmed layer (rich-control-codes-xh4n.6ch.a28)\n\n* Review: a terminal's own notification and progress cannot cross zellij or an editor (OUTER_ONLY); a bare number in OSC 9 is kept off ConEmu's shape (rich-control-codes-xh4n.6ch.a28)\n\n* Review: textOrderOf takes named fields; CLAUDE.md and terminal-identity's header describe the pick tables; one tmux-TERM test over both policies (rich-control-codes-xh4n.6ch.a28)"
+          "timestamp": "2026-11-07T03:43:36-07:00",
+          "message": "The terminal identifies itself with XTVERSION (rich-control-codes-xh4n.6ch.zgr) (#600)\n\n* The terminal identifies itself: askTerminalIdentity asks XTVERSION and raises what the env inferred to identified; tmux answers for itself, so no passthrough-wrapped probe is sent (tmux#5530); painters read features from their console; a replay host answers recorded probe sessions (rich-control-codes-xh4n.6ch.zgr)\n\n* Review fixes (rich-control-codes-xh4n.6ch.zgr): learned features re-send what the old ones refused; an XTVERSION answer never outweighs declared or confirmed evidence, drops only inferred tmux/zellij/screen layers, never duplicates a layer; an unrecognized answer learns nothing; askTerminalIdentity returns undefined when nothing was learned; Layer carries its own evidence\n\n* Medium-pass fixes (rich-control-codes-xh4n.6ch.zgr): the painter remembers what the terminal was actually sent, so a refused change is decided again under new features and nothing is re-sent that already went (featuresChanged and the undefined state are gone); App tracks the pointer shape sent the same way, and its terminalFeatures setter refuses a stopped app as pointerShape does; identifiedBy keeps a declared multiplexer where it was declared; a layer passed in names no evidence and the console holds it as declared; evidence strength is a Record, no indexOf. zellij stays in HIDES_TERMINAL_VERSION: verified it answers XTVERSION itself as Zellij(<version>) in zellij-server/src/panes/grid.rs\n\n* High-pass fixes (rich-control-codes-xh4n.6ch.zgr): the pointer shape is terminal state the painter commits, one sent/refused record for it and progress (App's pointerSent/showPointer and setPointerShape's boolean gone); VTE answers VTE(<n>) and a VTE before 0.54 is not asked; askTerminalIdentity returns undefined when the answer changes nothing; refusals decided once per features object handed over; one option shape, a layer without evidence held declared; a multiplexer the env never saw resets the terminal to other; any layer stronger than identified keeps its place; Zellij( pattern; a steady commit allocates nothing; the demo guards its race"
         }
       ]
     },
