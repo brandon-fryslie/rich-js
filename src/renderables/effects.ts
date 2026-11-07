@@ -94,8 +94,13 @@ const LEGIBLE = 4.5;
 const LEVELS = 96;
 const STRENGTHS: readonly number[] = Array.from({ length: LEVELS }, (_, i) => (i + 1) / LEVELS);
 
-/** The strength a field's value is drawn at: the nearest of `LEVELS`, or 0. */
-const strengthOf = (field: number): number => Math.round(clamp01(field) * LEVELS) / LEVELS;
+/**
+ * The strength a field's value is drawn at: the nearest of `LEVELS`, or 0.
+ * Exported so a test that watches many frames keys what it computes by the
+ * level `drawnColor` draws at, not by a field value that is nearly never
+ * the same twice.
+ */
+export const strengthOf = (field: number): number => Math.round(clamp01(field) * LEVELS) / LEVELS;
 
 /**
  * `color` as a loop draws it where its field reads `field` and the color holds
