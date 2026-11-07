@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-592",
+      "ref": "refs/pull/592/merge",
+      "sha": "a3b23705d88f67195d58d0fc1836f4b78dae6fcb",
+      "timestamp": "2026-11-07T02:01:26.030Z",
+      "commits": [
+        {
+          "sha": "a3b23705d88f67195d58d0fc1836f4b78dae6fcb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:59:23-07:00",
+          "message": "Merge f90ff0d64ad7cbecdeca77244ceb02b11f135605 into 232f3d19717511535c3dd0fc726033a441060feb\n"
+        },
+        {
+          "sha": "f90ff0d64ad7cbecdeca77244ceb02b11f135605",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:59:08-07:00",
+          "message": "A derived palette's foreground-muted reads stronger than its foreground-disabled, on every bundled base (rich-unfiled-791c.tofk)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "232f3d19717511535c3dd0fc726033a441060feb",
