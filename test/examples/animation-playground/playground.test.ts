@@ -233,7 +233,10 @@ describe("animation playground", () => {
       expect((await p.screen()).join("\n")).toContain(`·  ${depth}  ·`);
       const from = p.host.output().length;
       await p.advance(3);
-      return p.host.output().slice(from);
+      const wrote = p.host.output().slice(from);
+      // A frame was painted, so what it lacks below is not the lack of a frame.
+      expect(wrote).not.toBe("");
+      return wrote;
     };
     expect(await written("truecolor")).toMatch(/\x1b\[[\d;]*38;2;/);
     await p.click("color depth");
@@ -282,7 +285,9 @@ describe("animation playground", () => {
     await q.atOneFps();
     const from = q.host.output().length;
     await q.advance(3);
-    expect(colorParameters(q.host.output().slice(from))).toEqual([]);
+    const wrote = q.host.output().slice(from);
+    expect(wrote).not.toBe("");
+    expect(colorParameters(wrote)).toEqual([]);
   });
 
   it("seeks while the scrub bar is dragged, pins a drag past its end to the window's end, and seeks half a second an arrow key", async () => {
