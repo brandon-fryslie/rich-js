@@ -2,103 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-596",
-      "ref": "refs/pull/596/merge",
-      "sha": "563467dd8d74707a00b5812bf65324fe3ee4819d",
-      "timestamp": "2026-11-07T07:34:17.045Z",
-      "commits": [
-        {
-          "sha": "563467dd8d74707a00b5812bf65324fe3ee4819d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T07:32:29Z",
-          "message": "Merge 7ca0c75bff3cec304874f12a4c08f7afd0a9b830 into c7018a9f13e300017b50f1a101fd6c39a383350d\n"
-        },
-        {
-          "sha": "7ca0c75bff3cec304874f12a4c08f7afd0a9b830",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:32:17-07:00",
-          "message": "The send-log example prints through a Console the docs terminal records, and the layers section says which stacks cannot be wrapped (rich-control-codes-xh4n.6ch.stc)\n"
-        },
-        {
-          "sha": "250e39afb70deaf757c29a88a3842b3ea2ee41c1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:27:26-07:00",
-          "message": "Second high-review fixes: screen refuses to carry tmux's envelope, a passthrough's trust is weighed by the drop it risks, onSend runs while the painter matches the terminal, one percent rule for change and bytes, kitty's TERM yields an inherited TERM_PROGRAM, wire constants in one module (rich-control-codes-xh4n.6ch.stc)\n"
-        },
-        {
-          "sha": "54f7c396e073b02bfdd312e7241cd23c5b2c0ec3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:16:36-07:00",
-          "message": "Medium-review fixes: an App's Progress reaches OSC 9;4 again, a host off a terminal gets none of it, a native layer refuses another's envelope, an inherited LC_TERMINAL yields to a terminal's own TERM_PROGRAM (rich-control-codes-xh4n.6ch.stc)\n"
-        },
-        {
-          "sha": "5a3f7c980aa0647f94be67c597d6493ab555a54e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:09:44-07:00",
-          "message": "Review fixes: route wraps outermost-first, painter returns its terminal bytes with the frame, a frame drops undrawn declarations, TERM_PROGRAM lookup ignores prototype keys (rich-control-codes-xh4n.6ch.stc)\n"
-        },
-        {
-          "sha": "b88a10e220df71a35e5947f36e5c9a40ed39ed22",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:54:47-07:00",
-          "message": "A program's terminal features are chosen by capability: evidence, policy and layers decide each send, and a Progress mirrors OSC 9;4 (rich-control-codes-xh4n.6ch.stc)\n\nTerminalCapabilities carries how each fact is known (declared, confirmed,\nidentified, inferred, unknown); pick chooses the first encoding the policy\naccepts and every layer passes, or falls back, and says why. The painter\nLive and App share owns what the terminal is believed to hold, commits each\nframe's declarations, and restores on hand-back; every decision, those that\nsend nothing included, reaches TerminalFeatures.onSend.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-597",
-      "ref": "refs/pull/597/merge",
-      "sha": "2dfdc9a17be9cf1058409a47b60aa8259c617228",
-      "timestamp": "2026-11-07T07:31:09.307Z",
-      "commits": [
-        {
-          "sha": "2dfdc9a17be9cf1058409a47b60aa8259c617228",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T07:28:47Z",
-          "message": "Merge d4ff1831442c30aadc1157315f6f8c4c482907af into c7018a9f13e300017b50f1a101fd6c39a383350d\n"
-        },
-        {
-          "sha": "d4ff1831442c30aadc1157315f6f8c4c482907af",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:28:37-07:00",
-          "message": "Reaching ten seconds is two seeks while playing, and the after-rebuild check asks only that time moved, not a rounded value (rich-palette-xovz.dc2)\n"
-        },
-        {
-          "sha": "7d5acc5bf3bfc218ad6140c2e6d282483244e426",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:26:52-07:00",
-          "message": "The reduced-motion leg checks the time went on after the rebuild, so a stopped clock cannot pass for reduced motion (rich-palette-xovz.dc2)\n"
-        },
-        {
-          "sha": "bb2d5dc380b4071c3fa9ae09efcbfba4f9e0938e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:22:59-07:00",
-          "message": "The reduced-motion playground test reaches ten seconds by two steps, not 1,200 unread frames, so load no longer times it out (rich-palette-xovz.dc2)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c7018a9f13e300017b50f1a101fd6c39a383350d",
-      "timestamp": "2026-11-07T07:12:38.694Z",
+      "sha": "e478624c449683fc23820c28a7138de9727967e3",
+      "timestamp": "2026-11-07T07:48:11.384Z",
       "commits": [
         {
-          "sha": "c7018a9f13e300017b50f1a101fd6c39a383350d",
+          "sha": "e478624c449683fc23820c28a7138de9727967e3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:10:55-07:00",
-          "message": "Disabled text is written under the slot muted text takes at every indexed depth (rich-palette-xovz.qg7) (#595)\n\n* Disabled text is written under the slot muted text takes at every indexed depth (rich-palette-xovz.qg7)\n\nAt 256 and sixteen colors, slotted held foreground-muted only to textFloor, so\nmuted and disabled often shared a slot or inverted (VGA defaults over bundled\npalettes x every role ground: 932/3427 missed the 0.25 margin at sixteen, 9 at\n256). Disabled text, which has no floor, now takes a slot HELD_PAST_MARGIN under\nmuted's, or muted's color dimmed where none is; under dimmed muted, its floor\nstands in for the contrast. Raising muted instead would lift it to body-text\nstrength at sixteen colors.\n\nink() already took the frame's depth (themed-widget.ts), and widget labels at\nindexed depths are covered by test/widgets/terminal-contrast.test.ts.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Disabled text goes under what dimmed muted text can show, not its assumed floor, and asIs drops the ordering at every depth (rich-palette-xovz.qg7)\n\nReview (high): where muted was dimmed, disabled was measured under textFloor\nalone and could take muted's own slot undimmed (catppuccin-latte at sixteen\ncolors). The bound is now the lesser of the floor and the slot; with no slot\nunder it, disabled is the faintest slot dimmed, not muted's color. The over\nlookup goes through the writeText memo.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Disabled text is held under what muted text shows as an export draws dim, never vanishing into the ground (rich-palette-xovz.qg7)\n\nReview (medium): the bound assumed dimmed muted stood at its floor, and the\nfallback dimmed the faintest slot to near-invisibility. dimShown in\nexport-lines is now the one reading of SGR dim's strength; writeText weighs\nevery slot plain then dimmed against it, and the test measures through it.\nHELD_UNDER is built once; floorOn and textOn docs say what indexed depths do.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Disabled text is the slot, plain or dimmed, nearest its stated color under muted, so it stays grey and never vanishes (rich-palette-xovz.qg7)\n\nReview (high, second): trying plain slots first put disabled text on hue slots\n(olive, teal, navy at 1.3:1) where a dimmed grey kept the margin. Plain and\ndimmed options are now ranked together; the legacy Windows console offers no\ndim. dimShown moves beside blendRgb in core/color; nearestOf is generic over\nwhat a slot is written as; HELD_UNDER refuses an intent held past twice.\nDeferred: rich-palette-xovz.dhr (textOn drops dim), .ixu (fit identity).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-11-07T00:45:20-07:00",
+          "message": "Terminal features chosen by capability; Progress mirrors OSC 9;4 (rich-control-codes-xh4n.6ch.stc) (#596)\n\n* A program's terminal features are chosen by capability: evidence, policy and layers decide each send, and a Progress mirrors OSC 9;4 (rich-control-codes-xh4n.6ch.stc)\n\nTerminalCapabilities carries how each fact is known (declared, confirmed,\nidentified, inferred, unknown); pick chooses the first encoding the policy\naccepts and every layer passes, or falls back, and says why. The painter\nLive and App share owns what the terminal is believed to hold, commits each\nframe's declarations, and restores on hand-back; every decision, those that\nsend nothing included, reaches TerminalFeatures.onSend.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Review fixes: route wraps outermost-first, painter returns its terminal bytes with the frame, a frame drops undrawn declarations, TERM_PROGRAM lookup ignores prototype keys (rich-control-codes-xh4n.6ch.stc)\n\n* Medium-review fixes: an App's Progress reaches OSC 9;4 again, a host off a terminal gets none of it, a native layer refuses another's envelope, an inherited LC_TERMINAL yields to a terminal's own TERM_PROGRAM (rich-control-codes-xh4n.6ch.stc)\n\n* Second high-review fixes: screen refuses to carry tmux's envelope, a passthrough's trust is weighed by the drop it risks, onSend runs while the painter matches the terminal, one percent rule for change and bytes, kitty's TERM yields an inherited TERM_PROGRAM, wire constants in one module (rich-control-codes-xh4n.6ch.stc)\n\n* The send-log example prints through a Console the docs terminal records, and the layers section says which stacks cannot be wrapped (rich-control-codes-xh4n.6ch.stc)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+        },
+        {
+          "sha": "e65bd68b450be8dfdd4be7154fe0c922be52bf21",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:44:37-07:00",
+          "message": "Reduced-motion playground test reaches t=10 by seeking, not 1,200 unread frames (rich-palette-xovz.dc2) (#597)\n\n* The reduced-motion playground test reaches ten seconds by two steps, not 1,200 unread frames, so load no longer times it out (rich-palette-xovz.dc2)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* The reduced-motion leg checks the time went on after the rebuild, so a stopped clock cannot pass for reduced motion (rich-palette-xovz.dc2)\n\n* Reaching ten seconds is two seeks while playing, and the after-rebuild check asks only that time moved, not a rounded value (rich-palette-xovz.dc2)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
