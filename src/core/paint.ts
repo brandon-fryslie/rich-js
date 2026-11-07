@@ -22,7 +22,7 @@ import { Segment } from "./segment.js";
 import type { CaretShape } from "./style.js";
 import type { TerminalFeatures } from "./terminal-capabilities.js";
 import type { TerminalDeclaration } from "./terminal-requests.js";
-import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState, type Committed, type TerminalState } from "./terminal-state.js";
+import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState, resendWrapped, type Committed, type TerminalState } from "./terminal-state.js";
 
 /**
  * Where a frame is painted. `alternate` is the whole terminal, in the
@@ -226,7 +226,16 @@ class DeclaredState {
   /** The frame's declarations committed, or `wanted`: `handBack` commits the empty state, so what a frame set is taken away. */
   commit(wanted: Partial<TerminalState> = declaredState(this.pending.splice(0))): string {
     const features = this.featuresOf();
-    const { next, sends } = commitTerminalState(this.committed, wanted, features);
+    return this.written(commitTerminalState(this.committed, wanted, features), features);
+  }
+
+  /** What only a passthrough carried, sent again (`resendWrapped`): a reattached tmux client's terminal has forgotten it. */
+  resend(): string {
+    const features = this.featuresOf();
+    return this.written(resendWrapped(this.committed, features), features);
+  }
+
+  private written({ next, sends }: ReturnType<typeof commitTerminalState>, features: TerminalFeatures): string {
     this.committed = next;
     let bytes = "";
     for (const decided of sends) {
@@ -302,6 +311,14 @@ export class SurfaceRenderer implements Renderer {
    */
   settle(wanted: Partial<TerminalState>): void {
     this.write(this.state.commit(wanted));
+  }
+
+  /**
+   * Send again, between frames, what the terminal held only through a
+   * passthrough: a tmux client that reattached shows none of it.
+   */
+  resend(): void {
+    this.write(this.state.resend());
   }
 
   /** Take the terminal: the surface entered, the cursor hidden. */

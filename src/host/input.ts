@@ -124,6 +124,12 @@ export interface InputSink {
   reply(reply: TerminalReply): void;
   /** A bracketed paste: the text between its markers, each line break `\n`. */
   paste(text: string): void;
+  /**
+   * The terminal's window took focus or lost it (`CSI I`, `CSI O`), where a
+   * program asked for focus reports (`CSI ? 1004 h`). tmux reports focus-in
+   * when a client attaches, so it is also where a reattach is heard.
+   */
+  focus(focused: boolean): void;
 }
 
 // Single-byte → key name table for the trivial cases.
@@ -299,6 +305,7 @@ type ConsumeResult =
   | { kind: "mouse"; bytes: number; event: TerminalMouseEvent }
   | { kind: "reply"; bytes: number; event: TerminalReply }
   | { kind: "paste"; bytes: number; text: string }
+  | { kind: "focus"; bytes: number; focused: boolean }
   | { kind: "reissued"; bytes: number; event: KeyEvent } // a sequence that opened no key, read by `reissue`
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
@@ -497,6 +504,7 @@ export class InputParser {
       else if (result.kind === "mouse") this.sink.mouse(result.event);
       else if (result.kind === "reply") this.sink.reply(result.event);
       else if (result.kind === "paste") this.sink.paste(result.text);
+      else if (result.kind === "focus") this.sink.focus(result.focused);
       // skip → drop bytes silently
     }
   }
@@ -841,6 +849,9 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
       event: ({ key: name, character: "", shift, ctrl, meta }),
     };
   }
+
+  // Focus reports carry no parameters; a key never ends in `I` or `O`.
+  if (params === "" && (final === "I" || final === "O")) return { kind: "focus", bytes, focused: final === "I" };
 
   const name = CSI_LETTER_KEYS[final];
   if (!name) return { kind: "skip", bytes };

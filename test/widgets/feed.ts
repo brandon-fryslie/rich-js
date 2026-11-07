@@ -15,5 +15,6 @@ export function parserFor(router: EventRouter): InputParser {
     },
     reply: () => {},
     paste: (text) => router.paste(text),
+    focus: () => {},
   }, "split");
 }
