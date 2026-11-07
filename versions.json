@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-602",
+      "ref": "refs/pull/602/merge",
+      "sha": "555fc65ea74b97703b194bedad16ea4cf1f5b064",
+      "timestamp": "2026-11-07T11:08:54.151Z",
+      "commits": [
+        {
+          "sha": "555fc65ea74b97703b194bedad16ea4cf1f5b064",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:06:15-07:00",
+          "message": "Merge 1befb1bfee7c72b774be56d77131ecfaeb7629ca into 2e6ed8da6b799ab74285f8791c0a4f794f736655\n"
+        },
+        {
+          "sha": "1befb1bfee7c72b774be56d77131ecfaeb7629ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:05:59-07:00",
+          "message": "Underline kinds and color as Style fields (rich-control-codes-xh4n.6ch.nc7): Style.underline holds one kind (single, double, curly, dotted, dashed) so the later style decides it whole, doubleUnderline gone; underlineColor (SGR 58); one UNDERLINE table read by the encoder, decodeAnsi, parse, toString and template bindings; whether a destination draws 4:3-4:5 and 58 is picked once per console (style-effects.ts) and held on OutputTarget.underlines, a plain underline and no color otherwise; HTML and SVG draw wavy, dotted, dashed and colored lines\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-601",
       "ref": "refs/pull/601/merge",
       "sha": "9f4affcf4168020654cda4a7903a4551803e7a11",
