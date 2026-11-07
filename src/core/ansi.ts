@@ -273,15 +273,23 @@ interface Lexed {
   readonly open: number;
 }
 
-/** Where the lexer stands: outside any sequence, inside a CSI or an escape, or inside a string escape's payload, which begins at `payload`, just after an ESC there (`escaped`) or not. */
+/**
+ * Where the lexer stands: outside any sequence, inside a CSI or an escape, or
+ * inside a string escape's payload, which begins at `payload`, just after an
+ * ESC there (`escaped`) or not. An escape in progress began at byte `start`,
+ * and its lexeme stands at index `lexeme`, ahead of any control it runs.
+ */
 type LexState =
   | { readonly kind: "ground" }
-  | { readonly kind: "sequence"; readonly start: number; readonly introducer: string; readonly csi: boolean; readonly collected: string }
-  | { readonly kind: "string"; readonly start: number; readonly introducer: string; readonly payload: number; readonly escaped: boolean };
+  | { readonly kind: "sequence"; readonly start: number; readonly lexeme: number; readonly introducer: string; readonly csi: boolean; readonly collected: string }
+  | { readonly kind: "string"; readonly start: number; readonly lexeme: number; readonly introducer: string; readonly payload: number; readonly escaped: boolean };
 
 const GROUND: LexState = { kind: "ground" };
 
-const sequenceAt = (start: number, introducer: string, csi: boolean): LexState => ({ kind: "sequence", start, introducer, csi, collected: "" });
+const sequenceAt = (start: number, lexeme: number, introducer: string, csi: boolean): LexState => ({ kind: "sequence", start, lexeme, introducer, csi, collected: "" });
+
+// A run of ground text: everything but what begins an escape or breaks a line.
+const GROUND_RUN = pattern(new RegExp(`[^\\x1b\\x80-\\x9f\\n${controlClass((disposition) => disposition === "line-break").slice(1, -1)}]+`, "u"));
 
 /**
  * `char` as a line break, outside a sequence or run inside one: LF and the
@@ -328,8 +336,6 @@ function lex(bytes: string): Lexed {
   const lexemes: Lexeme[] = [];
   let text = "";
   let state = GROUND;
-  // The lexeme index the escape in progress began at.
-  let opened = 0;
   const flush = (): void => {
     if (text !== "") lexemes.push({ kind: "text", text });
     text = "";
@@ -348,13 +354,13 @@ function lex(bytes: string): Lexed {
         if (lineBreak !== undefined) emit(lineBreak);
         else if (char === "\x1b" || code === CSI_C1 || STRING_C1.has(code)) {
           flush();
-          opened = lexemes.length;
-          state = STRING_C1.has(code) ? { kind: "string", start: at, introducer: char, payload: at + 1, escaped: false } : sequenceAt(at, char, code === CSI_C1);
+          const lexeme = lexemes.length;
+          state = STRING_C1.has(code) ? { kind: "string", start: at, lexeme, introducer: char, payload: at + 1, escaped: false } : sequenceAt(at, lexeme, char, code === CSI_C1);
         } else text += char;
         return true;
       }
       case "sequence": {
-        const { start, introducer, csi, collected } = state;
+        const { start, lexeme, introducer, csi, collected } = state;
         const cancelled = char === "\x1b" || isC1(code);
         if (cancelled || ABORT.test(char)) {
           emit({ kind: "silent" });
@@ -377,8 +383,8 @@ function lex(bytes: string): Lexed {
           state = GROUND;
           return false;
         }
-        if (!csi && collected === "" && char === "[") state = sequenceAt(start, introducer + char, true);
-        else if (!csi && collected === "" && STRING_FINALS.includes(char)) state = { kind: "string", start, introducer: introducer + char, payload: at + 1, escaped: false };
+        if (!csi && collected === "" && char === "[") state = sequenceAt(start, lexeme, introducer + char, true);
+        else if (!csi && collected === "" && STRING_FINALS.includes(char)) state = { kind: "string", start, lexeme, introducer: introducer + char, payload: at + 1, escaped: false };
         else {
           emit(completed(introducer + collected + char));
           state = GROUND;
@@ -394,8 +400,7 @@ function lex(bytes: string): Lexed {
         if (terminated || cut) {
           emit({ kind: "string", escape: introducer + bytes.slice(payload, terminated ? at + 1 : escaped ? at - 1 : at) });
           // The ESC that cut the string off begins the sequence `char` goes on.
-          state = !terminated && escaped ? sequenceAt(at - 1, "\x1b", false) : GROUND;
-          opened = lexemes.length;
+          state = !terminated && escaped ? sequenceAt(at - 1, lexemes.length, "\x1b", false) : GROUND;
           return terminated;
         }
         if (ABORT.test(char)) {
@@ -406,7 +411,15 @@ function lex(bytes: string): Lexed {
       }
     }
   };
-  for (let at = 0; at < bytes.length; ) if (step(bytes[at]!, at)) at += 1;
+  const run = new RegExp(GROUND_RUN.source, "uy");
+  for (let at = 0; at < bytes.length; ) {
+    run.lastIndex = at;
+    const ground = state.kind === "ground" ? run.exec(bytes) : null;
+    if (ground !== null) {
+      text += ground[0];
+      at = run.lastIndex;
+    } else if (step(bytes[at]!, at)) at += 1;
+  }
   const open = state;
   if (open.kind === "ground") {
     flush();
@@ -414,8 +427,8 @@ function lex(bytes: string): Lexed {
   }
   // An escape the bytes end inside began on the line it stands on, whatever breaks it ran after.
   const escape = open.kind === "sequence" ? open.introducer + open.collected : open.introducer + bytes.slice(open.payload);
-  lexemes.splice(opened, 0, { kind: open.kind === "sequence" ? "undrawn" : "string", escape });
-  return { lexemes, unread: open.start, open: opened };
+  lexemes.splice(open.lexeme, 0, { kind: open.kind === "sequence" ? "undrawn" : "string", escape });
+  return { lexemes, unread: open.start, open: open.lexeme };
 }
 
 /** `bytes`, a `text` or a `sequence` the lexer handed on, as what each part of them does. */
@@ -861,7 +874,7 @@ function drawLine(stream: Stream, line: readonly Lexeme[], start: LineState): Dr
   const report = (escape: string): void => {
     undrawn ??= escape;
   };
-  for (const token of lineTokens(line)) {
+  for (const lexeme of line) for (const token of tokens(lexeme)) {
     const preceding = last;
     last = undefined;
     switch (token.kind) {
@@ -965,11 +978,6 @@ function drawLine(stream: Stream, line: readonly Lexeme[], start: LineState): Dr
     }
   }
   return { cells, end: { column, savedColumn, last }, undrawn };
-}
-
-/** What each lexeme of a line does, in order. */
-function* lineTokens(line: readonly Lexeme[]): Generator<Token> {
-  for (const lexeme of line) yield* tokens(lexeme);
 }
 
 /** A line's cells as the text they show, a run per style. */
