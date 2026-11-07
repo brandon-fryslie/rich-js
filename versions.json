@@ -4,15 +4,22 @@
     {
       "version": "pr-595",
       "ref": "refs/pull/595/merge",
-      "sha": "56cea56e557b9fc0f90b6699b828e0d14a529f3c",
-      "timestamp": "2026-11-07T06:46:26.866Z",
+      "sha": "40ed563c0ee11205efb7c4bd0b73b5c66176885f",
+      "timestamp": "2026-11-07T06:57:05.551Z",
       "commits": [
         {
-          "sha": "56cea56e557b9fc0f90b6699b828e0d14a529f3c",
+          "sha": "40ed563c0ee11205efb7c4bd0b73b5c66176885f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T06:43:49Z",
-          "message": "Merge a3dcfd00d3e8d59efc5f569e6ade49b28b569e25 into e8ccaa344a8e212c55b5d252d065534fb5b7a315\n"
+          "timestamp": "2026-11-07T06:55:14Z",
+          "message": "Merge 91798e340e0b275257408bcdb7f0c38caddc6e7f into e8ccaa344a8e212c55b5d252d065534fb5b7a315\n"
+        },
+        {
+          "sha": "91798e340e0b275257408bcdb7f0c38caddc6e7f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T23:53:51-07:00",
+          "message": "Disabled text is the slot, plain or dimmed, nearest its stated color under muted, so it stays grey and never vanishes (rich-palette-xovz.qg7)\n\nReview (high, second): trying plain slots first put disabled text on hue slots\n(olive, teal, navy at 1.3:1) where a dimmed grey kept the margin. Plain and\ndimmed options are now ranked together; the legacy Windows console offers no\ndim. dimShown moves beside blendRgb in core/color; nearestOf is generic over\nwhat a slot is written as; HELD_UNDER refuses an intent held past twice.\nDeferred: rich-palette-xovz.dhr (textOn drops dim), .ixu (fit identity).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "a3dcfd00d3e8d59efc5f569e6ade49b28b569e25",
