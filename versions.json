@@ -4,15 +4,22 @@
     {
       "version": "pr-600",
       "ref": "refs/pull/600/merge",
-      "sha": "7712b15c3eb0ce941f8a959b7d16e01a0dd9011e",
-      "timestamp": "2026-11-07T09:35:29.427Z",
+      "sha": "83dac617a2db3e685fda327cb91959c1d455d639",
+      "timestamp": "2026-11-07T10:00:43.152Z",
       "commits": [
         {
-          "sha": "7712b15c3eb0ce941f8a959b7d16e01a0dd9011e",
+          "sha": "83dac617a2db3e685fda327cb91959c1d455d639",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T02:33:16-07:00",
-          "message": "Merge b5896c26891af8887756c4c8239419e982104b75 into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
+          "timestamp": "2026-11-07T09:58:30Z",
+          "message": "Merge 75ee1defc320a493bbf607ffe5160508a8593a18 into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
+        },
+        {
+          "sha": "75ee1defc320a493bbf607ffe5160508a8593a18",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T02:58:15-07:00",
+          "message": "Review fixes (rich-control-codes-xh4n.6ch.zgr): learned features re-send what the old ones refused; an XTVERSION answer never outweighs declared or confirmed evidence, drops only inferred tmux/zellij/screen layers, never duplicates a layer; an unrecognized answer learns nothing; askTerminalIdentity returns undefined when nothing was learned; Layer carries its own evidence\n"
         },
         {
           "sha": "b5896c26891af8887756c4c8239419e982104b75",
