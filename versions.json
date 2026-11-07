@@ -4,15 +4,22 @@
     {
       "version": "pr-591",
       "ref": "refs/pull/591/merge",
-      "sha": "4a78ca69bb49679a7687b473f9e0efde40db7288",
-      "timestamp": "2026-11-07T01:42:22.947Z",
+      "sha": "f727ac5cdd0a8e76f6f48887d6638ff31bfe1212",
+      "timestamp": "2026-11-07T01:50:05.976Z",
       "commits": [
         {
-          "sha": "4a78ca69bb49679a7687b473f9e0efde40db7288",
+          "sha": "f727ac5cdd0a8e76f6f48887d6638ff31bfe1212",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T01:39:46Z",
-          "message": "Merge f233d4a3c395c66239adabc947b47e558c0436bf into 2c45a91f45d52f53d61870445221f5d38ceb0cfa\n"
+          "timestamp": "2026-11-07T01:47:54Z",
+          "message": "Merge 3c39f85511f11e6d692f9ada9ce7b2f199c3a78f into 2c45a91f45d52f53d61870445221f5d38ceb0cfa\n"
+        },
+        {
+          "sha": "3c39f85511f11e6d692f9ada9ce7b2f199c3a78f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:47:42-07:00",
+          "message": "Review: a CSI and an escape are two lexeme types each read by its own total function, and the no-byte-drawn gate surrounds each sequence with text no final can be (rich-control-codes-xh4n.7c0)\n"
         },
         {
           "sha": "f233d4a3c395c66239adabc947b47e558c0436bf",
