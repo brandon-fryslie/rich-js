@@ -4,15 +4,22 @@
     {
       "version": "pr-600",
       "ref": "refs/pull/600/merge",
-      "sha": "d7eed6929ef4e52c4c131dce16352d68b7d52251",
-      "timestamp": "2026-11-07T10:13:50.958Z",
+      "sha": "a5240945b668802a27c2d31c676d7f65d994068e",
+      "timestamp": "2026-11-07T10:31:10.061Z",
       "commits": [
         {
-          "sha": "d7eed6929ef4e52c4c131dce16352d68b7d52251",
+          "sha": "a5240945b668802a27c2d31c676d7f65d994068e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T10:11:15Z",
-          "message": "Merge d3295a3d1002023705b4323b419ab52ed68b7a5f into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
+          "timestamp": "2026-11-07T10:28:14Z",
+          "message": "Merge 251b409c98f340fabd53b3ebb893c6ff815713eb into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
+        },
+        {
+          "sha": "251b409c98f340fabd53b3ebb893c6ff815713eb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T03:27:58-07:00",
+          "message": "High-pass fixes (rich-control-codes-xh4n.6ch.zgr): the pointer shape is terminal state the painter commits, one sent/refused record for it and progress (App's pointerSent/showPointer and setPointerShape's boolean gone); VTE answers VTE(<n>) and a VTE before 0.54 is not asked; askTerminalIdentity returns undefined when the answer changes nothing; refusals decided once per features object handed over; one option shape, a layer without evidence held declared; a multiplexer the env never saw resets the terminal to other; any layer stronger than identified keeps its place; Zellij( pattern; a steady commit allocates nothing; the demo guards its race\n"
         },
         {
           "sha": "d3295a3d1002023705b4323b419ab52ed68b7a5f",
