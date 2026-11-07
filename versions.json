@@ -4,15 +4,22 @@
     {
       "version": "pr-600",
       "ref": "refs/pull/600/merge",
-      "sha": "83dac617a2db3e685fda327cb91959c1d455d639",
-      "timestamp": "2026-11-07T10:00:43.152Z",
+      "sha": "d7eed6929ef4e52c4c131dce16352d68b7d52251",
+      "timestamp": "2026-11-07T10:13:50.958Z",
       "commits": [
         {
-          "sha": "83dac617a2db3e685fda327cb91959c1d455d639",
+          "sha": "d7eed6929ef4e52c4c131dce16352d68b7d52251",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T09:58:30Z",
-          "message": "Merge 75ee1defc320a493bbf607ffe5160508a8593a18 into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
+          "timestamp": "2026-11-07T10:11:15Z",
+          "message": "Merge d3295a3d1002023705b4323b419ab52ed68b7a5f into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
+        },
+        {
+          "sha": "d3295a3d1002023705b4323b419ab52ed68b7a5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T03:11:06-07:00",
+          "message": "Medium-pass fixes (rich-control-codes-xh4n.6ch.zgr): the painter remembers what the terminal was actually sent, so a refused change is decided again under new features and nothing is re-sent that already went (featuresChanged and the undefined state are gone); App tracks the pointer shape sent the same way, and its terminalFeatures setter refuses a stopped app as pointerShape does; identifiedBy keeps a declared multiplexer where it was declared; a layer passed in names no evidence and the console holds it as declared; evidence strength is a Record, no indexOf. zellij stays in HIDES_TERMINAL_VERSION: verified it answers XTVERSION itself as Zellij(<version>) in zellij-server/src/panes/grid.rs\n"
         },
         {
           "sha": "75ee1defc320a493bbf607ffe5160508a8593a18",
