@@ -28,7 +28,10 @@ weighs the two:
 
 OSC 9;4 progress is `misread` where it is unsupported: bare OSC 9 is a
 notification, so a terminal that lacks 9;4 would pop up "4;1;50". On the
-environment's word alone it is therefore never sent.
+environment's word alone it is therefore never sent. OSC 52 (clipboard), OSC
+22 (pointer shape) and OSC 9 (notification) go the other way: a terminal
+without them ignores them, so they are sent whatever the terminal is, under
+either policy, wherever the layers let them through.
 
 ## Layers
 
@@ -44,6 +47,11 @@ Each passthrough layer adds one wrap, so tmux inside tmux doubles every ESC twic
 screen ends its wrap at the first string terminator, so it cannot carry another
 layer's wrap, and a sequence that would need it to is not sent. Neither can a
 `native` layer, which re-emits only the sequence itself.
+
+A layer found in the environment is one whose passthrough nothing has
+confirmed, and no policy acts on that, so nothing that needs tmux's or screen's
+passthrough is sent until the program passes the layer in with its passthrough
+`declared`.
 
 ## The send log
 

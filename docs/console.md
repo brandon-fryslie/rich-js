@@ -699,15 +699,23 @@ console.bell();
 `setPointerShape` throws a `TypeError` for a name outside `PointerShape`, even
 when it would write nothing, because OSC 22 carries the name as it is.
 
-`notify` writes the protocol the terminal reads: kitty's OSC 99, OSC 777 for foot
-and Ghostty, and OSC 9 everywhere else, which iTerm2 and WezTerm read. Behind tmux,
-screen, zellij or an editor's terminal, the terminal past it cannot be seen, so
-a notification is OSC 9. tmux and screen take the title themselves, as the
-pane's, and pass the clipboard and a notification on through their passthrough:
+The clipboard, the pointer and a notification are chosen by the console's
+[terminal features](./terminal-features), and each choice lands in its send log.
+`notify` writes kitty's OSC 99, or OSC 777 for foot and Ghostty, where the
+policy accepts the evidence that the terminal is one of those, and otherwise
+OSC 9, which kitty, Ghostty, iTerm2 and WezTerm read and any other terminal
+ignores. On the environment's word alone, under the default `strict` policy,
+that is OSC 9; under `bestGuess` it is the terminal's own.
+
+tmux and screen take the title themselves, as the pane's, and pass the
+clipboard, the pointer and a notification on only through their passthrough:
 tmux only with `allow-passthrough` on, screen only when the request fits its
-buffer, so a long clipboard write is not sent. zellij and an editor's terminal
-have no passthrough, and what they do with a request is theirs. A terminal may refuse a clipboard write; most ask first
-or need it enabled.
+buffer, so a long clipboard write is not sent. Nothing in the environment says
+whether passthrough is on, so under either policy none of the three is sent
+through tmux or screen until the program declares the layer's passthrough. zellij and an
+editor's terminal have no passthrough, and what they do with a request is
+theirs. A terminal may refuse a clipboard write; most ask first or need it
+enabled.
 
 ## Alternate screen
 

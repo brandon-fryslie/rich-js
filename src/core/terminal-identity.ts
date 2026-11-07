@@ -1,8 +1,7 @@
 /**
  * Which terminal draws the cells, and what sits between it and the program:
- * the one reading of the environment every terminal-specific choice derives
- * from — the text order, the notification protocol, the wrapping a multiplexer
- * needs. `color.ts` reads `TERM` for a different question, how many colors, and
+ * the one reading of the environment, which `inferCapabilities` turns into
+ * evidence for `pick` and `detectTextOrder` reads. `color.ts` reads `TERM` for a different question, how many colors, and
  * partly from suffixes (`-256color`) that name no terminal.
  *
  * An environment is inherited: `code .` from Windows Terminal carries
@@ -59,7 +58,9 @@ const TERM_PROGRAMS: ReadonlyMap<string, TerminalName> = new Map([["iTerm.app", 
 type Named = readonly [TerminalName, string | undefined];
 
 function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
-  const term = env["TERM"] ?? "";
+  // A tmux or screen pane's TERM is the multiplexer's own setting (tmux's
+  // `default-terminal`), so it names no terminal past it.
+  const term = intermediary === "tmux" || intermediary === "screen" ? "" : env["TERM"] ?? "";
   for (const [name, terminal] of TERM_NAMES) if (term.match(name) !== null) return [terminal, `TERM=${term}`];
   // kitty sets no TERM_PROGRAM. A terminal that borrows kitty's TERM (WezTerm
   // can) names itself, and so does one started from kitty, whose KITTY_WINDOW_ID

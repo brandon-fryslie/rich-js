@@ -11,7 +11,7 @@
  */
 
 import { isAttended, type Env } from "./env.js";
-import { identifyTerminal, type TerminalIdentity, type TerminalName } from "./terminal-identity.js";
+import { identifyTerminal, type TerminalName } from "./terminal-identity.js";
 
 /**
  * - `plain`: nothing is known of the destination, or it is not a display: a
@@ -86,10 +86,11 @@ const ORDER_OF: Readonly<Record<TerminalName, TextOrder>> = {
  * are unmeasured. Any program may state its order.
  */
 export function detectTextOrder(env: Env, isTTY: boolean): TextOrder {
-  return textOrderOf(identifyTerminal(env), isAttended(isTTY, env));
+  const { terminal, intermediary } = identifyTerminal(env);
+  return textOrderOf({ terminal, between: intermediary !== undefined, attended: isAttended(isTTY, env) });
 }
 
-/** The order an identified terminal takes, for whoever is `attended` at it. */
-export function textOrderOf({ terminal, intermediary }: TerminalIdentity, attended: boolean): TextOrder {
-  return attended && intermediary === undefined ? ORDER_OF[terminal] : "plain";
+/** The order `terminal` takes for whoever is `attended` at it: `plain` when anything sits `between`. */
+export function textOrderOf({ terminal, between, attended }: { terminal: TerminalName; between: boolean; attended: boolean }): TextOrder {
+  return attended && !between ? ORDER_OF[terminal] : "plain";
 }
