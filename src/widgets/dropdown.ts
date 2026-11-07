@@ -24,7 +24,6 @@
  */
 
 import { labeled } from "../core/orient.js";
-import type { TextOrder } from "../core/text-order.js";
 import { action } from "mobx";
 import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
@@ -32,9 +31,7 @@ import { Style, caretMark } from "../core/style.js";
 import { cellLen, cellFitEnd, setCellSize, asCellCol } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import { moveSelection } from "../core/selection.js";
-import type { TerminalTheme } from "../core/color.js";
-import { ThemedWidget } from "./themed-widget.js";
-import { ink } from "./ink.js";
+import { ThemedWidget, type ThemedWidgetOptions } from "./themed-widget.js";
 import type {
   WidgetKeyEvent,
   WidgetMouseEvent,
@@ -42,12 +39,11 @@ import type {
   OverlayRenderable,
 } from "./types.js";
 
-export interface DropdownOptions {
+export interface DropdownOptions extends ThemedWidgetOptions {
   options: string[];
   selectedIndex?: number;
   id?: string;
   disabled?: boolean;
-  theme?: TerminalTheme;
 }
 
 export class Dropdown extends ThemedWidget implements OverlayRenderable {
@@ -78,7 +74,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
   }
 
   constructor(options: DropdownOptions) {
-    super(options.theme);
+    super(options);
     this.id = options.id ?? `dropdown-${Math.random().toString(36).slice(2, 8)}`;
     this._options = [...options.options];
     // [LAW:types-are-the-program] selectedIndex must point to a valid
@@ -266,9 +262,9 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     const maxLabelLen = this.maxLabelLen();
 
     const baseStyle = this.disabled
-      ? new Style(this.disabledInk)
+      ? new Style(this.disabledInk(options))
       : new Style({
-          ...ink(this.theme, "foreground", "surface"),
+          ...this.ink(options, "foreground", "surface"),
           underline: this.focused,
         });
 
@@ -338,24 +334,23 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     if (!this.expanded) return null;
     const maxLabelLen = this.maxLabelLen();
     const fopts = this.filteredOptions;
-    if (fopts.length === 0) return this.renderNoMatchRow(maxLabelLen);
-    const order = options.textOrder;
+    if (fopts.length === 0) return this.renderNoMatchRow(maxLabelLen, options);
 
     const segments: Segment[] = [];
     for (let i = 0; i < fopts.length; i++) {
       if (i > 0) segments.push(new Segment("\n"));
-      segments.push(...this.renderOptionRow(fopts[i]!, i, maxLabelLen, order));
+      segments.push(...this.renderOptionRow(fopts[i]!, i, maxLabelLen, options));
     }
     return segments;
   }
 
-  private renderNoMatchRow(maxLabelLen: number): Segment[] {
+  private renderNoMatchRow(maxLabelLen: number, options: RenderOptions): Segment[] {
     // Right-clipped + padded so width matches a normal option row.
     const text = setCellSize("(no matches)", asCellCol(maxLabelLen));
     const inner = ` ${text} `;
     const style = this.disabled
-      ? new Style(this.disabledInk)
-      : new Style(ink(this.theme, "foreground-muted", "surface"));
+      ? new Style(this.disabledInk(options))
+      : new Style(this.mutedInk(options, "surface"));
     return [
       new Segment(" ", style),
       new Segment(inner, style),
@@ -367,7 +362,7 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     entry: { label: string; idx: number },
     fpos: number,
     maxLabelLen: number,
-    order: TextOrder | undefined,
+    options: RenderOptions,
   ): Segment[] {
     // Row: "  " + label.padEnd(maxLabelLen) + "  "
     // Width = 1 + 1 + maxLabelLen + 1 + 1 = maxLabelLen + 4.
@@ -382,16 +377,16 @@ export class Dropdown extends ThemedWidget implements OverlayRenderable {
     // Highlighted: muted bg → text-primary (mostly-accent fg) is readable.
     // Selected:    full primary bg → `text` drawn on it (`textOn`) for fg.
     const rowStyle = this.disabled
-      ? new Style(this.disabledInk)
+      ? new Style(this.disabledInk(options))
       : isHighlighted
-        ? new Style(ink(this.theme, "text-primary", "primary-muted"))
+        ? new Style(this.ink(options, "text-primary", "primary-muted"))
         : isSelected
-          ? new Style(ink(this.theme, "text", "primary"))
-          : new Style(ink(this.theme, "foreground", "surface"));
+          ? new Style(this.ink(options, "text", "primary"))
+          : new Style(this.ink(options, "foreground", "surface"));
 
     return [
       new Segment(" ", rowStyle),
-      ...labeled("", [new Segment(inner, rowStyle)], "", rowStyle, order),
+      ...labeled("", [new Segment(inner, rowStyle)], "", rowStyle, options.textOrder),
       new Segment(" ", rowStyle),
     ];
   }

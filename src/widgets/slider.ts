@@ -8,14 +8,12 @@
  * Visual:
  *   track    — `width` cells of "─" (ASCII fallback "-")
  *   marker   — "●" (ASCII fallback "*") at round((value - min) / range * (width - 1))
- *   filled   — cells left of and including the marker use primary fg
- *              on the default terminal bg
- *   unfilled — cells right of the marker use surface fg on the default
- *              terminal bg (no explicit bgcolor — the unfilled track
- *              should sit transparently against whatever the panel /
- *              parent paints underneath)
+ *   filled   — cells left of and including the marker: `text-primary` on
+ *              the theme's background
+ *   unfilled — cells right of the marker: the widget's muted ink on the
+ *              theme's background
  *   focused  — underline on the segments
- *   disabled — dim
+ *   disabled — the widget's disabled ink
  */
 
 import { action } from "mobx";
@@ -23,12 +21,10 @@ import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
-import type { TerminalTheme } from "../core/color.js";
-import { ThemedWidget } from "./themed-widget.js";
-import { ink } from "./ink.js";
+import { ThemedWidget, type ThemedWidgetOptions } from "./themed-widget.js";
 import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
-export interface SliderOptions {
+export interface SliderOptions extends ThemedWidgetOptions {
   value?: number;
   min?: number;
   max?: number;
@@ -36,7 +32,6 @@ export interface SliderOptions {
   width?: number;
   id?: string;
   disabled?: boolean;
-  theme?: TerminalTheme;
 }
 
 const DEFAULT_WIDTH = 20;
@@ -54,7 +49,7 @@ export class Slider extends ThemedWidget {
   @observableRef private accessor _dragging = false;
 
   constructor(options: SliderOptions = {}) {
-    super(options.theme);
+    super(options);
     this.id = options.id ?? `slider-${Math.random().toString(36).slice(2, 8)}`;
     this.min = options.min ?? 0;
     this.max = options.max ?? 100;
@@ -154,14 +149,14 @@ export class Slider extends ThemedWidget {
 
     const baseAttrs = { underline: this.focused };
     const filledStyle = this.disabled
-      ? new Style({ ...this.disabledInk, ...baseAttrs })
-      : new Style({ ...ink(this.theme, "text-primary", "background"), ...baseAttrs });
+      ? new Style({ ...this.disabledInk(options), ...baseAttrs })
+      : new Style({ ...this.ink(options, "text-primary", "background"), ...baseAttrs });
     const unfilledStyle = this.disabled
-      ? new Style({ ...this.disabledInk, ...baseAttrs })
-      : new Style({ ...ink(this.theme, "foreground-muted", "background"), ...baseAttrs });
+      ? new Style({ ...this.disabledInk(options), ...baseAttrs })
+      : new Style({ ...this.mutedInk(options, "background"), ...baseAttrs });
     const markerStyle = this.disabled
-      ? new Style({ ...this.disabledInk, bold: true, ...baseAttrs })
-      : new Style({ ...ink(this.theme, "text-primary", "background"), bold: true, ...baseAttrs });
+      ? new Style({ ...this.disabledInk(options), bold: true, ...baseAttrs })
+      : new Style({ ...this.ink(options, "text-primary", "background"), bold: true, ...baseAttrs });
 
     const segments: Segment[] = [];
     if (markerIdx > 0) {

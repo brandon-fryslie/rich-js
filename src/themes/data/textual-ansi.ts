@@ -5,6 +5,8 @@ const theme: ThemePaletteData = {
   name: "textual-ansi",
   dark: true,
   ansi: VGA_ANSI,
+  // the grey between its text and its ground.
+  ansiMuted: "brightBlack",
   vars: {
     "accent": "#0000FF",
     "background": "#121212",

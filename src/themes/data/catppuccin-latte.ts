@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#19A1A8",
     brightWhite: "#6C6F85",
   },
+  // Catppuccin's subtext0.
+  ansiMuted: "brightWhite",
   vars: {
     "accent": "#FD640B",
     "accent-darken-1": "#E54F00",

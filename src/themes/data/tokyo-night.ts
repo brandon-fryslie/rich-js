@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#7DCFFF",
     brightWhite: "#C0CAF5",
   },
+  // its white is its text and its bright black is under 3:1.
+  ansiMuted: "blue",
   vars: {
     "accent": "#FE9E64",
     "accent-darken-1": "#E78A51",

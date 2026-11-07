@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#8FBCBB",
     brightWhite: "#ECEFF4",
   },
+  // Nord's greys are its frost blues; its bright black is under 3:1.
+  ansiMuted: "blue",
   vars: {
     "accent": "#B48EAD",
     "accent-darken-1": "#9F7A98",

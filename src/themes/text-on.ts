@@ -18,8 +18,8 @@
  * it is, and one that does not is handed to a `TextFit`, which decides what the
  * text becomes instead. [LAW:single-enforcer] The floor is decided here, once;
  * a fit only answers what to draw when it is missed.
- * [LAW:one-type-per-behavior] A fit is a value — `slide`, `named` and `tinted`
- * ship, and a caller's own function is a fourth with no change here.
+ * [LAW:one-type-per-behavior] A fit is a value — `slide`, `named`, `tinted` and
+ * `asIs` ship, and a caller's own function is one more with no change here.
  */
 
 import { ColorDepth, ColorRgba, type TerminalTheme } from "../core/color.js";
@@ -117,8 +117,15 @@ export const tinted: TextFit = ({ tint, ground, floor, drawnAt }) => {
   return shares.map((share) => alphaBlend(tint, pole, share)).find((c) => readsOn(c, ground, floor, drawnAt)) ?? pole;
 };
 
+/**
+ * The candidate as the theme states it, floor or no floor: contrast checking
+ * turned off. [LAW:dataflow-not-control-flow] Off is a fit like the others, so
+ * turning it off changes a value, never which code runs.
+ */
+export const asIs: TextFit = ({ candidate }) => candidate;
+
 /** The fits that ship, by name: what a setting that names a fit is read through. */
-export const TEXT_FITS = { slide, named, tinted } as const satisfies Record<string, TextFit>;
+export const TEXT_FITS = { slide, named, tinted, asIs } as const satisfies Record<string, TextFit>;
 
 
 // WCAG's floors: AA for body text, AA-large for de-emphasized text, which is

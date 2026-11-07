@@ -100,9 +100,8 @@ import { stepSequence } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
 import { placed } from "../core/animation.js";
 import { levelOf, type Anchor } from "../core/anchor.js";
-import type { TerminalTheme } from "../core/color.js";
-import { ThemedWidget } from "./themed-widget.js";
-import { ink } from "./ink.js";
+import { ThemedWidget, type ThemedWidgetOptions } from "./themed-widget.js";
+import type { Depth } from "./widget-base.js";
 import type { Frame, WidgetKeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
 import { pattern } from "../core/pattern.js";
 import { Memo } from "../core/memo.js";
@@ -220,7 +219,7 @@ interface Painted {
 }
 
 /** What a frame drew a field under: the width offered, whether only ASCII could be drawn, and the order its rows are shown in. */
-interface Drawn {
+interface Drawn extends Depth {
   readonly maxWidth: number;
   readonly asciiOnly: boolean;
   readonly textOrder: TextOrder;
@@ -446,12 +445,11 @@ export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWid
   return rows;
 };
 
-export interface TextInputOptions {
+export interface TextInputOptions extends ThemedWidgetOptions {
   value?: string;
   placeholder?: string;
   id?: string;
   disabled?: boolean;
-  theme?: TerminalTheme;
   maxLength?: number;
   password?: boolean;
   /**
@@ -716,7 +714,7 @@ export class TextInput extends ThemedWidget {
   readonly multiline: boolean;
 
   constructor(options: TextInputOptions = {}) {
-    super(options.theme);
+    super(options);
     this.id = options.id ?? `text-input-${Math.random().toString(36).slice(2, 8)}`;
     this._value = toLf(options.value ?? "");
     this.placeholder = options.placeholder ?? "";
@@ -1172,14 +1170,14 @@ export class TextInput extends ThemedWidget {
 
   // [LAW:one-source-of-truth] The style a value is drawn in is also what a
   // short row is padded with, so a caller's `contentStyle` fills the row.
-  protected override get ground(): Style {
+  protected override ground(at: Depth): Style {
     return this.disabled
-      ? new Style(this.disabledInk)
-      : this.contentStyleOverride ?? super.ground;
+      ? new Style(this.disabledInk(at))
+      : this.contentStyleOverride ?? super.ground(at);
   }
 
   protected draw(options: RenderOptions): Iterable<Segment> {
-    const drawn: Drawn = { maxWidth: options.maxWidth, asciiOnly: options.asciiOnly ?? false, textOrder: options.textOrder ?? "plain" };
+    const drawn: Drawn = { colorSystem: options.colorSystem, maxWidth: options.maxWidth, asciiOnly: options.asciiOnly ?? false, textOrder: options.textOrder ?? "plain" };
     // [LAW:effects-at-boundaries] Kept once the frame is drawn, never while it is.
     const { lines, layout } = this._multiline ? this._renderMultiline(options, drawn) : this._renderSingleLine(options, drawn);
     const painted: Painted = { value: this.value, cursor: this.cursorPosition, caretShown: this.focused && !this.disabled, layout };
@@ -1308,14 +1306,14 @@ export class TextInput extends ThemedWidget {
       const stops = layout.kind === "line" ? layout.screen : layout.screens.get(cursorRowIn(layout.rows, this.cursorPosition));
       if (stops !== undefined) return { row: this._screenRow(drawn), screen: shownIn(stops, outside(stops)) };
     }
-    const caret: Caret | undefined = caretShown ? { at: this.cursorPosition, draw: (glyph) => [new Segment(glyph, this.ground)] } : undefined;
+    const caret: Caret | undefined = caretShown ? { at: this.cursorPosition, draw: (glyph) => [new Segment(glyph, this.ground(drawn))] } : undefined;
     if (!this._multiline) {
       const { window, endCells } = this._singleLineWindow(drawn);
-      const stops = this._orderedRow(window, drawn, this.ground, caret, endCells).screen({ before: [new Segment(OPEN)], after: [new Segment(CLOSE)] });
+      const stops = this._orderedRow(window, drawn, this.ground(drawn), caret, endCells).screen({ before: [new Segment(OPEN)], after: [new Segment(CLOSE)] });
       return { row: window, screen: shownIn(stops, outside(stops)) };
     }
     const row = this._screenRow(drawn);
-    const stops = this._orderedRow(row, drawn, this.ground, caret).screen({ before: [], after: [] });
+    const stops = this._orderedRow(row, drawn, this.ground(drawn), caret).screen({ before: [], after: [] });
     return { row, screen: shownIn(stops, outside(stops)) };
   }
 
@@ -1522,14 +1520,14 @@ export class TextInput extends ThemedWidget {
   private _renderSingleLine(options: RenderOptions, drawn: Drawn): { lines: Segment[][]; layout: Layout } {
 
     const bracketStyle = this.disabled
-      ? new Style(this.disabledInk)
-      : new Style(ink(this.theme, "foreground", "background"));
+      ? new Style(this.disabledInk(options))
+      : new Style(this.ink(options, "foreground", "background"));
 
     const contentStyle = this._showsPlaceholder() && !this.disabled
-      ? new Style(ink(this.theme, "foreground-muted", "background"))
-      : this.ground;
+      ? new Style(this.mutedInk(options, "background"))
+      : this.ground(options);
 
-    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "text", "primary"));
+    const cursorStyle = this.cursorStyleOverride ?? new Style(this.ink(options, "text", "primary"));
 
     const caret = this.focused && !this.disabled
       ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
@@ -1589,9 +1587,9 @@ export class TextInput extends ThemedWidget {
     const cursorRow = cursorRowIn(visualRows, this.cursorPosition);
     const levelOf = drawn.textOrder === "plain" ? () => 0 as const : this._rowLevels(visualRows, drawn);
     const arrows = this._drawsArrows(total);
-    const contentStyle = this.ground;
-    const markerStyle = new Style(ink(this.theme, "foreground-muted", "background"));
-    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "text", "primary"));
+    const contentStyle = this.ground(options);
+    const markerStyle = new Style(this.disabled ? this.disabledInk(options) : this.mutedInk(options, "background"));
+    const cursorStyle = this.cursorStyleOverride ?? new Style(this.ink(options, "text", "primary"));
     const caret = this.focused && !this.disabled
       ? { at: this.cursorPosition, draw: (glyph: string) => this._caret(glyph, cursorStyle, contentStyle, options) }
       : undefined;
@@ -1666,7 +1664,7 @@ export class TextInput extends ThemedWidget {
     // Only emitted in `"arrows"` mode; other modes leave the content area
     // untouched and rely on the host to surface scroll state externally (e.g.
     // Panel border accessory).
-    const indicatorStyle = this.indicatorStyleOverride ?? new Style(ink(this.theme, "text-primary", "background"));
+    const indicatorStyle = this.indicatorStyleOverride ?? new Style(this.ink(options, "text-primary", "background"));
     const arrowOn = (i: number): string | undefined =>
       !arrows ? undefined
         : i === 0 && offset > 0 ? drawable(options, "▲", "^")

@@ -20,7 +20,7 @@ import { Segment } from "../../src/core/segment.js";
 import { NULL_STYLE } from "../../src/core/style.js";
 import { contrastRatio, TerminalTheme } from "../../src/core/color.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
-import { textFloor, textOn } from "../../src/themes/text-on.js";
+import { textFloor } from "../../src/themes/text-on.js";
 import { Button, type ButtonVariant } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Dropdown } from "../../src/widgets/dropdown.js";
@@ -54,7 +54,22 @@ const BUNDLED = Object.values(terminalThemes).filter((value) => value instanceof
 const VARIANTS = ["default", "primary", "success", "warning", "danger"] as const satisfies
   readonly (ButtonVariant & ToggleVariant)[];
 
+// A slider's track glyph, which its empty half draws muted.
+const TRACK = "─";
+
 type Scene = readonly [string, () => Iterable<Segment>];
+
+// The glyphs each scene draws in muted text — meant to recede, with a floor of
+// its own — by their text. Named by what the widget means to draw, never read
+// off the color, so body text drawn muted by mistake is held to the body floor
+// and fails.
+const MUTED: Readonly<Record<string, readonly string[]>> = {
+  "Slider": [TRACK],
+  "Slider focused": [TRACK],
+  "TextInput placeholder": ["ame"],
+  "TextInput multiline": ["↪"],
+  "Dropdown no matches": ["(no matches)"],
+};
 
 const scenes = (theme?: TerminalTheme): Scene[] => [
   ...VARIANTS.flatMap((variant): Scene[] => [
@@ -81,6 +96,12 @@ const scenes = (theme?: TerminalTheme): Scene[] => [
     d.highlightedIndex = 2;
     return d.renderOverlay(RENDER)!;
   }],
+  ["Dropdown no matches", () => {
+    const d = new Dropdown({ options: ["Ultramarine blue", "Green"], theme });
+    d.expanded = true;
+    d.filter = "zzz";
+    return d.renderOverlay(RENDER)!;
+  }],
 ];
 
 // WCAG sets no contrast floor for an inactive control, so these paint their own
@@ -91,6 +112,7 @@ const disabledScenes = (theme?: TerminalTheme): Scene[] => [
   ["Checkbox disabled", () => new Checkbox({ label: "Agree", checked: true, disabled: true, theme }).render(RENDER)],
   ["Slider disabled", () => new Slider({ value: 40, width: 20, disabled: true, theme }).render(RENDER)],
   ["TextInput disabled", () => new TextInput({ value: "ab\n\nlonger line here", multiline: true, disabled: true, theme }).render(RENDER)],
+  ["TextInput disabled wrapped", () => new TextInput({ value: "a long line that wraps past the edge", multiline: true, continuationMarker: "↪ ", disabled: true, theme }).render({ maxWidth: 12 })],
   ["Dropdown disabled", () => new Dropdown({ options: ["Red", "Green"], disabled: true, theme }).render(RENDER)],
 ];
 
@@ -98,16 +120,16 @@ const disabledScenes = (theme?: TerminalTheme): Scene[] => [
 const cells = (draw: Scene[1]): Segment[] => Segment.splitLines(draw()).flat().filter((segment) => segment.cellLength > 0);
 
 // Every visible glyph of a scene, its contrast resolved on `terminal`, and
-// whether it is drawn in the theme's muted text on its ground — a placeholder,
-// a slider's empty track — which is meant to recede and has a floor of its own.
-const glyphs = (draw: Scene[1], terminal: TerminalTheme): { text: string; ratio: number; muted: boolean }[] => {
+// whether the scene names it muted: a run of one named text counts as it.
+const glyphs = (draw: Scene[1], terminal: TerminalTheme, mutedTexts: readonly string[] = []): { text: string; ratio: number; muted: boolean }[] => {
   const canvas = exportCanvas(terminal).background;
   return cells(draw)
     .filter((segment) => segment.text.trim() !== "")
     .map((segment) => {
       const look = resolveLook(segment.style ?? NULL_STYLE, terminal);
       const ground = look.background === "canvas" ? canvas : look.background;
-      const muted = look.foreground.hex === textOn(terminal.palette, "foreground-muted", ground).hex;
+      const shown = segment.text.trim();
+      const muted = mutedTexts.some((text) => shown.replaceAll(text, "") === "");
       return { text: segment.text, ratio: contrastRatio(look.foreground, ground), muted };
     });
 };
@@ -127,8 +149,8 @@ describe("a widget constructed without a theme", () => {
 });
 
 describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("a widget on %s", (_name, theme) => {
-  it.each(scenes(theme))("%s keeps every glyph at the theme's floor", (_scene, draw) => {
-    expect(glyphs(draw, theme).filter(({ ratio, muted }) => ratio < (muted ? textFloor("foreground-muted") : floorOf(theme)))).toEqual([]);
+  it.each(scenes(theme))("%s keeps every glyph at the theme's floor", (scene, draw) => {
+    expect(glyphs(draw, theme, MUTED[scene]).filter(({ ratio, muted }) => ratio < (muted ? textFloor("foreground-muted") : floorOf(theme)))).toEqual([]);
   });
 
   it.each(disabledScenes(theme))("%s is seen and reads as inactive", (_scene, draw) => {

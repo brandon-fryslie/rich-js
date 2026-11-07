@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#8EC07C",
     brightWhite: "#EBDBB2",
   },
+  // gruvbox's own gray.
+  ansiMuted: "brightBlack",
   vars: {
     "accent": "#F9BD2F",
     "accent-darken-1": "#E2A811",

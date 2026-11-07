@@ -8,7 +8,7 @@
  *   off       — "[OFF] label" with muted variant background
  *   on        — "[ON]  label" with full variant accent background
  *   focused   — underline on the segment (no width change)
- *   disabled  — dimmed
+ *   disabled  — the widget's disabled ink
  */
 
 import { labeled } from "../core/orient.js";
@@ -18,19 +18,17 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
-import type { TerminalTheme } from "../core/color.js";
-import { ThemedWidget } from "./themed-widget.js";
-import { ink, VARIANT_INK, type InkVariant } from "./ink.js";
+import { ThemedWidget, type ThemedWidgetOptions } from "./themed-widget.js";
+import { VARIANT_INK, type InkVariant } from "./ink.js";
 import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
 export type ToggleVariant = InkVariant;
 
-export interface ToggleOptions {
+export interface ToggleOptions extends ThemedWidgetOptions {
   label: string;
   on?: boolean;
   id?: string;
   disabled?: boolean;
-  theme?: TerminalTheme;
   variant?: ToggleVariant;
 }
 
@@ -43,7 +41,7 @@ export class Toggle extends ThemedWidget {
   @observableRef accessor variant: ToggleVariant;
 
   constructor(options: ToggleOptions) {
-    super(options.theme);
+    super(options);
     this.id = options.id ?? `toggle-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.on = options.on ?? false;
@@ -86,11 +84,11 @@ export class Toggle extends ThemedWidget {
     const drawn = (style: Style): Segment[] => labeled(`${indicator} `, [new Segment(this.label, style)], "", style, options.textOrder);
 
     if (this.disabled) {
-      return drawn(new Style(this.disabledInk));
+      return drawn(new Style(this.disabledInk(options)));
     }
 
     const pairs = VARIANT_INK[this.variant];
-    const colors = ink(this.theme, ...(this.on ? pairs.lit : pairs.quiet));
+    const colors = this.ink(options, ...(this.on ? pairs.lit : pairs.quiet));
 
     return drawn(new Style({ ...colors, underline: this.focused }));
   }

@@ -84,7 +84,7 @@ export function section9TextOn(out: Console, intents: readonly TextIntent[] = co
         "any background. Text that reads there is drawn as the theme names it; " +
         "text that does not goes to a fit. slide moves its lightness, named takes " +
         "the theme's own nearest shade, tinted runs Textual's text-* recipe on " +
-        "that ground. A fit is any function — the last row is one written here.",
+        "that ground, asIs leaves it as stated — contrast checking off. A fit is any function — the last row is one written here.",
     ),
   );
   out.print(dim(`  Grounds: ${DECORATIVE.join(", ")} — each darken-3 … lighten-3 and muted — then surface, panel. A red dot: under the floor.`));

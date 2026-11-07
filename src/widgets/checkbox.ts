@@ -8,7 +8,7 @@
  *   unchecked — "[ ] label"
  *   checked   — "[✓] label"  (ASCII fallback "[x] label" when options.asciiOnly)
  *   focused   — underline on the rendered segment (no width change)
- *   disabled  — dimmed
+ *   disabled  — the widget's disabled ink
  */
 
 import { labeled } from "../core/orient.js";
@@ -18,17 +18,14 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
-import type { TerminalTheme } from "../core/color.js";
-import { ThemedWidget } from "./themed-widget.js";
-import { ink } from "./ink.js";
+import { ThemedWidget, type ThemedWidgetOptions } from "./themed-widget.js";
 import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
-export interface CheckboxOptions {
+export interface CheckboxOptions extends ThemedWidgetOptions {
   label: string;
   checked?: boolean;
   id?: string;
   disabled?: boolean;
-  theme?: TerminalTheme;
 }
 
 export class Checkbox extends ThemedWidget {
@@ -39,7 +36,7 @@ export class Checkbox extends ThemedWidget {
   @observableRef accessor checked: boolean;
 
   constructor(options: CheckboxOptions) {
-    super(options.theme);
+    super(options);
     this.id = options.id ?? `checkbox-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.checked = options.checked ?? false;
@@ -80,10 +77,10 @@ export class Checkbox extends ThemedWidget {
     const drawn = (style: Style): Segment[] => labeled(`[${indicator}] `, [new Segment(this.label, style)], "", style, options.textOrder);
 
     if (this.disabled) {
-      return drawn(new Style(this.disabledInk));
+      return drawn(new Style(this.disabledInk(options)));
     }
 
-    const colors = ink(this.theme, this.checked ? "text-primary" : "foreground", "background");
+    const colors = this.ink(options, this.checked ? "text-primary" : "foreground", "background");
     return drawn(new Style({ ...colors, underline: this.focused }));
   }
 

@@ -57,6 +57,8 @@ export interface ThemeBaseColors {
   readonly warning: ColorRgba;
   readonly error: ColorRgba;
   readonly ansi: ColorTable;
+  /** The ANSI color number the theme draws muted text in at sixteen colors (`ThemePaletteData.ansiMuted`). */
+  readonly ansiMuted: number;
 }
 
 /**
@@ -82,6 +84,7 @@ export function getThemeBaseColors(name: ThemeName): ThemeBaseColors {
     warning: base("warning"),
     error: base("error"),
     ansi: new ColorTable(ANSI_SLOTS.map((slot) => parseOpaqueHex(data.ansi[slot], data.name, `ansi.${slot}`))),
+    ansiMuted: ANSI_SLOTS.indexOf(data.ansiMuted),
   };
 }
 

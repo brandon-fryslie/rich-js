@@ -1052,6 +1052,12 @@ export class TerminalTheme extends TerminalColors {
     foregroundColor: ColorRgba,
     ansiColors: ColorTable,
     readonly palette: Palette,
+    /**
+     * The ANSI color number this theme draws muted text in where a terminal
+     * shows only its sixteen, as the theme states it. A theme that states none
+     * has one derived from its sixteen where muted text is drawn.
+     */
+    readonly mutedSlot?: number,
   ) {
     super(backgroundColor, foregroundColor, ansiColors);
   }

@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#EA9A97",
     brightWhite: "#E0DEF4",
   },
+  // Rosé Pine's muted.
+  ansiMuted: "brightBlack",
   vars: {
     "accent": "#EA9A97",
     "accent-darken-1": "#D48683",
