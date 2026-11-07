@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-594",
+      "ref": "refs/pull/594/merge",
+      "sha": "2a934c2fc734ebc3a5d39d28db2c5142bd54a858",
+      "timestamp": "2026-11-07T06:11:15.663Z",
+      "commits": [
+        {
+          "sha": "2a934c2fc734ebc3a5d39d28db2c5142bd54a858",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T06:08:42Z",
+          "message": "Merge 5badf038ea61270e5e07c555ad7f163a90d20ab7 into 26fcad51796093755a144e645a8c4841fbffb321\n"
+        },
+        {
+          "sha": "5badf038ea61270e5e07c555ad7f163a90d20ab7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T23:08:30-07:00",
+          "message": "Review: floorOn is the public floor, keyed by heldPast's type; docs state muted's ordering; indexed depths deferred to qg7 (rich-palette-xovz.227)\n"
+        },
+        {
+          "sha": "fa8523dcc7b847228480e77458690895fd45aac9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:58:34-07:00",
+          "message": "foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-593",
       "ref": "refs/pull/593/merge",
       "sha": "b6cb4609079ce703190309250a92805313d87af4",
@@ -34,28 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T22:35:38-07:00",
           "message": "A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-594",
-      "ref": "refs/pull/594/merge",
-      "sha": "e297b85c5806bbf525ba355a822d4169c5357bba",
-      "timestamp": "2026-11-07T06:01:01.623Z",
-      "commits": [
-        {
-          "sha": "e297b85c5806bbf525ba355a822d4169c5357bba",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:58:45-07:00",
-          "message": "Merge fa8523dcc7b847228480e77458690895fd45aac9 into 26fcad51796093755a144e645a8c4841fbffb321\n"
-        },
-        {
-          "sha": "fa8523dcc7b847228480e77458690895fd45aac9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:58:34-07:00",
-          "message": "foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227)\n"
         }
       ]
     },
