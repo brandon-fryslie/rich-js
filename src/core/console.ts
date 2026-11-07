@@ -463,7 +463,7 @@ export class Console {
     // environment rather than the ambient process's.
     const resolved = resolveOutputTarget(
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
-      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion, textOrder: options?.textOrder ?? textOrderOf(this._features.capabilities.terminal.name, this._features.layers.length > 0, this._attended) },
+      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion, textOrder: options?.textOrder ?? textOrderOf({ terminal: this._features.capabilities.terminal.name, between: this._features.layers.length > 0, attended: this._attended }) },
     );
     // [LAW:single-enforcer] The console's one override, an explicit
     // `hyperlinks`, is applied here and nowhere else; every write encodes for

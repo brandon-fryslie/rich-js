@@ -87,10 +87,10 @@ const ORDER_OF: Readonly<Record<TerminalName, TextOrder>> = {
  */
 export function detectTextOrder(env: Env, isTTY: boolean): TextOrder {
   const { terminal, intermediary } = identifyTerminal(env);
-  return textOrderOf(terminal, intermediary !== undefined, isAttended(isTTY, env));
+  return textOrderOf({ terminal, between: intermediary !== undefined, attended: isAttended(isTTY, env) });
 }
 
 /** The order `terminal` takes for whoever is `attended` at it: `plain` when anything sits `between`. */
-export function textOrderOf(terminal: TerminalName, between: boolean, attended: boolean): TextOrder {
+export function textOrderOf({ terminal, between, attended }: { terminal: TerminalName; between: boolean; attended: boolean }): TextOrder {
   return attended && !between ? ORDER_OF[terminal] : "plain";
 }

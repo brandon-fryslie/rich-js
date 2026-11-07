@@ -1,8 +1,7 @@
 /**
  * Which terminal draws the cells, and what sits between it and the program:
- * the one reading of the environment every terminal-specific choice derives
- * from — the text order, the notification protocol, the wrapping a multiplexer
- * needs. `color.ts` reads `TERM` for a different question, how many colors, and
+ * the one reading of the environment, which `inferCapabilities` turns into
+ * evidence for `pick` and `detectTextOrder` reads. `color.ts` reads `TERM` for a different question, how many colors, and
  * partly from suffixes (`-256color`) that name no terminal.
  *
  * An environment is inherited: `code .` from Windows Terminal carries

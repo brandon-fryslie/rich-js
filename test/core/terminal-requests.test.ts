@@ -176,17 +176,14 @@ describe("inside tmux", () => {
     expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]22;pointer${ESC}${ESC}\\${ST}`);
   });
 
-  it("sends OSC 9 behind tmux whatever TERM tmux was told to set", () => {
-    const { console, written } = terminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" }, PASSES("tmux"));
-    console.notify("n");
-    expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;n${ESC}${ESC}\\${ST}`);
-  });
-
-  it("takes a tmux pane's TERM for tmux's setting, naming no terminal past it, under bestGuess too", () => {
-    expect(identifyTerminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" })).toMatchObject({ terminal: "other", intermediary: "tmux", namedBy: undefined });
-    const { console, written } = terminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" }, { terminalFeatures: { ...PASSES("tmux").terminalFeatures, policy: "bestGuess" } });
-    console.notify("n");
-    expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;n${ESC}${ESC}\\${ST}`);
+  it("sends OSC 9 behind tmux whatever TERM tmux was told to set, under either policy: that TERM names no terminal past it", () => {
+    const env = { TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" };
+    expect(identifyTerminal(env)).toMatchObject({ terminal: "other", intermediary: "tmux", namedBy: undefined });
+    for (const policy of ["strict", "bestGuess"] as const) {
+      const { console, written } = terminal(env, { terminalFeatures: { ...PASSES("tmux").terminalFeatures, policy } });
+      console.notify("n");
+      expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;n${ESC}${ESC}\\${ST}`);
+    }
   });
 
   it("takes a terminal started inside tmux for that terminal, not for tmux", () => {
