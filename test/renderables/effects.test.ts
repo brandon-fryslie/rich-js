@@ -63,6 +63,7 @@ import {
   shimmer,
   sparkle,
   drawnColor,
+  strengthOf,
   wheel,
   type AttributeLoopName,
   type Curve,
@@ -860,18 +861,22 @@ describe("the loops never jump", () => {
       const move = loop(z);
       const element = listing(strip);
       // Measured through `drawnColor`, the renderer's own draw step, which is
-      // pure in (color, field value): a frame draws each fill once per value.
+      // pure in (color, strength): a field value is snapped to one of 96
+      // strengths, so each fill is drawn once per strength over the whole
+      // watch, not once per value per frame, and values on one strength
+      // share the one `Oklch`.
+      const drawn = fills.map(() => new Map<number, Oklch>());
       const frame = (t: number): Oklch[][] => {
         const field = move.field(t, element);
         const values = strip.map((cell) => field(cell));
-        return fills.map((color) => {
-          const drawn = new Map<number, Oklch>();
-          return values.map((value) => {
-            let at = drawn.get(value);
-            if (at === undefined) drawn.set(value, (at = Oklch.fromRgba(drawnColor(move.touch, color, value, 1))));
+        return fills.map((color, f) =>
+          values.map((value) => {
+            const strength = strengthOf(value);
+            let at = drawn[f]!.get(strength);
+            if (at === undefined) drawn[f]!.set(strength, (at = Oklch.fromRgba(drawnColor(move.touch, color, strength, 1))));
             return at;
-          });
-        });
+          }),
+        );
       };
       let last = frame(offset);
       for (let t = 1 + offset; t < WATCHED; t++) {
