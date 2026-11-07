@@ -15,7 +15,7 @@ import { GRUVBOX, DRACULA, ROSE_PINE_DAWN, SOLARIZED_DARK } from "../../src/them
 import { EASES } from "../../src/core/easing.js";
 import { getThemePalette } from "../../src/themes/registry.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
-import { slide, tinted, writeText } from "../../src/themes/text-on.js";
+import { slide, textOn, tinted, writeText } from "../../src/themes/text-on.js";
 import { ink } from "../../src/widgets/ink.js";
 import { baseStyleOf } from "../core/base-style.js";
 
@@ -332,16 +332,35 @@ describe("textOn: a theme's text on a ground, from a template", () => {
   it("is the library's textOn on the same ground, fit and destination", () => {
     const drawnAt: DrawnAt = { depth: ColorDepth.STANDARD };
     const got = run(paletteFuncs(() => palette, { fit: () => tinted, drawnAt: () => drawnAt }), `{{ textOn "text-error" "${ground.hex}" }}`);
-    expect(got).toBe(writeText(palette, "text-error", ground, { fit: tinted, drawnAt }).color.name);
+    expect(got).toBe(textOn(palette, "text-error", ground, { fit: tinted, drawnAt }).hex);
   });
 
-  it("writes at sixteen colors the slot a widget on the same terminal is drawn in", () => {
+  it("at sixteen colors is the color a widget's slot shows, and the writer rounds it back to that slot", () => {
     const theme = SOLARIZED_DARK;
-    const at: DrawnAt = { depth: ColorDepth.STANDARD, terminal: theme };
+    const at: DrawnAt = { depth: ColorDepth.STANDARD };
     const got = run(paletteFuncs(() => theme.palette, { fit: () => slide, drawnAt: () => at }), `{{ textOn "foreground-muted" "${theme.palette.get("background").hex}" }}`);
-    const widget = ink(theme, "foreground-muted", "background", { fit: slide, depth: ColorDepth.STANDARD, terminal: theme }).color.name;
-    expect(widget).toMatch(/^color\(\d+\)$/);
-    expect(got).toBe(widget);
+    const widget = ink(theme, "foreground-muted", "background", { fit: slide, depth: ColorDepth.STANDARD }).color;
+    expect(got).toBe(widget.getTruecolor(undefined, true).hex);
+    expect(ColorSpec.parse(got).downgrade(ColorDepth.STANDARD).number).toBe(widget.number);
+  });
+
+  it("composes at sixteen colors: textOn's color is a color darken takes", () => {
+    const at: DrawnAt = { depth: ColorDepth.STANDARD };
+    const got = run(paletteFuncs(() => palette, { fit: () => slide, drawnAt: () => at }), `{{ darken (textOn "text" "${ground.hex}") 1 }}`);
+    expect(got).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  it("never paints a template's text in its own ground's slot at sixteen colors", () => {
+    const at: DrawnAt = { depth: ColorDepth.STANDARD };
+    const slotOf = (hex: string) => ColorSpec.parse(hex).downgrade(ColorDepth.STANDARD).number;
+    const funcs = paletteFuncs(() => palette, { fit: () => slide, drawnAt: () => at });
+    for (const role of ["background", "surface", "panel", "primary", "primary-muted", "error-muted"] as const) {
+      const groundHex = palette.get(role).hex;
+      for (const intent of ["text", "foreground", "foreground-muted", "text-disabled"] as const) {
+        const text = run(funcs, `{{ textOn "${intent}" "${groundHex}" }}`);
+        expect(slotOf(text), `${intent} on ${role}`).not.toBe(writeText(palette, intent, palette.get(role), { drawnAt: at }).bgcolor.number);
+      }
+    }
   });
 
   it("reads its fit each time it is evaluated", () => {

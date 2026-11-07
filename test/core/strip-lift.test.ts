@@ -104,7 +104,8 @@ describe("a join between grounds too close to tell apart", () => {
     ["#336699", "#3f72a6", "#5f5faf", 8],
     ["#fafafa", "#ececec", "#eeeeee", 7],
     ["#c0392b", "#ce4737", "#d75f00", 1],
-    ["#1e1e2e", "#282838", "#1c1c1c", 4],
+    // A grey ground's arrow stays grey: the bright black, never VGA navy.
+    ["#1e1e2e", "#282838", "#1c1c1c", 8],
   ] as const)("lifts %s's arrow to %s in truecolor, %s at 256 and slot %i at sixteen", (ground, truecolor, eightBit, slot) => {
     const drawn = (colorSystem: ColorDepth) => {
       const [arrow] = seam("powerline", ground, ground, colorSystem);

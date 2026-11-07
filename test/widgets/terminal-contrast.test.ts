@@ -173,15 +173,19 @@ describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("a w
 // frame names none — and every rule above still has to hold there.
 const DEPTHS = [["sixteen", ColorDepth.STANDARD], ["256", ColorDepth.EIGHT_BIT]] as const;
 
-// How far a ground's chroma may rise when it is written as a slot: a near-grey
-// ground has to stay grey, not turn into the table's maroon or navy.
-const HUE_SLACK = 0.06;
+// Under this chroma a ground reads as grey: a grey ground has to stay grey, not
+// turn into the table's maroon or navy.
+const GREY = 0.06;
 
-const groundChromas = (draw: Scene[1], terminal: TerminalTheme | undefined): number[] =>
+const grounds = (draw: Scene[1], terminal: TerminalTheme | undefined): Oklch[] =>
   cells(draw).map((segment) => {
     const { background } = resolveLook(segment.style ?? NULL_STYLE, terminal);
-    return Oklch.fromRgba(background === "canvas" ? exportCanvas(terminal).background : background).c;
+    return Oklch.fromRgba(background === "canvas" ? exportCanvas(terminal).background : background);
   });
+
+// The cells of `drawn` whose ground took on a hue where `stated` has a grey one.
+const greysLost = (drawn: readonly Oklch[], stated: readonly Oklch[]): Oklch[] =>
+  drawn.filter((g, i) => stated[i]!.c <= GREY / 2 && g.c > GREY);
 
 describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("a widget on %s", (_name, theme) => {
   describe.each(DEPTHS)("at %s colors", (_depth, depth) => {
@@ -196,8 +200,9 @@ describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("a w
         "%s keeps every glyph at the theme's floor, or the most its table reaches, on no ground in a hue the theme's grounds lack",
         (scene, draw, truecolor) => {
           expect(glyphs(draw, terminal, MUTED[scene]).filter(({ ratio, muted, ground }) => ratio < Math.min(muted ? textFloor("foreground-muted") : floorOf(theme), best(ground)) - 1e-9)).toEqual([]);
-          const most = Math.max(...groundChromas(truecolor, theme));
-          expect(groundChromas(draw, terminal).filter((c) => c > most + HUE_SLACK)).toEqual([]);
+          const [drawn, stated] = [grounds(draw, terminal), grounds(truecolor, theme)];
+          expect(drawn.length).toBe(stated.length);
+          expect(greysLost(drawn, stated).map((g) => g.toRgba().hex)).toEqual([]);
         },
       );
       it.each(disabledScenes(theme, at))("%s is seen", (_scene, draw) => {

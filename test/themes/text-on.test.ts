@@ -4,11 +4,11 @@
  * consumer (cc-candybar's bar) actually paints.
  */
 import { describe, it, expect } from "vitest";
-import { ColorDepth, ColorRgba } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal } from "../../src/core/color.js";
 import { contrastRatio } from "../../src/themes/colorMath.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
 import { getThemePalette, listThemePalettes, type ThemeName } from "../../src/themes/registry.js";
-import { named, neutralAlpha, slide, textFloor, textOn, tinted, withAlpha, writeText, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
+import { named, neutralAlpha, readsOn, slide, textFloor, textOn, tinted, withAlpha, writeText, TEXT_INTENTS, type TextFit, type TextIntent, type TextRequest } from "../../src/themes/text-on.js";
 
 const FLOOR: Readonly<Record<TextIntent, number>> = {
   foreground: 4.5,
@@ -156,12 +156,27 @@ describe("a fit is any function", () => {
 });
 
 describe("below truecolor the floor holds on the pair the terminal draws", () => {
-  it.each(listThemePalettes())("%s at 256 colors", (name) => {
+  // A caller that rounds both colors itself — `readsOn` does, by the one rule
+  // the writer rounds by — measures the pair `writeText` wrote: at the floor, or
+  // the most the table reaches on that ground.
+  it.each(listThemePalettes().flatMap((name) => [[name, "sixteen", ColorDepth.STANDARD], [name, "256", ColorDepth.EIGHT_BIT]] as const))("%s at %s colors", (name, _depth, depth) => {
     const { palette, grounds: all } = grounds(name);
-    const drawnAt = { depth: ColorDepth.EIGHT_BIT };
+    const drawnAt = { depth };
+    const shown = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(depth).getTruecolor(undefined, false);
     for (const ground of all) {
-      const { color, bgcolor } = writeText(palette, "text-error", ground, { drawnAt });
-      expect(contrastRatio(color.getTruecolor(undefined, true), bgcolor.getTruecolor(undefined, false)), ground.hex).toBeGreaterThanOrEqual(4.5);
+      for (const intent of ["text-error", "foreground"] as const) {
+        const best = Math.max(...ColorSpec.indexed(depth, resolveTerminal(undefined, depth)).map(([, c]) => contrastRatio(c, shown(ground))));
+        const floor = Math.min(textFloor(intent), best);
+        expect(readsOn(textOn(palette, intent, ground, { drawnAt }), ground, floor - 1e-9, drawnAt), `${intent} on ${ground.hex}`).toBe(true);
+      }
     }
+  });
+});
+
+describe("at truecolor a translucent ground", () => {
+  it("is written drawn on the palette's background, as the text is measured on it", () => {
+    const palette = getThemePalette("nord");
+    const ground = withAlpha(palette.get("primary"), 0.5);
+    expect(writeText(palette, "text", ground).bgcolor.getTruecolor().hex).toBe(ground.compositeOver(palette.get("background")).hex);
   });
 });

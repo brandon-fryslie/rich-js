@@ -22,8 +22,7 @@
  * `writeText`, the one engine every caller of `textOn` shares.
  */
 
-import { resolveTerminal, type ColorDepth, type TerminalColors, type TerminalTheme } from "../core/color.js";
-import { Memo, WeakMemo } from "../core/memo.js";
+import type { ColorDepth, TerminalColors, TerminalTheme } from "../core/color.js";
 import type { PaletteRole } from "../themes/palette.js";
 import { writeText, type TextFit, type TextIntent, type WrittenText } from "../themes/text-on.js";
 
@@ -63,20 +62,10 @@ export interface InkPlace {
 /** A widget cell's colors: `writeText`'s pair. */
 export type Inked = WrittenText;
 
-// Every widget asks for its pairs on every frame, and at an indexed depth a pair
-// ranks the depth's whole table; the answer is a function of these alone.
-const INKED = new WeakMemo<WeakMemo<WeakMemo<Memo<Inked>, TerminalColors>, TextFit>, TerminalTheme>();
-
 export function ink(theme: TerminalTheme, text: TextIntent, ground: PaletteRole, { fit, depth, terminal }: InkPlace): Inked {
-  const shownBy = resolveTerminal(terminal, depth);
-  return INKED.get(theme, () => new WeakMemo())
-    .get(fit, () => new WeakMemo())
-    .get(shownBy, () => new Memo())
-    .get(`${text} ${ground} ${depth}`, () => {
-      const rgba = theme.palette.get(ground);
-      if (rgba.alpha === 0) {
-        throw new RangeError(`palette ${JSON.stringify(theme.palette.name)}: ${JSON.stringify(ground)} is fully transparent, so it cannot be a widget's ground`);
-      }
-      return writeText(theme.palette, text, rgba, { fit, drawnAt: { depth, terminal: shownBy } });
-    });
+  const rgba = theme.palette.get(ground);
+  if (rgba.alpha === 0) {
+    throw new RangeError(`palette ${JSON.stringify(theme.palette.name)}: ${JSON.stringify(ground)} is fully transparent, so it cannot be a widget's ground`);
+  }
+  return writeText(theme.palette, text, rgba, { fit, drawnAt: { depth, terminal } });
 }

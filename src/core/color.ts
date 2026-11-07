@@ -138,14 +138,36 @@ function luminanceRatio(la: number, lb: number): number {
 
 // --- ColorTable ---
 
-// [LAW:one-source-of-truth] The one distance every table scan ranks by, so
-// `matchWhere`'s "nearest by the distance `match` uses" cannot drift, and
-// `Effected` weighs a written color against `ColorSpec.matchOn` by it too.
+/** Squared Euclidean distance between two colors' RGB channels. */
 export function rgbDistance(a: ColorRgba, b: ColorRgba): number {
   const dr = a.red - b.red;
   const dg = a.green - b.green;
   const db = a.blue - b.blue;
   return dr * dr + dg * dg + db * db;
+}
+
+// How colorful an entry may be (HSV chroma, max − min channel) before it reads
+// as a hue `value` lacks — a slack, and room that grows with `value`'s own
+// chroma, so a grey must stay grey while a dull green may round to a teal —
+// and what each step past that costs, in `rgbDistance`'s squared units.
+const HUE_SLACK = 24;
+const HUE_ROOM = 2;
+const HUE_COST = 2;
+
+const chroma = (c: ColorRgba): number => Math.max(c.red, c.green, c.blue) - Math.min(c.red, c.green, c.blue);
+
+/**
+ * How far `entry` is from standing for `value`: RGB distance, and a cost for
+ * hue `entry` has that `value` lacks, so a dark grey rounds to black, never to
+ * maroon or navy.
+ * [LAW:one-source-of-truth] The one distance every table scan ranks by, so
+ * `match`, `matchReadable`, `matchWhere`, `ColorSpec.matchOn` and everything
+ * that rounds through them — the writer's downgrade and `writeText` — pick
+ * the same slot for a color.
+ */
+export function roundingDistance(entry: ColorRgba, value: ColorRgba): number {
+  const excess = Math.max(0, chroma(entry) - HUE_ROOM * chroma(value) - HUE_SLACK);
+  return rgbDistance(entry, value) + (HUE_COST * excess) ** 2;
 }
 
 /**
@@ -179,7 +201,7 @@ export class ColorTable {
   }
 
   /**
-   * Finds the nearest table index to the given color (Euclidean RGB distance, cached).
+   * Finds the nearest table index to the given color (`roundingDistance`, cached).
    * Alpha is part of the cache key so two values that differ only in alpha
    * don't collide, but is not used in the distance metric.
    */
@@ -193,7 +215,7 @@ export class ColorTable {
     let bestDist = Infinity;
     for (let i = 0; i < this.colors.length; i++) {
       const c = this.colors[i]!;
-      const dist = rgbDistance(c, value);
+      const dist = roundingDistance(c, value);
       if (dist < bestDist) {
         bestDist = dist;
         bestIndex = i;
@@ -228,7 +250,7 @@ export class ColorTable {
       const passes = ratio >= minRatio;
       // A passing entry scores by closeness; a failing one only by contrast,
       // and loses to every passing one.
-      const score = passes ? -rgbDistance(c, value) : ratio;
+      const score = passes ? -roundingDistance(c, value) : ratio;
       if (
         (passes && !bestPasses) ||
         (passes === bestPasses && score > bestScore)
@@ -253,7 +275,7 @@ export class ColorTable {
     value: ColorRgba,
     accept: (entry: ColorRgba, index: number) => boolean,
   ): number | undefined {
-    const dist = this.colors.map((c) => rgbDistance(c, value));
+    const dist = this.colors.map((c) => roundingDistance(c, value));
     const nearestFirst = [...dist.keys()].sort((a, b) => dist[a]! - dist[b]!);
     const found = nearestFirst.find((i) => accept(this.colors[i]!, this.firstIndex + i));
     return found === undefined ? undefined : this.firstIndex + found;
@@ -752,7 +774,7 @@ export class ColorSpec {
       [new ColorSpec(`color(${slot})`, depth === ColorDepth.WINDOWS ? depth : ColorDepth.STANDARD, slot), theme.ansiColors.get(slot)],
       ...(depth === ColorDepth.EIGHT_BIT ? [cubeCandidate(value)] : []),
     ];
-    return candidates.reduce((best, next) => (rgbDistance(next[1], value) < rgbDistance(best[1], value) ? next : best))[0];
+    return candidates.reduce((best, next) => (roundingDistance(next[1], value) < roundingDistance(best[1], value) ? next : best))[0];
   }
 
   /**
@@ -778,7 +800,7 @@ export class ColorSpec {
    */
   static matchMove(was: ColorRgba, now: ColorRgba, depth: ColorDepth, theme: TerminalColors, foreground: boolean): ColorSpec | undefined {
     const match = ColorSpec.matchOn(now, depth, theme, foreground);
-    return rgbDistance(was, now) <= rgbDistance(match.getTruecolor(theme, foreground), now) ? undefined : match;
+    return roundingDistance(was, now) <= roundingDistance(match.getTruecolor(theme, foreground), now) ? undefined : match;
   }
 
   /**
@@ -1172,8 +1194,7 @@ const WINDOWS_CONSOLE_TERMINAL = new TerminalColors(WINDOWS_TABLE.get(0), WINDOW
  * The terminal a color at `depth` is drawn by: `theme`, or when a caller names
  * none, the one the depth assumes — the Windows console at WINDOWS, the VGA
  * sixteen otherwise — for `ColorSpec.getTruecolor` and the contrast measurement
- * that reads it. (Widgets fall back to `DEFAULT_TERMINAL_THEME`, which carries a
- * palette this does not.)
+ * that reads it, `writeText` and the widgets that write through it included.
  */
 export function resolveTerminal(theme: TerminalColors | undefined, depth: ColorDepth): TerminalColors {
   return theme ?? (depth === ColorDepth.WINDOWS ? WINDOWS_CONSOLE_TERMINAL : INTERNAL_DEFAULT_TERMINAL);
