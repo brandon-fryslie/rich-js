@@ -9,12 +9,15 @@
  * here; on any ground, `textOn` is what draws it legibly.
  */
 import { describe, it, expect } from "vitest";
-import { contrastRatio } from "../../src/core/color.js";
+import { ColorDepth, ColorSpec, contrastRatio, dimShown, resolveTerminal, TerminalTheme } from "../../src/core/color.js";
 import { PALETTE_ROLES } from "../../src/themes/buildPalette.js";
 import type { Palette } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
-import { textOn } from "../../src/themes/text-on.js";
+import * as terminalThemes from "../../src/themes/terminalThemes.js";
+import { asIs, textOn, writeText, type WrittenText } from "../../src/themes/text-on.js";
 import { derivedFrom } from "./derived-palette.js";
+
+const BUNDLED = Object.values(terminalThemes).filter((value) => value instanceof TerminalTheme);
 
 const ACCENTS = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
 const GROUNDS = ["background", "surface", "panel"] as const;
@@ -58,4 +61,42 @@ describe("foreground-muted past foreground-disabled on every ground", () => {
     });
     expect(misses).toEqual([]);
   });
+});
+
+// A depth that writes colors by index draws a table's slots, and there the
+// ordering is held between what each shows — a dimmed slot as an export draws
+// it — on the VGA defaults the depth assumes, and on the theme's own terminal.
+describe.each([["256 colors", ColorDepth.EIGHT_BIT], ["sixteen colors", ColorDepth.STANDARD]] as const)("foreground-muted past foreground-disabled at %s", (_depth, depth) => {
+  const cases = BUNDLED.flatMap((theme) => [
+    { source: `${theme.palette.name}, no terminal named`, palette: theme.palette, terminal: undefined },
+    { source: `${theme.palette.name} on its own terminal`, palette: theme.palette, terminal: theme },
+  ]);
+  it.each(cases)("in $source", ({ palette, terminal }) => {
+    const shown = resolveTerminal(terminal, depth);
+    const on = ({ color, bgcolor, dim }: WrittenText): number => {
+      const ground = bgcolor.getTruecolor(shown, false);
+      const ink = color.getTruecolor(shown, true);
+      return contrastRatio(dim ? dimShown(ink, ground) : ink, ground);
+    };
+    const misses = PALETTE_ROLES.flatMap((role) => {
+      const ground = palette.get(role).compositeOver(palette.get("background"));
+      const muted = writeText(palette, "foreground-muted", ground, { drawnAt: { depth, terminal } });
+      const disabled = writeText(palette, "foreground-disabled", ground, { drawnAt: { depth, terminal } });
+      return on(muted) >= on(disabled) + 0.25 - 1e-9 && on(disabled) > 1 ? [] : [`${role}: muted ${on(muted).toFixed(3)} vs disabled ${on(disabled).toFixed(3)}`];
+    });
+    expect(misses).toEqual([]);
+  });
+});
+
+// The ordering is a floor, and asIs keeps every floor off: at an indexed depth
+// disabled text is then the slot its stated color rounds to, as it is kept as
+// stated at truecolor.
+it("asIs leaves foreground-disabled on the slot its stated color rounds to", () => {
+  const palette = getThemePalette("dracula");
+  const ground = palette.get("background");
+  const depth = ColorDepth.EIGHT_BIT;
+  const shown = resolveTerminal(undefined, depth);
+  const stated = textOn(palette, "foreground-disabled", ground, { fit: asIs });
+  const written = writeText(palette, "foreground-disabled", ground, { fit: asIs, drawnAt: { depth } });
+  expect(written.color.getTruecolor(shown, true).hex).toBe(ColorSpec.fromRgba(stated).downgrade(depth).getTruecolor(shown, true).hex);
 });

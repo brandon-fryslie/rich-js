@@ -1033,6 +1033,18 @@ export function blendRgb(
   );
 }
 
+/**
+ * How far a dim glyph moves toward its background — Rich's own factor, so an
+ * export of the same program matches the library this ports.
+ */
+const DIM_FADE = 0.4;
+
+/**
+ * What a dim `glyph` shows on `ground`: the one reading of SGR dim's strength,
+ * which an export draws and a pair written by index is measured by.
+ */
+export const dimShown = (glyph: ColorRgba, ground: ColorRgba): ColorRgba => blendRgb(glyph, ground, DIM_FADE);
+
 // --- TerminalTheme ---
 
 /**
