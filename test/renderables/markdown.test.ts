@@ -495,9 +495,10 @@ describe("Markdown", () => {
     const wrapped = (lines: number) => Array.from({ length: lines }, (_, n) => `word${n}`).join("\n");
     // The quadratic reader this replaced took 18, 229 and 15 times as long, in order, for four times the input,
     // and a quadratic Segment.divide made drawing each of them quadratic too.
-    expectLinearTime((lines) => rows(`> ${wrapped(lines)}`, 80), 8000);
-    expectLinearTime((lines) => rows(`- - - ${wrapped(lines)}`, 80), 6000);
-    expectLinearTime((brackets) => rows(`text ${"[1, ".repeat(brackets)}`, 80), 20_000);
+    // Each starts just above the helper's floor: larger, the three took 27s of a saturated suite's 30s hang limit.
+    expectLinearTime((lines) => rows(`> ${wrapped(lines)}`, 80), 3000);
+    expectLinearTime((lines) => rows(`- - - ${wrapped(lines)}`, 80), 2000);
+    expectLinearTime((brackets) => rows(`text ${"[1, ".repeat(brackets)}`, 80), 8000);
   });
 
   it("reads a run of quotes in time linear in its length, whether each takes its lazy line or not", () => {
