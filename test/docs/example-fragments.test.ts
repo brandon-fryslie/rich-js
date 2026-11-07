@@ -112,7 +112,8 @@ describe("scanEscapes", () => {
   it("passes an ESC the next escape cancels, which a terminal drops as the drawing does", () => {
     expect(scanEscapes("\x1b\x1b[31mx").dropped).toBeNull();
     expect(scanEscapes(`\x1b${osc8Open("https://example.com")}x${OSC8_CLOSE}`).dropped).toBeNull();
-    expect(scanEscapes("\x1b\x01").dropped).toBe("\x1b");
+    expect(scanEscapes("\x1b\x01")).toMatchObject({ dropped: null, unread: 0 });
+    expect(undrawnEscape("x\x1b\x01")).toBe("\x1b\x01");
     expect(scanEscapes("a\x1b\x18b").dropped).toBeNull();
     expect(scanEscapes("a\x1b\x1ab").dropped).toBeNull();
   });
@@ -156,7 +157,6 @@ describe("scanEscapes", () => {
   });
 
   it.each([
-    ["an escape no byte can finish", "\x1b\x01"],
     ["a link with an escape inside it", "\x1b]8;;http://a\x1b[31m"],
     ["a link still open past any a terminal takes", `\x1b]8;;http://${"a".repeat(5000)}`],
   ])("drops %s as soon as it is written", (_, bytes) => {

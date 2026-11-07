@@ -137,8 +137,24 @@ const CSI = either("[");
 // tell the two apart, so repairing it is the caller's.
 const STRING_SO_FAR = String.raw`${either("]P_^X")}[^${STRING_STOPS}\n]*`;
 const STRING_ESCAPE = String.raw`${STRING_SO_FAR}(?:\x07|\x1b\\|\x9c)?`;
-/** A CSI or an escape so far: parameters, then intermediates, short of its final byte. */
-const SEQUENCE_SO_FAR = String.raw`(?:${CSI}[0-?]*|\x1b)[ -/]*`;
+// [LAW:one-source-of-truth] The C0 controls a VT500 parser runs inside a CSI or
+// an escape and goes on with it: all but those that abort it (`ABORTS`), ESC,
+// which starts another, and the line breaks, which end the decoder's line first.
+const NOT_RUN_IN_SEQUENCE = pattern(new RegExp(`[${ABORTS}\\x1b\\n]|${controlClass((disposition) => disposition === "line-break")}`, "u"));
+const RUN_IN_SEQUENCE = hex(Array.from({ length: 0x20 }, (_, code) => code).filter((code) => !NOT_RUN_IN_SEQUENCE.test(String.fromCharCode(code))));
+/** What a terminal runs (`RUN_IN_SEQUENCE`) or ignores (DEL) inside a CSI or an escape. */
+const IN_SEQUENCE = String.raw`${RUN_IN_SEQUENCE}\x7f`;
+/**
+ * A CSI or an escape so far, short of its final byte, with `within` among its
+ * bytes: parameters, then intermediates, and after an intermediate any more
+ * parameters, which a terminal ignores to the final byte.
+ */
+const csiSoFar = (within: string): string => String.raw`${CSI}[0-?${within}]*(?:[ -/][ -?${within}]*)?`;
+const escapeSoFar = (within: string): string => String.raw`\x1b[ -/${within}]*`;
+const sequenceSoFar = (within: string): string => `(?:${csiSoFar(within)}|${escapeSoFar(within)})`;
+const SEQUENCE_SO_FAR = sequenceSoFar("");
+/** A CSI or an escape so far as a terminal reads it on, the controls it runs and the DEL it ignores there among its bytes. */
+const HELD_SO_FAR = sequenceSoFar(IN_SEQUENCE);
 
 // The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
 const ESC_LINE_BREAKS = hex(
@@ -235,7 +251,7 @@ const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.
  * otherwise.
  */
 const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<inert>(?:${SEQUENCE_SO_FAR}|${STRING_SO_FAR})[${ABORTS}]|\x1b\\|\x9c)|(?<undrawn>${CSI}[0-?]*[ -/]*[@-~]|${STRING_ESCAPE}|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<inert>(?:${SEQUENCE_SO_FAR}|${STRING_SO_FAR})[${ABORTS}]|\x1b\\|\x9c)|(?<undrawn>${csiSoFar("")}[@-~]|${STRING_ESCAPE}|${escapeSoFar("")}[0-~])|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
@@ -262,26 +278,48 @@ const lineBreaks = (): RegExp => new RegExp(`(${STRING_ESCAPE})|${LINE_ENDS}`, "
  * An escape begun at the end of the bytes and not yet complete, cut from the
  * same pieces as `ESCAPES`: a CSI so far parameters and intermediates, a string
  * escape short of its terminator (an ESC at its end may be the first byte of
- * ST), or an ESC so far only intermediates.
+ * ST), or an ESC so far only intermediates. A control a terminal runs inside
+ * the sequence is held with it, to run once the rest is read, so no write runs
+ * it twice.
  */
-const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${SEQUENCE_SO_FAR}|${STRING_SO_FAR}\x1b?)$`, "u"));
+const OPEN_ESCAPE = pattern(new RegExp(String.raw`(?:${HELD_SO_FAR}|${STRING_SO_FAR}\x1b?)$`, "u"));
 
 /**
  * Whether a terminal performs `control`, one `ESCAPES` matched alone, and
  * `next` the character after it: a C1 control, which some terminals do, and an
- * ESC no escape here begins. A VT500 parser stays in its escape state past such
- * an ESC, running a C0 control and ignoring DEL there, and takes a later byte as
- * the escape's final, which the decoder draws as text. Only the next ESC or C1
- * control cancels it, and then a terminal drops it as the decoder does; an
- * abort after it is the inert escape `ESCAPES` takes whole. `next` is never an
+ * ESC no escape here begins. A C0 control after an ESC runs there and the ESC
+ * goes on past it (`escapeTokens`). The next ESC or C1 control cancels such an ESC, and then a
+ * terminal drops it as the decoder does; an abort after it is the inert escape
+ * `ESCAPES` takes whole. `next` is never an
  * abort from beyond `bytes`: what `tokens` passes is a line break or an OSC 8
  * introducer, and an ESC ending a write is held open (`OPEN_ESCAPE`).
  */
 const performed = (control: string, next: string): boolean =>
   isC1(control.charCodeAt(0)) || (control === "\x1b" && next !== "\x1b" && !isC1(next.charCodeAt(0)));
 
-/** `bytes`, and `following`, the character after them in their line, which an ESC at their end comes before. */
+/** A CSI or an escape so far and the first byte inside it a terminal runs or ignores there. */
+const INTERRUPTED = pattern(new RegExp(`${SEQUENCE_SO_FAR}[${IN_SEQUENCE}]`, "u"));
+
+/**
+ * `bytes`, and `following`, the character after them in their line. A control
+ * inside a CSI or an escape runs where it stands, as a VT500 parser runs it,
+ * and the sequence goes on past it; a DEL there does nothing. Whatever came
+ * before the sequence is read first, so a string escape it cuts off ends there.
+ */
 function* escapeTokens(bytes: string, following: string): Generator<Token> {
+  let rest = bytes;
+  for (let found = INTERRUPTED.exec(rest); found !== null; found = INTERRUPTED.exec(rest)) {
+    const sequence = found[0].slice(0, -1);
+    yield* drawnTokens(rest.slice(0, found.index), sequence.charAt(0));
+    const control = found[0].slice(-1);
+    if (control !== "\x7f") yield* drawnTokens(control, sequence.charAt(0));
+    rest = sequence + rest.slice(found.index + found[0].length);
+  }
+  yield* drawnTokens(rest, following);
+}
+
+/** `bytes`, holding no control inside a sequence, and `following`, the character after them, which an ESC at their end comes before. */
+function* drawnTokens(bytes: string, following: string): Generator<Token> {
   let at = 0;
   for (const match of bytes.matchAll(escapes())) {
     const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, inert, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
