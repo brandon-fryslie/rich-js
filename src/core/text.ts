@@ -10,7 +10,7 @@ import { divideLine, wordWidths, type LineBreak } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
 import { stripOscControls } from "./osc8.js";
-import { PASSES_EDGE, betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
+import { betweenPasses, drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Justify, Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 import { pattern } from "./pattern.js";
 import { ListState, State } from "./state.js";
@@ -213,10 +213,6 @@ interface TextFormat {
 }
 
 export class RichText implements Renderable, Measurable {
-  get [PASSES_EDGE](): true {
-    return true;
-  }
-
   // Rich's `Text` is changed in place — appended to, stylized, padded — so its
   // characters, spans and format are state, and a write to one while
   // something is drawn throws. Four holders rather than one per field: a
@@ -1060,7 +1056,7 @@ export class RichText implements Renderable, Measurable {
         });
       });
     }
-    return { rows, maxWidth, base, justify };
+    return { rows, maxWidth, edge, base, justify };
   }
 }
 
@@ -1221,6 +1217,8 @@ interface Row {
 interface Layout {
   readonly rows: readonly Row[];
   readonly maxWidth: number;
+  /** Where a line is cut: unbounded under `"ignore"`, where a line has no edge to stand at. */
+  readonly edge: number;
   readonly base: Style;
   readonly justify: Justify | undefined;
 }
@@ -1243,7 +1241,20 @@ function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
   // base joins nothing either: the run it joined would be drawn as the pad.
   const pad = padOf(layout);
   const free = oriented || !pad.joins ? NEVER_FREE : spanFree(segments, covered);
-  return [...placed({ segments: [...line], free, orient }, layout.maxWidth, pad.style, edgeOf(layout.justify, row.startLevel))];
+  const edge = edgeOf(layout.justify, row.startLevel);
+  const drawn = [...placed({ segments: [...line], free, orient }, layout.maxWidth, pad.style, edge)];
+  return edge === undefined && row.startLevel === 1 && Number.isFinite(layout.edge) ? unplaced(drawn, layout.edge) : drawn;
+}
+
+/**
+ * A right-to-left row left unplaced, every piece of it stamped as one row laid
+ * out `width` wide (`Style.edge`), so whoever fills the row stands it at its
+ * start edge (`Segment.leadingFill`). The row says where it stands; no option
+ * travels down through what holds it to say so.
+ */
+function unplaced(drawn: readonly Segment[], width: number): Segment[] {
+  const edge = { row: {}, width };
+  return drawn.map((segment) => new Segment(segment.text, (segment.style ?? NULL_STYLE).withEdge(edge), segment.control));
 }
 
 /**

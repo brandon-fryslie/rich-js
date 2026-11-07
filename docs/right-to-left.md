@@ -125,21 +125,22 @@ output.print(table);
 `justify: "start"` names this edge and fills the rest of the width. It is what a
 `Table` column and `Markdown` use unless told otherwise, so a right-to-left cell
 sits at its cell's right. `justify: "default"` names the same edge without
-filling the width, so a left-to-right line keeps its natural width; it is what
-`Console.print` asks for, for everything it ends a line on, and what a `Live`
-or `App` view is drawn with. A container that pads every row of its body to
-its width — a `Panel`, a `Padding`, a `Layout` pane, a `Viewport`, a `scroll` —
-hands its body `"default"` the same way, so a right-to-left body sits at its
-right inner edge. That default reaches text, and what passes its options on —
-a `Group`, a `Constrain`, an animation, a spinner, a view handed as a function —
-hands it on, so a text inside one starts at its edge of the width it is given. Any other renderable — a `Tree`, a `Pretty` value, JSON, an
-`Align` — sets its own lines and is not handed it, so its indent stays put; a
-`justify` the print named still reaches it. `"left"` and `"right"` mean those edges whatever the
-direction, and a stated `direction` decides the edge as it decides the order.
+filling the width, so a left-to-right line keeps its natural width.
 
-A text with no `justify` at all is not placed. Containers that set a line down
-at its own width — a `Strip` item, a `Syntax` line, a soft-wrapped print — rely
-on that, and a right-to-left line in one keeps its own cells.
+A text with no `justify` at all does not place its lines, and a right-to-left
+one says so on the cells it draws, with the width it was laid out in. Whatever
+fills a row places it from that: `Console.print`, for every line it ends, a
+`Live` or `App` frame, and a container that pads each row of its body to its
+width — a `Panel`, a `Padding`, a `Layout` pane, a `Viewport`, a `scroll`. So a
+right-to-left body stands at the right edge of the width its text was given,
+whatever sits between them — a `Group`, a `Constrain`, an animation, a spinner,
+an effect, a view handed as a function, or a wrapper of your own — and none of
+them has to pass anything on. A row something composed around the text — a
+`Tree`'s guides beside a label — is that container's row and stays where it set
+it. So do the lines of a `Pretty` value, JSON, a traceback's message and a
+`Strip`'s items, which set their own lines. `"left"` and `"right"` mean those
+edges whatever the direction, and a stated `direction` decides the edge as it
+decides the order.
 
 Under `plain`, rich-js writes logical order. There a line's start is its first
 character, so padding goes after the text, as it always has. The terminal's own

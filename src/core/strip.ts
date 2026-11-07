@@ -135,7 +135,8 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     yield* render(drawJoin(this.separator, null, items[0]!, { index: 0 }), row);
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
-      yield* render(drawItem(item), row);
+      // An item stands where the strip sets it, not where a filler would stand a lone right-to-left row.
+      yield* Segment.settled(render(drawItem(item), row));
       const next = i + 1 < items.length ? items[i + 1]! : null;
       yield* render(drawJoin(this.separator, item, next, { index: i + 1 }), row);
     }

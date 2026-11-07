@@ -292,6 +292,47 @@ export class Segment {
     return result;
   }
 
+  /**
+   * The blank cells that go before `line` in a row `width` wide: when every
+   * cell of it is one right-to-left row its text left unplaced (`Style.edge`),
+   * as many as stand it at its start edge in the width that text laid it out
+   * in, and otherwise none. Pieces of no cells say nothing either way.
+   * [LAW:single-enforcer] The one reader of the stamp, so whoever fills a row
+   * places a right-to-left one alike, and no option travels down to tell it.
+   */
+  static leadingFill(line: Segment[], width: number): number {
+    const inked = line.filter((segment) => segment.cellLength > 0);
+    const edge = inked[0]?.style?.edge;
+    if (edge === undefined || inked.some((segment) => segment.style?.edge !== edge)) return 0;
+    return Math.max(Math.min(edge.width, width) - Segment.getLineLength(line), 0);
+  }
+
+  /**
+   * `segments` as rows their holder has placed itself — a strip's items set
+   * side by side, a `Pretty`'s values at their indent — so no filler moves a
+   * right-to-left one to its start edge (`leadingFill`).
+   */
+  static *settled(segments: Iterable<Segment>): Iterable<Segment> {
+    for (const segment of segments) {
+      yield segment.style?.edge === undefined ? segment : new Segment(segment.text, segment.style.withEdge(undefined), segment.control);
+    }
+  }
+
+  /**
+   * `line` as a row `width` wide that its holder fills: its `leadingFill` in
+   * `style` before it, then padded or cropped to `width` as `adjustLineLength`
+   * does.
+   */
+  static fillRow(line: Segment[], width: number, style?: Style): Segment[] {
+    return Segment.adjustLineLength(Segment.withLeadingFill(line, width, style), width, style);
+  }
+
+  /** `line` with its `leadingFill` before it in `style`, and nothing after: a row its holder places and does not pad. */
+  static withLeadingFill(line: Segment[], width: number, style?: Style): Segment[] {
+    const lead = Segment.leadingFill(line, width);
+    return lead === 0 ? line : [new Segment(" ".repeat(lead), style), ...line];
+  }
+
   // --- Bounding output to a width ---
   //
   // Two primitives, because containers ask two different questions of content.

@@ -43,9 +43,9 @@ interface RenderedBlock {
 
 // A piece is packed beside others at the width it draws, so none is handed a
 // justify, as `Strip` hands its items none: one that fills the canvas would
-// take a row of its own.
+// take a row of its own. It stands where it is packed (`Segment.settled`).
 function renderToBlock(r: Renderable, options: RenderOptions): RenderedBlock {
-  const segments = [...render(r, { ...options, justify: undefined })];
+  const segments = [...Segment.settled(render(r, { ...options, justify: undefined }))];
   let width = 0;
   for (const s of segments) width += s.cellLength;
   return { segments, width };

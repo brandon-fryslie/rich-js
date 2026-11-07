@@ -129,6 +129,17 @@ export function caretMarkOn(shape: CaretShape, side: CaretMark["side"]): CaretMa
   return CARET_MARKS[shape][side];
 }
 
+/**
+ * A right-to-left row a text drew without placing it, and the width it laid
+ * the row out in, so whoever fills the row puts it at its start edge there.
+ * `row` is compared by identity: it says these cells are one text's row, so a
+ * row a holder composed around it (a `Tree`'s guides) is never mistaken for one.
+ */
+export interface RowEdge {
+  readonly row: object;
+  readonly width: number;
+}
+
 export interface StyleOptions {
   color?: string | ColorSpec;
   bgcolor?: string | ColorSpec;
@@ -152,6 +163,7 @@ export interface StyleOptions {
   bidi?: BidiStamp;
   caret?: CaretMark;
   textEnd?: true;
+  edge?: RowEdge;
   /**
    * The validity interval the style's cells are in, both ends or neither: a cell saying
    * only when it next changes would claim, by default, that it always was,
@@ -246,6 +258,12 @@ export class Style {
    */
   readonly textEnd: true | undefined;
   /**
+   * These cells are a right-to-left row its text left unplaced (`RowEdge`),
+   * which `Segment.leadingFill` reads. Like an anchor, a position travelling
+   * up on the frame rather than an option travelling down. It draws nothing.
+   */
+  readonly edge: RowEdge | undefined;
+  /**
    * The validity interval this style's cells are in, on the timeline of whoever drew the
    * frame: since when what they show has been what it is (`validFrom`), and
    * when it next changes (`validUntil`) — both `t` for a cell drawn by
@@ -295,6 +313,7 @@ export class Style {
     this.bidi = options.bidi;
     this.caret = options.caret;
     this.textEnd = options.textEnd;
+    this.edge = options.edge;
   }
 
   get isNull(): boolean {
@@ -321,6 +340,7 @@ export class Style {
       this.bidi === undefined &&
       this.caret === undefined &&
       this.textEnd === undefined &&
+      this.edge === undefined &&
       this.validity.validUntil === Number.POSITIVE_INFINITY &&
       this.validity.validFrom === Number.NEGATIVE_INFINITY
     );
@@ -390,6 +410,11 @@ export class Style {
     return this.with({ textEnd: true });
   }
 
+  /** The same look, its cells the unplaced right-to-left row `edge` names, or placed. */
+  withEdge(edge: RowEdge | undefined): Style {
+    return this.with({ edge });
+  }
+
   /** The style's text attributes, each as it sets it. */
   get attributes(): Attributes {
     // [LAW:one-source-of-truth] Keyed by `ATTRIBUTE_NAMES`, whose every name is a key here: the cast is that list's own claim.
@@ -457,6 +482,7 @@ export class Style {
       bidi: other.bidi ?? this.bidi,
       caret: other.caret ?? this.caret,
       textEnd: other.textEnd ?? this.textEnd,
+      edge: other.edge ?? this.edge,
       // Cells under both change when either does.
       validity: intersection(this.validity, other.validity),
     });
@@ -486,6 +512,7 @@ export class Style {
       this.bidi === other.bidi &&
       this.caret === other.caret &&
       this.textEnd === other.textEnd &&
+      this.edge === other.edge &&
       this.validity.validUntil === other.validity.validUntil &&
       this.validity.validFrom === other.validity.validFrom
     );
@@ -545,7 +572,7 @@ export class Style {
   /**
    * The look as a canonical string that round-trips through `Style.parse()`:
    * colors, attributes and the link, which is all a style string can spell.
-   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `caret`, `textEnd`, `validity` —
+   * What a style carries beyond its look — `meta`, `anchor`, `boxFrame`, `bidi`, `caret`, `textEnd`, `edge`, `validity` —
    * has no spelling and is not here, so two styles that differ only there
    * read alike; `equals` tells them apart.
    */

@@ -36,7 +36,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { PASSES_EDGE, activePass, fillingOptions, isRenderable, passingOptions, measure, render, type HostFrame, type Justify, type Pass } from "./protocol.js";
+import { activePass, isRenderable, measure, render, type HostFrame, type Justify, type Pass } from "./protocol.js";
 import type { Unsubscribe } from "./subscription.js";
 import { ListState, State, refuseRenderWrite } from "./state.js";
 
@@ -255,9 +255,6 @@ const PLACED_BY: Record<Justify, Alignment | undefined> = {
 // `justify`, `overflow`, `noWrap` and `tabSize` stay behind, as they do in the
 // reference: the print's options set the whole run.
 class TextRun implements Renderable, Measurable {
-  get [PASSES_EDGE](): true {
-    return true;
-  }
 
   private readonly text: RichText;
 
@@ -688,22 +685,21 @@ export class Console {
     // fragment — test/seam/line-ends.ts), and both leave the next print at the
     // start of a line.
     // Unasked, what a print closes a line on starts at each paragraph's own
-    // edge: the text it sets itself, and a renderable's rows, which are always
-    // closed, as a `Padding`'s are (`renderFilling`), whatever its `end`. Text
-    // whose `end` does not break the line is a fragment of one, whose edge is
-    // unknown until the line is whole, and stays unplaced.
+    // edge, as a filled row does (`Segment.leadingFill`): a closed line is
+    // given the blanks that stand a right-to-left row at its start, and no
+    // trailing pad. A block left open is a fragment of a line whose edge is
+    // unknown until the line is whole, and stays where it was drawn.
     const askedOpts: RenderOptions = { ...renderOpts, justify: opts.justify };
-    const placing = (block: PrintBlock): typeof fillingOptions => (block.kind === "text" && !end.endsWith("\n") ? passingOptions : fillingOptions);
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
       const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
-      const blockOpts = placing(block)(renderable, askedOpts);
-      if (align) return { lines: placeBlock(renderable, align, blockOpts), closed: true };
-      const drawn = [...render(renderable, blockOpts)];
+      if (align) return { lines: placeBlock(renderable, align, askedOpts), closed: true };
+      const drawn = [...render(renderable, askedOpts)];
       // A text run's last segment is always its `end`, yielded even when
       // empty, and `splitLines` drops the empty line after a final break only
       // when nothing follows it — so the run is closed exactly when `end` is.
       const closed = block.kind === "lines" || end.endsWith("\n");
-      return { lines: Segment.splitLines(drawn), closed };
+      const lines = Segment.splitLines(drawn);
+      return { lines: closed ? lines.map((line) => Segment.withLeadingFill(line, askedOpts.maxWidth)) : lines, closed };
     };
 
     // Every line end goes through the same writeSegments funnel as the text it
@@ -921,4 +917,3 @@ export class Console {
     target.write(this._liveRegion.get().around(text));
   }
 }
-

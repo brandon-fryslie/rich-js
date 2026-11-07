@@ -79,7 +79,8 @@ export class JSONRenderable implements Renderable, Measurable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* render(this.text, options);
+    // The data sets its own lines at their indent, so a right-to-left key stays there (`Segment.settled`).
+    yield* Segment.settled(render(this.text, options));
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

@@ -136,7 +136,8 @@ function caretIn(rows: readonly Segment[][]): Caret | undefined {
 }
 
 const fitRows = (frame: Segment[][], screen: Screen): Segment[][] =>
-  frame.map((line) => Segment.adjustLineLength(line, screen.cols, undefined, false));
+  // A frame's rows are filled by the screen, so a right-to-left row its text left unplaced stands at its start edge.
+  frame.map((line) => Segment.adjustLineLength(Segment.withLeadingFill(line, screen.cols), screen.cols, undefined, false));
 
 /**
  * `frame` fitted to the screen, and its caret where the terminal can show it.
