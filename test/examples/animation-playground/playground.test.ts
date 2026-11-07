@@ -140,6 +140,8 @@ describe("animation playground", () => {
 
   it("paused, the clock moves and nothing is painted; played, the time goes on from where it held", async () => {
     const p = await playground();
+    // At one frame a second: this reads what was written and the readout, not motion.
+    await p.atOneFps();
     await p.advance(2);
     await p.click("play / pause");
     const held = await p.time();
@@ -223,6 +225,9 @@ describe("animation playground", () => {
 
   it("steps through truecolor, 256 colors, 16 colors and none, each drawn in its own encoding", async () => {
     const p = await playground(undefined, { TERM: "xterm-256color", COLORTERM: "truecolor" });
+    // At one frame a second: three seconds at each depth is three frames to
+    // read the encoding off, not 180 of the whole gallery.
+    await p.atOneFps();
     /** What three seconds of the gallery wrote, the readout naming `depth`. */
     const written = async (depth: string): Promise<string> => {
       expect((await p.screen()).join("\n")).toContain(`·  ${depth}  ·`);
@@ -274,6 +279,7 @@ describe("animation playground", () => {
     await p.stop();
     const q = await playground(undefined, { TERM: "xterm-256color", NO_COLOR: "1" });
     expect((await q.screen()).join("\n")).toContain("·  no color  ·");
+    await q.atOneFps();
     const from = q.host.output().length;
     await q.advance(3);
     expect(colorParameters(q.host.output().slice(from))).toEqual([]);
