@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
-import { contrastFor } from "../../src/themes/colorMath.js";
+import { contrastFor, contrastRatio } from "../../src/themes/colorMath.js";
+import { getThemeBaseColors, getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 
 const TEST_BASE = {
   primary: new ColorRgba(0, 111, 184),
@@ -99,5 +100,18 @@ describe("buildPalette", () => {
       expect(p.get(`${key}-muted`)).toBeDefined();
       expect(p.get(`text-${key}`)).toBeDefined();
     }
+  });
+});
+
+// Muted text is secondary text and disabled text is text that cannot be used,
+// so muted reads the stronger, as every authored theme has it. Muted is held to
+// its floor and disabled is a fixed tint, so this is not true by construction.
+describe.each(listThemePalettes())("a palette derived from %s's base colors", (name) => {
+  it("draws foreground-muted stronger on background than foreground-disabled", () => {
+    const { bg, fg, primary, secondary, accent, success, warning, error } = getThemeBaseColors(name);
+    const p = buildPalette(name, getThemePalette(name).dark, { background: bg, foreground: fg, primary, secondary, accent, success, warning, error });
+    const background = p.get("background");
+    const on = (role: "foreground-muted" | "foreground-disabled"): number => contrastRatio(p.get(role).compositeOver(background), background);
+    expect(on("foreground-muted")).toBeGreaterThan(on("foreground-disabled"));
   });
 });
