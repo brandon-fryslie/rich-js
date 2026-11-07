@@ -331,6 +331,11 @@ export function recedesFrom(intent: TextIntent): TextIntent | undefined {
   return (INTENTS[intent] as IntentRule).recedesFrom;
 }
 
+/** The intent held past `intent` (`IntentRule.heldPast`), where one is. */
+function heldUnder(intent: TextIntent): TextIntent | undefined {
+  return TEXT_INTENTS.find((other) => (INTENTS[other] as IntentRule).heldPast === intent);
+}
+
 /** Whether `name` is a text intent: what a template's string is parsed through. */
 export function isTextIntent(name: string): name is TextIntent {
   return Object.hasOwn(INTENTS, name);
@@ -398,7 +403,11 @@ const WRITTEN = new WeakMemo<WeakMemo<WeakMemo<Memo<WrittenText>, TerminalColors
  *   that intent's, standing off its ground less than that intent does; at
  *   sixteen colors its candidate is the slot the terminal states for muted
  *   text (`TerminalColors.mutedSlot`), and where no slot recedes and reads it
- *   is that intent's color with SGR dim — the table has no room for it.
+ *   is that intent's color with SGR dim — the table has no room for it;
+ * - text another intent is held past (`IntentRule.heldPast`) is the slot
+ *   nearest its stated color standing `HELD_PAST_MARGIN` less off the ground
+ *   than that intent's slot, and that intent's color with SGR dim where none
+ *   does.
  */
 export function writeText(
   palette: Palette,
@@ -461,6 +470,19 @@ function slotted(palette: Palette, text: TextIntent, ground: ColorRgba, fit: Tex
     // Where no slot reads, the one standing furthest off the ground: the most legible the table has.
     return write(intent, statedColor, visible, nearestOf(visible, statedColor)!) ?? visible.reduce((a, b) => (contrast(b) > contrast(a) ? b : a));
   };
+  // Text another intent is held past goes under the slot that one is written
+  // in here, rather than raising it: a table has no room to lift muted text
+  // past a disabled slot and still have it recede, and disabled text has no
+  // floor of its own to keep.
+  const under = heldUnder(text);
+  if (under !== undefined) {
+    const over = slotted(palette, under, ground, fit, drawnAt, terminal, table);
+    // Dimmed text shows a contrast no table states; it was dimmed to stand at
+    // its floor, so that is what this one goes under.
+    const above = over.dim ? textFloor(under) : contrastRatio(over.color.getTruecolor(terminal, true), groundShown);
+    const chosen = nearestOf(visible.filter((s) => contrast(s) <= above - HELD_PAST_MARGIN), stated(text));
+    return chosen === undefined ? { color: over.color, bgcolor: groundSpec, dim: true } : { color: chosen[0], bgcolor: groundSpec };
+  }
   const body = recedesFrom(text);
   if (body === undefined) return { color: drawn(text)[0], bgcolor: groundSpec };
   const over = drawn(body);
