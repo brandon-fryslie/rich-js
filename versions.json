@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-602",
+      "ref": "refs/pull/602/merge",
+      "sha": "34e5e6ed925b66f6c8f94dbf2b7d695185ac12b5",
+      "timestamp": "2026-11-07T11:29:34.035Z",
+      "commits": [
+        {
+          "sha": "34e5e6ed925b66f6c8f94dbf2b7d695185ac12b5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T11:26:59Z",
+          "message": "Merge 630ce7f86776653aa343b0ec97cd1ecdaf6951aa into ba1f926de931afe7e301e891e21d863ca6d21da7\n"
+        },
+        {
+          "sha": "630ce7f86776653aa343b0ec97cd1ecdaf6951aa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:26:44-07:00",
+          "message": "Underline review fixes (rich-control-codes-xh4n.6ch.nc7): an effect that moves a cell's ink draws its colored underline in it; SVG blinks by opacity so own-paint lines blink; reset and withoutColor clear underlineColor; underline decisions leave the send log; blink on underline keeps the cell's kind; underlineColor template sink; Windows Terminal 1.20 reads 4:n and 58; style.md example declares what the example terminal draws\n"
+        },
+        {
+          "sha": "1befb1bfee7c72b774be56d77131ecfaeb7629ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:05:59-07:00",
+          "message": "Underline kinds and color as Style fields (rich-control-codes-xh4n.6ch.nc7): Style.underline holds one kind (single, double, curly, dotted, dashed) so the later style decides it whole, doubleUnderline gone; underlineColor (SGR 58); one UNDERLINE table read by the encoder, decodeAnsi, parse, toString and template bindings; whether a destination draws 4:3-4:5 and 58 is picked once per console (style-effects.ts) and held on OutputTarget.underlines, a plain underline and no color otherwise; HTML and SVG draw wavy, dotted, dashed and colored lines\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ba1f926de931afe7e301e891e21d863ca6d21da7",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-07T04:09:17-07:00",
           "message": "The loop-jump tests draw each fill once per strength, not once per field value per frame (rich-animation-27tq.0wj) (#601)\n\n* The loop-jump tests draw each fill once per strength, not once per field value per frame\n\nThe 1 fps jump watch keyed its drawn-color cache on the raw field value,\nwhich a continuous field (shimmer, sparkle) almost never repeats, while\ndrawnColor snaps every value to one of 96 strengths. About three quarters\nof the test went on recomputing colors it had already drawn: shimmer 6.4s\nalone, sparkle 4.2s, pulse ~4s, which a loaded full suite stretched past\nthe 30s hang limit. Keyed by the strength drawnColor itself draws at\n(strengthOf, now exported beside it), they run in 0.3-1.2s with the same\nassertions over the same colors.\n\n* The jump watch draws each fill at the strength it keys on"
-        }
-      ]
-    },
-    {
-      "version": "pr-602",
-      "ref": "refs/pull/602/merge",
-      "sha": "555fc65ea74b97703b194bedad16ea4cf1f5b064",
-      "timestamp": "2026-11-07T11:08:54.151Z",
-      "commits": [
-        {
-          "sha": "555fc65ea74b97703b194bedad16ea4cf1f5b064",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T04:06:15-07:00",
-          "message": "Merge 1befb1bfee7c72b774be56d77131ecfaeb7629ca into 2e6ed8da6b799ab74285f8791c0a4f794f736655\n"
-        },
-        {
-          "sha": "1befb1bfee7c72b774be56d77131ecfaeb7629ca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T04:05:59-07:00",
-          "message": "Underline kinds and color as Style fields (rich-control-codes-xh4n.6ch.nc7): Style.underline holds one kind (single, double, curly, dotted, dashed) so the later style decides it whole, doubleUnderline gone; underlineColor (SGR 58); one UNDERLINE table read by the encoder, decodeAnsi, parse, toString and template bindings; whether a destination draws 4:3-4:5 and 58 is picked once per console (style-effects.ts) and held on OutputTarget.underlines, a plain underline and no color otherwise; HTML and SVG draw wavy, dotted, dashed and colored lines\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     },
