@@ -519,8 +519,9 @@ describe("Markdown", () => {
   });
 
   it("reads and draws a run of unclosed links in time linear in its length", () => {
-    // A destination scanned to the end of the text from every `](` took 13 times as long for four times the links.
-    expectLinearTime((links) => rows("[*a](".repeat(links), 80), 20_000);
+    // A destination scanned to the end of the text from every `](` took 13 times as long for four times the links:
+    // 4000 is the first size whose smaller run is well clear of the helper's floor, and the nesting cap removed fails there.
+    expectLinearTime((links) => rows("[*a](".repeat(links), 80), 4000);
     // A tail splitting the space after a destination every way it could took 14 times as long. Drawing is
     // timed at a smaller size: it is linear too, but slow enough that the reader's size would take seconds.
     expectLinearTime((spaces) => new Markdown(`[a](b${" ".repeat(spaces)}x`), 1_000_000);
@@ -989,6 +990,7 @@ describe("Markdown", () => {
   it("reads a definition's label or title left open across many lines in time linear in their number", () => {
     for (const opening of ["[a", '[a]: /u "']) {
       // Text grown a line at a time, and read after each — definitionAt with `run *= 2` removed — took fourteen times as long for four times the lines.
+      // Not smaller: that defect (`run = 1`) still passes at 16,000 lines and fails at 25,000, where the copying outgrows the reading.
       expectLinearTime((lines) => new Markdown(opening + "x\n".repeat(lines)), 25_000);
     }
   });
