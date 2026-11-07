@@ -29,7 +29,7 @@
 import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
 import type { HostFrame, FrameHost, Visibility, Renderable, RenderOptions } from "../core/protocol.js";
-import { PASSES_EDGE, renderPassing } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { Clock, FrameRate } from "../core/clock.js";
 import type { Timeline } from "../core/timeline.js";
@@ -81,9 +81,8 @@ export class WidgetApp implements FrameSource, FrameHost {
     // Its frames are its own, drawn for its `frameNow()`: what draws in them
     // is told this app is the host, not the App it paints through, so
     // `drawnBy: widgetApp` names the host its frames carry.
-    // It hands its options to the view whole, so the view's text is placed as an App's is.
+    // Its rows are placed where `compose` fills them, before any overlay is painted over them.
     const composed = {
-      [PASSES_EDGE]: true as const,
       render: (renderOptions: RenderOptions) =>
         this.compose(view, { ...renderOptions, frame: renderOptions.frame && { time: renderOptions.frame.time, host: this } }),
     };
@@ -263,7 +262,8 @@ export class WidgetApp implements FrameSource, FrameHost {
     // hidden widget has no footprint on the frame, and so paints none.
     const drawing = { ...options, onVisibility };
     const lines = tracked(this.reaction, () => {
-      const base = Segment.splitLines(renderPassing(view, drawing));
+      // Filled before an overlay is painted over a row, so a right-to-left row stands where it does with no overlay open.
+      const base = Segment.splitLines(render(view, drawing)).map((line) => Segment.withLeadingFill(line, drawing.maxWidth));
       for (const widget of present.keys()) paintOverlay(base, widget, drawing);
       return base;
     });

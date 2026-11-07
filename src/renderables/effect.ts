@@ -77,7 +77,7 @@ import { ColorDepth, ColorSpec, resolveTerminal, SURFACE_BLACK, type ColorRgba, 
 import { fnv1a } from "../core/fnv1a.js";
 import { Measurement } from "../core/measure.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { PASSES_EDGE, render } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import { JOIN, joinedCell, type EdgeMove, type JoinedCell } from "../core/strip.js";
 import { ATTRIBUTE_NAMES, NEVER_CHANGES, Style, type AttributeName, type Attributes, type ValidityInterval } from "../core/style.js";
@@ -465,10 +465,6 @@ export class Recolored implements Renderable, Measurable {
  * never changes there and the host sleeps.
  */
 export class Effected implements Animation<Renderable> {
-  get [PASSES_EDGE](): true {
-    return true;
-  }
-
   readonly key: string;
 
   constructor(

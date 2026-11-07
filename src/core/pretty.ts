@@ -778,7 +778,8 @@ export class Pretty implements Renderable, Measurable {
   *render(options: RenderOptions): Iterable<Segment> {
     // `toText` has no `end`, for callers that set it inside a line; rendered,
     // a `Pretty` is a block of its own, as the reference's is.
-    yield* render(this.toText(options), options);
+    // A value sets its own lines at their indent, so a right-to-left string stays there (`Segment.settled`).
+    yield* Segment.settled(render(this.toText(options), options));
     yield Segment.line();
   }
 

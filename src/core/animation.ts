@@ -76,7 +76,7 @@
 
 import { stepSequence, firstReaching, passAt, positiveSeconds, type StepSequence } from "./easing.js";
 import { Measurement } from "./measure.js";
-import { PASSES_EDGE, isRenderable, renderPassing, type Measurable, type Motion, type Renderable, type RenderOptions } from "./protocol.js";
+import { isRenderable, render, type Measurable, type Motion, type Renderable, type RenderOptions } from "./protocol.js";
 import { Segment } from "./segment.js";
 import { intersection, NEVER_CHANGES, Style, type ValidityInterval } from "./style.js";
 
@@ -226,7 +226,7 @@ export function* placed<T>(animation: Behavior<T>, options: RenderOptions, draw:
  * the validity goes back the way the time came in. [LAW:composability]
  */
 export function placedRender(animation: Behavior<unknown>, options: RenderOptions): Iterable<Segment> {
-  return placed(animation, options, (value, drawing) => renderPassing(drawable(value), drawing));
+  return placed(animation, options, (value, drawing) => render(drawable(value), drawing));
 }
 
 /**
@@ -307,7 +307,6 @@ export const Animation = {
    */
   of<X extends Behavior<unknown>>(timed: X): Faced<NoInfer<X>> {
     const faced = Object.assign(membersOf(timed), {
-      [PASSES_EDGE]: true as const,
       render: (options: RenderOptions) => placedRender(faced as unknown as Behavior<unknown>, options),
       measure: (options: RenderOptions) => placedMeasure(faced as unknown as Behavior<unknown>, options),
     });

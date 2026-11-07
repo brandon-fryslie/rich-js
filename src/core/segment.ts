@@ -4,7 +4,7 @@
  */
 
 import { cellLen, cutCells, graphemes, splitText, asCellCol, type CellCol } from "./cells.js";
-import { Style } from "./style.js";
+import { NULL_STYLE, Style, type RowEdge } from "./style.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 
 // --- ControlType ---
@@ -290,6 +290,72 @@ export class Segment {
       }
     }
     return result;
+  }
+
+  /**
+   * The blank cells that go before `line` in a row `width` wide: when every
+   * cell of it is one right-to-left row its text left unplaced (`Style.edge`),
+   * as many as stand it at its start edge in the width that text laid it out
+   * in, and otherwise none. Pieces of no cells say nothing either way.
+   * Whoever fills a row places a right-to-left one alike through this, and no
+   * option travels down to tell it.
+   */
+  static leadingFill(line: Segment[], width: number): number {
+    const edge = Segment.rowEdge(line);
+    return edge === undefined ? 0 : Math.max(Math.min(edge.width, width) - edge.length, 0);
+  }
+
+  /**
+   * The unplaced right-to-left row `line` is (`Style.edge`): every cell of it
+   * one stamp's, and as many cells as its text drew, so a window or crop cut
+   * from the row is not it. Otherwise none.
+   * [LAW:single-enforcer] The one reader of the stamp.
+   */
+  static rowEdge(line: Segment[]): RowEdge | undefined {
+    let edge: RowEdge | undefined;
+    let length = 0;
+    for (const segment of line) {
+      const cells = segment.cellLength;
+      if (cells === 0) continue;
+      // The first inked piece without the row's stamp ends the walk: almost every row is one.
+      if (segment.style?.edge === undefined || (edge !== undefined && segment.style.edge !== edge)) return undefined;
+      edge = segment.style.edge;
+      length += cells;
+    }
+    return edge?.length === length ? edge : undefined;
+  }
+
+  /** `line` as the unplaced right-to-left row `edge` names, or as placed when it names none: a composed row that stands as one. */
+  static stamped(line: Segment[], edge: RowEdge | undefined): Segment[] {
+    return line.map((segment) =>
+      segment.style?.edge === edge ? segment : new Segment(segment.text, (segment.style ?? NULL_STYLE).withEdge(edge), segment.control),
+    );
+  }
+
+  /**
+   * `segments` as rows their holder has placed itself — a strip's items set
+   * side by side, a `Pretty`'s values at their indent — so no filler moves a
+   * right-to-left one to its start edge (`leadingFill`).
+   */
+  static *settled(segments: Iterable<Segment>): Iterable<Segment> {
+    for (const segment of segments) {
+      yield segment.style?.edge === undefined ? segment : new Segment(segment.text, segment.style.withEdge(undefined), segment.control);
+    }
+  }
+
+  /**
+   * `line` as a row `width` wide that its holder fills: its `leadingFill` in
+   * `style` before it, then padded or cropped to `width` as `adjustLineLength`
+   * does.
+   */
+  static fillRow(line: Segment[], width: number, style?: Style): Segment[] {
+    return Segment.adjustLineLength(Segment.withLeadingFill(line, width, style), width, style);
+  }
+
+  /** `line` with its `leadingFill` before it in `style`, and nothing after: a row its holder places and does not pad. */
+  static withLeadingFill(line: Segment[], width: number, style?: Style): Segment[] {
+    const lead = Segment.leadingFill(line, width);
+    return lead === 0 ? line : [new Segment(" ".repeat(lead), style), ...line];
   }
 
   // --- Bounding output to a width ---

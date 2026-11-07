@@ -10,13 +10,9 @@ import type {
   Renderable,
   RenderOptions,
 } from "../core/protocol.js";
-import { PASSES_EDGE, renderPassing, stackedHeight } from "../core/protocol.js";
+import { render, stackedHeight } from "../core/protocol.js";
 
 export class Group implements Renderable, Measurable {
-  get [PASSES_EDGE](): true {
-    return true;
-  }
-
   readonly renderables: readonly Renderable[];
 
   constructor(...renderables: Renderable[]) {
@@ -26,7 +22,7 @@ export class Group implements Renderable, Measurable {
   *render(options: RenderOptions): Iterable<Segment> {
     const memberOptions = { ...options, height: stackedHeight(options.height) };
     for (const renderable of this.renderables) {
-      yield* renderPassing(renderable, memberOptions);
+      yield* render(renderable, memberOptions);
     }
   }
 

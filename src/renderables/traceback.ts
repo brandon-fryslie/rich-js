@@ -271,7 +271,8 @@ export class Traceback implements Renderable {
     // width that is left on that line rather than overrunning it.
     header.append(message({ ...options, maxWidth: Math.max(1, options.maxWidth - header.cellLength) }));
     header.append("\n\n");
-    yield* render(header, options);
+    // The report sets its own lines: a right-to-left message line stays after the name it follows (`Segment.settled`).
+    yield* Segment.settled(render(header, options));
 
     // A suppressed frame keeps its place and shows its file and line only: it
     // is the same frame with no function name to show.

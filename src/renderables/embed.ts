@@ -26,7 +26,7 @@ import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
 import { Memo } from "../core/memo.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
-import { PASSES_EDGE, measure, render } from "../core/protocol.js";
+import { measure, render } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style, TextStyle } from "../core/style.js";
 import { RichText, type Span } from "../core/text.js";
@@ -44,10 +44,6 @@ interface Reading {
  * object's `[object Object]` is not eaten as a tag.
  */
 export class EmbeddedText implements Renderable, Measurable {
-  get [PASSES_EDGE](): true {
-    return true;
-  }
-
   // [LAW:types-are-the-program] Two kinds, and the kind is the discriminator: a
   // string still to be read, or text whose reading is already fixed.
   private readonly _source: string | RichText;

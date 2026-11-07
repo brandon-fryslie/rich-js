@@ -16,7 +16,7 @@ import {
   withBoundedWidth,
   withCellWidth,
 } from "../core/protocol.js";
-import { render, renderFilling } from "../core/protocol.js";
+import { render } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
 import type { CellCol } from "../core/cells.js";
@@ -184,9 +184,9 @@ export class Layout implements Renderable, Measurable {
       // `Group` is still a region of lines.
       const renderable = this._renderable.get();
       if (renderable) {
-        const lines = fitHeight(Segment.splitLines(renderFilling(renderable, options)), options.height);
+        const lines = fitHeight(Segment.splitLines(render(renderable, options)), options.height);
         for (const line of lines) {
-          yield* Segment.adjustLineLength(line, options.maxWidth);
+          yield* Segment.fillRow(line, options.maxWidth);
           yield Segment.line();
         }
       }

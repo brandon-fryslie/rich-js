@@ -47,7 +47,7 @@
 
 import { Animation, placedRender } from "../core/animation.js";
 import { stepSequence, type StepSequence } from "../core/easing.js";
-import { PASSES_EDGE, type RenderOptions } from "../core/protocol.js";
+import type { RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import { setIntoLine } from "./embed.js";
@@ -60,10 +60,6 @@ export interface Frame {
 
 /** A sequence of frames prepared to be drawn: built once, asked for the frame at a time. */
 export class FrameSequence implements Animation<RichText> {
-  get [PASSES_EDGE](): true {
-    return true;
-  }
-
   /** Which frame is in progress when: the steps are the frames' seconds, in order. */
   readonly stepSequence: StepSequence;
   /** The width every frame draws at: the widest frame's, in cells. */

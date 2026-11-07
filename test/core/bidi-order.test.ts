@@ -16,6 +16,8 @@ import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { TextOrder } from "../../src/core/text-order.js";
 import { Animation } from "../../src/core/animation.js";
+import { EASES } from "../../src/core/easing.js";
+import { crossfade } from "../../src/renderables/change.js";
 import { render, type Renderable } from "../../src/core/protocol.js";
 import { Align } from "../../src/renderables/align.js";
 import { Traceback } from "../../src/renderables/traceback.js";
@@ -790,5 +792,71 @@ describe("a widget's frame stays put", () => {
     const bytes = (textOrder: TextOrder): string =>
       plainBytes(new Button({ label: "אב" }) as never, textOrder);
     expect(bytes("visual").trim()).toBe("בא");
+  });
+});
+
+describe("a filled row stands a right-to-left text at its start edge, through anything that holds it", () => {
+  const HEBREW = "שלום";
+  const SHOWN = "םולש";
+  const drawn = (renderable: Renderable, width = 20): string[] => rows(plainBytes(renderable, "visual", width)).map(none);
+  const wrapper = (inner: Renderable): Renderable => ({ render: (options) => render(inner, options) });
+
+  test("a user's own wrapper, which knows nothing of direction, hands the row on", () => {
+    expect(drawn(new Padding(wrapper(new RichText(HEBREW)), 0))[0]).toBe(`${" ".repeat(16)}${SHOWN}`);
+    expect(drawn(new Padding(wrapper(wrapper(new Group(new RichText(HEBREW)))), 0))[0]).toBe(`${" ".repeat(16)}${SHOWN}`);
+  });
+
+  test("a Constrain's text stands at the Constrain's edge, not at the filler's", () => {
+    expect(drawn(new Padding(new Constrain(new RichText(HEBREW), 10), 0))[0]).toBe(`${" ".repeat(6)}${SHOWN}${" ".repeat(10)}`);
+  });
+
+  test("an effect's frame keeps the row its text drew", () => {
+    const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText(HEBREW) });
+    expect(drawn(new Padding(change.at(1), 0))[0]).toBe(`${" ".repeat(16)}${SHOWN}`);
+  });
+
+  test("the lead is the filler's ground, and the text's own ground never reaches it", () => {
+    const segments = [...render(new Padding(new RichText(HEBREW, { style: "on red" }), 0, { style: "on blue" }), { maxWidth: 8, textOrder: "visual" })];
+    const blanks = segments.filter((segment) => /^ +$/.test(segment.text));
+    expect(blanks.map((segment) => segment.style?.bgcolor?.name)).toEqual(["blue"]);
+  });
+
+  test("a row a holder composed around the text stays where the holder set it", () => {
+    const tree = new Tree("root");
+    tree.add(HEBREW);
+    expect(drawn(new Padding(tree, 0), 30)[1]).toBe(`└── ${SHOWN}${" ".repeat(22)}`);
+  });
+
+  test("a tree's right-to-left root stays above its children", () => {
+    const tree = new Tree(HEBREW);
+    tree.add("child");
+    expect(drawn(new Padding(tree, 0), 30).slice(0, 2)).toEqual([`${SHOWN}${" ".repeat(26)}`, `└── child${" ".repeat(21)}`]);
+  });
+
+  test("a code line keeps its indent, whatever its direction", () => {
+    const lines = drawn(new Padding(new Syntax(`x = 1\n# ${HEBREW}\ny = 2`, "python"), 0), 30);
+    expect(lines.slice(0, 3).map((line) => line.trimEnd())).toEqual(["x = 1", `${SHOWN} #`, "y = 2"]);
+  });
+
+  test("a change between two right-to-left texts stands where its last frame will", () => {
+    const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText(`${HEBREW} ${HEBREW}`) });
+    for (const t of [0, 1, 2]) expect(drawn(new Padding(change.at(t), 0))[0]!.endsWith(SHOWN)).toBe(true);
+  });
+
+  test("a change to a left-to-right text stands where the new text does from its first frame", () => {
+    const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText("abcd") });
+    for (const t of [0, 1, 2]) expect(drawn(new Padding(change.at(t), 0), 30)[0]!.slice(0, 4).trim()).not.toBe("");
+  });
+
+  test("a window cut from a right-to-left row is not that row, and stays at the slot's start", () => {
+    const window = scroll(new RichText(`${HEBREW} ${HEBREW} ${HEBREW}`), { width: 8, height: 1, col: Animation.constant(2) }).at(0);
+    expect(drawn(new Padding(window, 0), 40)[0]![0]).not.toBe(" ");
+  });
+
+  test("a change a tree holds stays beside its guide", () => {
+    const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText(HEBREW) });
+    const tree = new Tree("root");
+    tree.add(change.at(1));
+    expect(drawn(new Padding(tree, 0), 30)[1]).toBe(`└── ${SHOWN}${" ".repeat(22)}`);
   });
 });
