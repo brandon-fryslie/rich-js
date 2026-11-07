@@ -2,45 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-599",
-      "ref": "refs/pull/599/merge",
-      "sha": "86b1de6625319798010333cfbfe3c373b672c864",
-      "timestamp": "2026-11-07T08:56:10.113Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "7bd2026865ac6724af99e798ed1b25c3bfe1238a",
+      "timestamp": "2026-11-07T09:11:34.903Z",
       "commits": [
         {
-          "sha": "86b1de6625319798010333cfbfe3c373b672c864",
+          "sha": "7bd2026865ac6724af99e798ed1b25c3bfe1238a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T08:53:40Z",
-          "message": "Merge 51a0831923a9fe1d338305ebcf2bfd666378f5c4 into e478624c449683fc23820c28a7138de9727967e3\n"
-        },
-        {
-          "sha": "51a0831923a9fe1d338305ebcf2bfd666378f5c4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T01:53:23-07:00",
-          "message": "Review: textOrderOf takes named fields; CLAUDE.md and terminal-identity's header describe the pick tables; one tmux-TERM test over both policies (rich-control-codes-xh4n.6ch.a28)\n"
-        },
-        {
-          "sha": "3183977a42082f34d6431666173ed7152c1c113e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T01:43:25-07:00",
-          "message": "Review: a terminal's own notification and progress cannot cross zellij or an editor (OUTER_ONLY); a bare number in OSC 9 is kept off ConEmu's shape (rich-control-codes-xh4n.6ch.a28)\n"
-        },
-        {
-          "sha": "43746e5884cddb1f95f59dc1a818c0f24c71eb24",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T01:37:31-07:00",
-          "message": "Review: a tmux or screen pane's TERM names no terminal past it; declaring an encoding keeps the inferred terminal; bell and title are pick rows; docs say no policy passes an unconfirmed layer (rich-control-codes-xh4n.6ch.a28)\n"
-        },
-        {
-          "sha": "0c7184c2d22df4ec9496372d95115d5ed256dd1b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:54:20-07:00",
-          "message": "Clipboard, pointer and notification are chosen by pick over the console's TerminalFeatures: one fact for layers and terminal, passthrough evidence weighed, the route in the send log (rich-control-codes-xh4n.6ch.a28)\n"
+          "timestamp": "2026-11-07T02:09:39-07:00",
+          "message": "Clipboard, pointer and notification chosen by pick over the console's TerminalFeatures (6ch.a28) (#599)\n\n* Clipboard, pointer and notification are chosen by pick over the console's TerminalFeatures: one fact for layers and terminal, passthrough evidence weighed, the route in the send log (rich-control-codes-xh4n.6ch.a28)\n\n* Review: a tmux or screen pane's TERM names no terminal past it; declaring an encoding keeps the inferred terminal; bell and title are pick rows; docs say no policy passes an unconfirmed layer (rich-control-codes-xh4n.6ch.a28)\n\n* Review: a terminal's own notification and progress cannot cross zellij or an editor (OUTER_ONLY); a bare number in OSC 9 is kept off ConEmu's shape (rich-control-codes-xh4n.6ch.a28)\n\n* Review: textOrderOf takes named fields; CLAUDE.md and terminal-identity's header describe the pick tables; one tmux-TERM test over both policies (rich-control-codes-xh4n.6ch.a28)"
         }
       ]
     },
@@ -91,28 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-07T00:46:37-07:00",
           "message": "The colour-depth and pause playground tests play at one frame a second, so they no longer paint hundreds of unread gallery frames (rich-palette-xovz.u60)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "e478624c449683fc23820c28a7138de9727967e3",
-      "timestamp": "2026-11-07T07:48:11.384Z",
-      "commits": [
-        {
-          "sha": "e478624c449683fc23820c28a7138de9727967e3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:45:20-07:00",
-          "message": "Terminal features chosen by capability; Progress mirrors OSC 9;4 (rich-control-codes-xh4n.6ch.stc) (#596)\n\n* A program's terminal features are chosen by capability: evidence, policy and layers decide each send, and a Progress mirrors OSC 9;4 (rich-control-codes-xh4n.6ch.stc)\n\nTerminalCapabilities carries how each fact is known (declared, confirmed,\nidentified, inferred, unknown); pick chooses the first encoding the policy\naccepts and every layer passes, or falls back, and says why. The painter\nLive and App share owns what the terminal is believed to hold, commits each\nframe's declarations, and restores on hand-back; every decision, those that\nsend nothing included, reaches TerminalFeatures.onSend.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Review fixes: route wraps outermost-first, painter returns its terminal bytes with the frame, a frame drops undrawn declarations, TERM_PROGRAM lookup ignores prototype keys (rich-control-codes-xh4n.6ch.stc)\n\n* Medium-review fixes: an App's Progress reaches OSC 9;4 again, a host off a terminal gets none of it, a native layer refuses another's envelope, an inherited LC_TERMINAL yields to a terminal's own TERM_PROGRAM (rich-control-codes-xh4n.6ch.stc)\n\n* Second high-review fixes: screen refuses to carry tmux's envelope, a passthrough's trust is weighed by the drop it risks, onSend runs while the painter matches the terminal, one percent rule for change and bytes, kitty's TERM yields an inherited TERM_PROGRAM, wire constants in one module (rich-control-codes-xh4n.6ch.stc)\n\n* The send-log example prints through a Console the docs terminal records, and the layers section says which stacks cannot be wrapped (rich-control-codes-xh4n.6ch.stc)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
-        },
-        {
-          "sha": "e65bd68b450be8dfdd4be7154fe0c922be52bf21",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:44:37-07:00",
-          "message": "Reduced-motion playground test reaches t=10 by seeking, not 1,200 unread frames (rich-palette-xovz.dc2) (#597)\n\n* The reduced-motion playground test reaches ten seconds by two steps, not 1,200 unread frames, so load no longer times it out (rich-palette-xovz.dc2)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* The reduced-motion leg checks the time went on after the rebuild, so a stopped clock cannot pass for reduced motion (rich-palette-xovz.dc2)\n\n* Reaching ten seconds is two seeks while playing, and the after-rebuild check asks only that time moved, not a rounded value (rich-palette-xovz.dc2)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
