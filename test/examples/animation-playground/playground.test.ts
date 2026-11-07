@@ -190,21 +190,34 @@ describe("animation playground", () => {
   });
 
   it("with motion reduced nothing moves between frames, where with full motion the gallery does, and the time goes on across the rebuild", async () => {
+    // Ten seconds on by two steps, not by playing there: the 600 frames of the
+    // whole gallery that would paint are read by nothing, and were what made
+    // this slow enough to time out under load. Motion is read at 60 fps after.
+    const atTen = async (on: Playground): Promise<void> => {
+      await on.click("+5 s");
+      await on.click("+5 s");
+      expect(await on.time()).toBe(10);
+    };
     const p = await playground();
-    // Ten seconds on, past every turn's start, and 0.05 s clear of every turn, hold and step either side.
-    await p.advance(10.02);
+    await atTen(p);
+    // Past every turn's start, and 0.05 s clear of every turn, hold and step either side.
+    await p.advance(0.02);
     const moving = gallery(await p.screen());
     await p.advance(0.05);
     expect(gallery(await p.screen())).not.toBe(moving);
     await p.stop();
 
     const q = await playground();
+    await atTen(q);
     await q.click("reduced motion");
     expect((await q.screen()).join("\n")).toContain("motion reduced");
-    await q.advance(10.02 - (await q.time()));
+    expect(await q.time()).toBe(10);
+    await q.advance(0.02);
     const still = gallery(await q.screen());
     await q.advance(0.05);
     expect(gallery(await q.screen())).toBe(still);
+    // Still because motion is reduced, not because the clock stopped.
+    expect(await q.time()).toBeGreaterThan(10);
     await q.stop();
   });
 
