@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { PassThrough, Writable } from "stream";
 import { Animation } from "../../src/core/animation.js";
 import { cellLen, graphemes } from "../../src/core/cells.js";
@@ -283,10 +284,10 @@ describe("Effected — attributes", () => {
     const owner = {};
     const base = Style.parse("red").withLink("https://example.com").add(Style.fromMeta({ id: 7 }));
     const lines = Segment.anchorLines([[new Segment("abcd", base)]], owner);
-    const out = [...effected(fixed(...lines[0]!), setFrom(2, { bold: true, underline: true })).render({ maxWidth: 10 })];
+    const out = [...effected(fixed(...lines[0]!), setFrom(2, { bold: true, underline: "single" })).render({ maxWidth: 10 })];
     expect(out.map((s) => [s.text, s.style?.bold, s.style?.underline, s.style?.color?.name, s.style?.link, s.style?.meta])).toEqual([
       ["ab", undefined, undefined, "red", "https://example.com", { id: 7 }],
-      ["cd", true, true, "red", "https://example.com", { id: 7 }],
+      ["cd", true, "single", "red", "https://example.com", { id: 7 }],
     ]);
     for (let x = 0; x < 4; x++) expect(Segment.anchorAt([out], x, 0)).toEqual(Segment.anchorAt(lines, x, 0));
   });
@@ -320,6 +321,34 @@ describe("Effected — attributes", () => {
   it("refuses a frame that returns no attributes, naming the look it should return", () => {
     const colorsOnly: Effect = () => Animation.constant<EffectFrame>((look) => ({ fg: look.fg, bg: RED }) as CellLook);
     expect(() => [...effected(fixed(new Segment("ab")), colorsOnly).render({ maxWidth: 10 })]).toThrow(/\{ \.\.\.look, fg, bg \}.*no attributes/);
+  });
+
+  it("draws a colored underline in the ink the effect moved the glyph to, so a hidden cell leaves no line", () => {
+    const toRed: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: RED }));
+    const line = new Segment("ab", Style.parse("blue curlyUnderline underlineColor green"));
+    const [out] = [...effected(fixed(line), toRed).render({ maxWidth: 10 })];
+    expect(out!.style?.underline).toBe("curly");
+    expect(out!.style?.underlineColor?.isDefault).toBe(true);
+    const keepsInk: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: RED }));
+    const [kept] = [...effected(fixed(line), keepsInk).render({ maxWidth: 10 })];
+    expect(kept!.style?.underlineColor?.name).toBe("green");
+    // A line already in the glyph's ink follows it with no underline color written.
+    const [plain] = [...effected(fixed(new Segment("ab", Style.parse("blue underline"))), toRed).render({ maxWidth: 10 })];
+    expect(plain!.style?.underlineColor).toBeUndefined();
+  });
+
+  it("reads a reversed cell's ink from its background slot when it decides the underline's color", () => {
+    const reversed = new Segment("ab", Style.parse("reverse blue on white curlyUnderline underlineColor green"));
+    const [inkMoved] = [...effected(fixed(reversed), () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: RED }))).render({ maxWidth: 10 })];
+    expect(inkMoved!.style?.underlineColor?.isDefault).toBe(true);
+    const [groundMoved] = [...effected(fixed(reversed), () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: RED }))).render({ maxWidth: 10 })];
+    expect(groundMoved!.style?.underlineColor?.name).toBe("green");
+  });
+
+  it("blinks an underline on as the kind the cell draws, or a single one", () => {
+    const shown = (style: string) => [...effected(fixed(new Segment("ab", Style.parse(style))), blink({ attribute: "underline", off: 1, on: 1 }), 1.5).render({ maxWidth: 10 })][0]!.style?.underline;
+    expect(shown("curlyUnderline")).toBe("curly");
+    expect(shown("bold")).toBe("single");
   });
 
   it("has no reverse to move: the colors are where a swap is made", () => {
@@ -516,7 +545,7 @@ describe("Drawn.cells — the cells an effect is handed, listed before it is han
 
 describe("confined — an effect on its owners' cells", () => {
   const FILL = Style.parse("white on #3050a0");
-  const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder: "plain" as const };
+  const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" as const };
   const repaint: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: RED, bg: BLUE }));
   /** Two items with one fill, so no color tells them apart. */
   const twins = (): RichText[] => ["one", "two"].map((label) => new RichText(` ${label} `, { style: FILL, end: "", noWrap: true }));

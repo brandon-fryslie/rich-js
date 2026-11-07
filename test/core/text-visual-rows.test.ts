@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { encodeHtml } from "../../src/core/export-html.js";
 import { encodeSvg } from "../../src/core/export-svg.js";
@@ -21,7 +22,7 @@ const RLI = "⁧";
 const PDI = "⁩";
 
 const destination = (textOrder: TextOrder) =>
-  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder }) as const;
+  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder }) as const;
 
 /** Each text under the default `end`, so the render ends its last row in a break as it does every other. */
 function texts(): RichText[] {

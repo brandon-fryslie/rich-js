@@ -385,7 +385,7 @@ describe("Dropdown", () => {
       const d = new Dropdown({ options: ["a"] });
       d.focus(0);
       const segs = Segment.splitLines(d.render(RENDER))[0]!;
-      expect(segs.some((s) => s.style?.underline === true)).toBe(true);
+      expect(segs.some((s) => s.style?.underline === "single")).toBe(true);
     });
 
     it("programmatic blur() collapses the overlay and clears the filter", () => {

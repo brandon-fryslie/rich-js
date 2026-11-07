@@ -128,8 +128,13 @@ describe("encodeSvg looks", () => {
     expect(styled("rapidBlink")).toContain("animation:rich-svg-blink 0.5s step-end infinite");
     expect(styled("none")).not.toContain("animation:");
     expect(styled("none")).toContain(
-      "@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{fill:transparent}}}",
+      "@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{opacity:0}}}",
     );
+  });
+
+  it("blinks a framed run's outline with its glyph, inside the one blinking group", () => {
+    const svg = styled("blink frame");
+    expect(svg).toMatch(/<g class="[^"]+">(?:(?!<\/g>).)*<rect [^>]*fill="none" stroke=/);
   });
 
   it("outlines a frame square and an encircle rounded, in the foreground color", () => {

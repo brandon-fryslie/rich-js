@@ -100,29 +100,31 @@ describe("decodeAnsi SGR parameters", () => {
     expect([palette.bold, palette.italic, palette.color!.type, palette.color!.number]).toEqual([true, true, ColorDepth.EIGHT_BIT, 200]);
     for (const form of ["38:2::1:2:3", "38:2:0:1:2:3", "38:2:1:2:3"]) {
       const tc = styleAt(decodeAnsi(`\x1b[1;${form};4mx`), 0);
-      expect([tc.bold, tc.underline, tc.color!.value]).toEqual([true, true, new ColorRgba(1, 2, 3)]);
+      expect([tc.bold, tc.underline, tc.color!.value]).toEqual([true, "single", new ColorRgba(1, 2, 3)]);
     }
     expect(styleAt(decodeAnsi("\x1b[48:5:200mx"), 0).bgcolor!.number).toBe(200);
   });
 
-  it("reads 4:n as the underline a terminal draws, the curly kinds as plain underline", () => {
-    for (const kind of [1, 3, 4, 5]) expect(styleAt(decodeAnsi(`\x1b[4:${kind}mx`), 0).underline).toBe(true);
-    expect(styleAt(decodeAnsi("\x1b[4:2mx"), 0).doubleUnderline).toBe(true);
+  it("reads 4:n as the underline kind it names, and 4:0 as none", () => {
+    const kinds = [1, 2, 3, 4, 5].map((n) => styleAt(decodeAnsi(`\x1b[4:${n}mx`), 0).underline);
+    expect(kinds).toEqual(["single", "double", "curly", "dotted", "dashed"]);
     const cleared = decodeAnsi("\x1b[4ma\x1b[4:0mb\x1b[21mc\x1b[4:0md");
     expect(styleAt(cleared, 1).underline).toBe(false);
-    expect(styleAt(cleared, 3).doubleUnderline).toBe(false);
+    expect(styleAt(cleared, 3).underline).toBe(false);
+  });
+
+  it("skips a 4:n naming no kind", () => {
+    expect(styleAt(decodeAnsi("\x1b[4:6mx"), 0).isNull).toBe(true);
   });
 
   it("reads 4:n as the one underline kind, replacing the last", () => {
     const text = decodeAnsi("\x1b[4:2ma\x1b[4:1mb\x1b[4mc\x1b[4:2md");
-    expect([styleAt(text, 1).underline, styleAt(text, 1).doubleUnderline]).toEqual([true, false]);
-    expect([styleAt(text, 3).underline, styleAt(text, 3).doubleUnderline]).toEqual([false, true]);
+    expect([styleAt(text, 1).underline, styleAt(text, 3).underline]).toEqual(["single", "double"]);
   });
 
   it("reads the plain underline codes as one kind too", () => {
     const text = decodeAnsi("\x1b[21ma\x1b[4mb\x1b[21mc");
-    expect([styleAt(text, 1).underline, styleAt(text, 1).doubleUnderline]).toEqual([true, false]);
-    expect([styleAt(text, 2).underline, styleAt(text, 2).doubleUnderline]).toEqual([false, true]);
+    expect([styleAt(text, 1).underline, styleAt(text, 2).underline]).toEqual(["single", "double"]);
   });
 
   it("tells the colour-space slot by the kind's value and trims empty trailing arguments", () => {
@@ -136,12 +138,12 @@ describe("decodeAnsi SGR parameters", () => {
 
   it("ends the ; arguments of 38 at a colon group", () => {
     const style = styleAt(decodeAnsi("\x1b[38;5;4:3mx"), 0);
-    expect([style.color, style.underline]).toEqual([undefined, true]);
+    expect([style.color, style.underline]).toEqual([undefined, "curly"]);
   });
 
   it("lets no sub-parameter act as a code of its own", () => {
-    const text = decodeAnsi("\x1b[58:2::1:3:4;9:1mx");
-    expect(styleAt(text, 0).isNull).toBe(true);
+    const style = styleAt(decodeAnsi("\x1b[58:2::1:3:4;9:1mx"), 0);
+    expect([style.underlineColor!.value, style.strike]).toEqual([new ColorRgba(1, 3, 4), undefined]);
   });
 
   it("turns attributes off with their 2x codes", () => {
@@ -515,14 +517,23 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("\x1b_Gf=100;AAAA\x1b\\hi\x1bPq#0;2\x1b\\!").plain).toBe("hi!");
   });
 
-  it("spends an underline color's arguments without applying them", () => {
-    expect(decodeAnsi("\x1b[58;2;1;2;3mx").spans).toEqual([]);
-    expect(decodeAnsi("\x1b[58;5;196;1mx").spans.length).toBe(1);
+  it("reads an underline color with its arguments, and 59 as the glyph's again", () => {
+    const text = decodeAnsi("\x1b[58;2;1;2;3ma\x1b[58;5;196;1mb\x1b[59mc");
+    expect(styleAt(text, 0).underlineColor!.value).toEqual(new ColorRgba(1, 2, 3));
+    expect([styleAt(text, 1).underlineColor!.number, styleAt(text, 1).bold]).toEqual([196, true]);
+    expect(styleAt(text, 2).underlineColor!.isDefault).toBe(true);
   });
 
-  it("clears both underlines at 24 and both blinks at 25", () => {
+  it("round-trips every underline kind and its color through the encoder", () => {
+    for (const kind of ["single", "double", "curly", "dotted", "dashed"] as const) {
+      const style = new Style({ underline: kind, underlineColor: "#102030" });
+      expect(styleAt(decodeAnsi(`\x1b[${style.toSgrCodes(ColorDepth.TRUECOLOR)}mx`), 0).equals(style)).toBe(true);
+    }
+  });
+
+  it("clears the underline at 24 and both blinks at 25", () => {
     const text = decodeAnsi("\x1b[21;6ma\x1b[24;25mb");
-    expect([styleAt(text, 1).doubleUnderline, styleAt(text, 1).rapidBlink]).toEqual([false, false]);
+    expect([styleAt(text, 1).underline, styleAt(text, 1).rapidBlink]).toEqual([false, false]);
   });
 
   it("drops a string escape whose payload holds a stray ESC", () => {

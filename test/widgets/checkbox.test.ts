@@ -96,7 +96,7 @@ describe("Checkbox", () => {
       const cb = new Checkbox({ label: "Go" });
       cb.focus(0);
       const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
-      expect(segments[0]!.style!.underline).toBe(true);
+      expect(segments[0]!.style!.underline).toBe("single");
     });
 
     it("renders without underline when not focused", () => {

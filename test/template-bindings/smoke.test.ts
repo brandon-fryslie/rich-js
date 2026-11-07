@@ -122,7 +122,7 @@ describe("template-bindings — bootstrap smoke", () => {
     const segs = renderTemplate(createRichTextEngine(), `{{ .title | underline | fg "green" }}`, { title }, { theme, onStyleError: strict });
     const hi = segs.find((s) => s.text === "hi");
     expect(hi?.style?.bold).toBe(true);
-    expect(hi?.style?.underline).toBe(true);
+    expect(hi?.style?.underline).toBe("single");
     expect(hi?.style?.bgcolor?.name).toBe("blue");
     // The outer style wins, as `Style.add` has it — the last pipe outermost.
     expect(hi?.style?.color?.name).toBe("green");
@@ -204,7 +204,7 @@ describe("template-bindings — bootstrap smoke", () => {
     // arithmetic from a single call. Behaviour per function lives in
     // style-funcs.test.ts.
     const funcs = richTextFuncs();
-    const styleOnly = ["fg", "bg", "bold", "b", "not_bold", "style", "link"];
+    const styleOnly = ["fg", "bg", "underlineColor", "bold", "b", "not_bold", "style", "link"];
     const colorOnly = ["darken", "lighten", "mix", "contrastOn", "ensureContrast", "shiftHue"];
     for (const name of [...styleOnly, ...colorOnly]) {
       expect(funcs[name]).toBeDefined();

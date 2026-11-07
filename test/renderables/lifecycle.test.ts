@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { Animation } from "../../src/core/animation.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
@@ -24,7 +25,7 @@ const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 
 const line = new RichText("a line appended to the log", { style: "bold cyan" });
 const draw = (renderable: Renderable, options: RenderOptions = OPTIONS): Segment[] => [...render(renderable, options)];
-const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" });
 const text = (segments: Segment[]): string => segments.map((s) => s.text).join("");
 
 /** `rate` samples a second from `from` to `to`. */

@@ -45,17 +45,31 @@ for (const style of ["red on white", "#ff0000 on #ffffff", "bold cyan on dark_bl
 |---|---|---|
 | `bold` | `b` | |
 | `italic` | `i` | |
-| `underline` | `u` | |
 | `strike` | `s` | |
 | `reverse` | `r` | Swaps fg/bg |
 | `dim` | | |
 | `blink` | | |
 | `rapidBlink` | | Rapid blink; rarely supported |
 | `conceal` | | Rarely supported |
-| `doubleUnderline` | `uu` | Double underline |
 | `overline` | `o` | |
 | `frame` | | |
 | `encircle` | | |
+
+### Underlines
+
+A terminal draws one underline under a cell, so a style holds one: `underline` (`u`), `doubleUnderline` (`uu`), `curlyUnderline`, `dottedUnderline` or `dashedUnderline`. A style laid over another replaces its underline whole, and `not` with one of the five spellings takes that kind off: `underline not doubleUnderline` keeps its plain line, as in Rich. A `not` with no other underline before it in the definition means no underline at all, so `not dottedUnderline` laid over a plain underline removes it too. `underlineColor` takes a color for the line alone; without it the line is drawn in the text's color.
+
+```typescript
+import { Console, declareCapabilities } from "@promptctl/rich-js";
+
+// The example terminal draws them, so say so: a console sends them only where it is told.
+const drawing = new Console({ terminalFeatures: { capabilities: declareCapabilities(["SGR 4:n", "SGR 58"]) } });
+for (const style of ["curlyUnderline underlineColor red", "dottedUnderline", "dashedUnderline cyan", "doubleUnderline underlineColor #ffaa00"]) {
+  drawing.print(` ${style} `, { style, highlight: false });
+}
+```
+
+Curly, dotted and dashed underlines are kitty's `4:3`–`4:5`, and the color is SGR 58. A terminal that does not know them reads `4:3` as `4;3` and draws italic, so a console sends them only where its [terminal features](./terminal-features.md) say the terminal draws them: everywhere else a curly underline is written as a plain one and the color is left out. A `TERM` naming kitty, WezTerm or Ghostty is not enough on its own, since ssh and `sudo` carry it to terminals that are not those; the terminal answering a probe is (an `App` asks it with XTVERSION), and so is a program declaring the two encodings, as the example above does. tmux and zellij draw them for each client as that client can. A string from `renderToString`, and the HTML and SVG exports, always carry them.
 
 ### Combining attributes and colors
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { Animation } from "../../src/core/animation.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { EASES, WrapMode } from "../../src/core/easing.js";
@@ -19,7 +20,7 @@ import { marquee, scroll } from "../../src/renderables/scroll.js";
 const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR };
 
 const draw = (renderable: Renderable, options: RenderOptions = OPTIONS): Segment[] => [...render(renderable, options)];
-const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" });
 const rows = (segments: Segment[]): string[] => Segment.splitLines(segments).map((line) => line.map((s) => s.text).join(""));
 const at = (col: number, row = 0, content: Renderable = LINE, size = { width: 6, height: 1 }): string[] =>
   rows(draw(scroll(content, { ...size, col: Animation.constant(col), row: Animation.constant(row) }).at(0)));

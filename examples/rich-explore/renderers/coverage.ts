@@ -33,7 +33,7 @@ import {
   StyleSyntaxError, MarkupError, MarkupSyntaxError,
   // Color
   STANDARD_TABLE, WINDOWS_TABLE,
-  ColorParseError, ColorDepth, ColorSpec, parseRgbHex,
+  ColorParseError, ColorDepth, ColorSpec, parseRgbHex, ALL_UNDERLINES,
   // Cells
   cellLen, setCellSize, splitText, chopCells, asCellCol,
   // Measurement
@@ -339,11 +339,11 @@ export class CoverageRenderable implements Renderable {
     // The two lower-level entry points the above delegates to.
     const styled = new Segment("segment", Style.parse("bold green"));
     items.push(new RichText(
-      `segmentToString: ${JSON.stringify(segmentToString(styled, { colorSystem: ColorDepth.STANDARD, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" }))}`,
+      `segmentToString: ${JSON.stringify(segmentToString(styled, { colorSystem: ColorDepth.STANDARD, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain", underlines: ALL_UNDERLINES }))}`,
     ));
     items.push(new RichText(
       `segmentsToString(2 segs, no color): ` +
-      JSON.stringify(segmentsToString([styled, new Segment("!")], { colorSystem: null, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" })),
+      JSON.stringify(segmentsToString([styled, new Segment("!")], { colorSystem: null, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain", underlines: ALL_UNDERLINES })),
     ));
     // A link split across two styles is two OSC 8 pairs sharing one id, so a
     // terminal hovers it as one link. osc8Sequences reads the rendered bytes back.
@@ -351,7 +351,7 @@ export class CoverageRenderable implements Renderable {
     const split = segmentsToString([
       new Segment("▸", new Style({ bold: true, link: url })),
       new Segment(" open", new Style({ link: url })),
-    ], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
+    ], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain", underlines: ALL_UNDERLINES });
     const opens = osc8Sequences(split).filter((s) => s.uri !== "");
     // OSC8 composes into a larger pattern: SGR + OSC 8 are every escape that
     // occupies no columns, so stripping them leaves the visible text.

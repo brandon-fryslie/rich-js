@@ -277,7 +277,7 @@ describe("Slider", () => {
       const s = new Slider({ value: 50 });
       s.focus(0);
       const segs = Segment.splitLines(s.render(RENDER))[0]!;
-      expect(segs.every((seg) => seg.style?.underline === true)).toBe(true);
+      expect(segs.every((seg) => seg.style?.underline === "single")).toBe(true);
     });
 
     it("width never changes with value", () => {

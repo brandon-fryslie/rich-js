@@ -84,7 +84,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it, but 
 ```
 0   anchor · bidi-data · cell-widths · color · control-codes · easing · env · fnv1a · grapheme-data · memo · noise · pattern · selection · subscription · terminal-identity · text-order
 1   cells · clock · oklch · osc8 · style · terminal-capabilities · wrap
-2   segment · bidi · terminal-requests
+2   segment · bidi · terminal-requests · style-effects
 3   box · protocol · seal · orient · terminal-state
 4   measure · emoji · text · strip · render · export-lines · state
 5   animation · markup · highlighter · ansi · place · paint · export-html · export-svg
@@ -133,6 +133,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **seal** — `sealed`, the one total enforcer of what the wire holds: an explicit bidi control reaches the bytes only inside an isolate that accounts for it, nothing `wireText` withholds reaches them at all, and under `words` each run kitty will reverse is written turned back. It runs in `segmentsToString`, below every cut, and reads `Style.bidi`, so `Segment` never holds a control the library wrote and no crop can unbalance one.
 - **terminal-identity** — `identifyTerminal`: which terminal draws the cells and what sits between (tmux, screen, zellij, an editor), the one reading of `TERM` and its neighbours, and the evidence `inferCapabilities` turns into a terminal and layers for `pick`. Its module header owns why `TERM` is read first.
 - **terminal-requests** — the feature tables `pick` chooses among for what a program asks the terminal itself to do: `BELL`, `TITLE` (OSC 2), `CLIPBOARD` (OSC 52), `POINTER` (OSC 22), `NOTIFICATION` (OSC 99/777/9) and `PROGRESS` (OSC 9;4). The `Console` methods that write them send only for a person at a terminal.
+- **style-effects** — the feature rows for what a style draws beyond the codes every terminal reads (`UNDERLINE_STYLE`, SGR `4:3`–`4:5`; `UNDERLINE_COLOR`, SGR 58) and `underlineSupport`, which a console runs once to set `OutputTarget.underlines`. Drawing, not requests: the decision is held on the destination and every run is encoded for it, so nothing is sent once.
 - **terminal-capabilities** — what may be sent, decided purely: `Evidence` per fact, the `strict`/`bestGuess` policy, the `Layer` stack between program and terminal, and `pick`, the one choice of encoding or fallback, with its reason, that every terminal feature is a row of. `docs/terminal-features.md` is its page.
 - **terminal-state** — what a frame declares the terminal should show (`RenderOptions.declare`, through `afterPass`) and `commitTerminalState`, the pure diff the painter that owns the terminal writes. Every decision reaches `TerminalFeatures.onSend`, the one send log.
 - **memo** — `Memo`: a string-keyed memo holding at most `MEMO_MAX` entries. Every library cache keyed by strings a long-running host derives without end — `cellLen`, `ColorTable`'s matches, `ColorSpec.parse`, `Style.parse` — is one, so the bound has one definition. `WeakMemo` is the same contract for an object key (a `TerminalTheme`), held as long as the key is; these two are the only caches a render may fill (`test/seam/render-purity.ts`).

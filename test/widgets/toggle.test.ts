@@ -92,7 +92,7 @@ describe("Toggle", () => {
       const tg = new Toggle({ label: "Go" });
       tg.focus(0);
       const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
-      expect(segments[0]!.style!.underline).toBe(true);
+      expect(segments[0]!.style!.underline).toBe("single");
     });
 
     it("renders without underline when not focused", () => {

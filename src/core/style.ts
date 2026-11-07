@@ -3,10 +3,12 @@
  */
 
 import {
+  ALL_UNDERLINES,
   COLOR_NAMES,
   ColorSpec,
   ColorDepth,
   SURFACE_BLACK,
+  type UnderlineSupport,
 } from "./color.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 import { Memo } from "./memo.js";
@@ -29,13 +31,11 @@ export const ATTRIBUTE_NAMES = [
   "bold",
   "dim",
   "italic",
-  "underline",
   "blink",
   "rapidBlink",
   "reverse",
   "conceal",
   "strike",
-  "doubleUnderline",
   "frame",
   "encircle",
   "overline",
@@ -44,27 +44,80 @@ export const ATTRIBUTE_NAMES = [
 export type AttributeName = (typeof ATTRIBUTE_NAMES)[number];
 
 /**
- * Each text attribute as a style sets it: on, off, or unset — and an unset
- * one lets a style laid beneath (`Style.add`) show through.
+ * The lines a terminal draws under a cell. It draws one, so a style holds one:
+ * the later of two styles laid together (`Style.add`) decides it whole.
  */
-export type Attributes = { readonly [A in AttributeName]: boolean | undefined };
+export const UNDERLINE_KINDS = ["single", "double", "curly", "dotted", "dashed"] as const;
+
+export type UnderlineKind = (typeof UNDERLINE_KINDS)[number];
+
+/** A style's underline: a kind, `false` for none, or unset so a style beneath shows through. */
+export type Underline = UnderlineKind | false | undefined;
+
+/**
+ * Each underline kind's SGR code, its `n` in kitty's `4:n`, the word a definition spells it with, and
+ * the attribute its code is written after — Rich's order, where `21` follows
+ * `9` — so a byte pinned against the reference holds. A curly, dotted or
+ * dashed one is `styled`: kitty's `4:n`, which a terminal without it gets as
+ * `4` (`UnderlineSupport`).
+ *
+ * [LAW:one-source-of-truth] The encoder, `decodeAnsi`, `Style.parse`,
+ * `Style.toString` and the template bindings all read this table.
+ */
+export const UNDERLINE: Readonly<Record<UnderlineKind, { readonly sgr: string; readonly sub: number; readonly styled: boolean; readonly spelling: string; readonly after: AttributeName }>> = {
+  single: { sgr: "4", sub: 1, styled: false, spelling: "underline", after: "italic" },
+  double: { sgr: "21", sub: 2, styled: false, spelling: "doubleUnderline", after: "strike" },
+  curly: styledUnderline(3, "curlyUnderline"),
+  dotted: styledUnderline(4, "dottedUnderline"),
+  dashed: styledUnderline(5, "dashedUnderline"),
+};
+
+/** A styled kind's row: its code is `4:n` by construction, so the code and `n` cannot disagree. */
+function styledUnderline(sub: number, spelling: string) {
+  return { sgr: `4:${sub}`, sub, styled: true, spelling, after: "italic" } as const;
+}
+
+/**
+ * An underline option as a style holds it, `true` being a single one.
+ *
+ * [LAW:parse-dont-validate] An untyped caller — a playground frame, plain
+ * JavaScript — can hand anything; it fails here, naming the value, rather
+ * than as an undefined table row when the style is encoded.
+ */
+function parseUnderline(option: UnderlineKind | boolean | undefined): Underline {
+  if (option === true) return "single";
+  if (option === false || option === undefined || (UNDERLINE_KINDS as readonly unknown[]).includes(option)) return option;
+  throw new TypeError(`Style underline must be one of ${UNDERLINE_KINDS.join(", ")}, true or false, got ${JSON.stringify(option)}`);
+}
+
+/** Every word a definition may spell an underline with, the short ones included, and its kind. */
+export const UNDERLINE_SPELLINGS: ReadonlyMap<string, UnderlineKind> = new Map([
+  ...UNDERLINE_KINDS.map((kind): [string, UnderlineKind] => [UNDERLINE[kind].spelling, kind]),
+  ["u", "single"],
+  ["uu", "double"],
+]);
+
+/**
+ * Each text attribute as a style sets it: on, off, or unset — and an unset
+ * one lets a style laid beneath (`Style.add`) show through — and the underline.
+ */
+export type Attributes = { readonly [A in AttributeName]: boolean | undefined } & { readonly underline: Underline };
 
 // The SGR parameter that turns each attribute on. `ansi.ts` reads it back.
 export const ATTRIBUTE_SGR: Record<AttributeName, number> = {
   bold: 1,
   dim: 2,
   italic: 3,
-  underline: 4,
   blink: 5,
   rapidBlink: 6,
   reverse: 7,
   conceal: 8,
   strike: 9,
-  doubleUnderline: 21,
   frame: 51,
   encircle: 52,
   overline: 53,
 };
+
 
 /**
  * Canonical short-attribute aliases (`b` → `bold`, `i` → `italic`, …).
@@ -76,11 +129,9 @@ export const ATTRIBUTE_SHORT_ALIASES: Readonly<Record<string, AttributeName>> = 
   b: "bold",
   d: "dim",
   i: "italic",
-  u: "underline",
   s: "strike",
   r: "reverse",
   o: "overline",
-  uu: "doubleUnderline",
 };
 
 // --- Types ---
@@ -147,13 +198,15 @@ export interface StyleOptions {
   bold?: boolean;
   dim?: boolean;
   italic?: boolean;
-  underline?: boolean;
+  /** A kind, or `true` for a single underline, as Rich spells it; `false` for none. */
+  underline?: UnderlineKind | boolean;
+  /** The underline's own color; unset, it is the glyph's. */
+  underlineColor?: string | ColorSpec;
   blink?: boolean;
   rapidBlink?: boolean;
   reverse?: boolean;
   conceal?: boolean;
   strike?: boolean;
-  doubleUnderline?: boolean;
   frame?: boolean;
   encircle?: boolean;
   overline?: boolean;
@@ -206,13 +259,13 @@ export class Style {
   readonly bold: boolean | undefined;
   readonly dim: boolean | undefined;
   readonly italic: boolean | undefined;
-  readonly underline: boolean | undefined;
+  readonly underline: Underline;
+  readonly underlineColor: ColorSpec | undefined;
   readonly blink: boolean | undefined;
   readonly rapidBlink: boolean | undefined;
   readonly reverse: boolean | undefined;
   readonly conceal: boolean | undefined;
   readonly strike: boolean | undefined;
-  readonly doubleUnderline: boolean | undefined;
   readonly frame: boolean | undefined;
   readonly encircle: boolean | undefined;
   readonly overline: boolean | undefined;
@@ -296,13 +349,13 @@ export class Style {
     this.bold = options.bold;
     this.dim = options.dim;
     this.italic = options.italic;
-    this.underline = options.underline;
+    this.underline = parseUnderline(options.underline);
+    this.underlineColor = resolveColor(options.underlineColor);
     this.blink = options.blink;
     this.rapidBlink = options.rapidBlink;
     this.reverse = options.reverse;
     this.conceal = options.conceal;
     this.strike = options.strike;
-    this.doubleUnderline = options.doubleUnderline;
     this.frame = options.frame;
     this.encircle = options.encircle;
     this.overline = options.overline;
@@ -325,12 +378,12 @@ export class Style {
       this.dim === undefined &&
       this.italic === undefined &&
       this.underline === undefined &&
+      this.underlineColor === undefined &&
       this.blink === undefined &&
       this.rapidBlink === undefined &&
       this.reverse === undefined &&
       this.conceal === undefined &&
       this.strike === undefined &&
-      this.doubleUnderline === undefined &&
       this.frame === undefined &&
       this.encircle === undefined &&
       this.overline === undefined &&
@@ -366,7 +419,7 @@ export class Style {
   }
 
   get withoutColor(): Style {
-    return this.with({ color: undefined, bgcolor: undefined });
+    return this.with({ color: undefined, bgcolor: undefined, underlineColor: undefined });
   }
 
 
@@ -419,7 +472,7 @@ export class Style {
   /** The style's text attributes, each as it sets it. */
   get attributes(): Attributes {
     // [LAW:one-source-of-truth] Keyed by `ATTRIBUTE_NAMES`, whose every name is a key here: the cast is that list's own claim.
-    return Object.fromEntries(ATTRIBUTE_NAMES.map((name) => [name, this[name]])) as Attributes;
+    return { ...Object.fromEntries(ATTRIBUTE_NAMES.map((name) => [name, this[name]])), underline: this.underline } as Attributes;
   }
 
   /**
@@ -429,7 +482,7 @@ export class Style {
   withAttributes(attributes: Partial<Attributes>): Style {
     // Only the attribute names are read: a wider object — a `Style`, say —
     // satisfies the type and must not carry its colors or anchor in with it.
-    return this.with(Object.fromEntries(ATTRIBUTE_NAMES.filter((name) => name in attributes).map((name) => [name, attributes[name]])));
+    return this.with(Object.fromEntries([...ATTRIBUTE_NAMES, "underline" as const].filter((name) => name in attributes).map((name) => [name, attributes[name]])));
   }
 
 
@@ -464,12 +517,12 @@ export class Style {
       dim: other.dim ?? this.dim,
       italic: other.italic ?? this.italic,
       underline: other.underline ?? this.underline,
+      underlineColor: other.underlineColor ?? this.underlineColor,
       blink: other.blink ?? this.blink,
       rapidBlink: other.rapidBlink ?? this.rapidBlink,
       reverse: other.reverse ?? this.reverse,
       conceal: other.conceal ?? this.conceal,
       strike: other.strike ?? this.strike,
-      doubleUnderline: other.doubleUnderline ?? this.doubleUnderline,
       frame: other.frame ?? this.frame,
       encircle: other.encircle ?? this.encircle,
       overline: other.overline ?? this.overline,
@@ -498,12 +551,12 @@ export class Style {
       this.dim === other.dim &&
       this.italic === other.italic &&
       this.underline === other.underline &&
+      this.underlineColor?.name === other.underlineColor?.name &&
       this.blink === other.blink &&
       this.rapidBlink === other.rapidBlink &&
       this.reverse === other.reverse &&
       this.conceal === other.conceal &&
       this.strike === other.strike &&
-      this.doubleUnderline === other.doubleUnderline &&
       this.frame === other.frame &&
       this.encircle === other.encircle &&
       this.overline === other.overline &&
@@ -529,6 +582,7 @@ export class Style {
   drawnColors(colorSystem?: ColorDepth): {
     readonly color: ColorSpec | undefined;
     readonly bgcolor: ColorSpec | undefined;
+    readonly underlineColor: ColorSpec | undefined;
   } {
     // [LAW:dataflow-not-control-flow] Always resolve a substrate and flatten
     // alpha before downgrade. Opaque colors short-circuit inside compositeOver,
@@ -538,12 +592,21 @@ export class Style {
     const bgFlat = this.bgcolor?.flattenAlpha(surface);
     const fgSubstrate = bgFlat?.getTruecolor(undefined, false) ?? surface;
     const fgFlat = this.color?.flattenAlpha(fgSubstrate);
+    // An underline is ink on the same background as the glyph.
+    const underlineFlat = this.underlineColor?.flattenAlpha(fgSubstrate);
     const at = (c: ColorSpec): ColorSpec =>
       colorSystem !== undefined ? c.downgrade(colorSystem) : c;
     return {
       color: fgFlat === undefined ? undefined : at(fgFlat),
       bgcolor: bgFlat === undefined ? undefined : at(bgFlat),
+      underlineColor: underlineFlat === undefined ? undefined : at(underlineFlat),
     };
+  }
+
+  /** The underline `support` draws for this style's: a kind it cannot draw is a single one. */
+  drawnUnderline(support: UnderlineSupport): UnderlineKind | undefined {
+    const kind = this.underline || undefined;
+    return kind === undefined || support.styles || !UNDERLINE[kind].styled ? kind : "single";
   }
 
   /**
@@ -554,20 +617,30 @@ export class Style {
    *
    * [LAW:one-source-of-truth] One computation of SGR codes.
    */
-  toSgrCodes(colorSystem: ColorDepth): string {
+  toSgrCodes(colorSystem: ColorDepth, underlines: UnderlineSupport = ALL_UNDERLINES): string {
     if (this.isNull) return "";
 
     // Attributes, then foreground, then background: Python Rich 9d8f9a3's
     // `_make_ansi_codes` order, so a byte pinned against the reference holds.
     // An attribute set false writes nothing, as there. It overrides an
     // inherited attribute when styles combine, and every styled run is written
-    // after a reset, so no off code is ever needed.
+    // after a reset, so no off code is ever needed. The underline color comes
+    // last, after everything the reference writes.
     const drawn = this.drawnColors(colorSystem);
-    return [
-      ...ATTRIBUTE_NAMES.filter((name) => this[name] === true).map((name) => `${ATTRIBUTE_SGR[name]}`),
-      ...(drawn.color?.getAnsiCodes(true) ?? []),
-      ...(drawn.bgcolor?.getAnsiCodes(false) ?? []),
-    ].join(";");
+    const underline = this.drawnUnderline(underlines);
+    const after = underline === undefined ? undefined : UNDERLINE[underline].after;
+    // A plain loop: this runs for every segment written, so it builds one array.
+    const codes: string[] = [];
+    for (const name of ATTRIBUTE_NAMES) {
+      if (this[name] === true) codes.push(`${ATTRIBUTE_SGR[name]}`);
+      if (name === after) codes.push(UNDERLINE[underline!].sgr);
+    }
+    if (drawn.color) codes.push(...drawn.color.getAnsiCodes(true));
+    if (drawn.bgcolor) codes.push(...drawn.bgcolor.getAnsiCodes(false));
+    if (underlines.color && underline !== undefined && drawn.underlineColor !== undefined) {
+      codes.push(drawn.underlineColor.getUnderlineCode());
+    }
+    return codes.join(";");
   }
 
   /**
@@ -585,13 +658,16 @@ export class Style {
     for (const name of ATTRIBUTE_NAMES) {
       if (this[name] === false) parts.push(`not ${name}`);
     }
+    if (this.underline === false) parts.push(`not ${UNDERLINE.single.spelling}`);
     // Positive attributes
     for (const name of ATTRIBUTE_NAMES) {
       if (this[name] === true) parts.push(name);
     }
+    if (this.underline) parts.push(UNDERLINE[this.underline].spelling);
 
     if (this.color) parts.push(this.color.name);
     if (this.bgcolor) parts.push(`on ${this.bgcolor.name}`);
+    if (this.underlineColor) parts.push(`${UNDERLINE_COLOR_WORD} ${this.underlineColor.name}`);
     if (this.link) parts.push(`link ${this.link}`);
 
     return parts.join(" ") || "none";
@@ -756,13 +832,22 @@ export class Theme {
 
 const ATTRIBUTE_SET: ReadonlySet<string> = new Set<string>(ATTRIBUTE_NAMES);
 
+// The keyword a definition spells an underline's own color with.
+const UNDERLINE_COLOR_WORD = "underlineColor";
+
+const UNDERLINE_WORDS: readonly string[] = UNDERLINE_KINDS.map((kind) => UNDERLINE[kind].spelling);
+
+// What `not` may take: an attribute or an underline.
+const NEGATABLE_WORDS: readonly string[] = [...ATTRIBUTE_NAMES, ...UNDERLINE_WORDS];
+
 // The words each position of a definition can hold: a bare token is a keyword,
-// an attribute or a color name; `on` takes a color name; `not` an attribute.
-// The short aliases are left out, since `b` is no help to someone who typed
-// `bolt` and a one-letter name sits one edit from every other short word.
+// an attribute, an underline or a color name; `on` and `underlineColor` take a
+// color name; `not` an attribute or an underline. The short aliases are left
+// out, since `b` is no help to someone who typed `bolt` and a one-letter name
+// sits one edit from every other short word.
 // [LAW:one-source-of-truth] Derived from the lists the parser accepts from; the
-// keywords are the three `parseStyleDefinition` reads before anything else.
-const FOREGROUND_WORDS: readonly string[] = ["not", "on", "link", ...ATTRIBUTE_NAMES, ...COLOR_NAMES];
+// keywords are the four `parseStyleDefinition` reads before anything else.
+const FOREGROUND_WORDS: readonly string[] = ["not", "on", "link", UNDERLINE_COLOR_WORD, ...NEGATABLE_WORDS, ...COLOR_NAMES];
 
 /**
  * Optimal string alignment distance: insertions, deletions, substitutions, and
@@ -853,11 +938,39 @@ function parseStyleDefinition(definition: string): Style {
       if (!next) {
         throw new StyleSyntaxError(`Expected attribute after "not" in style definition`);
       }
+      i++;
+      // `not` a kind takes that kind off, so a different one the definition
+      // already drew stays, as Rich's `underline not underline2` keeps its
+      // line. With none drawn, the style holds no underline at all: one field
+      // cannot say "any kind but this one" to a style beneath.
+      const negated = UNDERLINE_SPELLINGS.get(next);
+      if (negated !== undefined) {
+        if (opts.underline === undefined || opts.underline === false || opts.underline === true || opts.underline === negated) opts.underline = false;
+        continue;
+      }
       const attrName = ATTRIBUTE_SHORT_ALIASES[next] ?? next;
       if (!ATTRIBUTE_SET.has(attrName)) {
-        throw new StyleSyntaxError(`Invalid attribute: "${next}"${nearMiss(next, ATTRIBUTE_NAMES)}`);
+        throw new StyleSyntaxError(`Invalid attribute: "${next}"${nearMiss(next, NEGATABLE_WORDS)}`);
       }
       (opts as Record<string, boolean>)[attrName] = false;
+      continue;
+    }
+
+    // "underlineColor <color>"
+    if (token === UNDERLINE_COLOR_WORD) {
+      i++;
+      const next = tokens[i];
+      if (!next) {
+        throw new StyleSyntaxError(`Expected color after "${UNDERLINE_COLOR_WORD}" in style definition`);
+      }
+      opts.underlineColor = parseStyleColor(next, "Invalid underline color", COLOR_NAMES);
+      i++;
+      continue;
+    }
+
+    const underline = UNDERLINE_SPELLINGS.get(token);
+    if (underline !== undefined) {
+      opts.underline = underline;
       i++;
       continue;
     }
@@ -925,6 +1038,7 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
   reset: new Style({
     color: ColorSpec.default(),
     bgcolor: ColorSpec.default(),
+    underlineColor: ColorSpec.default(),
     bold: false,
     dim: false,
     italic: false,
@@ -934,7 +1048,6 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
     reverse: false,
     conceal: false,
     strike: false,
-    doubleUnderline: false,
     frame: false,
     encircle: false,
     overline: false,
@@ -948,7 +1061,10 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
   reverse: new Style({ reverse: true }),
   conceal: new Style({ conceal: true }),
   strike: new Style({ strike: true }),
-  doubleUnderline: new Style({ doubleUnderline: true }),
+  doubleUnderline: new Style({ underline: "double" }),
+  curlyUnderline: new Style({ underline: "curly" }),
+  dottedUnderline: new Style({ underline: "dotted" }),
+  dashedUnderline: new Style({ underline: "dashed" }),
   frame: new Style({ frame: true }),
   encircle: new Style({ encircle: true }),
   overline: new Style({ overline: true }),

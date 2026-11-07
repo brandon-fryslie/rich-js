@@ -6,6 +6,7 @@ import {
   resolveColorSystem,
   detectColorSystem,
   resolveOutputTarget,
+  ALL_UNDERLINES,
 } from "../../src/core/color.js";
 import type { Env } from "../../src/core/env.js";
 import { renderToString } from "../../src/core/render.js";
@@ -289,6 +290,11 @@ describe("resolveOutputTarget (spec → color depth + hyperlinks)", () => {
   // [LAW:one-type-per-behavior] A hyperlink is not a color: a color choice
   // never removes links; only a destination that takes no escapes does.
   const TTY = { env: { TERM: "xterm-256color" }, isTTY: true };
+  it("sends a terminal nothing weighed a plain underline, and anything else every kind", () => {
+    expect(resolveOutputTarget("truecolor", TTY).underlines).toEqual({ styles: false, color: false });
+    expect(resolveOutputTarget("truecolor", { env: EMPTY, isTTY: false }).underlines).toEqual(ALL_UNDERLINES);
+    expect(resolveOutputTarget("truecolor", { ...TTY, underlines: ALL_UNDERLINES }).underlines).toEqual(ALL_UNDERLINES);
+  });
   it.each([
     ["none", TTY, null, true],
     ["truecolor", { env: EMPTY, isTTY: false }, ColorDepth.TRUECOLOR, true],
@@ -300,11 +306,11 @@ describe("resolveOutputTarget (spec → color depth + hyperlinks)", () => {
     ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: true }, null, true],
     ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: false }, null, false],
   ] as const)("%s %j → %s, links %s", (spec, opts, colorSystem, hyperlinks) => {
-    expect(resolveOutputTarget(spec, opts)).toEqual({ colorSystem, hyperlinks, reducedMotion: false, textOrder: "plain", isTerminal: opts.isTTY });
+    expect(resolveOutputTarget(spec, opts)).toEqual({ colorSystem, hyperlinks, reducedMotion: false, textOrder: "plain", isTerminal: opts.isTTY, underlines: opts.isTTY ? { styles: false, color: false } : ALL_UNDERLINES });
   });
 
   it("an explicit null or enum depth keeps links", () => {
-    expect(resolveOutputTarget(null, { isTTY: false })).toEqual({ colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain", isTerminal: false });
+    expect(resolveOutputTarget(null, { isTTY: false })).toEqual({ colorSystem: null, hyperlinks: true, reducedMotion: false, textOrder: "plain", isTerminal: false, underlines: ALL_UNDERLINES });
     expect(resolveOutputTarget("auto", { reducedMotion: true }).reducedMotion).toBe(true);
     expect(resolveOutputTarget(ColorDepth.STANDARD).hyperlinks).toBe(true);
   });

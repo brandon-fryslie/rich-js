@@ -31,12 +31,21 @@ const BLINK_KEYFRAMES = "rich-blink";
 // [LAW:dataflow-not-control-flow] Each enum-valued field of a look is a table
 // from its values to the declarations it adds, so every value is spelled once
 // and `Record` makes a new value a compile error until it has a row.
-// A double underline adds no line to the glyph's own span; `runHtml` draws it.
-const UNDERLINE_LINE: Record<ExportLook["underline"], readonly string[]> = {
-  none: [],
-  single: ["underline"],
-  double: [],
+// The `text-decoration-style` each underline is drawn in.
+const UNDERLINE_STYLE: Record<Exclude<ExportLook["underline"], "none">, string> = {
+  single: "solid",
+  double: "double",
+  curly: "wavy",
+  dotted: "dotted",
+  dashed: "dashed",
 };
+
+/**
+ * Whether the underline is drawn by a span of its own: any but a plain one in
+ * the glyph's color, since one element's decoration has one style and color.
+ */
+const ownUnderline = (look: ExportLook): look is ExportLook & { readonly underline: Exclude<ExportLook["underline"], "none"> } =>
+  look.underline !== "none" && (look.underline !== "single" || look.underlineColor !== null);
 
 const BLINK: Record<ExportLook["blink"], readonly string[]> = {
   none: [],
@@ -69,7 +78,7 @@ function paintCss(look: ExportLook): string[] {
 /** What is drawn on the glyph: weight, slant, single-style lines, blink, outline. */
 function glyphCss(look: ExportLook): string[] {
   const lines = [
-    ...UNDERLINE_LINE[look.underline],
+    ...(look.underline === "single" && look.underlineColor === null ? ["underline"] : []),
     ...(look.strike ? ["line-through"] : []),
     ...(look.overline ? ["overline"] : []),
   ];
@@ -135,17 +144,24 @@ function onGrid(text: string, draw: (escaped: string) => string): string {
 /**
  * One run as markup.
  *
- * An element has one `text-decoration-style`, so a double underline sharing a
- * span with a strike would double the strike too. It gets an outer span of its
- * own instead. That span carries the paint, because a descendant's background
+ * An element has one `text-decoration-style` and one decoration color, so a
+ * double, curly, dotted, dashed or colored underline sharing a span with a
+ * strike would draw the strike that way too. It gets an outer span of its own
+ * instead. That span carries the paint, because a descendant's background
  * may be painted over an ancestor's underline, and the blink, so the underline
  * blinks with the glyph. A wide glyph's box sits between the two: it inherits
- * the double underline, and the inner span inside it draws the other lines.
+ * the underline, and the inner span inside it draws the other lines.
  */
 function runHtml({ text, look, inVisualOrder }: ExportRun): string {
-  const drawn = look.underline === "double"
+  const drawn = ownUnderline(look)
     ? span(
-      [...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
+      [
+        ...paintCss(look),
+        "text-decoration-line:underline",
+        `text-decoration-style:${UNDERLINE_STYLE[look.underline]}`,
+        ...(look.underlineColor === null ? [] : [`text-decoration-color:${look.underlineColor.hex}`]),
+        ...BLINK[look.blink],
+      ],
       onGrid(text, (glyph) => span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph)),
     )
     : span([...paintCss(look), ...glyphCss(look)], onGrid(text, (glyph) => glyph));
@@ -162,10 +178,13 @@ function runHtml({ text, look, inVisualOrder }: ExportRun): string {
  * The keyframes exist only for a reader who has not asked for reduced motion,
  * so for one who has, the inline `animation` names nothing and the glyph holds
  * still. One rule, so no second rule's order or survival in a host's CSS
- * pipeline can bring the blink back.
+ * pipeline can bring the blink back. It fades the decoration color as well as
+ * the glyph's, so an underline in a color of its own blinks with the run, and
+ * the outline, drawn in `currentColor`, follows the glyph: the run blinks
+ * whole, as the SVG export's does.
  */
 export const HTML_FRAGMENT_CSS =
-  `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent}}}`;
+  `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent;text-decoration-color:transparent}}}`;
 
 /**
  * `segments` under `theme` as one `pre` carrying its canvas, for embedding.

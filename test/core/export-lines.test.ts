@@ -54,6 +54,11 @@ describe("resolveLook colors", () => {
     expect(look("dim reverse #000000 on #ffffff").foreground).toEqual(new ColorRgba(153, 153, 153));
   });
 
+  it("dim fades an underline's own color with the glyph", () => {
+    expect(look("dim underline underlineColor #ffffff on #000000").underlineColor).toEqual(new ColorRgba(153, 153, 153));
+    expect(look("underline underlineColor #ffffff on #000000").underlineColor).toEqual(new ColorRgba(255, 255, 255));
+  });
+
   it("conceal paints the glyph in its background", () => {
     expect(look("conceal red on #0000ff").foreground).toEqual(new ColorRgba(0, 0, 255));
     expect(look("conceal").foreground).toEqual(PAPER);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/index.js";
 import { EASES } from "../../src/core/easing.js";
@@ -21,7 +22,7 @@ const tall = new RichText("one\ntwo\nthree", { style: "cyan" });
 const wide = new RichText("漢字漢字漢字漢字漢字", { style: "magenta" });
 
 const draw = (renderable: Renderable, options: RenderOptions = OPTIONS): Segment[] => [...render(renderable, options)];
-const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" });
 const text = (segments: Segment[]): string => segments.map((s) => s.text).join("");
 const rows = (segments: Segment[]): number[] => Segment.splitLines(segments).map((line) => Segment.getLineLength(line));
 

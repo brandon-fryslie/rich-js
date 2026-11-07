@@ -350,7 +350,7 @@ export class Recolored implements Renderable, Measurable {
     for (const run of runs) {
       const placed = base.shiftedBy(offset);
       const shifted = sameAttributes(run.attributes, attributes) ? placed : placed.withAttributes(cellAttributes(run.attributes));
-      const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
+      const style = writesAlike(run.drawn, wire) ? shifted : repainted(shifted, run.drawn, wire);
       yield new Segment(run.text, style);
       offset += run.cells;
     }
@@ -436,7 +436,7 @@ export class Recolored implements Renderable, Measurable {
       color: written(colors.color, was.color, wire.color, drawn.color, rounded.color),
       bgcolor: written(colors.bgcolor, was.bgcolor, wire.bgcolor, drawn.bgcolor, rounded.bgcolor),
     };
-    return new Segment(segment.text, writesAlike(writes, wire) ? style : style.add(Style.fromColor(writes.color, writes.bgcolor)));
+    return new Segment(segment.text, writesAlike(writes, wire) ? style : repainted(style, writes, wire));
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -528,7 +528,7 @@ export function cellSeed(key: string, row: number, col: number): number {
 
 const DEFAULT = ColorSpec.default();
 
-type DrawnColors = ReturnType<Style["drawnColors"]>;
+type DrawnColors = Pick<ReturnType<Style["drawnColors"]>, "color" | "bgcolor">;
 
 /**
  * How one segment is drawn. [LAW:single-enforcer] `drawnColors` is what the
@@ -690,7 +690,7 @@ function edgesBeside(walked: readonly Walked[], drawings: readonly (Drawing | un
 
 /** Whether `style` draws in its ink on a blank glyph: a line under, through or over it, or a frame round it. */
 function drawsLines(style: Style): boolean {
-  return [style.underline, style.doubleUnderline, style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
+  return Boolean(style.underline) || [style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
 }
 
 /**
@@ -791,6 +791,22 @@ function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, termina
   return { fg: ColorSpec.matchMove(from.fg, glyph, depth, terminal, true), bg: ColorSpec.matchMove(from.bg, ground, depth, terminal, false) };
 }
 
+const GLYPH_UNDERLINE = new Style({ underlineColor: ColorSpec.default() });
+
+/**
+ * `style` drawn in the colors an effect moved it to. An underline colored
+ * apart from the glyph is ink too: once the effect moves the glyph's ink, the
+ * line is drawn in it, so a cell faded to the ground leaves no line behind.
+ * A style with no underline color of its own already draws its line in the
+ * glyph's, and gains no `59`. Under `reverse` the glyph's ink is the
+ * background slot, so that is the slot whose move counts.
+ */
+function repainted(style: Style, writes: DrawnColors, wire: DrawnColors): Style {
+  const moved = style.add(Style.fromColor(writes.color, writes.bgcolor));
+  const ink = style.reverse === true ? slotWritesAlike(writes.bgcolor, wire.bgcolor, false) : slotWritesAlike(writes.color, wire.color, true);
+  return style.underlineColor === undefined || ink ? moved : moved.add(GLYPH_UNDERLINE);
+}
+
 /**
  * Whether two cells' colors are written alike. A slot with no color is not
  * the default color: it writes nothing, so a style a container lays beneath
@@ -822,8 +838,11 @@ function returned(look: CellLook): CellLook {
   return look;
 }
 
-/** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`. */
-const MOVED: readonly Exclude<AttributeName, "reverse">[] = ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse");
+/** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`, and the underline. */
+const MOVED: readonly (keyof CellAttributes)[] = [
+  ...ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse"),
+  "underline",
+];
 
 /**
  * The attributes a look carries, read off anything that sets them — a

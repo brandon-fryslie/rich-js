@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import {
   BarColumn,
   MofNCompleteColumn,
@@ -916,7 +917,7 @@ describe("a Progress is timed on the host that draws it (rich-animation-42lg.1t6
       progress.updateTask(id, { completed: 80 });
       let drawn = "";
       for (let frame = 0; frame <= 3 * rate; frame++) {
-        drawn = segmentsToString([...progress.render({ ...OPTS, maxWidth: 30, colorSystem: ColorDepth.TRUECOLOR, frame: { time: frame / rate, host } })], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
+        drawn = segmentsToString([...progress.render({ ...OPTS, maxWidth: 30, colorSystem: ColorDepth.TRUECOLOR, frame: { time: frame / rate, host } })], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" });
       }
       return drawn;
     };

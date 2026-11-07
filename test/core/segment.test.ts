@@ -263,7 +263,7 @@ describe("Segment.applyStyle()", () => {
     const post = new Style({ underline: true });
     const seg = new Segment("hello");
     const result = collect(Segment.applyStyle([seg], undefined, post));
-    expect(result[0]!.style?.underline).toBe(true);
+    expect(result[0]!.style?.underline).toBe("single");
   });
 
   it("yields unchanged segments when no styles given", () => {

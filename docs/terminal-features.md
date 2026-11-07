@@ -128,3 +128,35 @@ and takes the indicator away when it hands the terminal back.
 `npm run terminal-features` shows it on your terminal. Add `-- --declare` to
 state your terminal reads OSC 9;4 (iTerm2, Ghostty, Windows Terminal), and
 `-- --tmux` to state tmux passes it through.
+
+## Underlines
+
+Curly, dotted and dashed underlines (SGR `4:3`–`4:5`) and an underline's own
+color (SGR 58) are [styles](./style.md#underlines), drawn on every run that
+carries one, so they are not sent once like a request. A console decides once,
+when it is made, whether its terminal draws each, and holds the answer on its
+output target as `underlines`; nothing is sent, so neither decision reaches
+`onSend`. kitty, WezTerm, foot, Ghostty, Alacritty, iTerm2, VTE and Windows
+Terminal read them. A terminal that does not would draw
+`4:3` as italic, so `bestGuess` does not act on the environment's word for
+them. tmux and zellij parse them and redraw them for each client, and screen
+and an editor's terminal do not carry them. Where a console does not send
+them, a curly, dotted or dashed underline is written as a plain one and the
+color is left out:
+
+```ts
+import { Console, declareCapabilities } from "@promptctl/rich-js";
+
+const markup = "[curlyUnderline underlineColor red]spelled wrong[/]";
+for (const declared of [[], ["SGR 4:n", "SGR 58"]]) {
+  let bytes = "";
+  const console = new Console({
+    forceTerminal: true,
+    colorSystem: "truecolor",
+    file: { write: (text: string) => void (bytes += text) },
+    terminalFeatures: { capabilities: declareCapabilities(declared) },
+  });
+  console.print(markup);
+  new Console().print(JSON.stringify(bytes), { markup: false, highlight: false });
+}
+```

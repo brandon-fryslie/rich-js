@@ -21,6 +21,9 @@ import {
   Style,
   ATTRIBUTE_NAMES,
   ATTRIBUTE_SHORT_ALIASES,
+  UNDERLINE,
+  UNDERLINE_KINDS,
+  UNDERLINE_SPELLINGS,
   type AttributeName,
 } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
@@ -37,7 +40,7 @@ function attrFunc(style: Style): TemplateFunc {
 
 // --- Color sinks ---
 //
-// `fg` and `bg` are the only two color-applying functions, and they are the
+// `fg`, `bg` and `underlineColor` are the only color-applying functions, and they are the
 // terminal step of the color pipeline: `color` names a color, the functions
 // in `color-funcs.ts` transform it, these paint it onto text.
 //
@@ -58,7 +61,7 @@ function attrFunc(style: Style): TemplateFunc {
 // sink takes the union. The type of each slot is exactly the set of values that
 // slot can mean something for.
 
-function colorSinkFunc(slot: "color" | "bgcolor"): TemplateFunc {
+function colorSinkFunc(slot: "color" | "bgcolor" | "underlineColor"): TemplateFunc {
   return {
     fn: ((spec: string, child: unknown) =>
       applyStyleToFragment(
@@ -90,6 +93,13 @@ function attributeFuncs(): FuncMap {
   }
   for (const [alias, canonical] of Object.entries(ATTRIBUTE_SHORT_ALIASES)) {
     out[alias] = attrFunc(attrStyle(canonical, true));
+  }
+  // A style holds one underline, so every spelling's `not_` is none.
+  for (const [spelling, kind] of UNDERLINE_SPELLINGS) {
+    out[spelling] = attrFunc(new Style({ underline: kind }));
+  }
+  for (const kind of UNDERLINE_KINDS) {
+    out[`not_${UNDERLINE[kind].spelling}`] = attrFunc(new Style({ underline: false }));
   }
   return out;
 }
@@ -161,7 +171,7 @@ const linkFunc: TemplateFunc = {
 // --- Public assembly ---
 
 /**
- * Text-styling registrations: the two color sinks (`fg`, `bg`), text
+ * Text-styling registrations: the three color sinks (`fg`, `bg`, `underlineColor`), text
  * attributes (canonical names, short aliases, and `not_*` negations), the
  * hyperlink cell-splitter (`link`), and the multi-attribute `style` spec.
  *
@@ -173,6 +183,7 @@ export function richTextStyleFuncs(): FuncMap {
   return {
     fg: colorSinkFunc("color"),
     bg: colorSinkFunc("bgcolor"),
+    underlineColor: colorSinkFunc("underlineColor"),
     ...attributeFuncs(),
     link: linkFunc,
     style: styleSpecFunc,
