@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import xtermHeadless from "@xterm/headless";
 import { describe, expect, test } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { shaped } from "../../src/core/bidi.js";
 import { MIRRORS } from "../../src/core/bidi-data.js";
 import { cellLen, graphemes } from "../../src/core/cells.js";
@@ -287,7 +288,7 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
   test("keeps each segment's edges, so a joiner at one is judged as in every order", () => {
     const style = Style.parse("bold");
     const bytes = (textOrder: TextOrder): string =>
-      segmentsToString([new Segment("\u{1f468}‍", style), new Segment("\u{1f469}", style)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder });
+      segmentsToString([new Segment("\u{1f468}‍", style), new Segment("\u{1f469}", style)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder });
     expect(bytes("words")).toBe(bytes("plain"));
   });
 
@@ -306,7 +307,7 @@ describe("reading on kitty, which reverses right-to-left words and not lines", (
   });
 
   test("leaves a cell no row ordered as it was given, for kitty to reverse as it does", () => {
-    expect(segmentsToString([new Segment(HEBREW)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder: "words" })).toBe(HEBREW);
+    expect(segmentsToString([new Segment(HEBREW)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "words" })).toBe(HEBREW);
   });
 });
 

@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 
 import { SurfaceRenderer } from "../../src/core/paint.js";
 import { declareCapabilities } from "../../src/core/terminal-capabilities.js";
@@ -20,7 +21,7 @@ const SHOW = "\x1b[?25h";
 const BAR = "\x1b[5 q";
 const screen = { rows: 4, cols: 20 };
 
-const target = (textOrder: TextOrder = "plain"): OutputTarget => ({ colorSystem: null, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder });
+const target = (textOrder: TextOrder = "plain"): OutputTarget => ({ colorSystem: null, hyperlinks: false, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder });
 
 const field = (before: Segment[] = []): Segment[][] => [[...before, new Segment("ab"), new Segment(" ", Style.null().withCaret(caretMark("bar")))], [new Segment("status")]];
 

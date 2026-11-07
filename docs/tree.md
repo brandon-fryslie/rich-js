@@ -84,4 +84,4 @@ tree.add("[spring_green3]Leaf[/spring_green3]");
 console.print(tree);
 ```
 
-Two attributes of a guide style choose the lines rather than styling them: `bold` draws heavy guides (`┣━━`) and `doubleUnderline` draws double ones (`╠══`), and the guides themselves are drawn without either. Like the rest of the guide style, the weight a node sets reaches every guide beneath it.
+Two attributes of a guide style choose the lines rather than styling them: `bold` draws heavy guides (`┣━━`) and `doubleUnderline` draws double ones (`╠══`), and the guides themselves are drawn without either: a double underline is taken off, which leaves the guide with no underline. Like the rest of the guide style, the weight a node sets reaches every guide beneath it.

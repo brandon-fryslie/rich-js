@@ -528,7 +528,7 @@ export function cellSeed(key: string, row: number, col: number): number {
 
 const DEFAULT = ColorSpec.default();
 
-type DrawnColors = ReturnType<Style["drawnColors"]>;
+type DrawnColors = Pick<ReturnType<Style["drawnColors"]>, "color" | "bgcolor">;
 
 /**
  * How one segment is drawn. [LAW:single-enforcer] `drawnColors` is what the
@@ -690,7 +690,7 @@ function edgesBeside(walked: readonly Walked[], drawings: readonly (Drawing | un
 
 /** Whether `style` draws in its ink on a blank glyph: a line under, through or over it, or a frame round it. */
 function drawsLines(style: Style): boolean {
-  return [style.underline, style.doubleUnderline, style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
+  return Boolean(style.underline) || [style.strike, style.overline, style.frame, style.encircle].some((on) => on === true);
 }
 
 /**
@@ -822,8 +822,11 @@ function returned(look: CellLook): CellLook {
   return look;
 }
 
-/** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`. */
-const MOVED: readonly Exclude<AttributeName, "reverse">[] = ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse");
+/** The attributes a look carries: `ATTRIBUTE_NAMES` but `reverse`, and the underline. */
+const MOVED: readonly (keyof CellAttributes)[] = [
+  ...ATTRIBUTE_NAMES.filter((name): name is Exclude<AttributeName, "reverse"> => name !== "reverse"),
+  "underline",
+];
 
 /**
  * The attributes a look carries, read off anything that sets them — a

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { PassThrough, Writable } from "stream";
 import { Animation } from "../../src/core/animation.js";
 import { cellLen, graphemes } from "../../src/core/cells.js";
@@ -283,10 +284,10 @@ describe("Effected — attributes", () => {
     const owner = {};
     const base = Style.parse("red").withLink("https://example.com").add(Style.fromMeta({ id: 7 }));
     const lines = Segment.anchorLines([[new Segment("abcd", base)]], owner);
-    const out = [...effected(fixed(...lines[0]!), setFrom(2, { bold: true, underline: true })).render({ maxWidth: 10 })];
+    const out = [...effected(fixed(...lines[0]!), setFrom(2, { bold: true, underline: "single" })).render({ maxWidth: 10 })];
     expect(out.map((s) => [s.text, s.style?.bold, s.style?.underline, s.style?.color?.name, s.style?.link, s.style?.meta])).toEqual([
       ["ab", undefined, undefined, "red", "https://example.com", { id: 7 }],
-      ["cd", true, true, "red", "https://example.com", { id: 7 }],
+      ["cd", true, "single", "red", "https://example.com", { id: 7 }],
     ]);
     for (let x = 0; x < 4; x++) expect(Segment.anchorAt([out], x, 0)).toEqual(Segment.anchorAt(lines, x, 0));
   });
@@ -516,7 +517,7 @@ describe("Drawn.cells — the cells an effect is handed, listed before it is han
 
 describe("confined — an effect on its owners' cells", () => {
   const FILL = Style.parse("white on #3050a0");
-  const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder: "plain" as const };
+  const AT = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" as const };
   const repaint: Effect = () => Animation.continuous(() => (c) => ({ ...c, fg: RED, bg: BLUE }));
   /** Two items with one fill, so no color tells them apart. */
   const twins = (): RichText[] => ["one", "two"].map((label) => new RichText(` ${label} `, { style: FILL, end: "", noWrap: true }));

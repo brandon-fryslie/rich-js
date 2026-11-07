@@ -31,7 +31,7 @@
  */
 
 import { ColorSpec, dimShown, type ColorRgba, type TerminalTheme } from "./color.js";
-import { NULL_STYLE, type Style } from "./style.js";
+import { NULL_STYLE, type Style, type UnderlineKind } from "./style.js";
 import { sealed } from "./seal.js";
 import type { Segment } from "./segment.js";
 
@@ -59,7 +59,9 @@ export interface ExportLook {
   readonly background: Background;
   readonly bold: boolean;
   readonly italic: boolean;
-  readonly underline: "none" | "single" | "double";
+  readonly underline: "none" | UnderlineKind;
+  /** The underline's own color, or `null` when it is drawn in the glyph's. */
+  readonly underlineColor: ColorRgba | null;
   readonly strike: boolean;
   readonly overline: boolean;
   readonly blink: "none" | "slow" | "fast";
@@ -189,7 +191,9 @@ export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
     background,
     bold: style.bold === true,
     italic: style.italic === true,
-    underline: style.doubleUnderline ? "double" : style.underline ? "single" : "none",
+    underline: style.underline || "none",
+    // A concealed run hides its lines with its glyph, so they take its color.
+    underlineColor: style.conceal || drawn.underlineColor === undefined || drawn.underlineColor.isDefault ? null : drawn.underlineColor.getTruecolor(theme, true),
     strike: style.strike === true,
     overline: style.overline === true,
     blink: style.rapidBlink ? "fast" : style.blink ? "slow" : "none",

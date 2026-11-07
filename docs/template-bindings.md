@@ -101,7 +101,7 @@ The width is deliberate. `#ff6b6b` is a *concrete* color; `bright_blue` and `col
 
 ### Attributes
 
-Each of the thirteen text attributes registers as a one-argument function: `bold`, `dim`, `italic`, `underline`, `blink`, `rapidBlink`, `reverse`, `conceal`, `strike`, `doubleUnderline`, `frame`, `encircle`, `overline`. Each also registers a `not_`-prefixed form that turns the attribute off — `not_bold`, `not_dim`, and so on. Eight have short aliases: `b`, `d`, `i`, `u`, `s`, `r`, `o`, and `uu`. Both spellings produce the same fragment.
+Each of the eleven text attributes registers as a one-argument function: `bold`, `dim`, `italic`, `blink`, `rapidBlink`, `reverse`, `conceal`, `strike`, `frame`, `encircle`, `overline`. Each also registers a `not_`-prefixed form that turns the attribute off — `not_bold`, `not_dim`, and so on. Six have short aliases: `b`, `d`, `i`, `s`, `r` and `o`. So does each underline: `underline` (`u`), `doubleUnderline` (`uu`), `curlyUnderline`, `dottedUnderline` and `dashedUnderline`, and its `not_` form removes whichever underline the style holds. Both spellings produce the same fragment.
 
 ### Name a style once, use it everywhere
 

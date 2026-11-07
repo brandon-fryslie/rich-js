@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import {
   Style,
   StyleStack,
@@ -15,7 +16,7 @@ import * as terminalThemes from "../../src/themes/terminalThemes.js";
 
 // The bytes `style` draws `text` as, through the one encoder.
 const drawn = (style: Style, text: string, colorSystem = ColorDepth.TRUECOLOR): string =>
-  segmentToString(new Segment(text, style), { colorSystem, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
+  segmentToString(new Segment(text, style), { colorSystem, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" });
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (parse semantics, merge rules, render output), not implementation details (caches, internal fields)
 
@@ -188,7 +189,7 @@ describe("Style.parse", () => {
     });
 
     it('parses "u" as underline', () => {
-      expect(Style.parse("u").underline).toBe(true);
+      expect(Style.parse("u").underline).toBe("single");
     });
 
     it('parses "s" as strike', () => {
@@ -207,8 +208,8 @@ describe("Style.parse", () => {
       expect(Style.parse("o").overline).toBe(true);
     });
 
-    it('parses "uu" as doubleUnderline', () => {
-      expect(Style.parse("uu").doubleUnderline).toBe(true);
+    it('parses "uu" as a double underline', () => {
+      expect(Style.parse("uu").underline).toBe("double");
     });
   });
 
@@ -220,7 +221,7 @@ describe("Style.parse", () => {
     const s = Style.parse("bold italic underline strike");
     expect(s.bold).toBe(true);
     expect(s.italic).toBe(true);
-    expect(s.underline).toBe(true);
+    expect(s.underline).toBe("single");
     expect(s.strike).toBe(true);
   });
 
@@ -1104,7 +1105,6 @@ describe("DEFAULT_STYLES (additional)", () => {
     expect(reset.reverse).toBe(false);
     expect(reset.conceal).toBe(false);
     expect(reset.strike).toBe(false);
-    expect(reset.doubleUnderline).toBe(false);
     expect(reset.frame).toBe(false);
     expect(reset.encircle).toBe(false);
     expect(reset.overline).toBe(false);
@@ -1246,5 +1246,56 @@ describe("toSgrCodes at 256 colors rounds every color on its own", () => {
       const arrow = Style.parse(`${left} on ${right}`).toSgrCodes(ColorDepth.EIGHT_BIT);
       expect([left, arrow.split(";").slice(0, 3).join(";")]).toEqual([left, cell.replace(/^48/, "38")]);
     }
+  });
+});
+
+describe("underline kinds and color", () => {
+  it("parses each kind's spelling, and not any spelling as none", () => {
+    const kinds = ["underline", "doubleUnderline", "curlyUnderline", "dottedUnderline", "dashedUnderline"].map((word) => Style.parse(word).underline);
+    expect(kinds).toEqual(["single", "double", "curly", "dotted", "dashed"]);
+    expect(Style.parse("underline not dottedUnderline").underline).toBe(false);
+  });
+
+  it("takes true as a single underline", () => {
+    expect(new Style({ underline: true }).underline).toBe("single");
+  });
+
+  it("lets the later style decide the kind whole", () => {
+    expect(Style.parse("curlyUnderline").add(Style.parse("doubleUnderline")).underline).toBe("double");
+    expect(Style.parse("doubleUnderline").add(Style.parse("not curlyUnderline")).underline).toBe(false);
+  });
+
+  it("round-trips a kind and an underline color through toString", () => {
+    const style = Style.parse("bold dashedUnderline red underlineColor #00ff00");
+    expect(Style.parse(style.toString()).equals(style)).toBe(true);
+    expect(style.underlineColor!.name).toBe("#00ff00");
+  });
+
+  it("names the underline color keyword when its color is missing or wrong", () => {
+    expect(() => Style.parse("underline underlineColor")).toThrow(/after "underlineColor"/);
+    expect(() => Style.parse("underline underlineColor nope")).toThrow(/Invalid underline color/);
+  });
+
+  it("writes a styled kind as 4:n, its color as 58, in the reference's attribute order", () => {
+    const style = Style.parse("bold curlyUnderline blink underlineColor #102030");
+    expect(style.toSgrCodes(ColorDepth.TRUECOLOR)).toBe("1;4:3;5;58:2::16:32:48");
+    expect(Style.parse("strike doubleUnderline frame").toSgrCodes(ColorDepth.TRUECOLOR)).toBe("9;21;51");
+    expect(Style.parse("underline underlineColor red").toSgrCodes(ColorDepth.EIGHT_BIT)).toBe("4;58:5:1");
+  });
+
+  it("writes a styled kind as a plain underline and no color where the destination draws neither", () => {
+    const style = Style.parse("dottedUnderline underlineColor red");
+    expect(style.toSgrCodes(ColorDepth.TRUECOLOR, { styles: false, color: false })).toBe("4");
+    expect(Style.parse("doubleUnderline").toSgrCodes(ColorDepth.TRUECOLOR, { styles: false, color: false })).toBe("21");
+  });
+
+  it("writes no underline color without an underline to draw it on", () => {
+    expect(Style.parse("underlineColor red").toSgrCodes(ColorDepth.TRUECOLOR)).toBe("");
+  });
+
+  it("pictures the kind and its color in an export look", () => {
+    const look = resolveLook(Style.parse("curlyUnderline underlineColor #ff0000"));
+    expect([look.underline, look.underlineColor?.hex]).toEqual(["curly", "#ff0000"]);
+    expect(resolveLook(Style.parse("underline underlineColor default")).underlineColor).toBeNull();
   });
 });

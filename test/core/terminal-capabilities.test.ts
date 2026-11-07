@@ -22,13 +22,55 @@ import {
   type TerminalPolicy,
   type TerminalSend,
 } from "../../src/core/terminal-capabilities.js";
-import { identifyTerminal, readVersionAnswer, type Intermediary } from "../../src/core/terminal-identity.js";
+import { identifyTerminal, readVersionAnswer, type Intermediary, type TerminalName } from "../../src/core/terminal-identity.js";
 import { pointerShape } from "../../src/core/terminal-requests.js";
+import { UNDERLINE_COLOR, UNDERLINE_STYLE, underlineSupport } from "../../src/core/style-effects.js";
 import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState } from "../../src/core/terminal-state.js";
 import { App } from "../../src/host/app.js";
 import { Progress } from "../../src/renderables/progress.js";
 import { scriptedHost } from "../host/scripted-host.js";
 import { fakeClock } from "./fake-clock.js";
+
+// What a console decides of its underlines when it is made, which the logs below are not about.
+const UNDERLINE_FEATURES = new Set([UNDERLINE_STYLE.name, UNDERLINE_COLOR.name]);
+
+describe("underlineSupport", () => {
+  const bare = (name: TerminalName, evidence: Evidence, layers: readonly Layer[] = []) =>
+    ({ capabilities: { terminal: { name, evidence, source: "test" }, declared: new Set<string>() }, layers });
+
+  it("draws both on a terminal that reads them, known as strict asks", () => {
+    expect(underlineSupport({ ...bare("kitty", "identified"), policy: "strict" }, () => {})).toEqual({ styles: true, color: true });
+  });
+
+  it("draws neither on the environment's word alone, under either policy, since a miss is misread", () => {
+    for (const policy of POLICIES) {
+      expect(underlineSupport({ ...bare("kitty", "inferred"), policy }, () => {})).toEqual({ styles: false, color: false });
+    }
+  });
+
+  it("crosses tmux natively and never screen, and logs both decisions with their reasons", () => {
+    const log: TerminalSend[] = [];
+    const tmux: Layer = { kind: "tmux", evidence: "declared", passthrough: "unknown" };
+    expect(underlineSupport({ ...bare("wezterm", "identified", [tmux]), policy: "strict" }, (send) => log.push(send))).toEqual({ styles: true, color: true });
+    expect(log.map((send) => send.reason)).toEqual([
+      "SGR 4:n through tmux natively: test is identified, strict",
+      "SGR 58 through tmux natively: test is identified, strict",
+    ]);
+    const screen: Layer = { kind: "screen", evidence: "declared", passthrough: "declared" };
+    expect(underlineSupport({ ...bare("wezterm", "identified", [screen]), policy: "strict" }, () => {})).toEqual({ styles: false, color: false });
+  });
+
+  it("writes a console's styled underline as a plain one where its terminal is unknown", () => {
+    const written: string[] = [];
+    const plain = new Console({ colorSystem: "truecolor", forceTerminal: true, file: { write: (s: string) => void written.push(s) }, environment: { env: { TERM: "xterm-256color" } } });
+    plain.print("[curlyUnderline underlineColor red]x[/]");
+    expect(written.join("")).toContain("\x1b[4mx");
+    const kitty = new Console({ colorSystem: "truecolor", forceTerminal: true, file: { write: (s: string) => void written.push(s) }, terminalFeatures: { capabilities: declareCapabilities(["SGR 4:n", "SGR 58"]) } });
+    written.length = 0;
+    kitty.print("[curlyUnderline underlineColor red]x[/]");
+    expect(written.join("")).toContain("\x1b[4:3;58:5:1mx");
+  });
+});
 
 describe("declaredState", () => {
   it("sums every declarer's share, so two displays show as one indicator", () => {
@@ -186,7 +228,7 @@ describe("a Progress in an App", () => {
     const log: TerminalSend[] = [];
     const host = { ...scriptedHost({ cols: 30, rows: 3 }), writesToTerminal };
     let progress: Progress | undefined;
-    const app = new App({ host, surface: "inline", view: () => progress!, clock: fakeClock(0), terminalFeatures: { capabilities: declareCapabilities(["OSC 9;4"]), onSend: (send) => log.push(send) } });
+    const app = new App({ host, surface: "inline", view: () => progress!, clock: fakeClock(0), terminalFeatures: { capabilities: declareCapabilities(["OSC 9;4"]), onSend: (send) => void (UNDERLINE_FEATURES.has(send.feature) || log.push(send)) } });
     progress = new Progress({ drawnBy: app });
     progress.updateTask(progress.addTask("x", { total: 4 }), { completed: 1 });
     void app.run();
@@ -253,7 +295,7 @@ describe("identifyTerminal", () => {
 describe("a Progress's terminal indicator", () => {
   function run(features: ConstructorParameters<typeof Console>[0]): TerminalSend[] {
     const log: TerminalSend[] = [];
-    const console = new Console({ width: 30, colorSystem: null, forceTerminal: true, file: { write: () => {} }, environment: { env: { TERM: "xterm-256color" } }, ...features, terminalFeatures: { ...features?.terminalFeatures, onSend: (send) => log.push(send) } });
+    const console = new Console({ width: 30, colorSystem: null, forceTerminal: true, file: { write: () => {} }, environment: { env: { TERM: "xterm-256color" } }, ...features, terminalFeatures: { ...features?.terminalFeatures, onSend: (send) => void (UNDERLINE_FEATURES.has(send.feature) || log.push(send)) } });
     const progress = new Progress({ console, clock: fakeClock(), autoRefresh: false });
     progress.start();
     const id = progress.addTask("x", { total: 4 });

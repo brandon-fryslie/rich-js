@@ -472,7 +472,24 @@ export interface OutputTarget {
    * what was written.
    */
   readonly isTerminal: boolean;
+  /** What the destination draws of an underline beyond a plain one. */
+  readonly underlines: UnderlineSupport;
 }
+
+/**
+ * What a destination draws of an underline beyond a plain one: a curly,
+ * dotted or dashed kind (`styles`), and a color of its own (`color`). A kind
+ * it does not draw is written as a single underline, and a color it does not
+ * is not written. A console holds what `pick` decided for `UNDERLINE_STYLE`
+ * and `UNDERLINE_COLOR` (`./terminal-requests.ts`).
+ */
+export interface UnderlineSupport {
+  readonly styles: boolean;
+  readonly color: boolean;
+}
+
+/** Every underline written as its style says: bytes for a destination whose terminal nothing weighs. */
+export const ALL_UNDERLINES: UnderlineSupport = { styles: true, color: true };
 
 /**
  * What `resolveOutputTarget` is told about where it writes beyond the color
@@ -484,6 +501,8 @@ export interface DestinationOptions extends DetectColorOptions {
   reducedMotion?: boolean;
   /** The order the program knows its destination takes. Absent, `detectTextOrder` decides. */
   textOrder?: TextOrder;
+  /** What the destination draws of an underline, as its terminal features decided. Absent, all of it. */
+  underlines?: UnderlineSupport;
 }
 
 /**
@@ -504,6 +523,7 @@ export function resolveOutputTarget(
   // Ahead of both arms: a color spec says nothing about order.
   const textOrder = options.textOrder ?? detectTextOrder(envOf(options), isTTYOf(options));
   const isTerminal = isTTYOf(options);
+  const underlines = options.underlines ?? ALL_UNDERLINES;
   if (spec !== "auto") {
     return {
       colorSystem: typeof spec === "string" ? resolveColorSystem(spec) : spec,
@@ -511,6 +531,7 @@ export function resolveOutputTarget(
       reducedMotion,
       textOrder,
       isTerminal,
+      underlines,
     };
   }
   return {
@@ -521,6 +542,7 @@ export function resolveOutputTarget(
     reducedMotion,
     textOrder,
     isTerminal,
+    underlines,
   };
 }
 
@@ -642,6 +664,26 @@ export class ColorSpec {
           return n < 8 ? [`${30 + n}`] : [`${90 + n - 8}`];
         }
         return n < 8 ? [`${40 + n}`] : [`${100 + n - 8}`];
+      }
+    }
+  }
+
+  /**
+   * This color as an underline's (SGR 58), in kitty's colon form, which every
+   * terminal that reads 58 takes: a palette color by index, since 58 has no
+   * eight-color short form, and the default as 59.
+   */
+  getUnderlineCode(): string {
+    switch (this.type) {
+      case ColorDepth.DEFAULT:
+        return "59";
+      case ColorDepth.STANDARD:
+      case ColorDepth.WINDOWS:
+      case ColorDepth.EIGHT_BIT:
+        return `58:5:${this.number!}`;
+      case ColorDepth.TRUECOLOR: {
+        const t = this.value!;
+        return `58:2::${t.red}:${t.green}:${t.blue}`;
       }
     }
   }

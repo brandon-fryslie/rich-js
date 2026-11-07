@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { segmentsToString } from "../../src/core/render.js";
 import { Segment } from "../../src/core/segment.js";
@@ -46,7 +47,7 @@ function texts(): RichText[] {
 }
 
 const destination = (textOrder: "plain" | "logical") =>
-  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder }) as const;
+  ({ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder }) as const;
 
 /** The rows drawn one per line, as a host lays them out. */
 function drawnRows(rows: readonly RichText[], options: WrapOptions): Segment[] {

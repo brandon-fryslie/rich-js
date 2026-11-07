@@ -21,6 +21,9 @@ import {
   Style,
   ATTRIBUTE_NAMES,
   ATTRIBUTE_SHORT_ALIASES,
+  UNDERLINE,
+  UNDERLINE_KINDS,
+  UNDERLINE_SPELLINGS,
   type AttributeName,
 } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
@@ -90,6 +93,13 @@ function attributeFuncs(): FuncMap {
   }
   for (const [alias, canonical] of Object.entries(ATTRIBUTE_SHORT_ALIASES)) {
     out[alias] = attrFunc(attrStyle(canonical, true));
+  }
+  // A style holds one underline, so every spelling's `not_` is none.
+  for (const [spelling, kind] of UNDERLINE_SPELLINGS) {
+    out[spelling] = attrFunc(new Style({ underline: kind }));
+  }
+  for (const kind of UNDERLINE_KINDS) {
+    out[`not_${UNDERLINE[kind].spelling}`] = attrFunc(new Style({ underline: false }));
   }
   return out;
 }

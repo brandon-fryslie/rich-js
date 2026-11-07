@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { Animation } from "../../src/core/animation.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { EASES, stepSequence, firstReaching } from "../../src/core/easing.js";
@@ -25,7 +26,7 @@ const OPTIONS: RenderOptions = { maxWidth: 40, colorSystem: ColorDepth.TRUECOLOR
 const curve = { seconds: 2, ease: EASES.linear, swing: 1 };
 const draw = (renderable: Renderable): Segment[] => [...render(renderable, OPTIONS)];
 const lines = (renderable: Renderable): Segment[][] => Segment.splitLines(draw(renderable));
-const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, isTerminal: false, reducedMotion: false, textOrder: "plain" });
+const bytes = (segments: Segment[]): string => segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: "plain" });
 /** What a renderable drawing what `view` makes for its frame's time, drawn at host time `t` on a playing timeline, says. */
 const wakes = (view: (t: number) => Renderable, t: number): number =>
   drawView({ render: (options) => render(view(options.frame!.time), options) }, { now: t, epoch: 0, timeline: Timeline.play(0) }, {}, OPTIONS, (renderable, options) =>

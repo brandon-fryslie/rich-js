@@ -122,7 +122,7 @@ function encoded(segment: Segment, destination: OutputTarget): string {
   if (text.length === 0 || style === undefined) return text;
   // [LAW:one-type-per-behavior] Color depth governs SGR only; hyperlinks are
   // their own fact. Coupling them let a color setting delete every control.
-  const codes = destination.colorSystem === null ? "" : style.toSgrCodes(destination.colorSystem);
+  const codes = destination.colorSystem === null ? "" : style.toSgrCodes(destination.colorSystem, destination.underlines);
   const styled = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
   const link = destination.hyperlinks ? style.link : undefined;
   return link === undefined ? styled : `${osc8Open(link)}${styled}${OSC8_CLOSE}`;

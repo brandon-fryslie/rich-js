@@ -9,6 +9,7 @@ import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
 import { BELL, CLIPBOARD, NOTIFICATION, POINTER, TITLE, pointerShape, type PointerShape } from "./terminal-requests.js";
+import { underlineSupport } from "./style-effects.js";
 import { heldLayers, inferCapabilities, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
@@ -463,7 +464,14 @@ export class Console {
     // environment rather than the ambient process's.
     const resolved = resolveOutputTarget(
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
-      { isTTY: this._isTerminal, env: environment.env, reducedMotion: options?.reducedMotion, textOrder: options?.textOrder ?? textOrderOf({ terminal: this._features.capabilities.terminal.name, between: this._features.layers.length > 0, attended: this._attended }) },
+      {
+        isTTY: this._isTerminal,
+        env: environment.env,
+        reducedMotion: options?.reducedMotion,
+        textOrder: options?.textOrder ?? textOrderOf({ terminal: this._features.capabilities.terminal.name, between: this._features.layers.length > 0, attended: this._attended }),
+        // Decided once: every run's underline is encoded for this answer.
+        underlines: underlineSupport(this._features, (send) => this._features.onSend?.(send)),
+      },
     );
     // [LAW:single-enforcer] The console's one override, an explicit
     // `hyperlinks`, is applied here and nowhere else; every write encodes for

@@ -83,7 +83,7 @@ import { ColorSpec } from "./color.js";
 import { CONTROL_CODES, controlClass, dispositionOf } from "./control-codes.js";
 import { ABORTS, osc8Sequences, STRING_STOPS } from "./osc8.js";
 import { pattern } from "./pattern.js";
-import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
+import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style, UNDERLINE, UNDERLINE_KINDS, type Underline } from "./style.js";
 import type { StyleOptions } from "./style.js";
 import { RichText } from "./text.js";
 import type { RichTextOptions } from "./text.js";
@@ -600,15 +600,14 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   // [LAW:one-source-of-truth] The codes that turn an attribute on are the
   // ones `Style.toSgrCodes` writes; only the codes that turn one off are ours.
   ...ATTRIBUTE_NAMES.map((name): [number, SgrOp] => [ATTRIBUTE_SGR[name], adding({ [name]: true })]),
-  // A terminal draws one underline kind, so a single and a double underline
-  // each replace the other; Rich's table adds them. Later entries win.
-  [ATTRIBUTE_SGR.underline, adding({ underline: true, doubleUnderline: false })],
-  [ATTRIBUTE_SGR.doubleUnderline, adding({ underline: false, doubleUnderline: true })],
+  // [LAW:one-source-of-truth] An underline kind's plain code is the one
+  // `Style.toSgrCodes` writes; a style holds one kind, so each replaces another.
+  ...UNDERLINE_KINDS.filter((kind) => !UNDERLINE[kind].sgr.includes(":")).map((kind): [number, SgrOp] => [Number(UNDERLINE[kind].sgr), adding({ underline: kind })]),
   [22, adding({ bold: false, dim: false })],
   [23, adding({ italic: false })],
   // ECMA-48: 24 is "neither singly nor doubly underlined", 25 "steady" at
   // either speed. Rich's table clears only the first of each pair.
-  [24, adding({ underline: false, doubleUnderline: false })],
+  [24, adding({ underline: false })],
   [25, adding({ blink: false, rapidBlink: false })],
   [27, adding({ reverse: false })],
   [28, adding({ conceal: false })],
@@ -617,9 +616,9 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   [39, adding({ color: ColorSpec.default() })],
   [48, (style, rest) => style.add(new Style({ bgcolor: extendedColor(rest) }))],
   [49, adding({ bgcolor: ColorSpec.default() })],
-  // Underline color has no field on Style; its arguments are still spent, or
-  // `58;2;1;2;3` would read on as bold, dim and italic.
-  [58, (style, rest) => (extendedColor(rest), style)],
+  [58, (style, rest) => style.add(new Style({ underlineColor: extendedColor(rest) }))],
+  // 59 is the glyph's color again, which the default color stands for.
+  [59, adding({ underlineColor: ColorSpec.default() })],
   [54, adding({ frame: false, encircle: false })],
   [55, adding({ overline: false })],
   ...Array.from({ length: 8 }, (_, n): [number, SgrOp][] => [
@@ -648,18 +647,21 @@ function colorArguments([kind = "", ...args]: readonly string[]): number[] {
   return [kind, ...args.slice(slot ? 1 : 0, end)].map(parameter);
 }
 
+// What `4:n` sets, by `n`: none, or a kind — `UNDERLINE`'s own codes for the
+// styled ones, and 4:1 and 4:2 for the kinds 4 and 21 also spell.
+const UNDERLINE_SUBS: readonly Underline[] = [false, "single", "double", ...UNDERLINE_KINDS.filter((kind) => UNDERLINE[kind].sgr.startsWith("4:")).sort((a, b) => UNDERLINE[a].sgr.localeCompare(UNDERLINE[b].sgr))];
+
 /**
- * A code carrying colon sub-parameters, as the plain code and arguments
- * `SGR_OPS` applies: its arguments are its own, so the codes after it are
- * untouched. `4:n` is an underline's kind; a curly, dotted or dashed one (3–5)
- * is the underline `Style` can hold. A code T.416 gives no sub-parameters is
- * skipped, as is a kind past 5.
+ * A code carrying colon sub-parameters, as the operation and arguments it
+ * applies: its arguments are its own, so the codes after it are untouched.
+ * `4:n` is an underline's kind. A code T.416 gives no sub-parameters is
+ * skipped, as is a kind no terminal names.
  */
-function subCode(code: number, subs: readonly string[]): readonly [number, number[]] | undefined {
-  if (code === 38 || code === 48 || code === 58) return [code, colorArguments(subs)];
+function subCode(code: number, subs: readonly string[]): readonly [SgrOp, number[]] | undefined {
+  if (code === 38 || code === 48 || code === 58) return [SGR_OPS.get(code)!, colorArguments(subs)];
   if (code !== 4) return undefined;
-  const kind = parameter(subs[0] ?? "");
-  return kind > 5 ? undefined : [kind === 0 ? 24 : kind === 2 ? 21 : 4, []];
+  const underline = UNDERLINE_SUBS[parameter(subs[0] ?? "")];
+  return underline === undefined ? undefined : [adding({ underline }), []];
 }
 
 /**
@@ -687,7 +689,7 @@ function applySgr(style: Style, params: string): Style {
       continue;
     }
     const sub = subCode(parameter(code), subs);
-    if (sub !== undefined) result = (SGR_OPS.get(sub[0]) ?? identity)(result, sub[1].values());
+    if (sub !== undefined) result = sub[0](result, sub[1].values());
   }
   return result;
 }

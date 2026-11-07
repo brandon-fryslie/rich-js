@@ -136,11 +136,37 @@ function place(rows: readonly ExportLine[]): PlacedRun[] {
 // [LAW:dataflow-not-control-flow] Each enum-valued field of a look is a table
 // from its values to what it draws, so `Record` makes a new value a compile
 // error until it has a row.
-const UNDERLINE_BELOW_BASELINE: Record<ExportLook["underline"], readonly number[]> = {
-  none: [],
-  single: [2],
-  double: [2, 5],
+// A solid underline is rectangles, as the strike and overline are; a broken
+// or curly one is a stroke along the line, in `dasharray` or as a wave.
+type Underlining = { readonly rects: readonly number[] } | { readonly dasharray: string } | { readonly wave: true };
+
+const UNDERLINE_DRAWN: Record<ExportLook["underline"], Underlining> = {
+  none: { rects: [] },
+  single: { rects: [2] },
+  double: { rects: [2, 5] },
+  curly: { wave: true },
+  dotted: { dasharray: `${LINE_THICKNESS} ${LINE_THICKNESS}` },
+  dashed: { dasharray: `${n(CELL_WIDTH / 2)} ${n(CELL_WIDTH / 4)}` },
 };
+
+// How far below the baseline a stroked underline runs, and a wave's height.
+const UNDERLINE_BELOW = 2.5;
+const WAVE_AMPLITUDE = 1.5;
+
+/**
+ * A stroked underline across `cells` from `x`: a dashed or dotted line, or a
+ * wave of one period a cell. `paint` is the stroke, since a stroke takes no
+ * color from the group's `fill`.
+ */
+function underlineStroke(drawn: Exclude<Underlining, { rects: readonly number[] }>, x: number, y: number, cells: number, paint: string): string {
+  const stroke = `fill="none" stroke="${paint}" stroke-width="${LINE_THICKNESS}"`;
+  if ("dasharray" in drawn) {
+    return `<path d="M${n(x)} ${n(y)}h${n(cells * CELL_WIDTH)}" ${stroke} stroke-dasharray="${drawn.dasharray}"/>`;
+  }
+  const half = CELL_WIDTH / 2;
+  const waves = Array.from({ length: cells }, () => `q${n(half / 2)} ${n(-2 * WAVE_AMPLITUDE)} ${n(half)} 0t${n(half)} 0`).join("");
+  return `<path d="M${n(x)} ${n(y)}${waves}" ${stroke}/>`;
+}
 
 const BLINK_PERIOD: Record<ExportLook["blink"], string | null> = {
   none: null,
@@ -194,15 +220,21 @@ function runSvg(run: PlacedRun, className: string): string {
   const baseline = top + CHAR_HEIGHT;
   const x = n(run.column * CELL_WIDTH);
   const width = n(run.cells * CELL_WIDTH);
+  const rect = (y: number, paint: string | null): string =>
+    `<rect x="${x}" y="${n(y)}" width="${width}" height="${LINE_THICKNESS}"${paint === null ? "" : ` fill="${paint}"`}/>`;
+  const underline = UNDERLINE_DRAWN[look.underline];
+  const underlinePaint = look.underlineColor?.hex ?? null;
   const lineYs = [
-    ...UNDERLINE_BELOW_BASELINE[look.underline].map((offset) => baseline + offset),
     ...(look.strike ? [baseline - 6] : []),
     ...(look.overline ? [top + CELL_TOP] : []),
   ];
   const radius = OUTLINE_RADIUS[look.outline];
   const drawn = [
     ...run.chunks.map((c) => textSvg(c, baseline, run.inVisualOrder)),
-    ...lineYs.map((y) => `<rect x="${x}" y="${n(y)}" width="${width}" height="${LINE_THICKNESS}"/>`),
+    ...("rects" in underline
+      ? underline.rects.map((offset) => rect(baseline + offset, underlinePaint))
+      : [underlineStroke(underline, run.column * CELL_WIDTH, baseline + UNDERLINE_BELOW, run.cells, underlinePaint ?? look.foreground.hex)]),
+    ...lineYs.map((y) => rect(y, null)),
     ...(radius === null
       ? []
       : [`<rect ${cellBox(run)} rx="${n(radius)}" fill="none" stroke="${look.foreground.hex}" stroke-width="1"/>`]),

@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { ALL_UNDERLINES } from "../../src/core/color.js";
 import { asCodePoint, asCodeUnit, cellLen, graphemes } from "../../src/core/cells.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { render, type RenderOptions } from "../../src/core/protocol.js";
@@ -35,7 +36,7 @@ const options = (textOrder: TextOrder): RenderOptions => ({ maxWidth: 40, textOr
 
 // The row a terminal of `order` shows, read by `show`.
 function shown(input: TextInput, order: TextOrder, show: (row: string) => string): string {
-  const bytes = segmentsToString(render(input, options(order)), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder: order });
+  const bytes = segmentsToString(render(input, options(order)), { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: order });
   return show(rows(bytes)[0]!);
 }
 
@@ -347,7 +348,7 @@ function screenOf(input: TextInput, order: TextOrder) {
       frame = Segment.splitLines(segments);
       // As an app does once it has painted.
       routes.framePainted();
-      return { frame, bytes: segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, isTerminal: false, reducedMotion: false, textOrder: order }) };
+      return { frame, bytes: segmentsToString(segments, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: false, underlines: ALL_UNDERLINES, isTerminal: false, reducedMotion: false, textOrder: order }) };
     },
     press(x: number, y: number): void {
       const at = reported(frame, order, x, y);

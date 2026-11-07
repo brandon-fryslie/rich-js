@@ -448,7 +448,7 @@ describe("style function (multi-attribute spec)", () => {
   it("applies multiple attributes from one spec", () => {
     const rt = evalOne(`{{ style "bold underline" "x" }}`);
     expect(baseStyleOf(rt).bold).toBe(true);
-    expect(baseStyleOf(rt).underline).toBe(true);
+    expect(baseStyleOf(rt).underline).toBe("single");
   });
 
   it("mixes attributes and a foreground color in one spec", () => {

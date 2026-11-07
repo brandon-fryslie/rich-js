@@ -23,7 +23,7 @@
 import { describe, it, expect } from "vitest";
 import { Console } from "../../src/core/console.js";
 import type { TerminalTheme } from "../../src/core/color.js";
-import { ATTRIBUTE_NAMES } from "../../src/core/style.js";
+import { ATTRIBUTE_NAMES, UNDERLINE, UNDERLINE_KINDS } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { DEFAULT_TERMINAL_THEME, SOLARIZED_LIGHT } from "../../src/themes/terminalThemes.js";
 
@@ -37,11 +37,20 @@ const PAINT = "red on blue";
  * anyone remembering to list it. Each is shown twice — alone, over the theme's
  * canvas and in its ink, and on `PAINT`.
  */
-const attributeRows = ATTRIBUTE_NAMES.map((name) =>
+const attributeRows = [...ATTRIBUTE_NAMES, ...UNDERLINE_KINDS.map((kind) => UNDERLINE[kind].spelling)].map((name) =>
   RichText.assemble([name.padEnd(12), [name, name], " ", [name, `${name} ${PAINT}`]]),
 );
 
 const otherRows = [
+  // An underline in a color of its own: solid, beside a strike in the glyph's, and curly.
+  RichText.assemble([
+    "underlined".padEnd(12),
+    ["solid", "underline underlineColor yellow"],
+    " ",
+    ["+strike", "underline strike underlineColor #00ff88"],
+    " ",
+    ["curly", `curlyUnderline underlineColor bright_cyan ${PAINT}`],
+  ]),
   RichText.assemble([
     "color".padEnd(12),
     ["ansi", "green"],
