@@ -29,6 +29,8 @@ interface Playground {
   atOneFps(): Promise<void>;
   /** The clock moved on by `seconds`, and what that painted taken in. */
   advance(seconds: number): Promise<void>;
+  /** What `seconds` more wrote, checked to hold a painted frame of the gallery. */
+  writtenOver(seconds: number): Promise<string>;
   /** The animation time the readout shows. */
   time(): Promise<number>;
   stop(): Promise<void>;
@@ -81,6 +83,14 @@ async function playground(size = { cols: 120, rows: 40 }, env: Env = { TERM: "xt
     async advance(seconds) {
       clock.advance(seconds);
       await screen();
+    },
+    async writtenOver(seconds) {
+      const from = host.output().length;
+      await shown.advance(seconds);
+      const wrote = host.output().slice(from);
+      // A frame of the gallery, so what it lacks is not the lack of a frame.
+      expect(wrote).toContain(KINDS[0]!.name);
+      return wrote;
     },
     async time() {
       const said = (await screen()).join("\n").match(/t = (-?[\d,]+\.\d) s/);
@@ -230,13 +240,11 @@ describe("animation playground", () => {
     await p.atOneFps();
     /** What three seconds of the gallery wrote, the readout naming `depth`. */
     const written = async (depth: string): Promise<string> => {
-      expect((await p.screen()).join("\n")).toContain(`·  ${depth}  ·`);
-      const from = p.host.output().length;
-      await p.advance(3);
-      const wrote = p.host.output().slice(from);
-      // A frame was painted, so what it lacks below is not the lack of a frame.
-      expect(wrote).not.toBe("");
-      return wrote;
+      const shown = (await p.screen()).join("\n");
+      expect(shown).toContain(`·  ${depth}  ·`);
+      // The rebuild a depth click makes carried the rate.
+      expect(shown).toContain("1 fps");
+      return p.writtenOver(3);
     };
     expect(await written("truecolor")).toMatch(/\x1b\[[\d;]*38;2;/);
     await p.click("color depth");
@@ -283,11 +291,7 @@ describe("animation playground", () => {
     const q = await playground(undefined, { TERM: "xterm-256color", NO_COLOR: "1" });
     expect((await q.screen()).join("\n")).toContain("·  no color  ·");
     await q.atOneFps();
-    const from = q.host.output().length;
-    await q.advance(3);
-    const wrote = q.host.output().slice(from);
-    expect(wrote).not.toBe("");
-    expect(colorParameters(wrote)).toEqual([]);
+    expect(colorParameters(await q.writtenOver(3))).toEqual([]);
   });
 
   it("seeks while the scrub bar is dragged, pins a drag past its end to the window's end, and seeks half a second an arrow key", async () => {
