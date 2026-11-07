@@ -13,7 +13,7 @@ import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { NULL_STYLE, type Style } from "../core/style.js";
 import type { RenderOptions } from "../core/protocol.js";
-import type { ColorDepth } from "../core/color.js";
+import type { ColorDepth, TerminalColors } from "../core/color.js";
 import type {
   InteractiveWidget,
   WidgetKeyEvent,
@@ -24,8 +24,8 @@ import type { Unsubscribe } from "../core/subscription.js";
 import { State } from "../core/state.js";
 import type { PointerShape } from "../core/terminal-requests.js";
 
-/** The depth a frame writes its colors at: what a widget's colors are resolved for. `RenderOptions` is one. */
-export type Depth = { readonly colorSystem?: ColorDepth | null };
+/** Where a frame's colors land — the depth it writes them at, and the terminal that shows them: what a widget's colors are resolved for. `RenderOptions` is one. */
+export type Drawing = { readonly colorSystem?: ColorDepth | null; readonly terminal?: TerminalColors };
 
 export abstract class WidgetBase implements InteractiveWidget {
   abstract readonly id: string;
@@ -128,7 +128,7 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   // What a padded row stands on. None by default: the padding shows whatever
   // the widget is drawn over, as the cells of content it did not draw do.
-  protected ground(_at: Depth): Style {
+  protected ground(_at: Drawing): Style {
     return NULL_STYLE;
   }
 

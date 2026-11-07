@@ -188,6 +188,12 @@ interface Spec {
 interface IntentRule {
   readonly floor: number;
   readonly on: (palette: Palette, ground: ColorRgba) => Spec;
+  /**
+   * The intent this one recedes from: where a terminal draws only a table of
+   * colors, it is never drawn in the color that one is, so it still reads as
+   * less than it.
+   */
+  readonly recedesFrom?: "foreground" | "text";
 }
 
 const RUNGS = [1, 2, 3] as const;
@@ -261,10 +267,10 @@ const accent = (role: AccentRole): IntentRule => ({
  */
 const INTENTS = {
   foreground: fixed("foreground", BODY, []),
-  "foreground-muted": fixed("foreground-muted", RECEDING, ["foreground-muted", "background-muted"]),
+  "foreground-muted": { ...fixed("foreground-muted", RECEDING, ["foreground-muted", "background-muted"]), recedesFrom: "foreground" },
   "foreground-disabled": disabled(["foreground-disabled"]),
   text: relative("text", []),
-  "text-muted": relative("text-muted", ["foreground-muted", "background-muted"]),
+  "text-muted": { ...relative("text-muted", ["foreground-muted", "background-muted"]), recedesFrom: "text" },
   "text-disabled": relative("text-disabled", ["foreground-disabled"]),
   "text-primary": accent("primary"),
   "text-secondary": accent("secondary"),
@@ -283,6 +289,11 @@ export type TextIntent = keyof typeof INTENTS;
  */
 export function textFloor(intent: TextIntent): number {
   return INTENTS[intent].floor;
+}
+
+/** The intent `intent` recedes from, where it recedes from one (`IntentRule.recedesFrom`). */
+export function recedesFrom(intent: TextIntent): TextIntent | undefined {
+  return (INTENTS[intent] as IntentRule).recedesFrom;
 }
 
 /** Whether `name` is a text intent: what a template's string is parsed through. */

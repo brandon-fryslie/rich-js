@@ -1026,6 +1026,12 @@ export class TerminalColors {
     readonly backgroundColor: ColorRgba,
     readonly foregroundColor: ColorRgba,
     readonly ansiColors: ColorTable,
+    /**
+     * The ANSI color number this terminal draws muted text in, where it is
+     * written in sixteen colors, as its theme states it. One that states none
+     * has one derived from its sixteen where muted text is drawn.
+     */
+    readonly mutedSlot?: number,
   ) {
     // [LAW:parse-dont-validate] Every reader indexes `ansiColors` 0–15 as the
     // terminal's sixteen, so a theme is the proof it holds exactly those.
@@ -1033,6 +1039,15 @@ export class TerminalColors {
       throw new RangeError(
         `a TerminalTheme's ansiColors are the sixteen ANSI colors, indices 0–15; got ${ansiColors.size} from index ${ansiColors.firstIndex}`,
       );
+    }
+    if (mutedSlot !== undefined && !(Number.isInteger(mutedSlot) && mutedSlot >= 0 && mutedSlot <= 15)) {
+      throw new RangeError(`a TerminalTheme's mutedSlot is one of its sixteen ANSI colors, an integer 0–15; got ${mutedSlot}`);
+    }
+    // Muted text is drawn in a color apart from the text it recedes from, so a
+    // terminal with no color but its foreground cannot draw it.
+    const colors = Array.from({ length: 16 }, (_, slot) => ansiColors.get(slot).hex);
+    if (colors.every((hex) => hex === foregroundColor.hex)) {
+      throw new RangeError(`a TerminalTheme's sixteen ANSI colors are all its foreground ${foregroundColor.hex}, so it has no color to draw muted text apart in`);
     }
   }
 }
@@ -1052,14 +1067,9 @@ export class TerminalTheme extends TerminalColors {
     foregroundColor: ColorRgba,
     ansiColors: ColorTable,
     readonly palette: Palette,
-    /**
-     * The ANSI color number this theme draws muted text in where a terminal
-     * shows only its sixteen, as the theme states it. A theme that states none
-     * has one derived from its sixteen where muted text is drawn.
-     */
-    readonly mutedSlot?: number,
+    mutedSlot?: number,
   ) {
-    super(backgroundColor, foregroundColor, ansiColors);
+    super(backgroundColor, foregroundColor, ansiColors, mutedSlot);
   }
 }
 

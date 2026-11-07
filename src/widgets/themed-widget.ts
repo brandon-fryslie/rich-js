@@ -16,7 +16,7 @@ import { ColorDepth, type TerminalTheme } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { slide, type TextFit, type TextIntent } from "../themes/text-on.js";
 import type { PaletteRole } from "../themes/palette.js";
-import { WidgetBase, type Depth } from "./widget-base.js";
+import { WidgetBase, type Drawing } from "./widget-base.js";
 import { ink, type Inked } from "./ink.js";
 
 /** What every themed widget's options carry: the theme it is drawn in, and how its text meets a contrast floor. */
@@ -53,25 +53,25 @@ export abstract class ThemedWidget extends WidgetBase {
 
   // [LAW:single-enforcer] The one road from a widget to `ink`: the theme and
   // the fit are the widget's, the depth the frame's.
-  protected ink(at: Depth, text: TextIntent, ground: PaletteRole): Inked {
-    return ink(this.theme, text, ground, { fit: this.contrast, depth: at.colorSystem ?? ColorDepth.TRUECOLOR });
+  protected ink(at: Drawing, text: TextIntent, ground: PaletteRole): Inked {
+    return ink(this.theme, text, ground, { fit: this.contrast, depth: at.colorSystem ?? ColorDepth.TRUECOLOR, terminal: at.terminal });
   }
 
-  protected override ground(at: Depth): Style {
+  protected override ground(at: Drawing): Style {
     return new Style(this.ink(at, "foreground", "background"));
   }
 
   // [LAW:one-source-of-truth] How every widget looks while disabled: the
   // palette's disabled text on its ground. WCAG sets no contrast floor for an
   // inactive control, and this sits under the one for text on purpose.
-  protected disabledInk(at: Depth): Inked {
+  protected disabledInk(at: Drawing): Inked {
     return this.ink(at, "foreground-disabled", "background");
   }
 
   // [LAW:one-source-of-truth] How every widget draws what recedes — a
   // placeholder, a continuation marker, a slider's empty track — on the ground
   // it stands on.
-  protected mutedInk(at: Depth, ground: "background" | "surface"): Inked {
+  protected mutedInk(at: Drawing, ground: "background" | "surface"): Inked {
     return this.ink(at, "foreground-muted", ground);
   }
 }

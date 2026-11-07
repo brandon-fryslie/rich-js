@@ -19,18 +19,19 @@
  *
  * Text is held to its floor through the widget's `TextFit` — `asIs` turns the
  * floor off — at the depth the frame is written at. At a depth that writes
- * colors by index, a pair is written in the theme's own sixteen, the colors
- * the terminal shows: rounded against the stock VGA sixteen instead, a ground
- * lands in a slot the theme paints some other color, and muted text lands in
- * its text's slot on seven bundled themes, so a placeholder looks typed. Muted
- * text there is the slot the theme states for it (`TerminalTheme.mutedSlot`).
+ * colors by index, a pair is chosen among the colors the frame's terminal
+ * shows at those indices: rounded against the stock VGA sixteen instead, a
+ * ground lands in a slot the terminal paints some other color, and muted text
+ * lands in its text's slot on seven bundled themes, so a placeholder looks
+ * typed. At sixteen colors muted text starts from the slot the terminal states
+ * for it (`TerminalColors.mutedSlot`).
  */
 
-import { ColorSpec, contrastRatio, type ColorDepth, type ColorRgba, type TerminalTheme } from "../core/color.js";
+import { ColorDepth, ColorSpec, contrastRatio, resolveTerminal, type ColorRgba, type TerminalColors, type TerminalTheme } from "../core/color.js";
 import { Memo, WeakMemo } from "../core/memo.js";
 import { Oklch } from "../core/oklch.js";
 import type { PaletteRole } from "../themes/palette.js";
-import { asIs, DRAWN_AT_TRUECOLOR, textFloor, textOn, type TextFit, type TextIntent } from "../themes/text-on.js";
+import { asIs, DRAWN_AT_TRUECOLOR, recedesFrom, textFloor, textOn, type TextFit, type TextIntent } from "../themes/text-on.js";
 
 /** A text intent and the ground it is drawn on: the two halves `ink` takes. */
 export type InkPair = readonly [text: TextIntent, ground: PaletteRole];
@@ -54,85 +55,108 @@ export const VARIANT_INK: Readonly<Record<InkVariant, { readonly quiet: InkPair;
   danger: { quiet: ["text-error", "error-muted"], lit: ["text", "error"] },
 };
 
-/** Where a widget's text is drawn: what a missed floor becomes, and the depth it is written at. */
+/**
+ * Where a widget's text is drawn: what a missed floor becomes, the depth it is
+ * written at, and the terminal that shows it — the one the depth assumes where
+ * none is named (`resolveTerminal`).
+ */
 export interface InkPlace {
   readonly fit: TextFit;
   readonly depth: ColorDepth;
+  readonly terminal?: TerminalColors;
 }
-
-/** Each intent written in another color than a second one, where both would round to one. */
-const WRITTEN_APART: Partial<Record<TextIntent, TextIntent>> = { "foreground-muted": "foreground" };
 
 /** A widget cell's colors: its text and its ground. */
 export type Inked = { readonly color: ColorSpec; readonly bgcolor: ColorSpec };
 
 // Every widget asks for its pairs on every frame, and at an indexed depth a pair
-// ranks the depth's whole table; the answer is a function of these five alone.
-const INKED = new WeakMemo<WeakMemo<Memo<Inked>, TextFit>, TerminalTheme>();
+// ranks the depth's whole table; the answer is a function of these alone.
+const INKED = new WeakMemo<WeakMemo<WeakMemo<Memo<Inked>, TerminalColors>, TextFit>, TerminalTheme>();
 
-export function ink(theme: TerminalTheme, text: TextIntent, ground: PaletteRole, place: InkPlace): Inked {
-  return INKED.get(theme, () => new WeakMemo()).get(place.fit, () => new Memo()).get(`${text} ${ground} ${place.depth}`, () => inked(theme, text, ground, place));
+export function ink(theme: TerminalTheme, text: TextIntent, ground: PaletteRole, { fit, depth, terminal }: InkPlace): Inked {
+  const shownBy = resolveTerminal(terminal, depth);
+  return INKED.get(theme, () => new WeakMemo())
+    .get(fit, () => new WeakMemo())
+    .get(shownBy, () => new Memo())
+    .get(`${text} ${ground} ${depth}`, () => inked(theme, text, ground, fit, depth, shownBy));
 }
 
-function inked(theme: TerminalTheme, text: TextIntent, ground: PaletteRole, place: InkPlace): Inked {
+function inked(theme: TerminalTheme, text: TextIntent, ground: PaletteRole, fit: TextFit, depth: ColorDepth, terminal: TerminalColors): Inked {
   const { palette } = theme;
   const rgba = palette.get(ground);
   if (rgba.alpha === 0) {
     throw new RangeError(`palette ${JSON.stringify(palette.name)}: ${JSON.stringify(ground)} is fully transparent, so it cannot be a widget's ground`);
   }
-  const slots = ColorSpec.indexed(place.depth, theme);
+  const table = slotsOf(terminal, depth);
   // [LAW:one-type-per-behavior] The depth's own discriminator: a depth that
   // writes colors itself draws the palette's; one that writes them by index
-  // draws the theme's sixteen.
-  return slots.length === 0
-    ? { color: ColorSpec.fromRgba(textOn(palette, text, rgba, { fit: place.fit })), bgcolor: ColorSpec.fromRgba(rgba) }
-    : slotted(theme, text, rgba, place, [[ColorSpec.default(), theme.foregroundColor], ...slots]);
+  // draws the terminal's table.
+  return table.length === 0
+    ? { color: ColorSpec.fromRgba(textOn(palette, text, rgba, { fit })), bgcolor: ColorSpec.fromRgba(rgba) }
+    : slotted(theme, text, rgba, fit, depth, terminal, table);
 }
 
-type Slot = readonly [ColorSpec, ColorRgba];
+/** A color a depth writes by index: how it is written, what the terminal shows, and that in OKLab. */
+interface Slot {
+  readonly spec: ColorSpec;
+  readonly shown: ColorRgba;
+  readonly lab: Oklch;
+}
 
-/** ANSI black, white, bright black and bright white: the slots a theme draws in grey. */
+const slot = (spec: ColorSpec, shown: ColorRgba): Slot => ({ spec, shown, lab: Oklch.fromRgba(shown) });
+
+// [LAW:one-source-of-truth] `ColorSpec.indexed`'s table, each color's OKLab
+// taken once per terminal and depth rather than on every comparison.
+const SLOTS = new WeakMemo<Memo<readonly Slot[]>, TerminalColors>();
+const slotsOf = (terminal: TerminalColors, depth: ColorDepth): readonly Slot[] =>
+  SLOTS.get(terminal, () => new Memo()).get(`${depth}`, () => ColorSpec.indexed(depth, terminal).map(([spec, shown]) => slot(spec, shown)));
+
+/** ANSI black, white, bright black and bright white: the slots a terminal draws in grey. */
 const GREY_SLOTS: ReadonlySet<number> = new Set([0, 7, 8, 15]);
 
+/** `pool` nearest `color` first, by ΔE_OK: the slot a color is written as is the one that looks most like it. */
+function byNearness(pool: readonly Slot[], color: ColorRgba): Slot[] {
+  const seen = Oklch.fromRgba(color);
+  return pool.map((s) => ({ s, d: seen.deltaE(s.lab) })).sort((a, b) => a.d - b.d).map(({ s }) => s);
+}
+
 /**
- * The pair written by index: the ground as the slot nearest it — the theme's
- * own background is the terminal's default — and the text as the slot nearest
- * the color the theme states for it, by ΔE_OK. Where that slot misses the
- * intent's floor on the ground as the terminal shows both, the fit is handed
- * the slots, nearest first, as the theme's shades: `named` takes the nearest
- * that reads, `asIs` keeps the nearest, and a color a fit makes up is written
- * as the nearest slot that reads. Text written apart from another intent is
- * the theme's stated slot for it instead.
+ * The pair written by index. The ground is the indexed color nearest it, never
+ * the terminal's default: a light theme in a dark terminal still paints its
+ * own ground. The text is held to its floor on the ground as the terminal
+ * shows both: its candidate is the slot nearest the color the theme states for
+ * it, and one that misses goes to the fit with every slot, nearest first, as
+ * the theme's shades — `named` takes the nearest that reads, `asIs` keeps the
+ * candidate, and a color a fit makes up is written as the nearest slot that
+ * reads. Text that recedes from another intent is never written in the color
+ * that one is drawn in, and at sixteen colors its candidate is the slot the
+ * terminal states for muted text, or else the nearest grey.
  */
-function slotted(theme: TerminalTheme, text: TextIntent, rgba: ColorRgba, { fit, depth }: InkPlace, slots: readonly Slot[]): Inked {
-  const bgcolor = ColorSpec.matchOn(rgba.compositeOver(theme.palette.get("background")), depth, theme, false);
-  const shownGround = bgcolor.getTruecolor(theme, false);
-  const reads = ([, shown]: Slot, floor: number): boolean => contrastRatio(shown, shownGround) >= floor;
-  const write = (intent: TextIntent, pool: readonly Slot[]): Slot => {
-    const stated = textOn(theme.palette, intent, rgba, { fit: asIs });
-    // Nearness is ΔE_OK, so the slot a color is written as is the one that looks most like it.
-    const near = (color: ColorRgba): Slot[] => {
-      const seen = Oklch.fromRgba(color);
-      return [...pool].sort((a, b) => seen.deltaE(Oklch.fromRgba(a[1])) - seen.deltaE(Oklch.fromRgba(b[1])));
-    };
-    const order = near(stated);
+function slotted(theme: TerminalTheme, text: TextIntent, rgba: ColorRgba, fit: TextFit, depth: ColorDepth, terminal: TerminalColors, table: readonly Slot[]): Inked {
+  const ground = byNearness(table, rgba.compositeOver(theme.palette.get("background")))[0]!;
+  const reads = (floor: number) => (s: Slot): boolean => contrastRatio(s.shown, ground.shown) >= floor;
+  const write = (intent: TextIntent, pool: readonly Slot[], candidate: Slot): Slot => {
     const floor = textFloor(intent);
-    const nearest = order[0]!;
-    if (reads(nearest, floor)) return nearest;
-    const picked = fit({ candidate: nearest[1], ground: shownGround, floor, drawnAt: DRAWN_AT_TRUECOLOR, tint: stated, shades: order.map(([, shown]) => shown) });
-    if (picked === nearest[1]) return nearest;
-    const reading = near(picked).filter((slot) => reads(slot, floor));
-    return reading[0] ?? near(picked)[0]!;
+    if (reads(floor)(candidate)) return candidate;
+    const stated = textOn(theme.palette, intent, rgba, { fit: asIs });
+    const shades = [candidate, ...byNearness(pool, stated).filter((s) => s !== candidate)];
+    const picked = fit({ candidate: candidate.shown, ground: ground.shown, floor, drawnAt: DRAWN_AT_TRUECOLOR, tint: stated, shades: shades.map((s) => s.shown) });
+    if (picked === candidate.shown) return candidate;
+    const toPicked = byNearness(pool, picked);
+    return toPicked.find(reads(floor)) ?? toPicked[0]!;
   };
-  const other = WRITTEN_APART[text];
-  if (other === undefined) return { color: write(text, slots)[0], bgcolor };
-  // [LAW:one-source-of-truth] The slot the theme states for muted text, as it
-  // states it; derived only for a theme that states none: the grey slots — the
-  // default, black, white and their bright forms — other than any drawn as the
-  // text it is written apart from, so it goes grey and never to a hue.
-  const stated = slots.find(([spec]) => spec.number !== undefined && spec.number === theme.mutedSlot);
-  if (stated !== undefined) return { color: stated[0], bgcolor };
-  const body = write(other, slots)[1].hex;
-  const greys = slots.filter(([spec, shown]) => (spec.number === undefined || GREY_SLOTS.has(spec.number)) && shown.hex !== body);
-  return { color: write(text, greys)[0], bgcolor };
+  const nearest = (intent: TextIntent, pool: readonly Slot[]): Slot => byNearness(pool, textOn(theme.palette, intent, rgba, { fit: asIs }))[0]!;
+  const all = [slot(ColorSpec.default(), terminal.foregroundColor), ...table];
+  const body = recedesFrom(text);
+  if (body === undefined) return { color: write(text, all, nearest(text, all)).spec, bgcolor: ground.spec };
+  // Never empty: a TerminalColors whose sixteen are all its foreground is refused when built.
+  const drawnBody = write(body, all, nearest(body, all)).shown.hex;
+  const apart = all.filter((s) => s.shown.hex !== drawnBody);
+  const sixteen = depth === ColorDepth.STANDARD || depth === ColorDepth.WINDOWS;
+  const grey = (s: Slot): boolean => s.spec.number === undefined || GREY_SLOTS.has(s.spec.number);
+  const candidate = !sixteen
+    ? nearest(text, apart)
+    : apart.find((s) => s.spec.number !== undefined && s.spec.number === terminal.mutedSlot)
+      ?? nearest(text, apart.some(grey) ? apart.filter(grey) : apart);
+  return { color: write(text, apart, candidate).spec, bgcolor: ground.spec };
 }

@@ -101,7 +101,7 @@ import { Timeline } from "../core/timeline.js";
 import { placed } from "../core/animation.js";
 import { levelOf, type Anchor } from "../core/anchor.js";
 import { ThemedWidget, type ThemedWidgetOptions } from "./themed-widget.js";
-import type { Depth } from "./widget-base.js";
+import type { Drawing } from "./widget-base.js";
 import type { Frame, WidgetKeyEvent, WidgetFocusEvent, WidgetMouseEvent } from "./types.js";
 import { pattern } from "../core/pattern.js";
 import { Memo } from "../core/memo.js";
@@ -219,7 +219,7 @@ interface Painted {
 }
 
 /** What a frame drew a field under: the width offered, whether only ASCII could be drawn, and the order its rows are shown in. */
-interface Drawn extends Depth {
+interface Drawn extends Drawing {
   readonly maxWidth: number;
   readonly asciiOnly: boolean;
   readonly textOrder: TextOrder;
@@ -1170,14 +1170,14 @@ export class TextInput extends ThemedWidget {
 
   // [LAW:one-source-of-truth] The style a value is drawn in is also what a
   // short row is padded with, so a caller's `contentStyle` fills the row.
-  protected override ground(at: Depth): Style {
+  protected override ground(at: Drawing): Style {
     return this.disabled
       ? new Style(this.disabledInk(at))
       : this.contentStyleOverride ?? super.ground(at);
   }
 
   protected draw(options: RenderOptions): Iterable<Segment> {
-    const drawn: Drawn = { colorSystem: options.colorSystem, maxWidth: options.maxWidth, asciiOnly: options.asciiOnly ?? false, textOrder: options.textOrder ?? "plain" };
+    const drawn: Drawn = { colorSystem: options.colorSystem, terminal: options.terminal, maxWidth: options.maxWidth, asciiOnly: options.asciiOnly ?? false, textOrder: options.textOrder ?? "plain" };
     // [LAW:effects-at-boundaries] Kept once the frame is drawn, never while it is.
     const { lines, layout } = this._multiline ? this._renderMultiline(options, drawn) : this._renderSingleLine(options, drawn);
     const painted: Painted = { value: this.value, cursor: this.cursorPosition, caretShown: this.focused && !this.disabled, layout };
