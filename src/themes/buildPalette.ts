@@ -237,6 +237,9 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "scrollbar-corner-color": same("scrollbar-background"),
 };
 
+/** How much more contrast muted text holds on a ground than disabled text draws there. */
+const MUTED_OVER_DISABLED = 0.25;
+
 export const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "foreground"];
 
 /** Every role of every palette, read off the rules. */
@@ -278,7 +281,13 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
     const muted = at(`${key}-muted`).compositeOver(at("background"));
     known.set(`text-${key}`, heldOn(at(`text-${key}`), [...grounds, muted], textFloor(`text-${key}`), side));
   }
-  known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, textFloor("foreground-muted"), side));
+  // Muted is secondary text and disabled is text that cannot be used, so on
+  // every ground muted is held past what disabled draws there as well as to
+  // its own floor; disabled is a fixed tint, and nothing else orders the two.
+  const disabled = at("foreground-disabled");
+  const mutedFloor = (ground: ColorRgba): number =>
+    Math.max(textFloor("foreground-muted"), contrastRatio(disabled.compositeOver(ground), ground) + MUTED_OVER_DISABLED);
+  known.set("foreground-muted", grounds.reduce((held, ground) => ensureContrastToward(held, ground, mutedFloor(ground), side), at("foreground-muted")));
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
 }
 

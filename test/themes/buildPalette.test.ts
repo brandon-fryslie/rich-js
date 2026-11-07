@@ -73,8 +73,8 @@ describe("buildPalette", () => {
   it("derives foreground-muted and background-muted for the two base roles", () => {
     const p = buildPalette("test", true, TEST_BASE);
     const fgMuted = p.get("foreground-muted")!;
-    // Muted foreground (white, blended 70% toward black bg) should be
-    // dimmer than plain foreground but still brighter than background.
+    // Muted foreground, held to its floor on the grounds, is dimmer than
+    // plain foreground but still brighter than background.
     expect(fgMuted.red).toBeLessThan(TEST_BASE.foreground.red);
     expect(fgMuted.red).toBeGreaterThan(TEST_BASE.background.red);
 
@@ -104,14 +104,19 @@ describe("buildPalette", () => {
 });
 
 // Muted text is secondary text and disabled text is text that cannot be used,
-// so muted reads the stronger, as every authored theme has it. Muted is held to
-// its floor and disabled is a fixed tint, so this is not true by construction.
-describe.each(listThemePalettes())("a palette derived from %s's base colors", (name) => {
-  it("draws foreground-muted stronger on background than foreground-disabled", () => {
-    const { bg, fg, primary, secondary, accent, success, warning, error } = getThemeBaseColors(name);
-    const p = buildPalette(name, getThemePalette(name).dark, { background: bg, foreground: fg, primary, secondary, accent, success, warning, error });
-    const background = p.get("background");
-    const on = (role: "foreground-muted" | "foreground-disabled"): number => contrastRatio(p.get(role).compositeOver(background), background);
-    expect(on("foreground-muted")).toBeGreaterThan(on("foreground-disabled"));
+// so muted reads the stronger on every ground text is held on, derived or authored.
+describe.each(listThemePalettes())("%s's palettes", (name) => {
+  const { bg, fg, dark, primary, secondary, accent, success, warning, error } = getThemeBaseColors(name);
+  const palettes = {
+    derived: buildPalette(name, dark, { background: bg, foreground: fg, primary, secondary, accent, success, warning, error }),
+    authored: getThemePalette(name),
+  };
+  it.each(Object.keys(palettes) as (keyof typeof palettes)[])("%s draws foreground-muted stronger than foreground-disabled on every ground", (kind) => {
+    const p = palettes[kind];
+    for (const groundRole of ["background", "surface", "panel"] as const) {
+      const ground = p.get(groundRole).compositeOver(p.get("background"));
+      const on = (role: "foreground-muted" | "foreground-disabled"): number => contrastRatio(p.get(role).compositeOver(ground), ground);
+      expect(on("foreground-muted"), groundRole).toBeGreaterThan(on("foreground-disabled"));
+    }
   });
 });
