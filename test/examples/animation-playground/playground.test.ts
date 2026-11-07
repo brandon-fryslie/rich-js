@@ -29,6 +29,8 @@ interface Playground {
   atOneFps(): Promise<void>;
   /** The clock moved on by `seconds`, and what that painted taken in. */
   advance(seconds: number): Promise<void>;
+  /** What `seconds` more wrote, checked to hold a painted frame of the gallery. */
+  writtenOver(seconds: number): Promise<string>;
   /** The animation time the readout shows. */
   time(): Promise<number>;
   stop(): Promise<void>;
@@ -76,11 +78,19 @@ async function playground(size = { cols: 120, rows: 40 }, env: Env = { TERM: "xt
     },
     async atOneFps() {
       await shown.click("frame rate");
-      expect((await screen()).join("\n")).toContain("1 fps");
+      expect((await screen()).join("\n")).toContain("·  1 fps  ·");
     },
     async advance(seconds) {
       clock.advance(seconds);
       await screen();
+    },
+    async writtenOver(seconds) {
+      const from = host.output().length;
+      await shown.advance(seconds);
+      const wrote = host.output().slice(from);
+      // A frame of the gallery, so what it lacks is not the lack of a frame.
+      expect(wrote, `no frame of the gallery was written in ${seconds} s`).toContain(KINDS[0]!.name);
+      return wrote;
     },
     async time() {
       const said = (await screen()).join("\n").match(/t = (-?[\d,]+\.\d) s/);
@@ -140,7 +150,9 @@ describe("animation playground", () => {
 
   it("paused, the clock moves and nothing is painted; played, the time goes on from where it held", async () => {
     const p = await playground();
-    await p.advance(2);
+    // At sixty frames a second, the rate pausing must hold, over fractions of a
+    // second: tens of frames, not hundreds the test never reads.
+    await p.advance(0.1);
     await p.click("play / pause");
     const held = await p.time();
     const written = p.host.output().length;
@@ -148,8 +160,9 @@ describe("animation playground", () => {
     expect(p.host.output().length).toBe(written);
     expect(await p.time()).toBe(held);
     await p.click("play / pause");
-    await p.advance(1);
-    expect(await p.time()).toBeCloseTo(held + 1, 0);
+    // Half a second, so a resume at any but the speed it held at shows.
+    await p.advance(0.5);
+    expect(await p.time()).toBeCloseTo(held + 0.5, 1);
   });
 
   it("reverses, and plays at a quarter and four times the speed, through the one timeline", async () => {
@@ -223,12 +236,16 @@ describe("animation playground", () => {
 
   it("steps through truecolor, 256 colors, 16 colors and none, each drawn in its own encoding", async () => {
     const p = await playground(undefined, { TERM: "xterm-256color", COLORTERM: "truecolor" });
-    /** What three seconds of the gallery wrote, the readout naming `depth`. */
+    // At one frame a second: one second at each depth is one frame to read
+    // the encoding off, not 60 of the whole gallery.
+    await p.atOneFps();
+    /** What one second of the gallery wrote, the readout naming `depth`. */
     const written = async (depth: string): Promise<string> => {
-      expect((await p.screen()).join("\n")).toContain(`·  ${depth}  ·`);
-      const from = p.host.output().length;
-      await p.advance(3);
-      return p.host.output().slice(from);
+      const shown = (await p.screen()).join("\n");
+      expect(shown).toContain(`·  ${depth}  ·`);
+      // Each depth after the first is a rebuild, which carried the rate.
+      expect(shown).toContain("·  1 fps  ·");
+      return p.writtenOver(1);
     };
     expect(await written("truecolor")).toMatch(/\x1b\[[\d;]*38;2;/);
     await p.click("color depth");
@@ -242,7 +259,9 @@ describe("animation playground", () => {
     await p.click("color depth");
     expect(colorParameters(await written("no color"))).toEqual([]);
     await p.click("color depth");
-    expect((await p.screen()).join("\n")).toContain("·  truecolor  ·");
+    const back = (await p.screen()).join("\n");
+    expect(back).toContain("·  truecolor  ·");
+    expect(back).toContain("·  1 fps  ·");
   });
 
   it("marches the border's ants clockwise: right along the top, left along the bottom", () => {
@@ -274,9 +293,8 @@ describe("animation playground", () => {
     await p.stop();
     const q = await playground(undefined, { TERM: "xterm-256color", NO_COLOR: "1" });
     expect((await q.screen()).join("\n")).toContain("·  no color  ·");
-    const from = q.host.output().length;
-    await q.advance(3);
-    expect(colorParameters(q.host.output().slice(from))).toEqual([]);
+    await q.atOneFps();
+    expect(colorParameters(await q.writtenOver(1))).toEqual([]);
   });
 
   it("seeks while the scrub bar is dragged, pins a drag past its end to the window's end, and seeks half a second an arrow key", async () => {
