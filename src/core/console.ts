@@ -830,9 +830,9 @@ export class Console {
   private _request<A>(feature: TerminalFeature<A>, value: A): void {
     refuseRenderWrite(this._madeIn);
     const send: TerminalSend = !this._attended
-      ? { feature: feature.name, bytes: undefined, reason: "not sent: no one is at a terminal" }
+      ? { feature: feature.name, bytes: undefined, reason: "not sent: no one is at a terminal", wrapped: false }
       : this._capture.get() !== null
-        ? { feature: feature.name, bytes: undefined, reason: "not sent: output is being captured" }
+        ? { feature: feature.name, bytes: undefined, reason: "not sent: output is being captured", wrapped: false }
         : pick(feature, value, this._features);
     if (send.bytes !== undefined) this.file.write(send.bytes);
     this._features.onSend?.(send);

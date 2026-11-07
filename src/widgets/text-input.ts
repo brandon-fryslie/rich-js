@@ -1701,9 +1701,16 @@ export class TextInput extends ThemedWidget {
   // color pair and no attribute hides it. Where the painter shows the
   // terminal's cursor, the cell is the text's, marked for it: the terminal
   // blinks its own, and an IME's candidate window and a screen reader follow
-  // it to the editing point.
+  // it to the editing point. The terminal's cursor takes the color the drawn
+  // cursor's cell would have, declared once the pass is drawn so a measure
+  // or a hidden field declares nothing.
   private _caret(at: string, cursorStyle: Style, contentStyle: Style, options: RenderOptions): Iterable<Segment> {
-    if (options.caret === true) return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape)))];
+    if (options.caret === true) {
+      const { declare } = options;
+      const color = cursorStyle.bgcolor;
+      if (declare !== undefined && color !== undefined) afterPass(() => declare({ kind: "cursor", color: color.getTruecolor(options.terminal, false) }));
+      return [new Segment(at, contentStyle.withCaret(caretMark(this.caretShape)))];
+    }
     return placed(this._blink, options, (lit) => [new Segment(at, lit ? cursorStyle : contentStyle)]);
   }
 

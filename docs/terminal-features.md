@@ -129,6 +129,55 @@ and takes the indicator away when it hands the terminal back.
 state your terminal reads OSC 9;4 (iTerm2, Ghostty, Windows Terminal), and
 `-- --tmux` to state tmux passes it through.
 
+## Window chrome and the cursor
+
+An `App` declares what the window and tab around it show through
+`app.chrome`. The chrome holds the title, and in iTerm2 the tab's color, the
+session's status under the tab's title (a colored dot, a line of text and that
+text's color) and a badge drawn behind the session's text. Like the progress
+indicator, it is state rather than a request. It is declared on every frame,
+sent only when it changes, and given back on every way the app ends or
+suspends. A field left out is the terminal's own.
+
+```ts silent
+import { ColorRgba, RichText } from "@promptctl/rich-js";
+import { App } from "@promptctl/rich-js/host";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+
+const app = new App({ host: new NodeTerminalHost(), surface: "alternate", view: new RichText("deploying…") });
+const amber = new ColorRgba(224, 160, 32);
+app.chrome = { title: "deploy", tabColor: amber, status: { indicator: amber, text: "3 of 7" }, badge: "prod" };
+```
+
+| Field | Sequence | Read by | Given back with |
+| --- | --- | --- | --- |
+| `title` | OSC 2, over XTWINOPS 22 (title push) | every terminal | XTWINOPS 23 (title pop) |
+| `tabColor` | iTerm2 OSC 6 | iTerm2 | `OSC 6;1;bg;*;default` |
+| `status` | iTerm2 OSC 21337 | iTerm2 | every field sent empty |
+| `badge` | iTerm2 OSC 1337 `SetBadgeFormat` | iTerm2 | an empty badge |
+
+The title is pushed onto the terminal's title stack before the app's first
+title and popped when the app gives it back, so the window shows the title it
+had before. A terminal without a title stack ignores both, and the app's title
+then stays shown after it exits. tmux keeps a title per pane and has no stack
+to push onto, so under tmux the title is sent natively and is not given back.
+The iTerm2 fields need iTerm2 to be identified or declared under `strict`.
+Behind tmux they go through its passthrough.
+
+A focused `TextInput` colors the terminal's own cursor with the color its
+drawn cursor cell would have, the theme's `primary` unless its `cursorStyle`
+says otherwise. It uses OSC 12, and gives the terminal its own cursor color
+back with OSC 112 when the field stops showing the cursor. tmux keeps a cursor
+color per pane and re-emits it, so OSC 12 crosses tmux natively.
+
+A tmux client that detaches and reattaches is often a different terminal, and
+it has none of what reached it through passthrough. While an app holds the
+terminal, it asks for focus reports (`CSI ? 1004 h`). tmux reports focus-in
+when a client attaches, and on that report, or on a resize, the app sends
+again every part whose bytes went through a passthrough envelope. Only those
+are sent again. What tmux took natively it re-emits itself, and a bare
+terminal forgets nothing when its window loses focus.
+
 ## Underlines
 
 Curly, dotted and dashed underlines (SGR `4:3`–`4:5`) and an underline's own

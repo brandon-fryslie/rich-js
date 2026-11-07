@@ -25,6 +25,7 @@ function parser(chunks: InputChunks): { parser: InputParser; heard: string[] } {
       mouse: () => heard.push("mouse"),
       reply: () => heard.push("reply"),
       paste: (text) => heard.push(`paste:${text}`),
+      focus: () => {},
     },
     chunks,
   );
