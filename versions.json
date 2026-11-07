@@ -4,15 +4,22 @@
     {
       "version": "pr-594",
       "ref": "refs/pull/594/merge",
-      "sha": "2a934c2fc734ebc3a5d39d28db2c5142bd54a858",
-      "timestamp": "2026-11-07T06:11:15.663Z",
+      "sha": "098d225af20443d256480587d7362b0057560f30",
+      "timestamp": "2026-11-07T06:15:16.130Z",
       "commits": [
         {
-          "sha": "2a934c2fc734ebc3a5d39d28db2c5142bd54a858",
+          "sha": "098d225af20443d256480587d7362b0057560f30",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T06:08:42Z",
-          "message": "Merge 5badf038ea61270e5e07c555ad7f163a90d20ab7 into 26fcad51796093755a144e645a8c4841fbffb321\n"
+          "timestamp": "2026-11-07T06:13:17Z",
+          "message": "Merge e354ca2110ecbb174729a9200d0cc3d6108a0aa2 into 26fcad51796093755a144e645a8c4841fbffb321\n"
+        },
+        {
+          "sha": "e354ca2110ecbb174729a9200d0cc3d6108a0aa2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T23:13:01-07:00",
+          "message": "Docs: muted's ordering past disabled is held at truecolor (rich-palette-xovz.227)\n"
         },
         {
           "sha": "5badf038ea61270e5e07c555ad7f163a90d20ab7",
