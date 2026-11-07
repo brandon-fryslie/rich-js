@@ -282,12 +282,15 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
     known.set(`text-${key}`, heldOn(at(`text-${key}`), [...grounds, muted], textFloor(`text-${key}`), side));
   }
   // Muted is secondary text and disabled is text that cannot be used, so on
-  // every ground muted is held past what disabled draws there as well as to
-  // its own floor; disabled is a fixed tint, and nothing else orders the two.
-  const disabled = at("foreground-disabled");
-  const mutedFloor = (ground: ColorRgba): number =>
-    Math.max(textFloor("foreground-muted"), contrastRatio(disabled.compositeOver(ground), ground) + MUTED_OVER_DISABLED);
-  known.set("foreground-muted", grounds.reduce((held, ground) => ensureContrastToward(held, ground, mutedFloor(ground), side), at("foreground-muted")));
+  // each ground muted is held past the disabled text `textOn` draws there —
+  // foreground's tint, never the stated role — and short of foreground itself,
+  // which keeps that floor on the text side.
+  const disabledInk = withAlpha(at("foreground"), neutralAlpha("text-disabled"));
+  const mutedFloor = (ground: ColorRgba): number => {
+    const past = contrastRatio(disabledInk.compositeOver(ground), ground) + MUTED_OVER_DISABLED;
+    return Math.max(textFloor("foreground-muted"), Math.min(past, contrastRatio(at("foreground"), ground)));
+  };
+  known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, mutedFloor, side));
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
 }
 
@@ -358,6 +361,7 @@ function statedRoles(name: string, given: StatedRoles): Map<PaletteRole, ColorRg
  * [LAW:single-enforcer] The one rule for a palette's fixed text, for the
  * palettes derived from a tint and the authored ones alike.
  */
-function heldOn(color: ColorRgba, grounds: readonly ColorRgba[], floor: number, side: ColorRgba): ColorRgba {
-  return grounds.reduce((held, ground) => ensureContrastToward(held, ground, floor, side), color);
+function heldOn(color: ColorRgba, grounds: readonly ColorRgba[], floor: number | ((ground: ColorRgba) => number), side: ColorRgba): ColorRgba {
+  const on = typeof floor === "number" ? () => floor : floor;
+  return grounds.reduce((held, ground) => ensureContrastToward(held, ground, on(ground), side), color);
 }

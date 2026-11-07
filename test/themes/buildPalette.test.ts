@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
 import { contrastFor, contrastRatio } from "../../src/themes/colorMath.js";
+import { textOn } from "../../src/themes/text-on.js";
 import { getThemeBaseColors, getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 
 const TEST_BASE = {
@@ -115,8 +116,15 @@ describe.each(listThemePalettes())("%s's palettes", (name) => {
     const p = palettes[kind];
     for (const groundRole of ["background", "surface", "panel"] as const) {
       const ground = p.get(groundRole).compositeOver(p.get("background"));
-      const on = (role: "foreground-muted" | "foreground-disabled"): number => contrastRatio(p.get(role).compositeOver(ground), ground);
+      const on = (intent: "foreground-muted" | "foreground-disabled"): number => contrastRatio(textOn(p, intent, ground), ground);
       expect(on("foreground-muted"), groundRole).toBeGreaterThan(on("foreground-disabled"));
+      expect(on("foreground-muted"), groundRole).toBeLessThanOrEqual(contrastRatio(p.get("foreground").compositeOver(ground), ground));
     }
   });
+});
+
+it("orders foreground-muted against the disabled text drawn, not a stated foreground-disabled", () => {
+  const plain = buildPalette("test", true, TEST_BASE);
+  const stated = buildPalette("test", true, { ...TEST_BASE, "foreground-disabled": new ColorRgba(255, 255, 255) });
+  expect(stated.get("foreground-muted").hex).toBe(plain.get("foreground-muted").hex);
 });
