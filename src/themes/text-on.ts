@@ -22,8 +22,7 @@
  * `asIs` ship, and a caller's own function is one more with no change here.
  */
 
-import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, roundingDistance, type TerminalColors } from "../core/color.js";
-import { dimShown } from "../core/export-lines.js";
+import { ColorDepth, ColorRgba, ColorSpec, dimShown, resolveTerminal, roundingDistance, type TerminalColors } from "../core/color.js";
 import { Memo, WeakMemo } from "../core/memo.js";
 import { alphaBlend, compositedColor, contrastFor, contrastRatio, ensureContrast } from "./colorMath.js";
 import type { AccentRole, Palette, PaletteRole } from "./palette.js";
@@ -346,12 +345,13 @@ export function isTextIntent(name: string): name is TextIntent {
 export const TEXT_INTENTS = Object.keys(INTENTS) as readonly TextIntent[];
 
 /** Each intent another is held past, to that other: `IntentRule.heldPast` read backwards. */
-const HELD_UNDER: ReadonlyMap<TextIntent, TextIntent> = new Map(
-  TEXT_INTENTS.flatMap((over) => {
-    const held = (INTENTS[over] as IntentRule).heldPast;
-    return held === undefined ? [] : [[held, over] as const];
-  }),
-);
+const HELD_UNDER: ReadonlyMap<TextIntent, TextIntent> = TEXT_INTENTS.reduce((map, over) => {
+  const held = (INTENTS[over] as IntentRule).heldPast;
+  if (held === undefined) return map;
+  // [LAW:no-silent-failure] Text held under two intents would be held under one.
+  if (map.has(held)) throw new Error(`text-on: ${held} is held past by both ${map.get(held)} and ${over}; writeText holds it under one`);
+  return new Map([...map, [held, over]]);
+}, new Map<TextIntent, TextIntent>());
 
 /** The color a fit tints `intent` toward on `ground`: what `TextRequest.tint` is handed. */
 export function textTint(palette: Palette, intent: TextIntent, ground: ColorRgba): ColorRgba {
@@ -415,10 +415,10 @@ const WRITTEN = new WeakMemo<WeakMemo<WeakMemo<Memo<WrittenText>, TerminalColors
  *   is that intent's color with SGR dim — the table has no room for it;
  * - text another intent is held past (`IntentRule.heldPast`) is the slot
  *   nearest its stated color standing `HELD_PAST_MARGIN` less off the ground
- *   than that intent shows, each slot measured plain and then with SGR dim as
- *   the exporter draws it; where none keeps the margin, the most legible one
- *   still under it. The ordering is a floor, so `asIs` drops it here as it
- *   does at truecolor.
+ *   than that intent shows, every slot an option both plain and with SGR dim
+ *   (`dimShown`), but where the depth draws no dim; where none keeps the
+ *   margin, the most legible one still under it. The ordering is a floor, so
+ *   `asIs` drops it here as it does at truecolor.
  */
 export function writeText(
   palette: Palette,
@@ -453,16 +453,19 @@ function heldTo(palette: Palette, intent: TextIntent, ground: ColorRgba, fit: Te
 }
 
 /** A color a depth writes by index: how it is written, and what the terminal shows. */
-type Slot = readonly [ColorSpec, ColorRgba];
+type Slot = Shown<ColorSpec>;
 
-/** The slot of `pool` that stands for `color`, by the one rounding rule. */
-const nearestOf = (pool: readonly Slot[], color: ColorRgba): Slot | undefined =>
-  pool.reduce<Slot | undefined>((best, s) => (best === undefined || roundingDistance(s[1], color) < roundingDistance(best[1], color) ? s : best), undefined);
+/** What is written and what the terminal shows for it: a slot, or a slot written with its attributes. */
+type Shown<T> = readonly [T, ColorRgba];
+
+/** The entry of `pool` that stands for `color`, by the one rounding rule. */
+const nearestOf = <S extends Shown<unknown>>(pool: readonly S[], color: ColorRgba): S | undefined =>
+  pool.reduce<S | undefined>((best, s) => (best === undefined || roundingDistance(s[1], color) < roundingDistance(best[1], color) ? s : best), undefined);
 
 /** The pair written by index: `writeText`'s rules for a depth with a table. */
 function slotted(palette: Palette, text: TextIntent, ground: ColorRgba, fit: TextFit, drawnAt: DrawnAt, terminal: TerminalColors, table: readonly Slot[]): WrittenText {
   const [groundSpec, groundShown] = nearestOf(table, ground)!;
-  const contrast = ([, shown]: Slot): number => contrastRatio(shown, groundShown);
+  const contrast = ([, shown]: Shown<unknown>): number => contrastRatio(shown, groundShown);
   const stated = (intent: TextIntent): ColorRgba => heldTo(palette, intent, ground, asIs, DRAWN_AT_TRUECOLOR);
   const write = (intent: TextIntent, statedColor: ColorRgba, pool: readonly Slot[], candidate: Slot): Slot | undefined => {
     const floor = textFloor(intent);
@@ -488,27 +491,26 @@ function slotted(palette: Palette, text: TextIntent, ground: ColorRgba, fit: Tex
   const under = heldUnder(text);
   if (under !== undefined && fit !== asIs) {
     const over = writeText(palette, under, ground, { fit, drawnAt });
-    // Each slot is written plain or dimmed, and is measured as it shows —
-    // dimmed as the exporter draws it — never as the ground.
+    // Each slot is written plain or dimmed, measured as it shows, never as the
+    // ground. The legacy Windows console draws no SGR dim, so there dim is no
+    // option and muted's dim shows as its plain slot.
+    const dims = drawnAt.depth !== ColorDepth.WINDOWS;
     const shows = (written: WrittenText): ColorRgba => {
       const ink = written.color.getTruecolor(terminal, true);
-      return written.dim ? dimShown(ink, groundShown) : ink;
+      return written.dim && dims ? dimShown(ink, groundShown) : ink;
     };
-    const above = contrastRatio(shows(over), groundShown);
-    const options = [false, true].flatMap((dim) =>
-      visible.map(([spec]): WrittenText => (dim ? { color: spec, bgcolor: groundSpec, dim } : { color: spec, bgcolor: groundSpec })),
-    ).filter((written) => shows(written).hex !== groundShown.hex);
-    const at = (written: WrittenText): number => contrastRatio(shows(written), groundShown);
-    const statedText = stated(text);
-    const nearest = (pool: readonly WrittenText[]): WrittenText | undefined =>
-      pool.reduce<WrittenText | undefined>((best, w) => (best === undefined || roundingDistance(shows(w), statedText) < roundingDistance(shows(best), statedText) ? w : best), undefined);
-    // Plain slots before dimmed ones, the margin under muted kept; where no
-    // option keeps it, the most legible one still under muted; where none is
+    const above = contrastRatio(shows(over), groundShown) - HELD_PAST_MARGIN;
+    const options = (dims ? [false, true] : [false])
+      .flatMap((dim) => visible.map(([spec]): WrittenText => (dim ? { color: spec, bgcolor: groundSpec, dim } : { color: spec, bgcolor: groundSpec })))
+      .map((written): Shown<WrittenText> => [written, shows(written)])
+      .filter(([, shown]) => shown.hex !== groundShown.hex);
+    // Plain and dimmed slots alike, nearest the stated color — a dimmed grey
+    // over a plain hue the theme never states — the margin under muted kept;
+    // where none keeps it, the most legible one still under muted; where none is
     // under it at all, the table has one answer for both.
-    return nearest(options.filter((w) => !w.dim && at(w) <= above - HELD_PAST_MARGIN))
-      ?? nearest(options.filter((w) => w.dim && at(w) <= above - HELD_PAST_MARGIN))
-      ?? options.filter((w) => at(w) < above).reduce<WrittenText | undefined>((best, w) => (best === undefined || at(w) > at(best) ? w : best), undefined)
-      ?? over;
+    const chosen = nearestOf(options.filter((o) => contrast(o) <= above), stated(text))
+      ?? options.filter((o) => contrast(o) < above + HELD_PAST_MARGIN).reduce<(typeof options)[number] | undefined>((a, b) => (a === undefined || contrast(b) > contrast(a) ? b : a), undefined);
+    return chosen === undefined ? over : chosen[0];
   }
   const body = recedesFrom(text);
   if (body === undefined) return { color: drawn(text)[0], bgcolor: groundSpec };

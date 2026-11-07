@@ -9,12 +9,11 @@
  * here; on any ground, `textOn` is what draws it legibly.
  */
 import { describe, it, expect } from "vitest";
-import { ColorDepth, ColorSpec, contrastRatio, resolveTerminal, TerminalTheme } from "../../src/core/color.js";
+import { ColorDepth, ColorSpec, contrastRatio, dimShown, resolveTerminal, TerminalTheme } from "../../src/core/color.js";
 import { PALETTE_ROLES } from "../../src/themes/buildPalette.js";
 import type { Palette } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
-import { dimShown } from "../../src/core/export-lines.js";
 import { asIs, textOn, writeText, type WrittenText } from "../../src/themes/text-on.js";
 import { derivedFrom } from "./derived-palette.js";
 

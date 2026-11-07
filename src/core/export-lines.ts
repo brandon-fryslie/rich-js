@@ -30,7 +30,7 @@
  * barrel and the fs half of exporting stays in `src/node/save.ts`.
  */
 
-import { blendRgb, ColorSpec, type ColorRgba, type TerminalTheme } from "./color.js";
+import { ColorSpec, dimShown, type ColorRgba, type TerminalTheme } from "./color.js";
 import { NULL_STYLE, type Style } from "./style.js";
 import { sealed } from "./seal.js";
 import type { Segment } from "./segment.js";
@@ -124,14 +124,6 @@ export const escapeText = (text: string): string =>
 export const escapeAttribute = (value: string): string =>
   withoutNotXml(value).replace(/[&"<>]/g, (c) => ENTITIES[c]!);
 
-/**
- * How far a dim glyph moves toward its background — Rich's own factor, so an
- * export of the same program matches the library this ports.
- */
-const DIM_FADE = 0.4;
-
-/** What a dim `glyph` shows on `ground`: the one reading of SGR dim's strength. */
-export const dimShown = (glyph: ColorRgba, ground: ColorRgba): ColorRgba => blendRgb(glyph, ground, DIM_FADE);
 
 const DEFAULT_COLOR = ColorSpec.default();
 
