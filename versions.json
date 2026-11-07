@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-604",
+      "ref": "refs/pull/604/merge",
+      "sha": "2acd1cd07b7ff069994d3c38fcf3328dc30a8263",
+      "timestamp": "2026-11-07T12:06:16.320Z",
+      "commits": [
+        {
+          "sha": "2acd1cd07b7ff069994d3c38fcf3328dc30a8263",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T12:03:21Z",
+          "message": "Merge 4f4a96052dd905a66394e1ed36d3435501b67fb1 into a56e7b74645917b028d01ab3fe0cd411e918794e\n"
+        },
+        {
+          "sha": "4f4a96052dd905a66394e1ed36d3435501b67fb1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:03:12-07:00",
+          "message": "A contrast sampling with no moments is refused instead of reported as an infinite contrast (rich-unfiled-791c.f6wx)\n"
+        },
+        {
+          "sha": "2643967d8d54f8cc1c3f4ec9c633c2e02af94f90",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:01:38-07:00",
+          "message": "ContrastSampling is declared before CONTRAST and described once (rich-unfiled-791c.f6wx)\n"
+        },
+        {
+          "sha": "439128c021017839cf441ba18a4a6c3a14c012ab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:58:46-07:00",
+          "message": "The markdown linearity and effects-feel contrast tests do a fraction of the work, so a saturated suite stays clear of the hang limit (rich-unfiled-791c.f6wx)\n\nMarkdown: each expectLinearTime starts just above the helper's floor (7.3s -> 0.9s calm).\neffects-feel: runDemo takes the contrast sampling as a defaulted argument; the one test that waits for every loop to be measured asks for one period at 12 moments (6.2s -> under 1.5s). Mutant (a loop left unmeasured) and quadratic-reader mutant both went red.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a56e7b74645917b028d01ab3fe0cd411e918794e",
