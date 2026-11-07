@@ -798,11 +798,13 @@ const GLYPH_UNDERLINE = new Style({ underlineColor: ColorSpec.default() });
  * apart from the glyph is ink too: once the effect moves the glyph's ink, the
  * line is drawn in it, so a cell faded to the ground leaves no line behind.
  * A style with no underline color of its own already draws its line in the
- * glyph's, and gains no `59`.
+ * glyph's, and gains no `59`. Under `reverse` the glyph's ink is the
+ * background slot, so that is the slot whose move counts.
  */
 function repainted(style: Style, writes: DrawnColors, wire: DrawnColors): Style {
   const moved = style.add(Style.fromColor(writes.color, writes.bgcolor));
-  return style.underlineColor === undefined || slotWritesAlike(writes.color, wire.color, true) ? moved : moved.add(GLYPH_UNDERLINE);
+  const ink = style.reverse === true ? slotWritesAlike(writes.bgcolor, wire.bgcolor, false) : slotWritesAlike(writes.color, wire.color, true);
+  return style.underlineColor === undefined || ink ? moved : moved.add(GLYPH_UNDERLINE);
 }
 
 /**

@@ -492,6 +492,12 @@ export interface UnderlineSupport {
 export const ALL_UNDERLINES: UnderlineSupport = { styles: true, color: true };
 
 /**
+ * A plain underline and no color: what a terminal is sent until its features
+ * are weighed, since one that misreads `4:3` draws italic instead.
+ */
+const PLAIN_UNDERLINES: UnderlineSupport = { styles: false, color: false };
+
+/**
  * What `resolveOutputTarget` is told about where it writes beyond the color
  * spec: what detection probes, and the reader's preference for motion, which
  * no spec or terminal reports, so the program hands it in. Absent, everything
@@ -501,7 +507,10 @@ export interface DestinationOptions extends DetectColorOptions {
   reducedMotion?: boolean;
   /** The order the program knows its destination takes. Absent, `detectTextOrder` decides. */
   textOrder?: TextOrder;
-  /** What the destination draws of an underline, as its terminal features decided. Absent, all of it. */
+  /**
+   * What the destination draws of an underline, as its terminal features
+   * decided. Absent, a terminal gets a plain one and anything else all of it.
+   */
   underlines?: UnderlineSupport;
 }
 
@@ -523,7 +532,7 @@ export function resolveOutputTarget(
   // Ahead of both arms: a color spec says nothing about order.
   const textOrder = options.textOrder ?? detectTextOrder(envOf(options), isTTYOf(options));
   const isTerminal = isTTYOf(options);
-  const underlines = options.underlines ?? ALL_UNDERLINES;
+  const underlines = options.underlines ?? (isTerminal ? PLAIN_UNDERLINES : ALL_UNDERLINES);
   if (spec !== "auto") {
     return {
       colorSystem: typeof spec === "string" ? resolveColorSystem(spec) : spec,

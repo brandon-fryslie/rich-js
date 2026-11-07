@@ -1259,10 +1259,13 @@ describe("toSgrCodes at 256 colors rounds every color on its own", () => {
 });
 
 describe("underline kinds and color", () => {
-  it("parses each kind's spelling, and not any spelling as none", () => {
+  it("parses each kind's spelling, and not a kind as that kind taken off", () => {
     const kinds = ["underline", "doubleUnderline", "curlyUnderline", "dottedUnderline", "dashedUnderline"].map((word) => Style.parse(word).underline);
     expect(kinds).toEqual(["single", "double", "curly", "dotted", "dashed"]);
-    expect(Style.parse("underline not dottedUnderline").underline).toBe(false);
+    expect(Style.parse("underline not doubleUnderline").underline).toBe("single");
+    expect(Style.parse("u not uu").underline).toBe("single");
+    expect(Style.parse("dottedUnderline not dottedUnderline").underline).toBe(false);
+    expect(Style.parse("not dottedUnderline").underline).toBe(false);
   });
 
   it("takes true as a single underline", () => {

@@ -199,7 +199,7 @@ describe("Tree", () => {
   });
 
   // Python Rich 9d8f9a3 prints `    ┗━━ b` and `    ╚══ b` for these trees, every
-  // guide `not bold not underline2 red`: the attribute picks the glyphs and is
+  // guide `not bold not underline2 red` (Rich's spelling; here `not doubleUnderline`): the attribute picks the glyphs and is
   // taken off the guide. Once these drew light glyphs in bold. A style holds one
   // underline, so only a double one is taken off, leaving `not underline`.
   it.each([

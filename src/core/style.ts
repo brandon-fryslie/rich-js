@@ -67,10 +67,15 @@ export type Underline = UnderlineKind | false | undefined;
 export const UNDERLINE: Readonly<Record<UnderlineKind, { readonly sgr: string; readonly sub: number; readonly styled: boolean; readonly spelling: string; readonly after: AttributeName }>> = {
   single: { sgr: "4", sub: 1, styled: false, spelling: "underline", after: "italic" },
   double: { sgr: "21", sub: 2, styled: false, spelling: "doubleUnderline", after: "strike" },
-  curly: { sgr: "4:3", sub: 3, styled: true, spelling: "curlyUnderline", after: "italic" },
-  dotted: { sgr: "4:4", sub: 4, styled: true, spelling: "dottedUnderline", after: "italic" },
-  dashed: { sgr: "4:5", sub: 5, styled: true, spelling: "dashedUnderline", after: "italic" },
+  curly: styledUnderline(3, "curlyUnderline"),
+  dotted: styledUnderline(4, "dottedUnderline"),
+  dashed: styledUnderline(5, "dashedUnderline"),
 };
+
+/** A styled kind's row: its code is `4:n` by construction, so the code and `n` cannot disagree. */
+function styledUnderline(sub: number, spelling: string) {
+  return { sgr: `4:${sub}`, sub, styled: true, spelling, after: "italic" } as const;
+}
 
 /**
  * An underline option as a style holds it, `true` being a single one.
@@ -934,9 +939,13 @@ function parseStyleDefinition(definition: string): Style {
         throw new StyleSyntaxError(`Expected attribute after "not" in style definition`);
       }
       i++;
-      // One underline a style holds, so `not` any of its spellings is none.
-      if (UNDERLINE_SPELLINGS.has(next)) {
-        opts.underline = false;
+      // `not` a kind takes that kind off, so a different one the definition
+      // already drew stays, as Rich's `underline not underline2` keeps its
+      // line. With none drawn, the style holds no underline at all: one field
+      // cannot say "any kind but this one" to a style beneath.
+      const negated = UNDERLINE_SPELLINGS.get(next);
+      if (negated !== undefined) {
+        if (opts.underline === undefined || opts.underline === false || opts.underline === true || opts.underline === negated) opts.underline = false;
         continue;
       }
       const attrName = ATTRIBUTE_SHORT_ALIASES[next] ?? next;

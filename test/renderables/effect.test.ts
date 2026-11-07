@@ -337,6 +337,14 @@ describe("Effected — attributes", () => {
     expect(plain!.style?.underlineColor).toBeUndefined();
   });
 
+  it("reads a reversed cell's ink from its background slot when it decides the underline's color", () => {
+    const reversed = new Segment("ab", Style.parse("reverse blue on white curlyUnderline underlineColor green"));
+    const [inkMoved] = [...effected(fixed(reversed), () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: RED }))).render({ maxWidth: 10 })];
+    expect(inkMoved!.style?.underlineColor?.isDefault).toBe(true);
+    const [groundMoved] = [...effected(fixed(reversed), () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: RED }))).render({ maxWidth: 10 })];
+    expect(groundMoved!.style?.underlineColor?.name).toBe("green");
+  });
+
   it("blinks an underline on as the kind the cell draws, or a single one", () => {
     const shown = (style: string) => [...effected(fixed(new Segment("ab", Style.parse(style))), blink({ attribute: "underline", off: 1, on: 1 }), 1.5).render({ maxWidth: 10 })][0]!.style?.underline;
     expect(shown("curlyUnderline")).toBe("curly");
