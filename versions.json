@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-599",
+      "ref": "refs/pull/599/merge",
+      "sha": "c23176f2d788f963dfba2e0511c802ae4534c871",
+      "timestamp": "2026-11-07T07:56:23.861Z",
+      "commits": [
+        {
+          "sha": "c23176f2d788f963dfba2e0511c802ae4534c871",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:54:37-07:00",
+          "message": "Merge 0c7184c2d22df4ec9496372d95115d5ed256dd1b into e478624c449683fc23820c28a7138de9727967e3\n"
+        },
+        {
+          "sha": "0c7184c2d22df4ec9496372d95115d5ed256dd1b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:54:20-07:00",
+          "message": "Clipboard, pointer and notification are chosen by pick over the console's TerminalFeatures: one fact for layers and terminal, passthrough evidence weighed, the route in the send log (rich-control-codes-xh4n.6ch.a28)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-598",
       "ref": "refs/pull/598/merge",
       "sha": "dab9233104f8fded7206df31952c59a1ace34017",
