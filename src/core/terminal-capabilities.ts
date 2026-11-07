@@ -127,6 +127,9 @@ export interface TerminalSend {
   readonly wrapped: boolean;
 }
 
+/** A decision to write nothing, and why. */
+export const notSent = (feature: string, reason: string): TerminalSend => ({ feature, bytes: undefined, reason, wrapped: false });
+
 /**
  * One way to write a feature: a sequence, and what is known of who reads it —
  * the terminals known to, or `any`, for a sequence sent whatever the terminal
@@ -306,5 +309,5 @@ export function pick<A>(feature: TerminalFeature<A>, value: A, features: Pick<Te
     }
     return { feature: feature.name, bytes: routed.bytes, reason: `${encoding.name}${routed.via}: ${support.why}`, wrapped: routed.bytes !== sequence };
   }
-  return { feature: feature.name, bytes: undefined, reason: `fallback: ${refusals.join("; ")}`, wrapped: false };
+  return notSent(feature.name, `fallback: ${refusals.join("; ")}`);
 }

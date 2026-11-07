@@ -224,7 +224,7 @@ class DeclaredState {
   }
 
   /** The frame's declarations committed, or `wanted`: `handBack` commits the empty state, so what a frame set is taken away. */
-  commit(wanted: Partial<TerminalState> = declaredState(this.pending.splice(0))): string {
+  commit<P extends keyof TerminalState>(wanted: Pick<TerminalState, P> = declaredState(this.pending.splice(0))): string {
     const features = this.featuresOf();
     return this.written(commitTerminalState(this.committed, wanted, features), features);
   }
@@ -309,7 +309,7 @@ export class SurfaceRenderer implements Renderer {
    * while the frame stands — through the same commit a frame's declarations
    * take, so what was sent and what was refused have one record.
    */
-  settle(wanted: Partial<TerminalState>): void {
+  settle<P extends keyof TerminalState>(wanted: Pick<TerminalState, P>): void {
     this.write(this.state.commit(wanted));
   }
 

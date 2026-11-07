@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import { App, type AppOptions } from "../../src/host/app.js";
 import { InputParser, keyName } from "../../src/host/input.js";
 import { ColorRgba } from "../../src/core/color.js";
+import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import { declareCapabilities, type LayerDeclaration } from "../../src/core/terminal-capabilities.js";
 import { WidgetApp } from "../../src/widgets/widget-app.js";
@@ -57,6 +58,7 @@ describe("an app's chrome", () => {
     expect(after).toContain(`${ESC}[23;0t`);
     expect(after).toContain(`${ESC}]6;1;bg;*;default${ST}`);
     expect(after).toContain(`${ESC}]1337;SetBadgeFormat=${ST}`);
+    expect(app.chrome).toEqual({});
   });
 
   it("set before the run is shown when it starts, and a stopped app refuses one", async () => {
@@ -138,5 +140,26 @@ describe("a focused field's cursor", () => {
     app.stop();
     await done;
     expect(host.output()).toContain(`${ESC}]112${ST}`);
+  });
+
+  async function cursorBytes(cursorStyle: string): Promise<string> {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const field = new TextInput({ value: "hello", cursorStyle: Style.parse(cursorStyle) });
+    const app = new WidgetApp({ host, surface: "alternate", clock: fakeClock(0), view: () => field });
+    const done = app.run();
+    app.focusManager.focus(field);
+    await tick();
+    const shown = host.output();
+    app.stop();
+    await done;
+    return shown;
+  }
+
+  it("takes a reversed cell's foreground, which is what that cell shows behind its glyph", async () => {
+    expect(await cursorBytes("reverse #8000ff")).toContain(`${ESC}]12;#8000ff${ST}`);
+  });
+
+  it("stays the terminal's own where the drawn cell shows the terminal's own color", async () => {
+    expect(await cursorBytes("bold on default")).not.toContain(`${ESC}]12;`);
   });
 });

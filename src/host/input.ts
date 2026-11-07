@@ -126,8 +126,9 @@ export interface InputSink {
   paste(text: string): void;
   /**
    * The terminal's window took focus or lost it (`CSI I`, `CSI O`), where a
-   * program asked for focus reports (`CSI ? 1004 h`). tmux reports focus-in
-   * when a client attaches, so it is also where a reattach is heard.
+   * program asked for focus reports (`CSI ? 1004 h`). tmux with
+   * `focus-events on` reports focus-in when a client attaches, so it is also
+   * where a reattach is heard.
    */
   focus(focused: boolean): void;
 }

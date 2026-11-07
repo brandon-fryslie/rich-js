@@ -59,8 +59,8 @@ export const TITLE_STACK: TerminalFeature<"push" | "pop"> = {
   encodings: [{ name: "XTWINOPS 22/23", terminals: "any", failure: "ignored", routes: NO_LAYER, encode: (op) => `${ESC}[${op === "push" ? 22 : 23};0t` }],
 };
 
-// `#rrggbb`: these sequences carry no alpha.
-const hex = (color: ColorRgba): string => color.hex.slice(0, 7);
+/** A color as these sequences carry it, `#rrggbb` with no alpha: two colors that write the same are the same to the terminal. */
+export const wireHex = (color: ColorRgba): string => color.hex.slice(0, 7);
 
 /** iTerm2's OSC 6: the tab's color, `undefined` the tab's own. */
 export const TAB_COLOR: TerminalFeature<ColorRgba | undefined> = {
@@ -101,17 +101,30 @@ export const SESSION_STATUS: TerminalFeature<SessionStatus | undefined> = {
       encode: (status) => {
         // A `;` would end the field.
         const text = stripOscControls(status?.text ?? "").replaceAll(";", ",");
-        const color = (value: ColorRgba | undefined): string => (value === undefined ? "" : hex(value));
+        const color = (value: ColorRgba | undefined): string => (value === undefined ? "" : wireHex(value));
         return `${OSC}21337;indicator=${color(status?.indicator)};status=${text};status-color=${color(status?.color)}${ST}`;
       },
     },
   ],
 };
 
-/** iTerm2's badge, drawn large behind the session's text, as base64 of its UTF-8 bytes; `""` clears it. */
+/**
+ * iTerm2's badge, drawn large behind the session's text, as base64 of its
+ * UTF-8 bytes; `""` clears it. The text is shown as written: iTerm2 reads a
+ * badge as an interpolated string, where `\(…)` evaluates an expression, so
+ * every backslash is escaped as `\\`.
+ */
 export const BADGE: TerminalFeature<string> = {
   name: "badge",
-  encodings: [{ name: "OSC 1337 SetBadgeFormat", terminals: ["iterm2"], failure: "ignored", routes: OUTER_ONLY, encode: (badge) => `${OSC}1337;SetBadgeFormat=${base64(stripOscControls(badge))}${ST}` }],
+  encodings: [
+    {
+      name: "OSC 1337 SetBadgeFormat",
+      terminals: ["iterm2"],
+      failure: "ignored",
+      routes: OUTER_ONLY,
+      encode: (badge) => `${OSC}1337;SetBadgeFormat=${base64(stripOscControls(badge).replaceAll("\\", "\\\\"))}${ST}`,
+    },
+  ],
 };
 
 // tmux keeps a cursor colour per pane (3.3) and re-emits it; xterm.js reads it in an editor.
@@ -120,7 +133,7 @@ const CURSOR_ROUTES = { tmux: "native", screen: "passthrough", zellij: "impossib
 /** OSC 12: the cursor's color, and OSC 112, the terminal's own back. */
 export const CURSOR_COLOR: TerminalFeature<ColorRgba | undefined> = {
   name: "cursor color",
-  encodings: [{ name: "OSC 12", terminals: "any", failure: "ignored", routes: CURSOR_ROUTES, encode: (color) => (color === undefined ? `${OSC}112${ST}` : `${OSC}12;${hex(color)}${ST}`) }],
+  encodings: [{ name: "OSC 12", terminals: "any", failure: "ignored", routes: CURSOR_ROUTES, encode: (color) => (color === undefined ? `${OSC}112${ST}` : `${OSC}12;${wireHex(color)}${ST}`) }],
 };
 
 /**

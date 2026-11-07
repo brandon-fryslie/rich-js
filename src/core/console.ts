@@ -10,7 +10,7 @@ import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
 import { BELL, CLIPBOARD, NOTIFICATION, POINTER, TITLE, pointerShape, type PointerShape } from "./terminal-requests.js";
 import { underlineSupport } from "./style-effects.js";
-import { heldLayers, inferCapabilities, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
+import { heldLayers, inferCapabilities, notSent, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -830,9 +830,9 @@ export class Console {
   private _request<A>(feature: TerminalFeature<A>, value: A): void {
     refuseRenderWrite(this._madeIn);
     const send: TerminalSend = !this._attended
-      ? { feature: feature.name, bytes: undefined, reason: "not sent: no one is at a terminal", wrapped: false }
+      ? notSent(feature.name, "not sent: no one is at a terminal")
       : this._capture.get() !== null
-        ? { feature: feature.name, bytes: undefined, reason: "not sent: output is being captured", wrapped: false }
+        ? notSent(feature.name, "not sent: output is being captured")
         : pick(feature, value, this._features);
     if (send.bytes !== undefined) this.file.write(send.bytes);
     this._features.onSend?.(send);

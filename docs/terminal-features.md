@@ -172,9 +172,12 @@ color per pane and re-emits it, so OSC 12 crosses tmux natively.
 
 A tmux client that detaches and reattaches is often a different terminal, and
 it has none of what reached it through passthrough. While an app holds the
-terminal, it asks for focus reports (`CSI ? 1004 h`). tmux reports focus-in
-when a client attaches, and on that report, or on a resize, the app sends
-again every part whose bytes went through a passthrough envelope. Only those
+terminal, it asks for focus reports (`CSI ? 1004 h`). With `focus-events on`
+in its config, which is off by default, tmux reports focus-in when a client
+attaches. On that report, or on a resize, the app sends again every part
+whose bytes went through a passthrough envelope. Without `focus-events`, a
+reattach from a terminal of the same size is not seen, and what went through
+the passthrough stays lost until the app next takes the terminal. Only those
 are sent again. What tmux took natively it re-emits itself, and a bare
 terminal forgets nothing when its window loses focus.
 

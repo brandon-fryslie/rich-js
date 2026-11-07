@@ -11,14 +11,20 @@
 import type { ColorRgba } from "./color.js";
 import { pick, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import {
-  BADGE, CURSOR_COLOR, POINTER, PROGRESS, SESSION_STATUS, TAB_COLOR, TITLE, TITLE_STACK, pointerShape, shownPercent,
-  type ParsedPointerShape, type SessionStatus, type TerminalDeclaration, type TerminalProgress,
+  BADGE, CURSOR_COLOR, POINTER, PROGRESS, SESSION_STATUS, TAB_COLOR, TITLE, TITLE_STACK, pointerShape, shownPercent, wireHex,
+  type Chrome, type ParsedPointerShape, type SessionStatus, type TerminalDeclaration, type TerminalProgress,
 } from "./terminal-requests.js";
 
 /** What the terminal is believed to show; `undefined` is the terminal's own. */
 export interface TerminalState {
   readonly progress: TerminalProgress;
   readonly pointer: ParsedPointerShape;
+  /**
+   * Whether the title the terminal showed is saved on its title stack. Its own
+   * part, so a pop is sent only for a push that reached the terminal, whatever
+   * the features were when the title was set.
+   */
+  readonly titleSaved: boolean;
   readonly title: string | undefined;
   readonly tabColor: ColorRgba | undefined;
   readonly status: SessionStatus | undefined;
@@ -30,6 +36,7 @@ export interface TerminalState {
 export const EMPTY_TERMINAL_STATE: TerminalState = {
   progress: { state: "none" },
   pointer: pointerShape("default"),
+  titleSaved: false,
   title: undefined,
   tabColor: undefined,
   status: undefined,
@@ -37,10 +44,16 @@ export const EMPTY_TERMINAL_STATE: TerminalState = {
   cursorColor: undefined,
 };
 
+/** The parts of the terminal's state a `Chrome` asks for, a field left out the terminal's own. */
+export function chromeState({ title, tabColor, status, badge }: Chrome): Pick<TerminalState, "titleSaved" | "title" | "tabColor" | "status" | "badge"> {
+  return { titleSaved: title !== undefined, title, tabColor, status, badge };
+}
+
 /** Every declaration of one frame, folded into the state it asks for: of every part but progress, the last declared wins. */
 export function declaredState(declarations: readonly TerminalDeclaration[]): TerminalState {
   if (declarations.length === 0) return EMPTY_TERMINAL_STATE;
   const state: { -readonly [K in keyof TerminalState]: TerminalState[K] } = { ...EMPTY_TERMINAL_STATE };
+  const chrome: { -readonly [K in keyof Chrome]: Chrome[K] } = {};
   const shares: Extract<TerminalDeclaration, { kind: "progress" }>["share"][] = [];
   for (const declaration of declarations) {
     switch (declaration.kind) {
@@ -55,16 +68,15 @@ export function declaredState(declarations: readonly TerminalDeclaration[]): Ter
         break;
       case "chrome": {
         const { title, tabColor, status, badge } = declaration.chrome;
-        if (title !== undefined) state.title = title;
-        if (tabColor !== undefined) state.tabColor = tabColor;
-        if (status !== undefined) state.status = status;
-        if (badge !== undefined) state.badge = badge;
+        if (title !== undefined) chrome.title = title;
+        if (tabColor !== undefined) chrome.tabColor = tabColor;
+        if (status !== undefined) chrome.status = status;
+        if (badge !== undefined) chrome.badge = badge;
         break;
       }
     }
   }
-  state.progress = progressOf(shares);
-  return state;
+  return { ...state, ...chromeState(chrome), progress: progressOf(shares) };
 }
 
 function progressOf(shares: readonly Extract<TerminalDeclaration, { kind: "progress" }>["share"][]): TerminalProgress {
@@ -80,15 +92,15 @@ function progressOf(shares: readonly Extract<TerminalDeclaration, { kind: "progr
 const sameProgress = (a: TerminalProgress, b: TerminalProgress): boolean =>
   a.state === b.state && ("percent" in a ? shownPercent(a.percent) : -1) === ("percent" in b ? shownPercent(b.percent) : -1);
 
-// Colors are sent as `#rrggbb`, so two that write the same are the same.
-const sameColor = (a: ColorRgba | undefined, b: ColorRgba | undefined): boolean => a?.hex.slice(0, 7) === b?.hex.slice(0, 7);
+const sameColor = (a: ColorRgba | undefined, b: ColorRgba | undefined): boolean =>
+  (a === undefined ? undefined : wireHex(a)) === (b === undefined ? undefined : wireHex(b));
 const sameStatus = (a: SessionStatus | undefined, b: SessionStatus | undefined): boolean =>
   a === b || (a !== undefined && b !== undefined && a.text === b.text && sameColor(a.indicator, b.indicator) && sameColor(a.color, b.color));
 
 type DecidingFeatures = Pick<TerminalFeatures, "capabilities" | "policy" | "layers">;
 
 interface Part<V> {
-  /** The sends that bring the terminal from `from` to `to`; the last decides whether it got there. */
+  /** The sends that bring the terminal from `from` to `to`; the last decides whether it got there, and none means nothing need be sent. */
   sends(from: V, to: V, features: DecidingFeatures): readonly TerminalSend[];
   same(a: V, b: V): boolean;
 }
@@ -99,14 +111,16 @@ const whole = <V>(feature: TerminalFeature<V>, same: (a: V, b: V) => boolean): P
   same,
 });
 
-// A program's title goes onto the terminal's title stack over the one it found,
-// and taking it away gives that one back.
+// The title the terminal showed is pushed before a program's goes over it, and
+// popping it gives that one back: the title is taken away by the pop, so taking
+// it away sends nothing of its own.
+const TITLE_SAVED_PART: Part<boolean> = {
+  sends: (_from, to, features) => [pick(TITLE_STACK, to ? "push" : "pop", features)],
+  same: (a, b) => a === b,
+};
+
 const TITLE_PART: Part<string | undefined> = {
-  sends: (from, to, features) => {
-    if (to === undefined) return [pick(TITLE_STACK, "pop", features)];
-    const set = pick(TITLE, to, features);
-    return from === undefined ? [pick(TITLE_STACK, "push", features), set] : [set];
-  },
+  sends: (_from, to, features) => (to === undefined ? [] : [pick(TITLE, to, features)]),
   same: (a, b) => a === b,
 };
 
@@ -120,6 +134,7 @@ const BADGE_PART: Part<string | undefined> = {
 const PARTS: { readonly [K in keyof TerminalState]: Part<TerminalState[K]> } = {
   progress: whole(PROGRESS, sameProgress),
   pointer: whole(POINTER, (a, b) => a === b),
+  titleSaved: TITLE_SAVED_PART,
   title: TITLE_PART,
   tabColor: whole(TAB_COLOR, sameColor),
   status: whole(SESSION_STATUS, sameStatus),
@@ -163,19 +178,27 @@ export const NOTHING_COMMITTED: Committed = { sent: EMPTY_TERMINAL_STATE, refuse
  * shown, since sending what they refuse is what they exist to prevent. A
  * commit that changes nothing returns `committed` itself.
  */
-export function commitTerminalState(
+export function commitTerminalState<P extends keyof TerminalState>(
   committed: Committed,
-  wanted: Partial<TerminalState>,
+  // A `Pick`, not a `Partial`: a part named is a value of its own type, so
+  // `undefined` reaches only the parts whose type holds it.
+  wanted: Pick<TerminalState, P>,
   features: DecidingFeatures,
 ): { readonly next: Committed; readonly sends: readonly TerminalSend[] } {
+  return commit(committed, wanted, features);
+}
+
+// Every part `named` holds is a value of its own type: `commitTerminalState`'s
+// `Pick` and `resendWrapped`'s copy of what was sent both guarantee it.
+function commit(committed: Committed, named: Partial<TerminalState>, features: DecidingFeatures): { readonly next: Committed; readonly sends: readonly TerminalSend[] } {
   const sent: { -readonly [K in keyof TerminalState]: TerminalState[K] } = { ...committed.sent };
   const refused: Refusals = { ...committed.refused };
   const wrapped = new Set(committed.wrapped);
   const sends: TerminalSend[] = [];
   let changed = false;
   const decide = <K extends keyof TerminalState>(part: K): void => {
-    const value: TerminalState[K] | undefined = wanted[part];
-    if (!(part in wanted)) return;
+    if (!(part in named)) return;
+    const value = named[part];
     const { sends: sendsOf, same } = PARTS[part];
     const refusal = committed.refused[part];
     if (same(committed.sent[part], value as TerminalState[K])) {
@@ -189,14 +212,14 @@ export function commitTerminalState(
     const decided = sendsOf(committed.sent[part], value as TerminalState[K], features);
     sends.push(...decided);
     changed = true;
-    const last = decided[decided.length - 1]!;
-    if (last.bytes === undefined) {
+    const last = decided.at(-1);
+    if (last !== undefined && last.bytes === undefined) {
       const refusal: Refusal<TerminalState[K]> = { wanted: value as TerminalState[K], by: features };
-      (refused as { [P in K]?: Refusal<TerminalState[K]> })[part] = refusal;
+      (refused as { [Q in K]?: Refusal<TerminalState[K]> })[part] = refusal;
     } else {
       sent[part] = value as TerminalState[K];
       delete refused[part];
-      if (last.wrapped) wrapped.add(part);
+      if (last?.wrapped === true) wrapped.add(part);
       else wrapped.delete(part);
     }
   };
@@ -219,5 +242,5 @@ export function resendWrapped(committed: Committed, features: DecidingFeatures):
     wanted[part] = committed.sent[part];
   };
   committed.wrapped.forEach(forget);
-  return commitTerminalState({ ...committed, sent: forgotten }, wanted, features);
+  return commit({ ...committed, sent: forgotten }, wanted, features);
 }

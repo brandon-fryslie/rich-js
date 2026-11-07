@@ -35,7 +35,7 @@ import { frameRate, systemClock, type Clock, type FrameRate } from "../core/cloc
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
 import { pointerShape, type Chrome, type ParsedPointerShape, type PointerShape } from "../core/terminal-requests.js";
-import type { TerminalState } from "../core/terminal-state.js";
+import { chromeState } from "../core/terminal-state.js";
 import { identifyTerminal, type TerminalIdentity } from "../core/terminal-identity.js";
 import type { TerminalFeatures } from "../core/terminal-capabilities.js";
 import { Segment } from "../core/segment.js";
@@ -136,9 +136,10 @@ const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = 
 const BRACKETED_PASTE = { on: "\x1b[?2004h", off: "\x1b[?2004l" } as const;
 
 // Focus reports: the terminal says when its window takes focus and loses it.
-// tmux, asked for them, reports focus-in when a client attaches, which is the
-// moment a passthrough's state — forgotten by the new client's terminal — is
-// sent again. A terminal without them ignores both.
+// tmux with `focus-events on` (off by default) reports focus-in when a client
+// attaches, which is the moment a passthrough's state — forgotten by the new
+// client's terminal — is sent again; without it, only a reattach that changes
+// the size is seen. A terminal without them ignores both.
 const FOCUS_REPORTS = { on: "\x1b[?1004h", off: "\x1b[?1004l" } as const;
 
 // The kitty keyboard protocol, where a program asks for it (`keyboard`): asked
@@ -200,10 +201,7 @@ interface Asking {
   finish(ended: Asked["ended"]): void;
 }
 
-// The parts of the terminal's state `chrome` asks for, a field left out the terminal's own.
-const chromeState = ({ title, tabColor, status, badge }: Chrome): Pick<TerminalState, "title" | "tabColor" | "status" | "badge"> => ({ title, tabColor, status, badge });
-
-const isWheelTurn =(event: TerminalMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
+const isWheelTurn = (event: TerminalMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
 
 export class App implements FrameHost {
   private readonly host: TerminalHost;
@@ -688,6 +686,7 @@ export class App implements FrameHost {
     // A suspended app handed the terminal back when it suspended.
     if (phase === "running") this.leave();
     this.pointer = pointerShape("default");
+    this._chrome = {};
     this.host.stop();
     this.settle(outcome);
   }
