@@ -304,6 +304,11 @@ export function isTextIntent(name: string): name is TextIntent {
 /** Every text intent, in the order the docs list them. */
 export const TEXT_INTENTS = Object.keys(INTENTS) as readonly TextIntent[];
 
+/** The color a fit tints `intent` toward on `ground`: what `TextRequest.tint` is handed. */
+export function textTint(palette: Palette, intent: TextIntent, ground: ColorRgba): ColorRgba {
+  return INTENTS[intent].on(palette, ground.compositeOver(palette.get("background"))).miss().tint;
+}
+
 /**
  * The text `intent` draws in on `ground`. A translucent ground is drawn on the
  * palette's background first, as every palette color is.

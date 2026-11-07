@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ColorDepth, type ColorSpec, ColorTable, contrastRatio, TerminalColors, TerminalTheme } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, type ColorSpec, ColorTable, contrastRatio, TerminalColors, TerminalTheme } from "../../src/core/color.js";
 import { ink, type InkPlace } from "../../src/widgets/ink.js";
 import { Button } from "../../src/widgets/button.js";
 import { getThemePalette } from "../../src/themes/registry.js";
@@ -36,14 +36,17 @@ describe("ink", () => {
     expect(label(button)).not.toBe(stated);
   });
 
-  it("derives a grey slot apart from the text for a terminal that states no muted slot", () => {
+  it("derives a slot that recedes from the text for a terminal that states no muted slot", () => {
     // Tokyo Night's white is its text exactly, so a slot rounded by name alone would look typed.
     const { TOKYO_NIGHT } = terminalThemes;
     const unstated = new TerminalTheme(TOKYO_NIGHT.backgroundColor, TOKYO_NIGHT.foregroundColor, TOKYO_NIGHT.ansiColors, TOKYO_NIGHT.palette);
     const at: InkPlace = { fit: slide, depth: ColorDepth.STANDARD, terminal: unstated };
-    const muted = ink(unstated, "foreground-muted", "background", at).color;
-    expect([undefined, 0, 7, 8, 15]).toContain(muted.number);
-    expect(muted.getTruecolor(unstated).hex).not.toBe(ink(unstated, "foreground", "background", at).color.getTruecolor(unstated).hex);
+    const { color, bgcolor } = ink(unstated, "foreground-muted", "background", at);
+    const body = ink(unstated, "foreground", "background", at).color;
+    const on = (spec: ColorSpec) => contrastRatio(spec.getTruecolor(unstated), bgcolor.getTruecolor(unstated, false));
+    expect(color.isDefault).toBe(false);
+    expect(on(color)).toBeLessThan(on(body));
+    expect(on(color)).toBeGreaterThanOrEqual(textFloor("foreground-muted"));
   });
 
   it("reads the muted slot off the terminal that shows the frame, not the widget's theme", () => {
@@ -63,11 +66,16 @@ describe("ink", () => {
     it.each([-1, 16, 2.5, Number.NaN])("with a muted slot of %s, which names none of its sixteen", (slot) => {
       expect(() => new TerminalColors(GRUVBOX.backgroundColor, GRUVBOX.foregroundColor, sixteen, slot)).toThrow(new RegExp(`mutedSlot.*0–15; got ${slot}`));
     });
-    it("whose sixteen are all its foreground, leaving no color for muted text", () => {
-      const white = GRUVBOX.foregroundColor;
-      const flat = new ColorTable(Array.from({ length: 16 }, () => white));
-      expect(() => new TerminalColors(GRUVBOX.backgroundColor, white, flat)).toThrow(/all its foreground/);
-    });
+  });
+
+  it("draws muted text as its body text dimmed where the table has no color for it to recede in", () => {
+    // A monochrome terminal: black and white, nothing between.
+    const mono = new ColorTable(Array.from({ length: 16 }, (_, n) => (n === 0 ? new ColorRgba(0, 0, 0) : new ColorRgba(255, 255, 255))));
+    const terminal = new TerminalColors(new ColorRgba(0, 0, 0), new ColorRgba(255, 255, 255), mono);
+    const at: InkPlace = { fit: slide, depth: ColorDepth.STANDARD, terminal };
+    const muted = ink(GRUVBOX, "foreground-muted", "background", at);
+    expect(muted.dim).toBe(true);
+    expect(muted.color.getTruecolor(terminal).hex).toBe(ink(GRUVBOX, "foreground", "background", at).color.getTruecolor(terminal).hex);
   });
 
   describe.each(BUNDLED.map((theme) => [theme.palette.name, theme] as const))("on %s", (_name, theme) => {
@@ -76,13 +84,22 @@ describe("ink", () => {
       ["sixteen colors", ColorDepth.STANDARD, "surface"],
       ["256 colors", ColorDepth.EIGHT_BIT, "background"],
       ["256 colors", ColorDepth.EIGHT_BIT, "surface"],
-    ] as const)("at %s writes muted text on %s in a color apart from its text, at the muted floor", (_depth, depth, ground) => {
-      const at: InkPlace = { fit: slide, depth, terminal: theme };
-      const muted = ink(theme, "foreground-muted", ground, at);
-      const body = ink(theme, "foreground", ground, at);
-      const shown = (spec: ColorSpec, fg: boolean) => spec.getTruecolor(theme, fg);
-      expect(shown(muted.color, true).hex).not.toBe(shown(body.color, true).hex);
-      expect(contrastRatio(shown(muted.color, true), shown(muted.bgcolor, false))).toBeGreaterThanOrEqual(textFloor("foreground-muted"));
+    ] as const)("at %s writes muted text on %s receding from its text, at the muted floor, or its text dimmed", (_depth, depth, ground) => {
+      for (const terminal of [undefined, theme]) {
+        const at: InkPlace = { fit: slide, depth, terminal };
+        const muted = ink(theme, "foreground-muted", ground, at);
+        const body = ink(theme, "foreground", ground, at);
+        const shown = (spec: ColorSpec, fg: boolean) => spec.getTruecolor(terminal, fg);
+        const on = (spec: ColorSpec) => contrastRatio(shown(spec, true), shown(muted.bgcolor, false));
+        if (muted.dim) {
+          expect(muted.color).toBe(body.color);
+          continue;
+        }
+        expect(muted.color.isDefault).toBe(false);
+        expect(shown(muted.color, true).hex).not.toBe(shown(body.color, true).hex);
+        expect(on(muted.color)).toBeLessThan(on(body.color));
+        expect(on(muted.color)).toBeGreaterThanOrEqual(textFloor("foreground-muted"));
+      }
     });
   });
 });

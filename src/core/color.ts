@@ -1043,12 +1043,6 @@ export class TerminalColors {
     if (mutedSlot !== undefined && !(Number.isInteger(mutedSlot) && mutedSlot >= 0 && mutedSlot <= 15)) {
       throw new RangeError(`a TerminalTheme's mutedSlot is one of its sixteen ANSI colors, an integer 0–15; got ${mutedSlot}`);
     }
-    // Muted text is drawn in a color apart from the text it recedes from, so a
-    // terminal with no color but its foreground cannot draw it.
-    const colors = Array.from({ length: 16 }, (_, slot) => ansiColors.get(slot).hex);
-    if (colors.every((hex) => hex === foregroundColor.hex)) {
-      throw new RangeError(`a TerminalTheme's sixteen ANSI colors are all its foreground ${foregroundColor.hex}, so it has no color to draw muted text apart in`);
-    }
   }
 }
 

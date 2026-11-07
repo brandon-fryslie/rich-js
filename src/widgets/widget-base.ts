@@ -122,7 +122,8 @@ export abstract class WidgetBase implements InteractiveWidget {
   render(options: RenderOptions): Iterable<Segment> {
     const drawn = Segment.splitLines(this.draw(options));
     const [width] = Segment.getShape(drawn);
-    const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width, this.ground(options))), this);
+    const ground = this.ground(options);
+    const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width, ground)), this);
     return lines.flatMap((line) => [...line, Segment.line()]);
   }
 
