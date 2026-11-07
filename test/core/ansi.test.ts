@@ -255,6 +255,17 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("a\n\nb\n").plain).toBe("a\n\nb");
   });
 
+  it("keeps an escape the bytes end inside on the line it began, across the breaks it ran", () => {
+    expect(new AnsiDecoder().decode("foo\x1b\n").map((t) => t.plain)).toEqual(["foo"]);
+    expect(new AnsiDecoder().decode("foo\x1b[31\n").map((t) => t.plain)).toEqual(["foo"]);
+    expect(scanUndrawn("foo\x1b[31\n")).toMatchObject({ undrawn: null, unread: 3 });
+  });
+
+  it("ends a sequence undrawn at a byte above its grammar, which then draws", () => {
+    expect(decodeAnsi("\x1b[31é").plain).toBe("é");
+    expect(scanUndrawn("\x1b[31é").undrawn).toBe("\x1b[31");
+  });
+
   it("returns to the first column at a carriage return, and later text overwrites", () => {
     const text = decodeAnsi("10%\r\x1b[1m50%\r100%");
     expect(text.plain).toBe("100%");
