@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "9078b33c54afb7d014b30e58048804e9a8c7df88",
+      "timestamp": "2026-11-07T12:21:14.238Z",
+      "commits": [
+        {
+          "sha": "9078b33c54afb7d014b30e58048804e9a8c7df88",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:19:19-07:00",
+          "message": "The markdown linearity and effects-feel contrast tests do a fraction of the work (rich-unfiled-791c.f6wx) (#604)\n\n* The markdown linearity and effects-feel contrast tests do a fraction of the work, so a saturated suite stays clear of the hang limit (rich-unfiled-791c.f6wx)\n\nMarkdown: each expectLinearTime starts just above the helper's floor (7.3s -> 0.9s calm).\neffects-feel: runDemo takes the contrast sampling as a defaulted argument; the one test that waits for every loop to be measured asks for one period at 12 moments (6.2s -> under 1.5s). Mutant (a loop left unmeasured) and quadratic-reader mutant both went red.\n\n* ContrastSampling is declared before CONTRAST and described once (rich-unfiled-791c.f6wx)\n\n* A contrast sampling with no moments is refused instead of reported as an infinite contrast (rich-unfiled-791c.f6wx)"
+        }
+      ]
+    },
+    {
       "version": "pr-605",
       "ref": "refs/pull/605/merge",
       "sha": "fd5b0d73c33dacaa156cd76db86fde7b7bbd5609",
@@ -20,64 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-07T05:10:57-07:00",
           "message": "Declared chrome and cursor state (rich-control-codes-xh4n.6ch.sfp): App.chrome sends the title over the terminal's title stack, and iTerm2's tab color (OSC 6), session status (OSC 21337) and badge, once per change and given back on every exit; a focused TextInput colors the terminal's cursor (OSC 12/112) with its accent; focus reports (CSI ? 1004) and resizes re-send what reached the terminal only through a passthrough, which a tmux reattach forgets\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-604",
-      "ref": "refs/pull/604/merge",
-      "sha": "2acd1cd07b7ff069994d3c38fcf3328dc30a8263",
-      "timestamp": "2026-11-07T12:06:16.320Z",
-      "commits": [
-        {
-          "sha": "2acd1cd07b7ff069994d3c38fcf3328dc30a8263",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T12:03:21Z",
-          "message": "Merge 4f4a96052dd905a66394e1ed36d3435501b67fb1 into a56e7b74645917b028d01ab3fe0cd411e918794e\n"
-        },
-        {
-          "sha": "4f4a96052dd905a66394e1ed36d3435501b67fb1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:03:12-07:00",
-          "message": "A contrast sampling with no moments is refused instead of reported as an infinite contrast (rich-unfiled-791c.f6wx)\n"
-        },
-        {
-          "sha": "2643967d8d54f8cc1c3f4ec9c633c2e02af94f90",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:01:38-07:00",
-          "message": "ContrastSampling is declared before CONTRAST and described once (rich-unfiled-791c.f6wx)\n"
-        },
-        {
-          "sha": "439128c021017839cf441ba18a4a6c3a14c012ab",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T04:58:46-07:00",
-          "message": "The markdown linearity and effects-feel contrast tests do a fraction of the work, so a saturated suite stays clear of the hang limit (rich-unfiled-791c.f6wx)\n\nMarkdown: each expectLinearTime starts just above the helper's floor (7.3s -> 0.9s calm).\neffects-feel: runDemo takes the contrast sampling as a defaulted argument; the one test that waits for every loop to be measured asks for one period at 12 moments (6.2s -> under 1.5s). Mutant (a loop left unmeasured) and quadratic-reader mutant both went red.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "a56e7b74645917b028d01ab3fe0cd411e918794e",
-      "timestamp": "2026-11-07T11:56:33.046Z",
-      "commits": [
-        {
-          "sha": "a56e7b74645917b028d01ab3fe0cd411e918794e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T04:53:48-07:00",
-          "message": "Underline kinds 4:1–4:5 and underline color 58 as Style fields (6ch.nc7) (#602)\n\n* Underline kinds and color as Style fields (rich-control-codes-xh4n.6ch.nc7): Style.underline holds one kind (single, double, curly, dotted, dashed) so the later style decides it whole, doubleUnderline gone; underlineColor (SGR 58); one UNDERLINE table read by the encoder, decodeAnsi, parse, toString and template bindings; whether a destination draws 4:3-4:5 and 58 is picked once per console (style-effects.ts) and held on OutputTarget.underlines, a plain underline and no color otherwise; HTML and SVG draw wavy, dotted, dashed and colored lines\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Underline review fixes (rich-control-codes-xh4n.6ch.nc7): an effect that moves a cell's ink draws its colored underline in it; SVG blinks by opacity so own-paint lines blink; reset and withoutColor clear underlineColor; underline decisions leave the send log; blink on underline keeps the cell's kind; underlineColor template sink; Windows Terminal 1.20 reads 4:n and 58; style.md example declares what the example terminal draws\n\n* Medium review on underline kinds (rich-control-codes-xh4n.6ch.nc7): HTML blink fades the decoration color so a run blinks whole like SVG, outline included in both; a non-kind underline refused at construction; UNDERLINE rows carry styled, read by the encoder and decodeAnsi; an effect writes 59 only over an underline color of its own; dim fades an underline's own color; docs say underline decisions sit on OutputTarget.underlines, not onSend\n\n* Second high review (rich-control-codes-xh4n.6ch.nc7): a reversed cell's ink is its background slot when an effect decides the underline color; a terminal nothing weighed gets plain underlines from resolveOutputTarget; not <kind> takes only that kind off within a definition; styled UNDERLINE rows derive 4:n from n; decodeAnsi and style docs updated\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
-        },
-        {
-          "sha": "52bee3a11cc69042871f895261fb051b99707a7b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T04:52:15-07:00",
-          "message": "The word-motion linearity tests start at 64,000 characters, so a saturated suite no longer reaches the hang limit (rich-unfiled-791c.jac3) (#603)\n\n* The word-motion linearity tests start at 64,000 characters, so a saturated suite no longer reaches the hang limit (rich-unfiled-791c.jac3)\n\nEach motion timed five pairs at 256,000 and 1,024,000 characters: 11-15s of CPU\nalone, 35s and a 30s timeout in a full-suite run on a machine at load 56-100.\nA motion made quadratic still fails at the new size (ratio 10.3 against the bar of 8).\n\n* The word-motion size comment states what was measured and what a faster runner does (rich-unfiled-791c.jac3)\n\n* The word-motion size comment keeps the durable reasoning, not one machine's timings (rich-unfiled-791c.jac3)"
         }
       ]
     },
