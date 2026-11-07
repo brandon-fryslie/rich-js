@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-597",
+      "ref": "refs/pull/597/merge",
+      "sha": "904e2fda20b37b4925be50ea7da35556e72b1ad3",
+      "timestamp": "2026-11-07T07:25:44.201Z",
+      "commits": [
+        {
+          "sha": "904e2fda20b37b4925be50ea7da35556e72b1ad3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:23:14-07:00",
+          "message": "Merge bb2d5dc380b4071c3fa9ae09efcbfba4f9e0938e into c7018a9f13e300017b50f1a101fd6c39a383350d\n"
+        },
+        {
+          "sha": "bb2d5dc380b4071c3fa9ae09efcbfba4f9e0938e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:22:59-07:00",
+          "message": "The reduced-motion playground test reaches ten seconds by two steps, not 1,200 unread frames, so load no longer times it out (rich-palette-xovz.dc2)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c7018a9f13e300017b50f1a101fd6c39a383350d",
