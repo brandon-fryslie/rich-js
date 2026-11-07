@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-591",
+      "ref": "refs/pull/591/merge",
+      "sha": "4a78ca69bb49679a7687b473f9e0efde40db7288",
+      "timestamp": "2026-11-07T01:42:22.947Z",
+      "commits": [
+        {
+          "sha": "4a78ca69bb49679a7687b473f9e0efde40db7288",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T01:39:46Z",
+          "message": "Merge f233d4a3c395c66239adabc947b47e558c0436bf into 2c45a91f45d52f53d61870445221f5d38ceb0cfa\n"
+        },
+        {
+          "sha": "f233d4a3c395c66239adabc947b47e558c0436bf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:39:35-07:00",
+          "message": "Review: one intermediate range, one count reader, a CSI with a parameter after an intermediate is undrawn, and the text scan owns its cursor (rich-control-codes-xh4n.7c0)\n"
+        },
+        {
+          "sha": "a977dbb119cacba0e48645d61c7da014e79cce91",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:23:41-07:00",
+          "message": "decodeAnsi reads each escape's meaning off the lexer's one parse, so the CSI and escape grammar is defined once (rich-control-codes-xh4n.7c0)\n\nA sequence lexeme carries its introducer kind, parameters, intermediates and\nfinal byte, and sequenceToken dispatches on those fields; ESCAPES' CSI and\nescape alternatives and SEQUENCE_BREAK are gone, and the text regex keeps only\nwhat text does. The lexer reads ground text, collected bytes and string\npayloads in sticky runs, and drawLine builds its text regex once per line with\nno generator per lexeme.\n\nBench (/tmp/probe590/bench.ts, interleaved min of 15, vs master at 0.30.0):\nSGR decode 376 vs 416 ms, scan 234 vs 272; plain decode 266 vs 365, scan 66 vs 182.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-586",
       "ref": "refs/pull/586/merge",
       "sha": "44b6d8826f121b0ea0f89fcd6d27e7f0156b827c",
@@ -62,28 +91,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T08:38:27-07:00",
           "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-591",
-      "ref": "refs/pull/591/merge",
-      "sha": "7e81cf5202584fecafa0b35f1a669694b4cd1715",
-      "timestamp": "2026-11-07T01:26:29.220Z",
-      "commits": [
-        {
-          "sha": "7e81cf5202584fecafa0b35f1a669694b4cd1715",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T18:23:53-07:00",
-          "message": "Merge a977dbb119cacba0e48645d61c7da014e79cce91 into 2c45a91f45d52f53d61870445221f5d38ceb0cfa\n"
-        },
-        {
-          "sha": "a977dbb119cacba0e48645d61c7da014e79cce91",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T18:23:41-07:00",
-          "message": "decodeAnsi reads each escape's meaning off the lexer's one parse, so the CSI and escape grammar is defined once (rich-control-codes-xh4n.7c0)\n\nA sequence lexeme carries its introducer kind, parameters, intermediates and\nfinal byte, and sequenceToken dispatches on those fields; ESCAPES' CSI and\nescape alternatives and SEQUENCE_BREAK are gone, and the text regex keeps only\nwhat text does. The lexer reads ground text, collected bytes and string\npayloads in sticky runs, and drawLine builds its text regex once per line with\nno generator per lexeme.\n\nBench (/tmp/probe590/bench.ts, interleaved min of 15, vs master at 0.30.0):\nSGR decode 376 vs 416 ms, scan 234 vs 272; plain decode 266 vs 365, scan 66 vs 182.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     },
