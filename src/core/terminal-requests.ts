@@ -8,12 +8,10 @@
  */
 
 import { stripOscControls } from "./osc8.js";
-import type { Encoding, TerminalFeature } from "./terminal-capabilities.js";
+import { ESC, ST, utf8, type Encoding, type TerminalFeature } from "./terminal-capabilities.js";
 import type { TerminalIdentity } from "./terminal-identity.js";
 
-const ESC = "\x1b";
 const OSC = `${ESC}]`;
-const ST = `${ESC}\\`;
 
 /** OSC 2: the window title. */
 export function titleSequence(title: string): string {
@@ -59,7 +57,7 @@ export function pointerSequence(shape: ParsedPointerShape): string {
 
 /** OSC 52: `text` put on the system clipboard, as base64 of its UTF-8 bytes. */
 export function clipboardSequence(text: string): string {
-  const bytes = new TextEncoder().encode(text);
+  const bytes = utf8(text);
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return `${OSC}52;c;${btoa(binary)}${ST}`;
@@ -125,7 +123,12 @@ export type TerminalDeclaration = {
   readonly share: { readonly completed: number; readonly total: number } | "indeterminate";
 };
 
-const PROGRESS_CODE = { none: 0, normal: 1, error: 2, indeterminate: 3, paused: 4 } as const;
+/** The whole percent OSC 9;4 carries: clamped to 0–100, and 0 for no number at all. */
+export function shownPercent(percent: number): number {
+  return Number.isNaN(percent) ? 0 : Math.round(Math.min(100, Math.max(0, percent)));
+}
+
+const PROGRESS_CODE ={ none: 0, normal: 1, error: 2, indeterminate: 3, paused: 4 } as const;
 
 /**
  * ConEmu's OSC 9;4, which iTerm2 (3.6), Ghostty (1.2) and Windows Terminal
@@ -140,7 +143,7 @@ export const PROGRESS: TerminalFeature<TerminalProgress> = {
       failure: "misread",
       routes: { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "impossible" },
       encode: (progress) => {
-        const percent = "percent" in progress ? `;${Math.round(Math.min(100, Math.max(0, progress.percent)))}` : "";
+        const percent = "percent" in progress ? `;${shownPercent(progress.percent)}` : "";
         return `${OSC}9;4;${PROGRESS_CODE[progress.state]}${percent}${ST}`;
       },
     },

@@ -9,7 +9,7 @@
  */
 
 import { pick, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
-import { PROGRESS, type TerminalDeclaration, type TerminalProgress } from "./terminal-requests.js";
+import { PROGRESS, shownPercent, type TerminalDeclaration, type TerminalProgress } from "./terminal-requests.js";
 
 /** What the terminal is believed to show. */
 export interface TerminalState {
@@ -30,8 +30,9 @@ export function declaredState(declarations: readonly TerminalDeclaration[]): Ter
   return { progress: total === 0 ? { state: "indeterminate" } : { state: "normal", percent: (completed / total) * 100 } };
 }
 
+// The same when the terminal would be sent the same: the percent as it is encoded.
 const sameProgress = (a: TerminalProgress, b: TerminalProgress): boolean =>
-  a.state === b.state && ("percent" in a ? Math.round(a.percent) : -1) === ("percent" in b ? Math.round(b.percent) : -1);
+  a.state === b.state && ("percent" in a ? shownPercent(a.percent) : -1) === ("percent" in b ? shownPercent(b.percent) : -1);
 
 /**
  * The terminal brought from `believed` to `wanted`: what it holds after, and

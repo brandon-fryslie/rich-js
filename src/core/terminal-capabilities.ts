@@ -15,8 +15,9 @@
 
 import type { Intermediary, TerminalIdentity, TerminalName } from "./terminal-identity.js";
 
-const ESC = "\x1b";
-const ST = `${ESC}\\`;
+/** The wire's escape and string terminator, for every encoder in this layer. */
+export const ESC = "\x1b";
+export const ST = `${ESC}\\`;
 // screen's string buffer (`MAXSTR`, ansi.c), in bytes.
 const SCREEN_STRING_MAX = 768;
 
@@ -182,6 +183,8 @@ function passthrough(sequence: string, kind: Intermediary): string | { refused: 
     case "tmux":
       return `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
     case "screen": {
+      // An envelope ends in its own ST, which screen would end at or turn to BEL.
+      if (sequence.startsWith(`${ESC}P`)) return { refused: "screen cannot carry another layer's passthrough" };
       const inner = sequence.replaceAll(ST, "\x07");
       const length = byteLength(inner);
       return length > SCREEN_STRING_MAX ? { refused: `through screen: ${length} bytes > ${SCREEN_STRING_MAX}` } : `${ESC}P${inner}${ST}`;
@@ -193,7 +196,9 @@ function passthrough(sequence: string, kind: Intermediary): string | { refused: 
 }
 
 const UTF8 = new TextEncoder();
-const byteLength = (text: string): number => UTF8.encode(text).length;
+/** `text` as UTF-8 bytes, the one encoder this layer measures and encodes with. */
+export const utf8 = (text: string): Uint8Array => UTF8.encode(text);
+const byteLength = (text: string): number => utf8(text).length;
 
 /**
  * `value` written in the best encoding of `feature` that `features` lets
@@ -208,7 +213,9 @@ export function pick<A>(feature: TerminalFeature<A>, value: A, features: Pick<Te
       refusals.push(`${encoding.name} ${encoding.failure} where unsupported; ${support.source} is ${support.evidence}, ${policy}`);
       continue;
     }
-    const routed = route(encoding.encode(value), encoding, layers, (layer) => accepts(policy, layer.passthrough, encoding.failure));
+    // A closed passthrough drops the envelope (tmux's `allow-passthrough off`):
+    // that miss is `ignored`, whatever the terminal would make of the sequence.
+    const routed = route(encoding.encode(value), encoding, layers, (layer) => accepts(policy, layer.passthrough, "ignored"));
     if ("refused" in routed) {
       refusals.push(`${encoding.name}: ${routed.refused}`);
       continue;

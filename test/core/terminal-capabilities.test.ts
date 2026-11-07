@@ -54,6 +54,10 @@ describe("commitTerminalState", () => {
     expect(commitTerminalState(shown, { progress: { state: "normal", percent: 49.9 } }, features).sends).toEqual([]);
   });
 
+  it.each([[150, 160], [Number.NaN, Number.NaN], [-5, 0]])("sends nothing between %s%% and %s%%, which are sent as the same bytes", (from, to) => {
+    expect(commitTerminalState({ progress: { state: "normal", percent: from } }, { progress: { state: "normal", percent: to } }, features).sends).toEqual([]);
+  });
+
   it("re-sends everything against an empty terminal, as one that forgot it needs", () => {
     const { sends } = commitTerminalState(EMPTY_TERMINAL_STATE, { progress: { state: "paused", percent: 30 } }, features);
     expect(sends.map((send) => send.bytes)).toEqual(["\x1b]9;4;4;30\x1b\\"]);
@@ -96,7 +100,7 @@ describe("pick", () => {
     const capabilities = { terminal: { name: "iterm2" as const, evidence: terminal, source: "LC_TERMINAL=iTerm2" }, declared: new Set<string>() };
     const layers: Layer[] = [{ kind: "tmux", passthrough }];
     const sent = pick({ name: "test", encodings: [encoding(failure, route)] }, "x", { capabilities, policy, layers });
-    const reaches = route === "native" || (route === "passthrough" && accepts(policy, passthrough, failure));
+    const reaches = route === "native" || (route === "passthrough" && accepts(policy, passthrough, "ignored"));
     const sends = accepts(policy, terminal, failure) && reaches;
     expect(sent.bytes).toBe(
       !sends ? undefined : route === "native" ? `${ESC}]x${ESC}\\` : `${ESC}Ptmux;${ESC}${ESC}]x${ESC}${ESC}\\${ESC}\\`,
@@ -179,6 +183,17 @@ describe("route", () => {
     expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: editor does not pass a wrapped sequence" });
   });
 
+  it("refuses screen inside tmux, since screen would end tmux's envelope at its ST", () => {
+    const layers: Layer[] = [{ kind: "screen", passthrough: "declared" }, { kind: "tmux", passthrough: "declared" }];
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
+    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: screen cannot carry another layer's passthrough" });
+  });
+
+  it("trusts an inferred passthrough under bestGuess even for a misread encoding: a closed one only drops it", () => {
+    const sent = pick({ name: "test", encodings: [encoding("misread", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "bestGuess", layers: [{ kind: "tmux", passthrough: "inferred" }] });
+    expect(sent.bytes).toBe(`${ESC}Ptmux;${ESC}${ESC}]x${ESC}${ESC}\\${ESC}\\`);
+  });
+
   it("says a layer has no passthrough rather than blaming screen", () => {
     const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers: [{ kind: "zellij", passthrough: "declared" }] });
     expect(sent.reason).toBe("fallback: TEST: zellij has no passthrough");
@@ -186,6 +201,11 @@ describe("route", () => {
 });
 
 describe("identifyTerminal", () => {
+  it("takes kitty's TERM beside an inherited TERM_PROGRAM for no named terminal, and WezTerm's borrowing for WezTerm", () => {
+    expect(identifyTerminal({ TERM: "xterm-kitty", TERM_PROGRAM: "iTerm.app" }).terminal).toBe("other");
+    expect(identifyTerminal({ TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" }).terminal).toBe("wezterm");
+  });
+
   it("takes no inherited LC_TERMINAL for iTerm2 where a terminal names itself (VS Code started from iTerm2)", () => {
     expect(identifyTerminal({ TERM: "xterm-256color", TERM_PROGRAM: "vscode", LC_TERMINAL: "iTerm2" }).terminal).toBe("other");
     expect(identifyTerminal({ TERM: "tmux-256color", TMUX: "/tmp/t", TERM_PROGRAM: "tmux", LC_TERMINAL: "iTerm2" }).terminal).toBe("iterm2");

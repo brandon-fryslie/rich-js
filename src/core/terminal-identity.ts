@@ -67,7 +67,9 @@ function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
   if (term === "xterm-kitty" && !env["TERM_PROGRAM"]) return ["kitty", `TERM=${term}`];
   const program = env["TERM_PROGRAM"];
   const programmed = program === undefined ? undefined : TERM_PROGRAMS.get(program);
-  if (programmed !== undefined) return [programmed, `TERM_PROGRAM=${program}`];
+  // kitty's TERM beside a TERM_PROGRAM is WezTerm's borrowing, or kitty started
+  // from another terminal, whose variable it inherited.
+  if (programmed !== undefined && (term !== "xterm-kitty" || programmed === "wezterm")) return [programmed, `TERM_PROGRAM=${program}`];
   // iTerm2 sets LC_TERMINAL for its child, and ssh forwards LC_* where tmux's
   // TERM_PROGRAM and a remote shell's lose it. It counts beside iTerm2's own
   // TERM, or behind a multiplexer, whose pane has a TERM of its own: a

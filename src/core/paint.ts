@@ -241,6 +241,12 @@ class DeclaredState {
     this.pending = [];
     return this.commit([]);
   }
+
+  /** The terminal is believed to show nothing, with nothing sent or logged: what was committed never reached it. */
+  forget(): void {
+    this.pending = [];
+    this.believed = EMPTY_TERMINAL_STATE;
+  }
 }
 
 /**
@@ -303,7 +309,10 @@ export class SurfaceRenderer implements Renderer {
     try {
       const { rows: fit, caret } = fitted(frame(), screen);
       const rows = fit.map((row) => row.map((segment) => shownOn(segment, destination)));
-      this.write(SYNC_START + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit());
+      // Committed before `over` moves the rows, so the send log's `onSend`
+      // runs, and may print, while the painter still matches the terminal.
+      const declared = this.state.commit();
+      this.write(SYNC_START + this.over(rows, caret, screen, destination) + SYNC_END + declared);
       return rows;
     } finally {
       this.state.drop();
@@ -320,11 +329,13 @@ export class SurfaceRenderer implements Renderer {
     // the painter matching the terminal it left untouched.
     try {
       const { rows, caret } = fitted(frame(), screen);
+      // Before `over`, as in `paint`.
+      const declared = this.state.commit();
       const erase = this.over([], undefined, screen, destination);
       const ended = text.endsWith("\n") ? text : `${text}\n`;
       // One synchronized block around all three, so the terminal is released
       // only once the frame is back.
-      return SYNC_START + erase + ended + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit();
+      return SYNC_START + erase + ended + this.over(rows, caret, screen, destination) + SYNC_END + declared;
     } finally {
       this.state.drop();
     }
@@ -424,7 +435,9 @@ export class FinalFrameRenderer implements Renderer {
     this.state.drop();
     this.print(frame());
     // The one frame drawn, and so the one declaration made: logged as not
-    // sent. Nothing was shown, so there is nothing to take away after it.
+    // sent. Nothing was shown, so there is nothing to take away after it, and
+    // the next run starts from a terminal showing nothing, as it does.
     this.state.commit();
+    this.state.forget();
   }
 }
