@@ -212,8 +212,12 @@ class DeclaredState {
     this.pending.push(declaration);
   };
 
-  /** A frame is about to be drawn: what an earlier one declared and never painted is dropped. */
-  begin(): void {
+  /**
+   * A paint is over, whether or not it reached its commit: what its frame
+   * declared and never committed is dropped, so it cannot join the next
+   * frame's. Not at the paint's start, since a host may draw the frame first.
+   */
+  drop(): void {
     this.pending = [];
   }
 
@@ -261,9 +265,11 @@ export class SurfaceRenderer implements Renderer {
     surface: Surface,
     private readonly write: (bytes: string) => void,
     features: TerminalFeatures,
+    // Whether `write` reaches a terminal: a host's output redirected to a file does not.
+    terminal = true,
   ) {
     this.geometry = GEOMETRY[surface];
-    this.state = new DeclaredState(features, true);
+    this.state = new DeclaredState(features, terminal);
     this.declare = this.state.declare;
   }
 
@@ -294,11 +300,14 @@ export class SurfaceRenderer implements Renderer {
    * (`shownOn`): under reduced motion, nothing in them blinks.
    */
   paint(frame: FrameSource, screen: Screen, destination: OutputTarget): Segment[][] {
-    this.state.begin();
-    const { rows: fit, caret } = fitted(frame(), screen);
-    const rows = fit.map((row) => row.map((segment) => shownOn(segment, destination)));
-    this.write(SYNC_START + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit());
-    return rows;
+    try {
+      const { rows: fit, caret } = fitted(frame(), screen);
+      const rows = fit.map((row) => row.map((segment) => shownOn(segment, destination)));
+      this.write(SYNC_START + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit());
+      return rows;
+    } finally {
+      this.state.drop();
+    }
   }
 
   /**
@@ -309,13 +318,16 @@ export class SurfaceRenderer implements Renderer {
   around(text: string, frame: FrameSource, screen: Screen, destination: OutputTarget): string {
     // Drawn before `over` moves the row count, so a frame that throws leaves
     // the painter matching the terminal it left untouched.
-    this.state.begin();
-    const { rows, caret } = fitted(frame(), screen);
-    const erase = this.over([], undefined, screen, destination);
-    const ended = text.endsWith("\n") ? text : `${text}\n`;
-    // One synchronized block around all three, so the terminal is released
-    // only once the frame is back.
-    return SYNC_START + erase + ended + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit();
+    try {
+      const { rows, caret } = fitted(frame(), screen);
+      const erase = this.over([], undefined, screen, destination);
+      const ended = text.endsWith("\n") ? text : `${text}\n`;
+      // One synchronized block around all three, so the terminal is released
+      // only once the frame is back.
+      return SYNC_START + erase + ended + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit();
+    } finally {
+      this.state.drop();
+    }
   }
 
   // The bytes that paint `rows` over the last frame. They go out in one
@@ -409,10 +421,10 @@ export class FinalFrameRenderer implements Renderer {
   handBack(): void {
     const frame = this.last;
     this.last = () => [];
-    this.state.begin();
+    this.state.drop();
     this.print(frame());
-    // The one frame drawn, and so the one declaration made: logged as not sent.
+    // The one frame drawn, and so the one declaration made: logged as not
+    // sent. Nothing was shown, so there is nothing to take away after it.
     this.state.commit();
-    this.state.handBack();
   }
 }

@@ -23,7 +23,9 @@ import {
 } from "../../src/core/terminal-capabilities.js";
 import { identifyTerminal, type Intermediary } from "../../src/core/terminal-identity.js";
 import { EMPTY_TERMINAL_STATE, commitTerminalState, declaredState } from "../../src/core/terminal-state.js";
+import { App } from "../../src/host/app.js";
 import { Progress } from "../../src/renderables/progress.js";
+import { scriptedHost } from "../host/scripted-host.js";
 import { fakeClock } from "./fake-clock.js";
 
 describe("declaredState", () => {
@@ -139,7 +141,56 @@ describe("pick", () => {
   });
 });
 
+describe("a Progress in an App", () => {
+  const later = () => new Promise((resolve) => setTimeout(resolve));
+
+  async function run(writesToTerminal: boolean): Promise<{ log: TerminalSend[]; output: string }> {
+    const log: TerminalSend[] = [];
+    const host = { ...scriptedHost({ cols: 30, rows: 3 }), writesToTerminal };
+    let progress: Progress | undefined;
+    const app = new App({ host, surface: "inline", view: () => progress!, clock: fakeClock(0), terminalFeatures: { capabilities: declareCapabilities(["OSC 9;4"]), onSend: (send) => log.push(send) } });
+    progress = new Progress({ drawnBy: app });
+    progress.updateTask(progress.addTask("x", { total: 4 }), { completed: 1 });
+    void app.run();
+    await later();
+    app.stop();
+    await later();
+    return { log, output: host.output() };
+  }
+
+  it("mirrors its tasks in OSC 9;4, as one drawn by a Live does", async () => {
+    const { log, output } = await run(true);
+    expect(log.map((send) => send.bytes)).toEqual([`${ESC}]9;4;1;25${ESC}\\`, `${ESC}]9;4;0${ESC}\\`]);
+    expect(output).toContain(`${ESC}]9;4;1;25${ESC}\\`);
+  });
+
+  it("writes none of it to a host whose output is not a terminal", async () => {
+    const { log, output } = await run(false);
+    expect(output).not.toContain(`${ESC}]9;4`);
+    expect(log[0]?.reason).toMatch(/^not sent: not a terminal/);
+  });
+});
+
+describe("route", () => {
+  it("refuses a wrapped sequence a native layer would have to carry", () => {
+    const native = { ...encoding("ignored", "passthrough"), routes: { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "native" } as const };
+    const layers: Layer[] = [{ kind: "editor", passthrough: "declared" }, { kind: "tmux", passthrough: "declared" }];
+    const sent = pick({ name: "test", encodings: [native] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
+    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: editor does not pass a wrapped sequence" });
+  });
+
+  it("says a layer has no passthrough rather than blaming screen", () => {
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers: [{ kind: "zellij", passthrough: "declared" }] });
+    expect(sent.reason).toBe("fallback: TEST: zellij has no passthrough");
+  });
+});
+
 describe("identifyTerminal", () => {
+  it("takes no inherited LC_TERMINAL for iTerm2 where a terminal names itself (VS Code started from iTerm2)", () => {
+    expect(identifyTerminal({ TERM: "xterm-256color", TERM_PROGRAM: "vscode", LC_TERMINAL: "iTerm2" }).terminal).toBe("other");
+    expect(identifyTerminal({ TERM: "tmux-256color", TMUX: "/tmp/t", TERM_PROGRAM: "tmux", LC_TERMINAL: "iTerm2" }).terminal).toBe("iterm2");
+  });
+
   it.each(["constructor", "toString", "__proto__"])("names no terminal for TERM_PROGRAM=%s", (program) => {
     expect(identifyTerminal({ TERM: "xterm-256color", TERM_PROGRAM: program })).toEqual({ terminal: "other", intermediary: undefined, namedBy: undefined });
   });

@@ -160,12 +160,14 @@ export function route(sequence: string, encoding: Pick<Encoding<unknown>, "route
     const kind = encoding.routes[layer.kind];
     if (kind === "impossible") return { refused: `${layer.kind} does not pass it` };
     if (kind === "native") {
+      // A layer re-emits the sequence it reads, not another layer's envelope.
+      if (bytes !== sequence) return { refused: `${layer.kind} does not pass a wrapped sequence` };
       via.push(`${layer.kind} natively`);
       continue;
     }
     if (!passes(layer)) return { refused: `${layer.kind} passthrough is ${layer.passthrough}` };
     const wrapped = passthrough(bytes, layer.kind);
-    if (wrapped === undefined) return { refused: `through screen: ${byteLength(bytes)} bytes > ${SCREEN_STRING_MAX}` };
+    if (typeof wrapped !== "string") return wrapped;
     bytes = wrapped;
     via.push(`${layer.kind} passthrough`);
   }
@@ -173,19 +175,20 @@ export function route(sequence: string, encoding: Pick<Encoding<unknown>, "route
 }
 
 // tmux's DCS passthrough with every ESC doubled; screen's bare DCS, ending in
-// BEL since screen ends its DCS at the first ST, and nothing when it is longer
+// BEL since screen ends its DCS at the first ST, and refused when it is longer
 // than screen holds, which would leave the terminal in an unended OSC.
-function passthrough(sequence: string, kind: Intermediary): string | undefined {
+function passthrough(sequence: string, kind: Intermediary): string | { refused: string } {
   switch (kind) {
     case "tmux":
       return `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
     case "screen": {
       const inner = sequence.replaceAll(ST, "\x07");
-      return byteLength(inner) > SCREEN_STRING_MAX ? undefined : `${ESC}P${inner}${ST}`;
+      const length = byteLength(inner);
+      return length > SCREEN_STRING_MAX ? { refused: `through screen: ${length} bytes > ${SCREEN_STRING_MAX}` } : `${ESC}P${inner}${ST}`;
     }
     case "zellij":
     case "editor":
-      return undefined;
+      return { refused: `${kind} has no passthrough` };
   }
 }
 

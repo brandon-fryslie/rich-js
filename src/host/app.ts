@@ -264,7 +264,7 @@ export class App implements FrameHost {
     this.console = this.drawingConsole();
     // A console made again for new colors keeps these options, so the
     // painter's features are the same whichever console drew the frame.
-    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes), this.console.terminalFeatures);
+    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes), this.console.terminalFeatures, this.host.writesToTerminal);
   }
 
   /**

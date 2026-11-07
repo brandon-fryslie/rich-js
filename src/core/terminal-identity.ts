@@ -71,9 +71,11 @@ function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
   // iTerm2 sets LC_TERMINAL for its child, and ssh forwards LC_* where tmux's
   // TERM_PROGRAM and a remote shell's lose it. It counts beside iTerm2's own
   // TERM, or behind a multiplexer, whose pane has a TERM of its own: a
-  // terminal started from iTerm2 inherits the variable and sets another TERM.
+  // terminal started from iTerm2 inherits the variable and sets another TERM,
+  // or iTerm2's TERM and a TERM_PROGRAM of its own (VS Code's `vscode`).
   const lc = env["LC_TERMINAL"];
-  if (lc === "iTerm2" && (term === "xterm-256color" || intermediary === "tmux" || intermediary === "screen")) return ["iterm2", `LC_TERMINAL=${lc}`];
+  const ownProgram = program !== undefined && program !== "tmux";
+  if (lc === "iTerm2" && !ownProgram && (term === "xterm-256color" || intermediary === "tmux" || intermediary === "screen")) return ["iterm2", `LC_TERMINAL=${lc}`];
   if (program || env["TERMINAL_EMULATOR"] || env["KONSOLE_VERSION"]) return ["other", undefined];
   if (env["VTE_VERSION"] && term === "xterm-256color") return ["vte", `VTE_VERSION=${env["VTE_VERSION"]}`];
   // Windows Terminal (microsoft/terminal#538): a console there has no `TERM`, WSL has this one.
