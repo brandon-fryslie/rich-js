@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-600",
+      "ref": "refs/pull/600/merge",
+      "sha": "7712b15c3eb0ce941f8a959b7d16e01a0dd9011e",
+      "timestamp": "2026-11-07T09:35:29.427Z",
+      "commits": [
+        {
+          "sha": "7712b15c3eb0ce941f8a959b7d16e01a0dd9011e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T02:33:16-07:00",
+          "message": "Merge b5896c26891af8887756c4c8239419e982104b75 into 7bd2026865ac6724af99e798ed1b25c3bfe1238a\n"
+        },
+        {
+          "sha": "b5896c26891af8887756c4c8239419e982104b75",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T02:33:00-07:00",
+          "message": "The terminal identifies itself: askTerminalIdentity asks XTVERSION and raises what the env inferred to identified; tmux answers for itself, so no passthrough-wrapped probe is sent (tmux#5530); painters read features from their console; a replay host answers recorded probe sessions (rich-control-codes-xh4n.6ch.zgr)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7bd2026865ac6724af99e798ed1b25c3bfe1238a",
