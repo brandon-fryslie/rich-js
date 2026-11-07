@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-590",
+      "ref": "refs/pull/590/merge",
+      "sha": "0704e956ed0112cc91648ff8efdad7afe00df174",
+      "timestamp": "2026-11-07T00:40:01.999Z",
+      "commits": [
+        {
+          "sha": "0704e956ed0112cc91648ff8efdad7afe00df174",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:37:29Z",
+          "message": "Merge 3b88694e632a685cbeb3a31c810a73687ba2949f into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
+        },
+        {
+          "sha": "3b88694e632a685cbeb3a31c810a73687ba2949f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:37:19-07:00",
+          "message": "The lexer reads ground text as runs, and an open escape carries its lexeme index on its state (rich-control-codes-xh4n.gux review)\n"
+        },
+        {
+          "sha": "1ec3b047dd47a050cbddd218c257ebb03dacec33",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:24:44-07:00",
+          "message": "An escape the bytes end inside stays on the line it began, and the lexer's string stops are osc8's (rich-control-codes-xh4n.gux review)\n"
+        },
+        {
+          "sha": "ec73144849fac3cd5dfe9dcc5c6884c73f77d744",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:14:11-07:00",
+          "message": "decodeAnsi reads its bytes in one VT500 lexing pass that the line split, the link reader and every escape consume (rich-control-codes-xh4n.gux)\n\nA sequence a C0 control interrupts is now the sequence a terminal reads\nwherever it is read: a NEL or CNL so interrupted ends the line, an OSC 8\nan interrupted ESC introduces opens its link, and a CSI an ESC or C1\ncancels draws nothing. A cut-off string is a lexeme of its own, so no\ncontrol can land in its payload; escapeTokens, INTERRUPTED and\nOPEN_ESCAPE are gone.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-586",
       "ref": "refs/pull/586/merge",
       "sha": "5dd1030516712562ad3a54592e973c4dbe1a7a39",
@@ -34,35 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T08:38:27-07:00",
           "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-590",
-      "ref": "refs/pull/590/merge",
-      "sha": "9388f6c41a14872fd01e2310a69c4fb1198cca86",
-      "timestamp": "2026-11-07T00:27:14.348Z",
-      "commits": [
-        {
-          "sha": "9388f6c41a14872fd01e2310a69c4fb1198cca86",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:24:59Z",
-          "message": "Merge 1ec3b047dd47a050cbddd218c257ebb03dacec33 into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
-        },
-        {
-          "sha": "1ec3b047dd47a050cbddd218c257ebb03dacec33",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:24:44-07:00",
-          "message": "An escape the bytes end inside stays on the line it began, and the lexer's string stops are osc8's (rich-control-codes-xh4n.gux review)\n"
-        },
-        {
-          "sha": "ec73144849fac3cd5dfe9dcc5c6884c73f77d744",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:14:11-07:00",
-          "message": "decodeAnsi reads its bytes in one VT500 lexing pass that the line split, the link reader and every escape consume (rich-control-codes-xh4n.gux)\n\nA sequence a C0 control interrupts is now the sequence a terminal reads\nwherever it is read: a NEL or CNL so interrupted ends the line, an OSC 8\nan interrupted ESC introduces opens its link, and a CSI an ESC or C1\ncancels draws nothing. A cut-off string is a lexeme of its own, so no\ncontrol can land in its payload; escapeTokens, INTERRUPTED and\nOPEN_ESCAPE are gone.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     },
