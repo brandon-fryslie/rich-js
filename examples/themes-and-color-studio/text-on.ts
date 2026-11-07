@@ -19,7 +19,7 @@ import {
   Style,
   TEXT_FITS,
   TEXT_INTENTS,
-  textFloor,
+  floorOn,
   textOn,
   DRAWN_AT_TRUECOLOR,
   type ColorRgba,
@@ -71,7 +71,7 @@ function row(palette: Palette, intent: TextIntent, label: string, fit: TextFit):
     const text = textOn(palette, intent, ground, { fit, drawnAt: DRAWN_AT_TRUECOLOR });
     const bg = ColorSpec.fromRgba(ground);
     line.append("Aa", Style.fromColor(ColorSpec.fromRgba(text), bg));
-    line.append(readsOn(text, ground, textFloor(intent)) ? " " : "•", new Style({ color: "red", bold: true, bgcolor: bg }));
+    line.append(readsOn(text, ground, floorOn(intent, palette.get("foreground"), ground)) ? " " : "•", new Style({ color: "red", bold: true, bgcolor: bg }));
   }
   return line;
 }

@@ -22,7 +22,7 @@ for (const role of ["primary", "secondary", "accent", "error"] as const) {
 | intent | what it is | floor |
 |---|---|---|
 | `foreground` | the theme's text color | 4.5:1 |
-| `foreground-muted` | the theme's de-emphasized text | 3:1 |
+| `foreground-muted` | the theme's de-emphasized text | 3:1, and 0.25 past what `foreground-disabled` draws on the ground |
 | `foreground-disabled` | the theme's disabled text | none |
 | `text` | black or white at 87%, whichever reads on the ground | 4.5:1 |
 | `text-muted` | the same at 60% | 3:1 |
