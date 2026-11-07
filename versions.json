@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-594",
+      "ref": "refs/pull/594/merge",
+      "sha": "e297b85c5806bbf525ba355a822d4169c5357bba",
+      "timestamp": "2026-11-07T06:01:01.623Z",
+      "commits": [
+        {
+          "sha": "e297b85c5806bbf525ba355a822d4169c5357bba",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:58:45-07:00",
+          "message": "Merge fa8523dcc7b847228480e77458690895fd45aac9 into 26fcad51796093755a144e645a8c4841fbffb321\n"
+        },
+        {
+          "sha": "fa8523dcc7b847228480e77458690895fd45aac9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:58:34-07:00",
+          "message": "foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "26fcad51796093755a144e645a8c4841fbffb321",
