@@ -113,7 +113,7 @@ describe("pick", () => {
     const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
     const once = `${ESC}Ptmux;${ESC}${ESC}]x${ESC}${ESC}\\${ESC}\\`;
     expect(sent.bytes).toBe(`${ESC}Ptmux;${once.replaceAll(ESC, ESC + ESC)}${ESC}\\`);
-    expect(sent.reason).toBe("TEST through tmux passthrough, tmux passthrough: declared by the program declared, strict");
+    expect(sent.reason).toBe("TEST through tmux passthrough, tmux passthrough: declared by the program is declared, strict");
   });
 
   it("gives the layer the program writes to the outermost envelope, so tmux in screen is screen's DCS inside tmux's", () => {
@@ -121,7 +121,7 @@ describe("pick", () => {
     const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
     const forScreen = `${ESC}P${ESC}]x\x07${ESC}\\`;
     expect(sent.bytes).toBe(`${ESC}Ptmux;${forScreen.replaceAll(ESC, ESC + ESC)}${ESC}\\`);
-    expect(sent.reason).toBe("TEST through tmux passthrough, screen passthrough: declared by the program declared, strict");
+    expect(sent.reason).toBe("TEST through tmux passthrough, screen passthrough: declared by the program is declared, strict");
   });
 
   it("says why a sequence screen would cut is not sent", () => {
@@ -141,7 +141,7 @@ describe("pick", () => {
     const capabilities = inferCapabilities(identifyTerminal({ TERM: "xterm-256color", TERM_PROGRAM: "iTerm.app" })).capabilities;
     const sent = pick({ name: "test", encodings: [best, plain] }, "", { capabilities, policy: "bestGuess", layers: [] });
     expect(sent.bytes).toBe("plain");
-    expect(sent.reason).toBe("PLAIN: TERM_PROGRAM=iTerm.app inferred, bestGuess");
+    expect(sent.reason).toBe("PLAIN: TERM_PROGRAM=iTerm.app is inferred, bestGuess");
   });
 });
 
@@ -232,7 +232,7 @@ describe("a Progress's terminal indicator", () => {
   it("mirrors the tasks in OSC 9;4 on a terminal declared to read it, and takes it away on hand-back", () => {
     const log = run({ terminalFeatures: { capabilities: declareCapabilities(["OSC 9;4"]) } });
     expect(log.map((send) => send.bytes)).toEqual([`${ESC}]9;4;1;50${ESC}\\`, `${ESC}]9;4;0${ESC}\\`]);
-    expect(log[0]?.reason).toBe("OSC 9;4: declared by the program declared, strict");
+    expect(log[0]?.reason).toBe("OSC 9;4: declared by the program is declared, strict");
   });
 
   it("reaches the terminal through a tmux whose passthrough is declared on", () => {

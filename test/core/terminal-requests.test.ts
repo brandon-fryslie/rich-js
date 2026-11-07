@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { Console } from "../../src/core/console.js";
 import type { Env } from "../../src/core/env.js";
 import { identifyTerminal } from "../../src/core/terminal-identity.js";
+import { declareCapabilities, type TerminalSend } from "../../src/core/terminal-capabilities.js";
 
 const ESC = "\x1b";
 const ST = `${ESC}\\`;
@@ -28,6 +29,8 @@ function terminal(env: Env, options: ConstructorParameters<typeof Console>[0] = 
 const KITTY: Env = { TERM: "xterm-kitty" };
 const FOOT: Env = { TERM: "foot" };
 const ITERM: Env = { TERM: "xterm-256color", TERM_PROGRAM: "iTerm.app" };
+// What acts on the environment's word that the terminal is kitty or foot.
+const GUESS = { terminalFeatures: { policy: "bestGuess" } } as const;
 
 describe("Console.setWindowTitle", () => {
   it("writes OSC 2 with the title", () => {
@@ -67,13 +70,19 @@ describe("Console.notify", () => {
   });
 
   it("writes OSC 777 for foot, with a ; in the title kept out of the separator", () => {
-    const { console, written } = terminal(FOOT);
+    const { console, written } = terminal(FOOT, GUESS);
     console.notify("a;b", "c;d");
     expect(written()).toBe(`${ESC}]777;notify;a,b;c;d${ST}`);
   });
 
-  it("writes kitty's OSC 99, title then body under one id", () => {
+  it("writes OSC 9 for kitty on the environment's word alone, under strict", () => {
     const { console, written } = terminal(KITTY);
+    console.notify("Done");
+    expect(written()).toBe(`${ESC}]9;Done${ST}`);
+  });
+
+  it("writes kitty's OSC 99, title then body under one id", () => {
+    const { console, written } = terminal(KITTY, GUESS);
     console.notify("Done", "ok");
     const [first, second] = written().split(`${ESC}]99;`).slice(1);
     const id = /^i=(\w+):d=0;Done/.exec(first!)?.[1];
@@ -82,7 +91,7 @@ describe("Console.notify", () => {
   });
 
   it("gives each kitty notification its own id, so a second does not replace the first", () => {
-    const { console, written } = terminal(KITTY);
+    const { console, written } = terminal(KITTY, GUESS);
     console.notify("A");
     console.notify("B");
     const ids = [...written().matchAll(/99;i=(\w+);/g)].map((match) => match[1]);
@@ -106,9 +115,35 @@ describe("Console.notify", () => {
 describe("inside tmux", () => {
   // What tmux 3.2+ gives its panes: its own TERM and TERM_PROGRAM, whatever is outside.
   const TMUX: Env = { TERM: "tmux-256color", TERM_PROGRAM: "tmux", TMUX: "/tmp/tmux-501/default,1,0" };
+  // A program stating that tmux's `allow-passthrough` is on.
+  const PASSES = (kind: "tmux" | "screen") => ({ terminalFeatures: { layers: [{ kind, passthrough: "declared" }] } } as const);
+
+  it("sends none of them under strict when nothing says tmux passes them, and says why", () => {
+    const log: TerminalSend[] = [];
+    const { console, written } = terminal(TMUX, { terminalFeatures: { onSend: (send) => log.push(send) } });
+    console.copyToClipboard("x");
+    console.setPointerShape("text");
+    console.notify("n");
+    expect(written()).toBe("");
+    expect(log.map((send) => send.reason)).toEqual([
+      "fallback: OSC 52: tmux passthrough is unknown",
+      "fallback: OSC 22: tmux passthrough is unknown",
+      "fallback: OSC 99 ignored where unsupported; whether other reads it is unknown, strict; OSC 777 ignored where unsupported; whether other reads it is unknown, strict; OSC 9: tmux passthrough is unknown",
+    ]);
+  });
+
+  it("writes kitty's own notification through a tmux the program says passes it, and logs the route", () => {
+    const log: TerminalSend[] = [];
+    const { console, written } = terminal(TMUX, {
+      terminalFeatures: { capabilities: declareCapabilities([], "kitty"), layers: [{ kind: "tmux", passthrough: "declared" }], onSend: (send) => log.push(send) },
+    });
+    console.notify("n");
+    expect(written()).toMatch(new RegExp(`^${ESC}Ptmux;${ESC}${ESC}\\]99;i=\\w+;n${ESC}${ESC}\\\\${ESC}\\\\$`));
+    expect(log[0]?.reason).toBe("OSC 99 through tmux passthrough: declared by the program is declared, strict");
+  });
 
   it("wraps the clipboard and a notification in tmux's passthrough, every ESC inside doubled", () => {
-    const { console, written } = terminal(TMUX);
+    const { console, written } = terminal(TMUX, PASSES("tmux"));
     console.copyToClipboard("x");
     console.notify("n");
     const wrap = (sequence: string): string => `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
@@ -116,13 +151,13 @@ describe("inside tmux", () => {
   });
 
   it("wraps the pointer's shape in tmux's passthrough, which does not know OSC 22", () => {
-    const { console, written } = terminal(TMUX);
+    const { console, written } = terminal(TMUX, PASSES("tmux"));
     console.setPointerShape("pointer");
     expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]22;pointer${ESC}${ESC}\\${ST}`);
   });
 
   it("sends OSC 9 behind tmux whatever TERM tmux was told to set", () => {
-    const { console, written } = terminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" });
+    const { console, written } = terminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" }, PASSES("tmux"));
     console.notify("n");
     expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;n${ESC}${ESC}\\${ST}`);
   });
@@ -132,7 +167,7 @@ describe("inside tmux", () => {
   });
 
   it("sends nothing through screen that screen would cut", () => {
-    const { console, written } = terminal({ TERM: "screen", STY: "1.pts-0.host" });
+    const { console, written } = terminal({ TERM: "screen", STY: "1.pts-0.host" }, PASSES("screen"));
     console.copyToClipboard("x".repeat(600));
     expect(written()).toBe("");
     // 300 characters, 900 bytes.
@@ -147,7 +182,7 @@ describe("inside tmux", () => {
   });
 
   it("wraps a request inside screen in its bare passthrough", () => {
-    const { console, written } = terminal({ TERM: "screen", STY: "1.pts-0.host" });
+    const { console, written } = terminal({ TERM: "screen", STY: "1.pts-0.host" }, PASSES("screen"));
     console.copyToClipboard("x");
     expect(written()).toBe(`${ESC}P${ESC}]52;c;eA==\x07${ST}`);
   });

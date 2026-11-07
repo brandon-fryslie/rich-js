@@ -102,13 +102,19 @@ export interface TerminalSend {
   readonly reason: string;
 }
 
-/** One way to write a feature: a sequence, and what is known of who reads it. */
-export interface Encoding<A> {
+/**
+ * One way to write a feature: a sequence, and what is known of who reads it —
+ * the terminals known to, or `any`, for a sequence sent whatever the terminal
+ * because one without it ignores it, which the type allows only then.
+ */
+export type Encoding<A> = EncodingShape<A> & (
+  | { readonly terminals: readonly TerminalName[]; readonly failure: Failure }
+  | { readonly terminals: "any"; readonly failure: "ignored" }
+);
+
+interface EncodingShape<A> {
   /** How the send log names it, and how a program declares it: `"OSC 9;4"`. */
   readonly name: string;
-  /** The terminals known to read it. */
-  readonly terminals: readonly TerminalName[];
-  readonly failure: Failure;
   readonly routes: Readonly<Record<Intermediary, Route>>;
   encode(value: A): string;
 }
@@ -141,10 +147,15 @@ export function declareCapabilities(encodings: Iterable<string>, terminal: Termi
   return { terminal: { name: terminal, evidence: "declared", source: "declared by the program" }, declared: new Set(encodings) };
 }
 
-function supportOf(encoding: Encoding<unknown>, { terminal, declared }: TerminalCapabilities): { evidence: Evidence; source: string } {
-  if (declared.has(encoding.name)) return { evidence: "declared", source: "declared by the program" };
-  if (encoding.terminals.includes(terminal.name)) return { evidence: terminal.evidence, source: terminal.source };
-  return { evidence: "unknown", source: `${terminal.name} is not known to read it` };
+// What says the terminal reads `encoding`, and whether `policy` acts on it, in
+// the send log's words. An `any` encoding needs no fact about the terminal:
+// every policy acts on it, since one without it ignores it.
+function supportOf(encoding: Encoding<unknown>, { terminal, declared }: TerminalCapabilities, policy: TerminalPolicy): { accepted: boolean; why: string } {
+  const weighed = (evidence: Evidence, source: string) => ({ accepted: accepts(policy, evidence, encoding.failure), why: `${source} is ${evidence}, ${policy}` });
+  if (declared.has(encoding.name)) return weighed("declared", "declared by the program");
+  if (encoding.terminals === "any") return { accepted: true, why: "sent to any terminal, ignored where unread" };
+  if (encoding.terminals.includes(terminal.name)) return weighed(terminal.evidence, terminal.source);
+  return weighed("unknown", `whether ${terminal.name} reads it`);
 }
 
 /**
@@ -208,9 +219,9 @@ export function pick<A>(feature: TerminalFeature<A>, value: A, features: Pick<Te
   const { capabilities, policy, layers } = features;
   const refusals: string[] = [];
   for (const encoding of feature.encodings) {
-    const support = supportOf(encoding, capabilities);
-    if (!accepts(policy, support.evidence, encoding.failure)) {
-      refusals.push(`${encoding.name} ${encoding.failure} where unsupported; ${support.source} is ${support.evidence}, ${policy}`);
+    const support = supportOf(encoding, capabilities, policy);
+    if (!support.accepted) {
+      refusals.push(`${encoding.name} ${encoding.failure} where unsupported; ${support.why}`);
       continue;
     }
     // A closed passthrough drops the envelope (tmux's `allow-passthrough off`):
@@ -220,7 +231,7 @@ export function pick<A>(feature: TerminalFeature<A>, value: A, features: Pick<Te
       refusals.push(`${encoding.name}: ${routed.refused}`);
       continue;
     }
-    return { feature: feature.name, bytes: routed.bytes, reason: `${encoding.name}${routed.via}: ${support.source} ${support.evidence}, ${policy}` };
+    return { feature: feature.name, bytes: routed.bytes, reason: `${encoding.name}${routed.via}: ${support.why}` };
   }
   return { feature: feature.name, bytes: undefined, reason: `fallback: ${refusals.join("; ")}` };
 }

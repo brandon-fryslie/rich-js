@@ -28,7 +28,10 @@ weighs the two:
 
 OSC 9;4 progress is `misread` where it is unsupported: bare OSC 9 is a
 notification, so a terminal that lacks 9;4 would pop up "4;1;50". On the
-environment's word alone it is therefore never sent.
+environment's word alone it is therefore never sent. OSC 52 (clipboard), OSC
+22 (pointer shape) and OSC 9 (notification) go the other way: a terminal
+without them ignores them, so they are sent whatever the terminal is, under
+either policy, wherever the layers let them through.
 
 ## Layers
 
