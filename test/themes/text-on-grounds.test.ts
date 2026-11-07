@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { contrastRatio } from "../../src/core/color.js";
+import { PALETTE_ROLES } from "../../src/themes/buildPalette.js";
 import type { Palette } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import { textOn } from "../../src/themes/text-on.js";
@@ -42,5 +43,19 @@ describe("foreground-muted on the three grounds", () => {
   it.each(cases)("foreground-muted reads 0.25 past the disabled text drawn on $ground in $source", ({ palette, ground }) => {
     const on = (intent: "foreground-muted" | "foreground-disabled"): number => contrastRatio(textOn(palette, intent, palette.get(ground)), palette.get(ground));
     expect(on("foreground-muted")).toBeGreaterThanOrEqual(on("foreground-disabled") + 0.25);
+  });
+});
+
+// `textOn` draws muted and disabled text on any ground — a button, a cursor, a
+// ladder rung — so the ordering holds on every color a palette names, not the three alone.
+describe("foreground-muted past foreground-disabled on every ground", () => {
+  const cases = palettes.map(([source, palette]) => ({ source, palette }));
+  it.each(cases)("in $source", ({ palette }) => {
+    const misses = PALETTE_ROLES.flatMap((role) => {
+      const ground = palette.get(role).compositeOver(palette.get("background"));
+      const on = (intent: "foreground-muted" | "foreground-disabled"): number => contrastRatio(textOn(palette, intent, ground), ground);
+      return on("foreground-muted") >= on("foreground-disabled") + 0.25 - 1e-9 ? [] : [`${role}: ${on("foreground-muted").toFixed(3)} vs ${on("foreground-disabled").toFixed(3)}`];
+    });
+    expect(misses).toEqual([]);
   });
 });

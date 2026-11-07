@@ -1,7 +1,7 @@
 import { ColorRgba, blendRgb, contrastRatio, relativeLuminance } from "../core/color.js";
 import { alphaBlend, contrastFor, ensureContrastToward, shiftLightness } from "./colorMath.js";
 import { Palette, drawnOn, type AccentRole, type BaseRole, type PaletteRole, type PaletteRoles, type Shade, type ShadedRole } from "./palette.js";
-import { disabledInk, groundRelativeHint, neutralText, textFloor, withAlpha, type NeutralIntent } from "./text-on.js";
+import { disabledInk, floorOn, groundRelativeHint, neutralText, textFloor, withAlpha, type NeutralIntent } from "./text-on.js";
 
 /**
  * Base colors required to build a full semantic palette.
@@ -237,9 +237,6 @@ const RULES: { readonly [R in Exclude<PaletteRole, BaseRole>]: Rule } = {
   "scrollbar-corner-color": same("scrollbar-background"),
 };
 
-/** How much more contrast muted text holds on a ground than disabled text draws there. */
-const MUTED_OVER_DISABLED = 0.25;
-
 export const BASE_KEYS: readonly BaseRole[] = [...ACCENT_KEYS, "background", "foreground"];
 
 /** Every role of every palette, read off the rules. */
@@ -281,12 +278,9 @@ export function buildPalette(name: string, dark: boolean, given: StatedRoles): P
     const muted = at(`${key}-muted`).compositeOver(at("background"));
     known.set(`text-${key}`, heldOn(at(`text-${key}`), [...grounds, muted], () => textFloor(`text-${key}`), side));
   }
-  // Muted is secondary text and disabled is text that cannot be used, so on
-  // each ground muted is held past the disabled text `textOn` draws there —
-  // foreground's tint, never the stated role.
-  const disabled = disabledInk(at("foreground"));
-  const mutedFloor = (ground: ColorRgba): number =>
-    Math.max(textFloor("foreground-muted"), contrastRatio(disabled.compositeOver(ground), ground) + MUTED_OVER_DISABLED);
+  // Muted is held past the disabled text `textOn` draws on each ground —
+  // foreground's tint, never the stated role — at the floor `textOn` holds it to.
+  const mutedFloor = (ground: ColorRgba): number => floorOn("foreground-muted", at("foreground"), ground);
   known.set("foreground-muted", heldOn(at("foreground-muted"), grounds, mutedFloor, side));
   return new Palette(name, dark, Object.fromEntries(PALETTE_ROLES.map((role) => [role, at(role)])) as PaletteRoles);
 }
