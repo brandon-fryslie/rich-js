@@ -2,38 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-594",
-      "ref": "refs/pull/594/merge",
-      "sha": "098d225af20443d256480587d7362b0057560f30",
-      "timestamp": "2026-11-07T06:15:16.130Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "f956e44774e89083fad22c344a844ad11160747e",
+      "timestamp": "2026-11-07T06:18:06.786Z",
       "commits": [
         {
-          "sha": "098d225af20443d256480587d7362b0057560f30",
+          "sha": "f956e44774e89083fad22c344a844ad11160747e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T06:13:17Z",
-          "message": "Merge e354ca2110ecbb174729a9200d0cc3d6108a0aa2 into 26fcad51796093755a144e645a8c4841fbffb321\n"
-        },
-        {
-          "sha": "e354ca2110ecbb174729a9200d0cc3d6108a0aa2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:13:01-07:00",
-          "message": "Docs: muted's ordering past disabled is held at truecolor (rich-palette-xovz.227)\n"
-        },
-        {
-          "sha": "5badf038ea61270e5e07c555ad7f163a90d20ab7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:08:30-07:00",
-          "message": "Review: floorOn is the public floor, keyed by heldPast's type; docs state muted's ordering; indexed depths deferred to qg7 (rich-palette-xovz.227)\n"
-        },
-        {
-          "sha": "fa8523dcc7b847228480e77458690895fd45aac9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:58:34-07:00",
-          "message": "foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227)\n"
+          "timestamp": "2026-11-06T23:16:11-07:00",
+          "message": "foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227) (#594)\n\n* foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227)\n\n* Review: floorOn is the public floor, keyed by heldPast's type; docs state muted's ordering; indexed depths deferred to qg7 (rich-palette-xovz.227)\n\n* Docs: muted's ordering past disabled is held at truecolor (rich-palette-xovz.227)"
         }
       ]
     },
@@ -70,21 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T22:35:38-07:00",
           "message": "A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "26fcad51796093755a144e645a8c4841fbffb321",
-      "timestamp": "2026-11-07T05:56:57.963Z",
-      "commits": [
-        {
-          "sha": "26fcad51796093755a144e645a8c4841fbffb321",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:54:36-07:00",
-          "message": "A derived palette's foreground-muted reads stronger than its foreground-disabled, on every bundled base (rich-unfiled-791c.tofk) (#592)\n\n* A derived palette's foreground-muted reads stronger than its foreground-disabled, on every bundled base (rich-unfiled-791c.tofk)\n\n* foreground-muted is held past foreground-disabled on every ground it is held on, derived and authored alike (rich-unfiled-791c.tofk)\n\n* foreground-muted is ordered against the disabled text textOn draws, and held no stronger than foreground (rich-unfiled-791c.tofk)\n\n* foreground-muted's per-ground floor reads the one disabledInk textOn draws; the ordering is tested with its margin beside the 3:1 floor (rich-unfiled-791c.tofk)"
         }
       ]
     }
