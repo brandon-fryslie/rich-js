@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-593",
+      "ref": "refs/pull/593/merge",
+      "sha": "e6c6e5e4b760e5c2d623e492e36cb16002f6ed69",
+      "timestamp": "2026-11-07T05:51:07.818Z",
+      "commits": [
+        {
+          "sha": "e6c6e5e4b760e5c2d623e492e36cb16002f6ed69",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:49:15Z",
+          "message": "Merge e113f9acdfd6efa81c67457ccfa30958a73e4ae2 into 5571ed0e73f74691307c8cf1ffafa4832709aff5\n"
+        },
+        {
+          "sha": "e113f9acdfd6efa81c67457ccfa30958a73e4ae2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:49:03-07:00",
+          "message": "A holder that sets its own rows settles them, and one that splices rows fills them first (rich-control-codes-xh4n.yws)\n\nReview of #593: a Tree's root label and a Syntax line moved to the right\nedge under a filler; a change between two right-to-left texts and a row\nunder an open overlay lost their place mid-transition; the caret was found\nbefore the leading fill. Tree and Syntax settle their rows, ChangeFrame and\nWidgetApp fill before splicing, paint finds the caret on the placed row,\nand leadingFill walks a row once without allocating.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "a8a807a9ee565abaf3afbe89070d113fd2ec6454",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:35:38-07:00",
+          "message": "A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-592",
       "ref": "refs/pull/592/merge",
       "sha": "dc1814966522d0ae3819f0625971095dbdaddbbc",
@@ -41,28 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T18:59:08-07:00",
           "message": "A derived palette's foreground-muted reads stronger than its foreground-disabled, on every bundled base (rich-unfiled-791c.tofk)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-593",
-      "ref": "refs/pull/593/merge",
-      "sha": "6d7e7373f83a9a2fd173a6ce92cdc68e0544a396",
-      "timestamp": "2026-11-07T05:39:31.242Z",
-      "commits": [
-        {
-          "sha": "6d7e7373f83a9a2fd173a6ce92cdc68e0544a396",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:36:55-07:00",
-          "message": "Merge a8a807a9ee565abaf3afbe89070d113fd2ec6454 into 5571ed0e73f74691307c8cf1ffafa4832709aff5\n"
-        },
-        {
-          "sha": "a8a807a9ee565abaf3afbe89070d113fd2ec6454",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:35:38-07:00",
-          "message": "A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     },
