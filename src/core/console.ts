@@ -470,7 +470,7 @@ export class Console {
         reducedMotion: options?.reducedMotion,
         textOrder: options?.textOrder ?? textOrderOf({ terminal: this._features.capabilities.terminal.name, between: this._features.layers.length > 0, attended: this._attended }),
         // Decided once: every run's underline is encoded for this answer.
-        underlines: underlineSupport(this._features, (send) => this._features.onSend?.(send)),
+        underlines: underlineSupport(this._features),
       },
     );
     // [LAW:single-enforcer] The console's one override, an explicit

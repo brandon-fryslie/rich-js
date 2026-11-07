@@ -647,9 +647,11 @@ function colorArguments([kind = "", ...args]: readonly string[]): number[] {
   return [kind, ...args.slice(slot ? 1 : 0, end)].map(parameter);
 }
 
-// What `4:n` sets, by `n`: none, or a kind — `UNDERLINE`'s own codes for the
-// styled ones, and 4:1 and 4:2 for the kinds 4 and 21 also spell.
-const UNDERLINE_SUBS: readonly Underline[] = [false, "single", "double", ...UNDERLINE_KINDS.filter((kind) => UNDERLINE[kind].sgr.startsWith("4:")).sort((a, b) => UNDERLINE[a].sgr.localeCompare(UNDERLINE[b].sgr))];
+// What `4:n` sets, by `n`: none at 0, else the kind whose `sub` is `n`.
+const UNDERLINE_SUBS: ReadonlyMap<number, Underline> = new Map<number, Underline>([
+  [0, false],
+  ...UNDERLINE_KINDS.map((kind): [number, Underline] => [UNDERLINE[kind].sub, kind]),
+]);
 
 /**
  * A code carrying colon sub-parameters, as the operation and arguments it
@@ -660,7 +662,7 @@ const UNDERLINE_SUBS: readonly Underline[] = [false, "single", "double", ...UNDE
 function subCode(code: number, subs: readonly string[]): readonly [SgrOp, number[]] | undefined {
   if (code === 38 || code === 48 || code === 58) return [SGR_OPS.get(code)!, colorArguments(subs)];
   if (code !== 4) return undefined;
-  const underline = UNDERLINE_SUBS[parameter(subs[0] ?? "")];
+  const underline = UNDERLINE_SUBS.get(parameter(subs[0] ?? ""));
   return underline === undefined ? undefined : [adding({ underline }), []];
 }
 

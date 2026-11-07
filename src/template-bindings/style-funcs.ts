@@ -61,7 +61,7 @@ function attrFunc(style: Style): TemplateFunc {
 // sink takes the union. The type of each slot is exactly the set of values that
 // slot can mean something for.
 
-function colorSinkFunc(slot: "color" | "bgcolor"): TemplateFunc {
+function colorSinkFunc(slot: "color" | "bgcolor" | "underlineColor"): TemplateFunc {
   return {
     fn: ((spec: string, child: unknown) =>
       applyStyleToFragment(
@@ -183,6 +183,7 @@ export function richTextStyleFuncs(): FuncMap {
   return {
     fg: colorSinkFunc("color"),
     bg: colorSinkFunc("bgcolor"),
+    underlineColor: colorSinkFunc("underlineColor"),
     ...attributeFuncs(),
     link: linkFunc,
     style: styleSpecFunc,

@@ -55,7 +55,7 @@ export type UnderlineKind = (typeof UNDERLINE_KINDS)[number];
 export type Underline = UnderlineKind | false | undefined;
 
 /**
- * Each underline kind's SGR code, the word a definition spells it with, and
+ * Each underline kind's SGR code, its `n` in kitty's `4:n`, the word a definition spells it with, and
  * the attribute its code is written after — Rich's order, where `21` follows
  * `9` — so a byte pinned against the reference holds. A curly, dotted or
  * dashed one is kitty's `4:n`, which a terminal without it gets as `4`
@@ -64,12 +64,12 @@ export type Underline = UnderlineKind | false | undefined;
  * [LAW:one-source-of-truth] The encoder, `decodeAnsi`, `Style.parse`,
  * `Style.toString` and the template bindings all read this table.
  */
-export const UNDERLINE: Readonly<Record<UnderlineKind, { readonly sgr: string; readonly spelling: string; readonly after: AttributeName }>> = {
-  single: { sgr: "4", spelling: "underline", after: "italic" },
-  double: { sgr: "21", spelling: "doubleUnderline", after: "strike" },
-  curly: { sgr: "4:3", spelling: "curlyUnderline", after: "italic" },
-  dotted: { sgr: "4:4", spelling: "dottedUnderline", after: "italic" },
-  dashed: { sgr: "4:5", spelling: "dashedUnderline", after: "italic" },
+export const UNDERLINE: Readonly<Record<UnderlineKind, { readonly sgr: string; readonly sub: number; readonly spelling: string; readonly after: AttributeName }>> = {
+  single: { sgr: "4", sub: 1, spelling: "underline", after: "italic" },
+  double: { sgr: "21", sub: 2, spelling: "doubleUnderline", after: "strike" },
+  curly: { sgr: "4:3", sub: 3, spelling: "curlyUnderline", after: "italic" },
+  dotted: { sgr: "4:4", sub: 4, spelling: "dottedUnderline", after: "italic" },
+  dashed: { sgr: "4:5", sub: 5, spelling: "dashedUnderline", after: "italic" },
 };
 
 /** Every word a definition may spell an underline with, the short ones included, and its kind. */
@@ -401,7 +401,7 @@ export class Style {
   }
 
   get withoutColor(): Style {
-    return this.with({ color: undefined, bgcolor: undefined });
+    return this.with({ color: undefined, bgcolor: undefined, underlineColor: undefined });
   }
 
 
@@ -611,15 +611,18 @@ export class Style {
     const drawn = this.drawnColors(colorSystem);
     const underline = this.drawnUnderline(underlines);
     const after = underline === undefined ? undefined : UNDERLINE[underline].after;
-    return [
-      ...ATTRIBUTE_NAMES.flatMap((name) => [
-        ...(this[name] === true ? [`${ATTRIBUTE_SGR[name]}`] : []),
-        ...(name === after ? [UNDERLINE[underline!].sgr] : []),
-      ]),
-      ...(drawn.color?.getAnsiCodes(true) ?? []),
-      ...(drawn.bgcolor?.getAnsiCodes(false) ?? []),
-      ...(underlines.color && underline !== undefined && drawn.underlineColor !== undefined ? [drawn.underlineColor.getUnderlineCode()] : []),
-    ].join(";");
+    // A plain loop: this runs for every segment written, so it builds one array.
+    const codes: string[] = [];
+    for (const name of ATTRIBUTE_NAMES) {
+      if (this[name] === true) codes.push(`${ATTRIBUTE_SGR[name]}`);
+      if (name === after) codes.push(UNDERLINE[underline!].sgr);
+    }
+    if (drawn.color) codes.push(...drawn.color.getAnsiCodes(true));
+    if (drawn.bgcolor) codes.push(...drawn.bgcolor.getAnsiCodes(false));
+    if (underlines.color && underline !== undefined && drawn.underlineColor !== undefined) {
+      codes.push(drawn.underlineColor.getUnderlineCode());
+    }
+    return codes.join(";");
   }
 
   /**
@@ -1013,6 +1016,7 @@ export const DEFAULT_STYLES: Readonly<Record<string, Style>> = {
   reset: new Style({
     color: ColorSpec.default(),
     bgcolor: ColorSpec.default(),
+    underlineColor: ColorSpec.default(),
     bold: false,
     dim: false,
     italic: false,

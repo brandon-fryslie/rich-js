@@ -8,10 +8,7 @@ import { Console } from "../../src/core/console.js";
 import type { Env } from "../../src/core/env.js";
 import { identifyTerminal } from "../../src/core/terminal-identity.js";
 import { declareCapabilities, type TerminalSend } from "../../src/core/terminal-capabilities.js";
-import { UNDERLINE_COLOR, UNDERLINE_STYLE } from "../../src/core/style-effects.js";
 
-// What a console decides of its underlines when it is made, which these logs are not about.
-const UNDERLINE_FEATURES = new Set([UNDERLINE_STYLE.name, UNDERLINE_COLOR.name]);
 
 const ESC = "\x1b";
 const ST = `${ESC}\\`;
@@ -144,7 +141,7 @@ describe("inside tmux", () => {
 
   it("sends none of them under strict when nothing says tmux passes them, and says why", () => {
     const log: TerminalSend[] = [];
-    const { console, written } = terminal(TMUX, { terminalFeatures: { onSend: (send) => void (UNDERLINE_FEATURES.has(send.feature) || log.push(send)) } });
+    const { console, written } = terminal(TMUX, { terminalFeatures: { onSend: (send) => void log.push(send) } });
     console.copyToClipboard("x");
     console.setPointerShape("text");
     console.notify("n");
@@ -159,7 +156,7 @@ describe("inside tmux", () => {
   it("writes kitty's own notification through a tmux the program says passes it, and logs the route", () => {
     const log: TerminalSend[] = [];
     const { console, written } = terminal(TMUX, {
-      terminalFeatures: { capabilities: declareCapabilities([], "kitty"), layers: [{ kind: "tmux", passthrough: "declared" }], onSend: (send) => void (UNDERLINE_FEATURES.has(send.feature) || log.push(send)) },
+      terminalFeatures: { capabilities: declareCapabilities([], "kitty"), layers: [{ kind: "tmux", passthrough: "declared" }], onSend: (send) => void log.push(send) },
     });
     console.notify("n");
     expect(written()).toMatch(new RegExp(`^${ESC}Ptmux;${ESC}${ESC}\\]99;i=\\w+;n${ESC}${ESC}\\\\${ESC}\\\\$`));

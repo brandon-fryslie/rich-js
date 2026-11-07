@@ -60,8 +60,12 @@ for (const style of ["red on white", "#ff0000 on #ffffff", "bold cyan on dark_bl
 A terminal draws one underline under a cell, so a style holds one: `underline` (`u`), `doubleUnderline` (`uu`), `curlyUnderline`, `dottedUnderline` or `dashedUnderline`. A style laid over another replaces its underline whole, and `not` with any of the five spellings means no underline at all, so `not dottedUnderline` also removes a plain one. `underlineColor` takes a color for the line alone; without it the line is drawn in the text's color.
 
 ```typescript
+import { Console, declareCapabilities } from "@promptctl/rich-js";
+
+// The example terminal draws them, so say so: a console sends them only where it is told.
+const drawing = new Console({ terminalFeatures: { capabilities: declareCapabilities(["SGR 4:n", "SGR 58"]) } });
 for (const style of ["curlyUnderline underlineColor red", "dottedUnderline", "dashedUnderline cyan", "doubleUnderline underlineColor #ffaa00"]) {
-  console.print(` ${style} `, { style, highlight: false });
+  drawing.print(` ${style} `, { style, highlight: false });
 }
 ```
 

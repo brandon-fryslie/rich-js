@@ -38,8 +38,10 @@ const ASCII_GUIDES: GuideGlyphs = { fork: "+-- ", end: "`-- ", continue: "|   ",
  * The guide attributes a glyph set stands for, switched off on the guide itself
  * as Rich's `remove_guide_styles` does: a bold guide is drawn heavy, not bold.
  */
+const NOT_BOLD = new Style({ bold: false });
+const NOT_BOLD_NOR_DOUBLE = new Style({ bold: false, underline: false });
 function removeGuideStyles(style: Style): Style {
-  return style.add(new Style({ bold: false, underline: style.underline === "double" ? false : undefined }));
+  return style.add(style.underline === "double" ? NOT_BOLD_NOR_DOUBLE : NOT_BOLD);
 }
 
 const guideGlyphs = (glyphs: GuideGlyphs): string => Object.values(glyphs).join("");

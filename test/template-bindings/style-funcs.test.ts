@@ -111,6 +111,14 @@ describe("fg / bg accept the whole ColorSpec vocabulary", () => {
     expect(baseStyleOf(evalOne(`{{ bg "color(42)" "x" }}`)).bgcolor?.name).toBe("color(42)");
   });
 
+  it("underlineColor paints the underline's own slot, leaving both colors untouched", () => {
+    const style = baseStyleOf(evalOne(`{{ curlyUnderline (underlineColor "#ff0000" "x") }}`));
+    expect(style.underlineColor?.name).toBe("#ff0000");
+    expect(style.underline).toBe("curly");
+    expect(style.color).toBeUndefined();
+    expect(style.bgcolor).toBeUndefined();
+  });
+
   it("a spec ColorSpec.parse rejects fails loudly at the sink", () => {
     expect(() => evalOne(`{{ fg "notarealcolour" "x" }}`)).toThrowError(/parse color/i);
   });

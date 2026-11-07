@@ -18,7 +18,7 @@
  */
 
 import type { UnderlineSupport } from "./color.js";
-import { pick, type Failure, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
+import { pick, type Failure, type TerminalFeature, type TerminalFeatures } from "./terminal-capabilities.js";
 import type { TerminalName } from "./terminal-identity.js";
 import { UNDERLINE } from "./style.js";
 
@@ -27,9 +27,11 @@ const CSI = "\x1b[";
 const PARSED = { tmux: "native", screen: "impossible", zellij: "native", editor: "impossible" } as const;
 
 // kitty's colon underline: kitty, WezTerm, foot, Ghostty, Alacritty (0.12),
-// iTerm2 (3.5) and VTE (0.52) read both.
+// Windows Terminal (1.20, Microsoft's release notes), iTerm2 (3.5) and VTE
+// (0.52) read both. Only the Windows Terminal version is checked against its
+// release notes; the others are not.
 const READERS: { readonly terminals: readonly TerminalName[]; readonly failure: Failure } = {
-  terminals: ["kitty", "wezterm", "foot", "ghostty", "alacritty", "iterm2", "vte"],
+  terminals: ["kitty", "wezterm", "foot", "ghostty", "alacritty", "windows-terminal", "iterm2", "vte"],
   failure: "misread",
 };
 
@@ -46,14 +48,11 @@ export const UNDERLINE_COLOR: TerminalFeature<void> = {
 };
 
 /**
- * What `features` lets a destination draw of an underline, each decision
- * handed to `log` with its reason.
+ * What `features` lets a destination draw of an underline. Not a send, so not
+ * in the send log (`TerminalFeatures.onSend` holds bytes written): the
+ * decision is held on the destination, `OutputTarget.underlines`.
  */
-export function underlineSupport(features: Pick<TerminalFeatures, "capabilities" | "policy" | "layers">, log: (send: TerminalSend) => void): UnderlineSupport {
-  const decided = (feature: TerminalFeature<void>): boolean => {
-    const send = pick(feature, undefined, features);
-    log(send);
-    return send.bytes !== undefined;
-  };
+export function underlineSupport(features: Pick<TerminalFeatures, "capabilities" | "policy" | "layers">): UnderlineSupport {
+  const decided = (feature: TerminalFeature<void>): boolean => pick(feature, undefined, features).bytes !== undefined;
   return { styles: decided(UNDERLINE_STYLE), color: decided(UNDERLINE_COLOR) };
 }

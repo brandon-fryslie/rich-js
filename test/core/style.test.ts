@@ -725,6 +725,15 @@ describe("withoutColor", () => {
     expect(noColor.italic).toBe(true);
   });
 
+  it("removes the underline's color too, keeping the underline", () => {
+    expect(Style.parse("red underlineColor blue curlyUnderline").withoutColor.toString()).toBe("curlyUnderline");
+  });
+
+  it("beside reset, which takes an inherited underline color back to the glyph's", () => {
+    const after = Style.parse("underline underlineColor red").add(DEFAULT_STYLES["reset"]!).add(Style.parse("underline"));
+    expect(after.underlineColor?.isDefault).toBe(true);
+  });
+
   it("preserves link and meta", () => {
     const s = new Style({
       color: "red",

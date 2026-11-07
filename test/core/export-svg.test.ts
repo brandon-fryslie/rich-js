@@ -128,7 +128,7 @@ describe("encodeSvg looks", () => {
     expect(styled("rapidBlink")).toContain("animation:rich-svg-blink 0.5s step-end infinite");
     expect(styled("none")).not.toContain("animation:");
     expect(styled("none")).toContain(
-      "@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{fill:transparent}}}",
+      "@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{opacity:0}}}",
     );
   });
 

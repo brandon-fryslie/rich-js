@@ -1539,8 +1539,18 @@ export interface Blink {
  */
 export function blink({ attribute, off, on }: Blink): Effect {
   const rhythm = stepSequence([off, on]);
-  const frames: readonly EffectFrame[] = [(look) => look, (look) => ({ ...look, attributes: { ...look.attributes, [attribute]: true } })];
+  const frames: readonly EffectFrame[] = [(look) => look, (look) => ({ ...look, attributes: turnedOn(look.attributes, attribute) })];
   return () => Animation.map(rhythm, (i) => frames[i]!);
+}
+
+/**
+ * `attributes` with `name` on. An underline on is a kind: the one the cell
+ * already draws, so a curly one blinks curly, or a single one.
+ */
+function turnedOn(attributes: CellAttributes, name: keyof CellAttributes): CellAttributes {
+  return name === "underline"
+    ? { ...attributes, underline: attributes.underline || "single" }
+    : { ...attributes, [name]: true };
 }
 
 /** The names of the effects that move an attribute. */

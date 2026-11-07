@@ -350,7 +350,7 @@ export class Recolored implements Renderable, Measurable {
     for (const run of runs) {
       const placed = base.shiftedBy(offset);
       const shifted = sameAttributes(run.attributes, attributes) ? placed : placed.withAttributes(cellAttributes(run.attributes));
-      const style = writesAlike(run.drawn, wire) ? shifted : shifted.add(Style.fromColor(run.drawn.color, run.drawn.bgcolor));
+      const style = writesAlike(run.drawn, wire) ? shifted : repainted(shifted, run.drawn, wire);
       yield new Segment(run.text, style);
       offset += run.cells;
     }
@@ -436,7 +436,7 @@ export class Recolored implements Renderable, Measurable {
       color: written(colors.color, was.color, wire.color, drawn.color, rounded.color),
       bgcolor: written(colors.bgcolor, was.bgcolor, wire.bgcolor, drawn.bgcolor, rounded.bgcolor),
     };
-    return new Segment(segment.text, writesAlike(writes, wire) ? style : style.add(Style.fromColor(writes.color, writes.bgcolor)));
+    return new Segment(segment.text, writesAlike(writes, wire) ? style : repainted(style, writes, wire));
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -796,6 +796,18 @@ function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, termina
  * the default color: it writes nothing, so a style a container lays beneath
  * (`Segment.applyStyle`) still shows through it, where `39`/`49` would not.
  */
+const GLYPH_UNDERLINE = new Style({ underlineColor: ColorSpec.default() });
+
+/**
+ * `style` drawn in the colors an effect moved it to. An underline colored
+ * apart from the glyph is ink too: once the effect moves the glyph's ink, the
+ * line is drawn in it, so a cell faded to the ground leaves no line behind.
+ */
+function repainted(style: Style, writes: DrawnColors, wire: DrawnColors): Style {
+  const moved = style.add(Style.fromColor(writes.color, writes.bgcolor));
+  return slotWritesAlike(writes.color, wire.color, true) ? moved : moved.add(GLYPH_UNDERLINE);
+}
+
 function writesAlike(a: DrawnColors, b: DrawnColors): boolean {
   return slotWritesAlike(a.color, b.color, true) && slotWritesAlike(a.bgcolor, b.bgcolor, false);
 }

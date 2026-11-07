@@ -211,8 +211,9 @@ function textSvg({ text, column, cells }: Chunk, baseline: number, inVisualOrder
 
 /**
  * One run: its glyphs, then its lines and outline over them, in a group whose
- * class carries the look — so the lines take the glyph's `fill` and blink
- * with it. The outline is a stroke, so it names its color itself.
+ * class carries the look — so the lines take the glyph's `fill`, and blink
+ * with it as the group's opacity, whatever paint a line names itself. The
+ * outline is a stroke, so it names its color itself.
  */
 function runSvg(run: PlacedRun, className: string): string {
   const { look } = run;
@@ -284,7 +285,8 @@ export function encodeSvg(segments: Iterable<Segment>, { theme, title, width }: 
     `.${id}-title{font-size:18px;font-weight:bold;font-family:arial}`,
     ...rules.map((css) => `.${classOf(css)}{${css}}`),
     // Blink only for a reader who has not asked for reduced motion, as in HTML.
-    `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{fill:transparent}}}`,
+    // Opacity, not fill: a colored or stroked underline names its own paint.
+    `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{opacity:0}}}`,
   ].join("\n");
 
   return [

@@ -22,7 +22,7 @@
 .terminal-5740ff2e-r18{fill:#8844cc}
 .terminal-5740ff2e-r19{fill:#33004d}
 .terminal-5740ff2e-r20{fill:#008080}
-@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{fill:transparent}}}
+@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{opacity:0}}}
 </style>
 <rect fill="#000000" stroke="#595959" stroke-width="1" x="1" y="1" width="602" height="609.2" rx="8"/>
 <text class="terminal-5740ff2e-title" fill="#ffffff" text-anchor="middle" x="302" y="27">export golden</text>

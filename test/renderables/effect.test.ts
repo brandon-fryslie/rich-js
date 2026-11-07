@@ -323,6 +323,23 @@ describe("Effected — attributes", () => {
     expect(() => [...effected(fixed(new Segment("ab")), colorsOnly).render({ maxWidth: 10 })]).toThrow(/\{ \.\.\.look, fg, bg \}.*no attributes/);
   });
 
+  it("draws a colored underline in the ink the effect moved the glyph to, so a hidden cell leaves no line", () => {
+    const toRed: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, fg: RED }));
+    const line = new Segment("ab", Style.parse("blue curlyUnderline underlineColor green"));
+    const [out] = [...effected(fixed(line), toRed).render({ maxWidth: 10 })];
+    expect(out!.style?.underline).toBe("curly");
+    expect(out!.style?.underlineColor?.isDefault).toBe(true);
+    const keepsInk: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: RED }));
+    const [kept] = [...effected(fixed(line), keepsInk).render({ maxWidth: 10 })];
+    expect(kept!.style?.underlineColor?.name).toBe("green");
+  });
+
+  it("blinks an underline on as the kind the cell draws, or a single one", () => {
+    const shown = (style: string) => [...effected(fixed(new Segment("ab", Style.parse(style))), blink({ attribute: "underline", off: 1, on: 1 }), 1.5).render({ maxWidth: 10 })][0]!.style?.underline;
+    expect(shown("curlyUnderline")).toBe("curly");
+    expect(shown("bold")).toBe("single");
+  });
+
   it("has no reverse to move: the colors are where a swap is made", () => {
     // @ts-expect-error reverse is not an attribute a look carries
     const swapped: CellLook["attributes"] = { ...PLAIN, reverse: true };

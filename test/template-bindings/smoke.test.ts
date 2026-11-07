@@ -204,7 +204,7 @@ describe("template-bindings — bootstrap smoke", () => {
     // arithmetic from a single call. Behaviour per function lives in
     // style-funcs.test.ts.
     const funcs = richTextFuncs();
-    const styleOnly = ["fg", "bg", "bold", "b", "not_bold", "style", "link"];
+    const styleOnly = ["fg", "bg", "underlineColor", "bold", "b", "not_bold", "style", "link"];
     const colorOnly = ["darken", "lighten", "mix", "contrastOn", "ensureContrast", "shiftHue"];
     for (const name of [...styleOnly, ...colorOnly]) {
       expect(funcs[name]).toBeDefined();

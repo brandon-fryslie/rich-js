@@ -44,7 +44,7 @@ const UNDERLINE_STYLE: Record<Exclude<ExportLook["underline"], "none">, string> 
  * Whether the underline is drawn by a span of its own: any but a plain one in
  * the glyph's color, since one element's decoration has one style and color.
  */
-const ownUnderline = (look: ExportLook): boolean =>
+const ownUnderline = (look: ExportLook): look is ExportLook & { readonly underline: Exclude<ExportLook["underline"], "none"> } =>
   look.underline !== "none" && (look.underline !== "single" || look.underlineColor !== null);
 
 const BLINK: Record<ExportLook["blink"], readonly string[]> = {
@@ -78,7 +78,7 @@ function paintCss(look: ExportLook): string[] {
 /** What is drawn on the glyph: weight, slant, single-style lines, blink, outline. */
 function glyphCss(look: ExportLook): string[] {
   const lines = [
-    ...(look.underline !== "none" && !ownUnderline(look) ? ["underline"] : []),
+    ...(look.underline === "single" && look.underlineColor === null ? ["underline"] : []),
     ...(look.strike ? ["line-through"] : []),
     ...(look.overline ? ["overline"] : []),
   ];
@@ -153,7 +153,7 @@ function onGrid(text: string, draw: (escaped: string) => string): string {
  * the underline, and the inner span inside it draws the other lines.
  */
 function runHtml({ text, look, inVisualOrder }: ExportRun): string {
-  const drawn = look.underline !== "none" && ownUnderline(look)
+  const drawn = ownUnderline(look)
     ? span(
       [
         ...paintCss(look),

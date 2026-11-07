@@ -37,7 +37,7 @@ Evaluating a template produces a `RichText[]` — one fragment per top-level exp
 
 The functions ship in two groups, split by exactly one question — does it need a theme?
 
-`richTextFuncs()` is everything that does not: the color sinks `fg` and `bg`, the palette-free color math, every text attribute, `link`, and `style`. It is safe to register unconditionally. Its one optional argument, `drawnAt: () => DrawnAt`, says where the text lands — `{ depth, terminal? }`, the depth the terminal will draw at and, when you know it, the `TerminalTheme` drawing it: `ensureContrast` measures its floor on the colors actually drawn, at sixteen colors in that terminal's own — what that guarantees, fallback included, is stated once in [Contrast](/contrast). Omitted, it is truecolor. A host that swaps `ensureContrast` alone — per segment, say — registers `ensureContrastFunc(drawnAt)` over the key instead. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
+`richTextFuncs()` is everything that does not: the color sinks `fg`, `bg` and `underlineColor`, the palette-free color math, every text attribute, `link`, and `style`. It is safe to register unconditionally. Its one optional argument, `drawnAt: () => DrawnAt`, says where the text lands — `{ depth, terminal? }`, the depth the terminal will draw at and, when you know it, the `TerminalTheme` drawing it: `ensureContrast` measures its floor on the colors actually drawn, at sixteen colors in that terminal's own — what that guarantees, fallback included, is stated once in [Contrast](/contrast). Omitted, it is truecolor. A host that swaps `ensureContrast` alone — per segment, say — registers `ensureContrastFunc(drawnAt)` over the key instead. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
 
 `paletteFuncs(getPalette, place?)` is the ones that do: `color`, which turns a palette variable name into a color, `ramp`, whose stops are palette names, and `textOn`, a theme's text on a ground. It is the only registration that knows a palette exists. `textOn` holds its floor where `place.drawnAt` says the text lands, so a host drawing below truecolor hands the same `drawnAt` getter to both registrations — `richTextFuncs(drawnAt)` and `paletteFuncs(getPalette, { drawnAt })` — and `ensureContrast` and `textOn` measure the one destination.
 
@@ -86,7 +86,7 @@ const piped = engine.compile(`{{ "shipped" | fg "green" | bold }}
 console.print(RichText.fromFragments(piped({})));
 ```
 
-`fg` and `bg` are the only two color-applying functions, and they take the color as an argument rather than encoding it in the function name. That is what lets them accept a color computed at render time. The slot takes the full `ColorSpec` vocabulary, which is wider than the hex the color math produces:
+`fg`, `bg` and `underlineColor` — the line under the text, drawn in the text's color without it — are the only color-applying functions, and they take the color as an argument rather than encoding it in the function name. That is what lets them accept a color computed at render time. The slot takes the full `ColorSpec` vocabulary, which is wider than the hex the color math produces:
 
 ```typescript
 const slots = engine.compile(`{{ "hex"          | fg "#ff6b6b"          }}
@@ -133,7 +133,7 @@ A spec can also arrive through scope, which is how a theme file ends up governin
 
 Every function so far takes a fragment and returns a styled fragment. The color functions do not: they take colors and return a color. That difference is the whole design.
 
-A color that can be held is a color that can be composed. `color` names one, the functions below transform it, and `fg`/`bg` paint it — three separate steps, so any transformation can stack on any other:
+A color that can be held is a color that can be composed. `color` names one, the functions below transform it, and `fg`/`bg`/`underlineColor` paint it — three separate steps, so any transformation can stack on any other:
 
 | function | meaning |
 |---|---|
