@@ -81,7 +81,7 @@ export class WidgetApp implements FrameSource, FrameHost {
     // Its frames are its own, drawn for its `frameNow()`: what draws in them
     // is told this app is the host, not the App it paints through, so
     // `drawnBy: widgetApp` names the host its frames carry.
-    // It hands its options to the view whole, so the view's text is placed as an App's is.
+    // Its rows are placed where `compose` fills them, before any overlay is painted over them.
     const composed = {
       render: (renderOptions: RenderOptions) =>
         this.compose(view, { ...renderOptions, frame: renderOptions.frame && { time: renderOptions.frame.time, host: this } }),

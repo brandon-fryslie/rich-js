@@ -132,12 +132,13 @@ export function caretMarkOn(shape: CaretShape, side: CaretMark["side"]): CaretMa
 /**
  * A right-to-left row a text drew without placing it, and the width it laid
  * the row out in, so whoever fills the row puts it at its start edge there.
- * `row` is compared by identity: it says these cells are one text's row, so a
- * row a holder composed around it (a `Tree`'s guides) is never mistaken for one.
+ * Compared by identity: one stamp is one text's row, so a row a holder composed
+ * around it (a `Tree`'s guides) is never mistaken for one.
  */
 export interface RowEdge {
-  readonly row: object;
   readonly width: number;
+  /** The row's cells as its text drew them: a window or crop cut from it is no longer the row, and is never moved. */
+  readonly length: number;
 }
 
 export interface StyleOptions {

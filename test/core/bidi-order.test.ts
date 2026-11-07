@@ -843,6 +843,16 @@ describe("a filled row stands a right-to-left text at its start edge, through an
     for (const t of [0, 1, 2]) expect(drawn(new Padding(change.at(t), 0))[0]!.endsWith(SHOWN)).toBe(true);
   });
 
+  test("a change to a left-to-right text stands where the new text does from its first frame", () => {
+    const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText("abcd") });
+    for (const t of [0, 1, 2]) expect(drawn(new Padding(change.at(t), 0), 30)[0]!.slice(0, 4).trim()).not.toBe("");
+  });
+
+  test("a window cut from a right-to-left row is not that row, and stays at the slot's start", () => {
+    const window = scroll(new RichText(`${HEBREW} ${HEBREW} ${HEBREW}`), { width: 8, height: 1, col: Animation.constant(2) }).at(0);
+    expect(drawn(new Padding(window, 0), 40)[0]![0]).not.toBe(" ");
+  });
+
   test("a change a tree holds stays beside its guide", () => {
     const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText(HEBREW) });
     const tree = new Tree("root");

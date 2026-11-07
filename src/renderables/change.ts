@@ -88,7 +88,6 @@ export function wipe(curve: Curve, edge = WIPE_EDGE): Transition<Change> {
 
 /** One frame of a change at `t`: `from` and `to` spliced cell by cell, each veiled by how near the half its cell is. */
 class ChangeFrame implements Renderable, Measurable {
-
   constructor(
     readonly from: Renderable,
     readonly to: Renderable,

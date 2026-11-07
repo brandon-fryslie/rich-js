@@ -4,7 +4,7 @@
  */
 
 import { cellLen, cutCells, graphemes, splitText, asCellCol, type CellCol } from "./cells.js";
-import { Style, type RowEdge } from "./style.js";
+import { NULL_STYLE, Style, type RowEdge } from "./style.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 
 // --- ControlType ---
@@ -302,28 +302,34 @@ export class Segment {
    */
   static leadingFill(line: Segment[], width: number): number {
     const edge = Segment.rowEdge(line);
-    return edge === undefined ? 0 : Math.max(Math.min(edge.width, width) - Segment.getLineLength(line), 0);
+    return edge === undefined ? 0 : Math.max(Math.min(edge.width, width) - edge.length, 0);
   }
 
   /**
-   * The unplaced right-to-left row every cell of `line` is (`Style.edge`), or
-   * none. [LAW:single-enforcer] The one reader of the stamp.
+   * The unplaced right-to-left row `line` is (`Style.edge`): every cell of it
+   * one stamp's, and as many cells as its text drew, so a window or crop cut
+   * from the row is not it. Otherwise none.
+   * [LAW:single-enforcer] The one reader of the stamp.
    */
   static rowEdge(line: Segment[]): RowEdge | undefined {
     let edge: RowEdge | undefined;
+    let length = 0;
     for (const segment of line) {
-      if (segment.cellLength === 0) continue;
+      const cells = segment.cellLength;
+      if (cells === 0) continue;
       // The first inked piece without the row's stamp ends the walk: almost every row is one.
       if (segment.style?.edge === undefined || (edge !== undefined && segment.style.edge !== edge)) return undefined;
       edge = segment.style.edge;
+      length += cells;
     }
-    return edge;
+    return edge?.length === length ? edge : undefined;
   }
 
-  /** `line` as the unplaced right-to-left row `edge` names: a row composed from such rows that stands as one. */
+  /** `line` as the unplaced right-to-left row `edge` names, or as placed when it names none: a composed row that stands as one. */
   static stamped(line: Segment[], edge: RowEdge | undefined): Segment[] {
-    if (edge === undefined) return line;
-    return line.map((segment) => new Segment(segment.text, (segment.style ?? new Style()).withEdge(edge), segment.control));
+    return line.map((segment) =>
+      segment.style?.edge === edge ? segment : new Segment(segment.text, (segment.style ?? NULL_STYLE).withEdge(edge), segment.control),
+    );
   }
 
   /**

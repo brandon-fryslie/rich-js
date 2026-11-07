@@ -146,7 +146,6 @@ export class Reglyphed implements Renderable, Measurable {
  * frame's drawing told (`Reads`).
  */
 export class GlyphEffected implements Animation<Renderable> {
-
   readonly key: string;
 
   constructor(

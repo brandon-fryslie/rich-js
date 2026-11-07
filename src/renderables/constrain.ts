@@ -12,7 +12,6 @@ import type {
 import { render } from "../core/protocol.js";
 
 export class Constrain implements Renderable, Measurable {
-
   readonly renderable: Renderable;
   readonly width: number | undefined;
 

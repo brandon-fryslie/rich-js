@@ -44,7 +44,6 @@ interface Reading {
  * object's `[object Object]` is not eaten as a tag.
  */
 export class EmbeddedText implements Renderable, Measurable {
-
   // [LAW:types-are-the-program] Two kinds, and the kind is the discriminator: a
   // string still to be read, or text whose reading is already fixed.
   private readonly _source: string | RichText;

@@ -90,7 +90,6 @@ export interface SpinnerOptions {
 }
 
 export class Spinner implements Animation<Renderable & Measurable> {
-
   readonly name: string;
   readonly speed: number;
   readonly style: string | Style;

@@ -255,7 +255,6 @@ const PLACED_BY: Record<Justify, Alignment | undefined> = {
 // `justify`, `overflow`, `noWrap` and `tabSize` stay behind, as they do in the
 // reference: the print's options set the whole run.
 class TextRun implements Renderable, Measurable {
-
   private readonly text: RichText;
 
   constructor(

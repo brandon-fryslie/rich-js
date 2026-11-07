@@ -1252,9 +1252,8 @@ function drawRow(row: Row, layout: Layout, options: RenderOptions): Segment[] {
  * start edge (`Segment.leadingFill`). The row says where it stands; no option
  * travels down through what holds it to say so.
  */
-function unplaced(drawn: readonly Segment[], width: number): Segment[] {
-  const edge = { row: {}, width };
-  return drawn.map((segment) => new Segment(segment.text, (segment.style ?? NULL_STYLE).withEdge(edge), segment.control));
+function unplaced(drawn: Segment[], width: number): Segment[] {
+  return Segment.stamped(drawn, { width, length: Segment.getLineLength(drawn) });
 }
 
 /**

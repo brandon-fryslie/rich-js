@@ -465,7 +465,6 @@ export class Recolored implements Renderable, Measurable {
  * never changes there and the host sleeps.
  */
 export class Effected implements Animation<Renderable> {
-
   readonly key: string;
 
   constructor(

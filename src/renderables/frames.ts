@@ -60,7 +60,6 @@ export interface Frame {
 
 /** A sequence of frames prepared to be drawn: built once, asked for the frame at a time. */
 export class FrameSequence implements Animation<RichText> {
-
   /** Which frame is in progress when: the steps are the frames' seconds, in order. */
   readonly stepSequence: StepSequence;
   /** The width every frame draws at: the widest frame's, in cells. */

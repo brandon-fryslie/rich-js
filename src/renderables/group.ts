@@ -13,7 +13,6 @@ import type {
 import { render, stackedHeight } from "../core/protocol.js";
 
 export class Group implements Renderable, Measurable {
-
   readonly renderables: readonly Renderable[];
 
   constructor(...renderables: Renderable[]) {
