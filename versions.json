@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-605",
+      "ref": "refs/pull/605/merge",
+      "sha": "fd5b0d73c33dacaa156cd76db86fde7b7bbd5609",
+      "timestamp": "2026-11-07T12:13:51.639Z",
+      "commits": [
+        {
+          "sha": "fd5b0d73c33dacaa156cd76db86fde7b7bbd5609",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:11:16-07:00",
+          "message": "Merge f68d72c00445dca139bd22163e5d3cb315a8e3ef into a56e7b74645917b028d01ab3fe0cd411e918794e\n"
+        },
+        {
+          "sha": "f68d72c00445dca139bd22163e5d3cb315a8e3ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:10:57-07:00",
+          "message": "Declared chrome and cursor state (rich-control-codes-xh4n.6ch.sfp): App.chrome sends the title over the terminal's title stack, and iTerm2's tab color (OSC 6), session status (OSC 21337) and badge, once per change and given back on every exit; a focused TextInput colors the terminal's cursor (OSC 12/112) with its accent; focus reports (CSI ? 1004) and resizes re-send what reached the terminal only through a passthrough, which a tmux reattach forgets\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-604",
       "ref": "refs/pull/604/merge",
       "sha": "2acd1cd07b7ff069994d3c38fcf3328dc30a8263",
