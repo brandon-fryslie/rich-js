@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#93A1A1",
     brightWhite: "#FDF6E3",
   },
+  // Solarized's base00, the step above its text.
+  ansiMuted: "brightYellow",
   vars: {
     "accent": "#6C71C4",
     "accent-darken-1": "#575EAF",

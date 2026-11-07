@@ -13,6 +13,7 @@ import { observableRef } from "./observable.js";
 import { Segment } from "../core/segment.js";
 import { NULL_STYLE, type Style } from "../core/style.js";
 import type { RenderOptions } from "../core/protocol.js";
+import type { ColorDepth, TerminalColors } from "../core/color.js";
 import type {
   InteractiveWidget,
   WidgetKeyEvent,
@@ -22,6 +23,9 @@ import type {
 import type { Unsubscribe } from "../core/subscription.js";
 import { State } from "../core/state.js";
 import type { PointerShape } from "../core/terminal-requests.js";
+
+/** Where a frame's colors land — the depth it writes them at, and the terminal that shows them: what a widget's colors are resolved for. `RenderOptions` is one. */
+export type Drawing = { readonly colorSystem?: ColorDepth | null; readonly terminal?: TerminalColors };
 
 export abstract class WidgetBase implements InteractiveWidget {
   abstract readonly id: string;
@@ -118,13 +122,14 @@ export abstract class WidgetBase implements InteractiveWidget {
   render(options: RenderOptions): Iterable<Segment> {
     const drawn = Segment.splitLines(this.draw(options));
     const [width] = Segment.getShape(drawn);
-    const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width, this.ground)), this);
+    const ground = this.ground(options);
+    const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width, ground)), this);
     return lines.flatMap((line) => [...line, Segment.line()]);
   }
 
   // What a padded row stands on. None by default: the padding shows whatever
   // the widget is drawn over, as the cells of content it did not draw do.
-  protected get ground(): Style {
+  protected ground(_at: Drawing): Style {
     return NULL_STYLE;
   }
 

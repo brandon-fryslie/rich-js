@@ -138,27 +138,29 @@ On the alternate surface the view's height is the whole screen, so the status pa
 
 ## The widgets
 
-The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/adjust) whose palette supplies the widget's colors, defaulting to the dark `DEFAULT_TERMINAL_THEME` — and all expose the observable state `focused`, `hovered`, `active`, and `disabled`. `StaticItem`, described last, is the exception: it takes none of those.
+The six interactive widgets all accept `id`, `disabled`, `theme` — a [`TerminalTheme`](/adjust) whose palette supplies the widget's colors, defaulting to the dark `DEFAULT_TERMINAL_THEME` — and `contrast`, and all expose the observable state `focused`, `hovered`, `active`, and `disabled`. `StaticItem`, described last, is the exception: it takes none of those.
 
 A widget takes the background under every cell it draws from that same palette rather than leaving the terminal's own showing through, because a palette's colors are only chosen to read against its own background. So a widget looks the same in a light terminal as in a dark one, and a light theme is as readable in a dark terminal as a dark theme is in a light one.
+
+Text is held to a contrast floor on the ground it is drawn on, at the color depth the frame is written at: body text to WCAG AA's 4.5:1, muted text — a placeholder, a continuation marker, a slider's empty track, `(no matches)` — to 3:1. `contrast` is the `TextFit` that decides what text missing its floor becomes, `TEXT_FITS.slide` unless stated; `TEXT_FITS.asIs` turns the check off and draws the theme's colors as it states them. `setContrast(fit)` changes it on a live widget, as `setTheme` does the theme. At 256 or sixteen colors a widget picks its colors among those the frame's terminal (`RenderOptions.terminal`) shows at each index, never writes its ground as the terminal's default, so a light theme still paints its own ground on a dark terminal, and never rounds a grey ground to a hue. No text is written in its ground's color, disabled text included. Muted text is written in a slot that stands off its ground less than its body text does and is neither the body text's color nor the terminal's default, so a placeholder never looks typed; at sixteen colors it starts from the slot the terminal states for it, `TerminalColors.mutedSlot`, held to its floor like any text. Every bundled theme states one. Where the table has no slot that recedes and reads, muted text is its body text with the SGR dim attribute.
 
 Omit `id` and you get a generated one, but the two kinds differ in a way that matters if you are writing test selectors. `Button`, `Checkbox`, and `Toggle` slugify their label — `new Button({ label: "Save changes" })` is `button-save-changes`, and it is stable. `Dropdown`, `Slider`, and `TextInput` have no label to work from and fall back to a random suffix (`slider-k3f9x1`), which changes on every construction. Pass an explicit `id` to those three whenever anything downstream needs to name them.
 
 ### Button
 
-`new Button({ label, variant?, id?, disabled?, theme? })`
+`new Button({ label, variant?, id?, disabled?, theme?, contrast? })`
 
 Enter, Space, or a click emits `onSubmit`. Renders as `  label  `, with the padding replaced by brackets — `[ label ]` — when focused, so the width never changes between states. The `variant` picks which theme colors it draws in: `"default"`, `"primary"`, `"success"`, `"warning"`, or `"danger"`.
 
 ### Checkbox
 
-`new Checkbox({ label, checked?, id?, disabled?, theme? })`
+`new Checkbox({ label, checked?, id?, disabled?, theme?, contrast? })`
 
 Space or a click toggles `checked` and emits `onChange`; Enter emits `onSubmit` without toggling. Renders as `[✓] label` or `[ ] label`, falling back to `x` on an [ASCII-only](/app#ascii-only-terminals) app.
 
 ### Toggle
 
-`new Toggle({ label, on?, variant?, id?, disabled?, theme? })`
+`new Toggle({ label, on?, variant?, id?, disabled?, theme?, contrast? })`
 
 Same gestures as `Checkbox`, over an `on` boolean. Renders `[ON]  label` or `[OFF] label` — both indicators are exactly five cells, so the label never shifts. Takes the same five variants as `Button`.
 
@@ -197,17 +199,17 @@ A custom strategy is worth writing when the value has a syntax worth respecting.
 
 ### Dropdown
 
-`new Dropdown({ options, selectedIndex?, id?, disabled?, theme? })`
+`new Dropdown({ options, selectedIndex?, id?, disabled?, theme?, contrast? })`
 
 Collapsed, it draws a one-row header — `[ selected ▾ ]` — sized to the longest option plus four cells. Enter or Space expands it with the current selection highlighted; Up/Down move; Enter commits and emits both `onChange` and `onSubmit`; Escape clears and closes in one step.
 
-Typing filters. Any printable character expands the dropdown and starts a case-insensitive filter, with no separate "enter filter mode" gesture; the header becomes the filter input, showing the query and a caret. Where the terminal's cursor is shown — an app, or a `Live` — the caret is that cursor, a bar at the end of the query, so an input method's candidate window opens there; where it is not, the header draws one. Backspace removes one character. `filteredOptions` derives from `options` and `filter`, and `highlightedIndex` indexes into it — but `selectedIndex` stays canonical and survives filtering untouched. When the filter matches nothing, the list shows a dimmed `(no matches)` and Enter does nothing.
+Typing filters. Any printable character expands the dropdown and starts a case-insensitive filter, with no separate "enter filter mode" gesture; the header becomes the filter input, showing the query and a caret. Where the terminal's cursor is shown — an app, or a `Live` — the caret is that cursor, a bar at the end of the query, so an input method's candidate window opens there; where it is not, the header draws one. Backspace removes one character. `filteredOptions` derives from `options` and `filter`, and `highlightedIndex` indexes into it — but `selectedIndex` stays canonical and survives filtering untouched. When the filter matches nothing, the list shows `(no matches)` in muted text and Enter does nothing.
 
 The header's width is invariant: `measure()` returns the same number whatever the filter holds, and a long query shows its end, where typing happens, rather than allowed to widen the widget.
 
 ### Slider
 
-`new Slider({ value?, min?, max?, step?, width?, id?, disabled?, theme? })`
+`new Slider({ value?, min?, max?, step?, width?, id?, disabled?, theme?, contrast? })`
 
 Left and Right move by `step`, Home and End jump to the ends; all values are clamped to `[min, max]` and snapped to the nearest step boundary. Dragging works: mouse-down jumps to the position and starts a drag, and the app keeps sending it the motion outside the widget until the button is released. Renders as `────●────────` at `width` cells, defaulting to 20. A `width` that is not a positive integer throws a `RangeError` at construction.
 

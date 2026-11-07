@@ -5,6 +5,8 @@ const theme: ThemePaletteData = {
   name: "textual-light",
   dark: false,
   ansi: TEXTUAL_LIGHT_ANSI,
+  // the grey above its text.
+  ansiMuted: "brightBlack",
   vars: {
     "accent": "#FEA62B",
     "accent-darken-1": "#E7920D",

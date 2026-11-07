@@ -14,6 +14,7 @@ import {
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
   ANSI_COLOR_NAMES,
+  roundingDistance,
 } from "../../src/core/color.js";
 import {
   DEFAULT_TERMINAL_THEME,
@@ -155,7 +156,7 @@ describe("ColorTable", () => {
     const entries = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 0, 255]] as const;
     const table = new ColorTable(entries.map(([r, g, b]) => new ColorRgba(r, g, b)));
     const oracle = (r: number, g: number, b: number): number => {
-      const d = entries.map(([er, eg, eb]) => (er - r) ** 2 + (eg - g) ** 2 + (eb - b) ** 2);
+      const d = entries.map(([er, eg, eb]) => roundingDistance(new ColorRgba(er, eg, eb), new ColorRgba(r, g, b)));
       return d.indexOf(Math.min(...d));
     };
     // 64 × 64 × 2 = 8192 distinct keys, twice the cap, then a key from the

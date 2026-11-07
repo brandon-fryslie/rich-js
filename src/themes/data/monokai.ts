@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#66D9EF",
     brightWhite: "#F8F8F2",
   },
+  // its grey is under 3:1 and its white outshines its text; the soft blue recedes.
+  ansiMuted: "blue",
   vars: {
     "accent": "#66D9EF",
     "accent-darken-1": "#4DC3D9",

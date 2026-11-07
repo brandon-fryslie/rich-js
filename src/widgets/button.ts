@@ -23,19 +23,17 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
-import type { TerminalTheme } from "../core/color.js";
-import { ThemedWidget } from "./themed-widget.js";
-import { ink, VARIANT_INK, type InkVariant } from "./ink.js";
+import { ThemedWidget, type ThemedWidgetOptions } from "./themed-widget.js";
+import { VARIANT_INK, type InkVariant } from "./ink.js";
 import type { WidgetKeyEvent, WidgetMouseEvent } from "./types.js";
 
 export type ButtonVariant = InkVariant;
 
-export interface ButtonOptions {
+export interface ButtonOptions extends ThemedWidgetOptions {
   label: string;
   variant?: ButtonVariant;
   id?: string;
   disabled?: boolean;
-  theme?: TerminalTheme;
 }
 
 export class Button extends ThemedWidget {
@@ -46,7 +44,7 @@ export class Button extends ThemedWidget {
   @observableRef accessor variant: ButtonVariant;
 
   constructor(options: ButtonOptions) {
-    super(options.theme);
+    super(options);
     this.id = options.id ?? `button-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.variant = options.variant ?? "default";
@@ -102,7 +100,7 @@ export class Button extends ThemedWidget {
     const drawn = (style: Style): Segment[] => labeled(`${left} `, [new Segment(this.label, style)], ` ${right}`, style, options.textOrder);
 
     if (this.disabled) {
-      return drawn(new Style(this.disabledInk));
+      return drawn(new Style(this.disabledInk(options)));
     }
 
     // Active and hover share the lit pair. Active is differentiated by bold,
@@ -111,10 +109,10 @@ export class Button extends ThemedWidget {
     // contrast partner depends on luminance.
     const pairs = VARIANT_INK[this.variant];
     if (this.active || this.hovered) {
-      return drawn(new Style({ ...ink(this.theme, ...pairs.lit), bold: this.active }));
+      return drawn(new Style({ ...this.ink(options, ...pairs.lit), bold: this.active }));
     }
 
-    return drawn(new Style(ink(this.theme, ...pairs.quiet)));
+    return drawn(new Style(this.ink(options, ...pairs.quiet)));
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

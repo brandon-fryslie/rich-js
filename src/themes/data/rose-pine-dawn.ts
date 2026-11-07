@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#D7827E",
     brightWhite: "#575279",
   },
+  // its muted is under 3:1; iris is the nearest that reads.
+  ansiMuted: "magenta",
   vars: {
     "accent": "#D6827E",
     "accent-darken-1": "#C16E6B",

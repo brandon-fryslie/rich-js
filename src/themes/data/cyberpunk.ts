@@ -19,6 +19,8 @@ const theme: ThemePaletteData = {
   name: "cyberpunk",
   dark: true,
   ansi: TEXTUAL_DARK_ANSI,
+  // a grey under its text; its bright black is under 3:1 on its surface.
+  ansiMuted: "white",
   vars: {
     // ── Substrate ──────────────────────────────────────────────────────────
     "background":                     "#070714",

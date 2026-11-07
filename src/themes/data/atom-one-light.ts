@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#56B6C2",
     brightWhite: "#FFFFFF",
   },
+  // the grey above its text.
+  ansiMuted: "brightBlack",
   vars: {
     "accent": "#BE9232",
     "accent-darken-1": "#A97E1D",

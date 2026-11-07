@@ -140,7 +140,7 @@ A color that can be held is a color that can be composed. `color` names one, the
 | `darken c n` / `lighten c n` | slide HSL lightness by `n` 10% levels (`n` a whole number) |
 | `mix a b pct` | blend `a` toward `b` by `pct`% (0 → `a`, 100 → `b`) |
 | `contrastOn bg` | black or white, whichever is readable on `bg` |
-| `textOn intent bg` | a theme's text on `bg` — `"text"`, `"text-muted"`, `"text-error"`, … ([Text on a ground](/text-on)); registered by `paletteFuncs` |
+| `textOn intent bg` | a theme's text on `bg` — `"text"`, `"text-muted"`, `"text-error"`, … ([Text on a ground](/text-on)); below truecolor, the color of the slot a widget on that terminal draws, which the writer rounds back to that slot; registered by `paletteFuncs` |
 | `ensureContrast fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |
 | `shiftHue c deg` | rotate hue in OKLCH |
 | `scaleChroma c f` | multiply chroma (0 → gray, 1 → identity) |

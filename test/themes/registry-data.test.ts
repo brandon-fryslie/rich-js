@@ -7,6 +7,7 @@ const theme = (name: string, ansi: Partial<Record<(typeof ANSI_SLOTS)[number], s
   name,
   dark: true,
   ansi: { ...Object.fromEntries(ANSI_SLOTS.map((slot) => [slot, "#000000"])), ...ansi } as ThemePaletteData["ansi"],
+  ansiMuted: "brightBlack",
   vars: {
     background: "#000000", foreground: "#ffffff", primary: "#ff0000", secondary: "#00ff00",
     accent: "#0000ff", success: "#00ff00", warning: "#ffff00", error: "#ff0000", ...vars,

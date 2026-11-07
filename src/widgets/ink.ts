@@ -16,11 +16,15 @@
  * [LAW:single-enforcer] Every widget resolves its colors here, and this is
  * where a ground that draws no color (a theme's fully transparent "no
  * background") is reported.
+ *
+ * Text is held to its floor through the widget's `TextFit` — `asIs` turns the
+ * floor off — at the depth and on the terminal the frame is written for, by
+ * `writeText`, the one engine every caller of `textOn` shares.
  */
 
-import { ColorSpec, type TerminalTheme } from "../core/color.js";
+import type { ColorDepth, TerminalColors, TerminalTheme } from "../core/color.js";
 import type { PaletteRole } from "../themes/palette.js";
-import { textOn, type TextIntent } from "../themes/text-on.js";
+import { writeText, type TextFit, type TextIntent, type WrittenText } from "../themes/text-on.js";
 
 /** A text intent and the ground it is drawn on: the two halves `ink` takes. */
 export type InkPair = readonly [text: TextIntent, ground: PaletteRole];
@@ -44,15 +48,24 @@ export const VARIANT_INK: Readonly<Record<InkVariant, { readonly quiet: InkPair;
   danger: { quiet: ["text-error", "error-muted"], lit: ["text", "error"] },
 };
 
-export function ink(
-  theme: TerminalTheme,
-  text: TextIntent,
-  ground: PaletteRole,
-): { color: ColorSpec; bgcolor: ColorSpec } {
-  const { palette } = theme;
-  const rgba = palette.get(ground);
+/**
+ * Where a widget's text is drawn: what a missed floor becomes, the depth it is
+ * written at, and the terminal that shows it — the one the depth assumes where
+ * none is named.
+ */
+export interface InkPlace {
+  readonly fit: TextFit;
+  readonly depth: ColorDepth;
+  readonly terminal?: TerminalColors;
+}
+
+/** A widget cell's colors: `writeText`'s pair. */
+export type Inked = WrittenText;
+
+export function ink(theme: TerminalTheme, text: TextIntent, ground: PaletteRole, { fit, depth, terminal }: InkPlace): Inked {
+  const rgba = theme.palette.get(ground);
   if (rgba.alpha === 0) {
-    throw new RangeError(`palette ${JSON.stringify(palette.name)}: ${JSON.stringify(ground)} is fully transparent, so it cannot be a widget's ground`);
+    throw new RangeError(`palette ${JSON.stringify(theme.palette.name)}: ${JSON.stringify(ground)} is fully transparent, so it cannot be a widget's ground`);
   }
-  return { color: ColorSpec.fromRgba(textOn(palette, text, rgba)), bgcolor: ColorSpec.fromRgba(rgba) };
+  return writeText(theme.palette, text, rgba, { fit, drawnAt: { depth, terminal } });
 }

@@ -159,6 +159,8 @@ export function paletteFuncs(getPalette: () => Palette, place: TextPlace = {}): 
       if (!isTextIntent(intent)) {
         throw new RangeError(`textOn: ${JSON.stringify(intent)} is not a text intent — one of ${TEXT_INTENTS.map((i) => JSON.stringify(i)).join(", ")}`);
       }
+      // The color the terminal shows for the slot a widget writes there: a hex,
+      // so the result composes, which rounds back to that slot by the one rule.
       return textOn(getPalette(), intent, asColor(groundHex, "textOn"), { fit: fit(), drawnAt: drawnAt() }).hex;
     }) as TemplateFunc["fn"],
     argTypes: ["string", "string"],

@@ -47,5 +47,5 @@ export async function terminalColors(app: App): Promise<TerminalColors | undefin
   const foreground = replies.map((reply) => parseColorReply(reply, 10)).find((color) => color !== undefined);
   const background = replies.map((reply) => parseColorReply(reply, 11)).find((color) => color !== undefined);
   if (foreground === undefined || background === undefined) return undefined;
-  return new TerminalColors(background, foreground, app.terminal.ansiColors);
+  return new TerminalColors(background, foreground, app.terminal.ansiColors, app.terminal.mutedSlot);
 }

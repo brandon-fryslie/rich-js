@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#A4FFFF",
     brightWhite: "#FFFFFF",
   },
+  // Dracula's comment color.
+  ansiMuted: "brightBlack",
   vars: {
     "accent": "#FF79C6",
     "accent-darken-1": "#E864B1",

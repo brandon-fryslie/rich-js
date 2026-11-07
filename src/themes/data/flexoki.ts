@@ -22,6 +22,8 @@ const theme: ThemePaletteData = {
     brightCyan: "#24837B",
     brightWhite: "#CECDC3",
   },
+  // Flexoki's tx-2.
+  ansiMuted: "white",
   vars: {
     "accent": "#9B76C8",
     "accent-darken-1": "#8663B3",

@@ -23,7 +23,8 @@ import { getThemeBaseColors, getThemePalette, type ThemeName } from "./registry.
 
 function defineTheme(name: ThemeName): TerminalTheme {
   const palette = getThemePalette(name);
-  return new TerminalTheme(palette.get("background"), palette.get("foreground"), getThemeBaseColors(name).ansi, palette);
+  const { ansi, ansiMuted } = getThemeBaseColors(name);
+  return new TerminalTheme(palette.get("background"), palette.get("foreground"), ansi, palette, ansiMuted);
 }
 
 export const DEFAULT_TERMINAL_THEME = defineTheme("default");
