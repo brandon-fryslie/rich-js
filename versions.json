@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-601",
+      "ref": "refs/pull/601/merge",
+      "sha": "9f4affcf4168020654cda4a7903a4551803e7a11",
+      "timestamp": "2026-11-07T10:55:45.745Z",
+      "commits": [
+        {
+          "sha": "9f4affcf4168020654cda4a7903a4551803e7a11",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T10:53:30Z",
+          "message": "Merge c80c5acedcceb8ede8cd627b4ef79659ba4537db into 2e6ed8da6b799ab74285f8791c0a4f794f736655\n"
+        },
+        {
+          "sha": "c80c5acedcceb8ede8cd627b4ef79659ba4537db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T03:53:20-07:00",
+          "message": "The jump watch draws each fill at the strength it keys on\n"
+        },
+        {
+          "sha": "3a31bcd24df6cbb4de5754b6214e34ced87e2595",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T03:45:01-07:00",
+          "message": "The loop-jump tests draw each fill once per strength, not once per field value per frame\n\nThe 1 fps jump watch keyed its drawn-color cache on the raw field value,\nwhich a continuous field (shimmer, sparkle) almost never repeats, while\ndrawnColor snaps every value to one of 96 strengths. About three quarters\nof the test went on recomputing colors it had already drawn: shimmer 6.4s\nalone, sparkle 4.2s, pulse ~4s, which a loaded full suite stretched past\nthe 30s hang limit. Keyed by the strength drawnColor itself draws at\n(strengthOf, now exported beside it), they run in 0.3-1.2s with the same\nassertions over the same colors.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2e6ed8da6b799ab74285f8791c0a4f794f736655",
