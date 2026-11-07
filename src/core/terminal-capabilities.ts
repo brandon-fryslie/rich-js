@@ -97,24 +97,22 @@ export interface TerminalFeatures {
   readonly onSend: ((send: TerminalSend) => void) | undefined;
 }
 
-/**
- * A layer as a program states it: that it is there is the program's word, so
- * the console holds it as `declared` and the program has no evidence to give.
- */
-export type LayerDeclaration = Omit<Layer, "evidence"> & { readonly evidence?: never };
+/** A layer as a program states it, with no evidence: that it is there is the program's word. */
+export type LayerDeclaration = Omit<Layer, "evidence">;
 
 /**
  * What a program may state of its terminal features, each part it leaves out
- * the environment's: or a whole `TerminalFeatures`, as a console reports
- * them, taken as they are.
+ * the environment's. A layer given without evidence is held as `declared`;
+ * one with evidence — a console's own `terminalFeatures`, handed back — keeps it.
  */
-export type TerminalFeaturesOption =
-  | TerminalFeatures
-  | (Partial<Omit<TerminalFeatures, "capabilities" | "layers">> & { readonly capabilities?: Partial<TerminalCapabilities>; readonly layers?: readonly LayerDeclaration[] });
+export type TerminalFeaturesOption = Partial<Omit<TerminalFeatures, "capabilities" | "layers">> & {
+  readonly capabilities?: Partial<TerminalCapabilities>;
+  readonly layers?: readonly (Layer | LayerDeclaration)[];
+};
 
 /** `layers` as a console holds them: a stated one is `declared`, one already weighed keeps its evidence. */
 export function heldLayers(layers: readonly (Layer | LayerDeclaration)[]): readonly Layer[] {
-  return layers.map((layer) => (layer.evidence === undefined ? { ...layer, evidence: "declared" } : layer));
+  return layers.map((layer) => ("evidence" in layer ? layer : { ...layer, evidence: "declared" }));
 }
 
 /** One decision the send log records: the bytes written, or `undefined` and why not. */
@@ -177,24 +175,31 @@ const stronger = (a: Evidence, b: Evidence): boolean => STRENGTH[a] < STRENGTH[b
  * (`HIDES_TERMINAL_VERSION`) sits in front, so each such layer only inferred
  * is dropped. A multiplexer that answers is the innermost layer, once; the
  * terminal past it stays what was known, since its answer cannot be heard
- * through the multiplexer (tmux#5530: the reply arrives as keystrokes).
+ * through the multiplexer (tmux#5530: the reply arrives as keystrokes) —
+ * unless the environment never saw that multiplexer, in which case the
+ * terminal was read off the multiplexer's own `TERM`, which names none past
+ * it, and is `other`.
  */
 export function identifiedBy(answer: VersionAnswer, known: { capabilities: TerminalCapabilities; layers: readonly Layer[] }): { capabilities: TerminalCapabilities; layers: readonly Layer[] } {
   const source = `XTVERSION ${answer.text}`;
+  const terminal = known.capabilities.terminal;
+  const outweighs = (evidence: Evidence): boolean => stronger(evidence, "identified");
   if (answer.kind === "terminal") {
-    const terminal = known.capabilities.terminal;
     return {
-      capabilities: stronger(terminal.evidence, "identified") ? known.capabilities : { ...known.capabilities, terminal: { name: answer.name, evidence: "identified", source } },
-      layers: known.layers.filter((layer) => !HIDES_TERMINAL_VERSION.has(layer.kind) || stronger(layer.evidence, "identified")),
+      capabilities: outweighs(terminal.evidence) ? known.capabilities : { ...known.capabilities, terminal: { name: answer.name, evidence: "identified", source } },
+      layers: known.layers.filter((layer) => !HIDES_TERMINAL_VERSION.has(layer.kind) || outweighs(layer.evidence)),
     };
   }
   const existing = known.layers.find((layer) => layer.kind === answer.layer);
-  // A layer the program declared keeps the place it was declared in.
-  if (existing?.evidence === "declared") return known;
+  // A layer known more strongly than an answer keeps the place it was known in.
+  if (existing !== undefined && outweighs(existing.evidence)) return known;
   const answered: Layer = existing === undefined
     ? { kind: answer.layer, evidence: "identified", passthrough: "unknown" }
-    : { ...existing, evidence: stronger(existing.evidence, "identified") ? existing.evidence : "identified" };
-  return { capabilities: known.capabilities, layers: [answered, ...known.layers.filter((layer) => layer !== existing)] };
+    : { ...existing, evidence: "identified" };
+  const capabilities = existing === undefined && !outweighs(terminal.evidence)
+    ? { ...known.capabilities, terminal: { name: "other" as const, evidence: "inferred" as const, source: `${source}: ${answer.layer} answered, and no variable names the terminal past it` } }
+    : known.capabilities;
+  return { capabilities, layers: [answered, ...known.layers.filter((layer) => layer !== existing)] };
 }
 
 /**

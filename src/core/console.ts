@@ -803,9 +803,9 @@ export class Console {
     this._request(CLIPBOARD, text);
   }
 
-  /** Sets the mouse pointer's shape over the terminal (OSC 22): `true` when it was sent, `false` when it was decided against. */
-  setPointerShape(shape: PointerShape): boolean {
-    return this._request(POINTER, pointerShape(shape));
+  /** Sets the mouse pointer's shape over the terminal (OSC 22). */
+  setPointerShape(shape: PointerShape): void {
+    this._request(POINTER, pointerShape(shape));
   }
 
   /** Raises a desktop notification, in the protocol this console's terminal reads. */
@@ -819,8 +819,7 @@ export class Console {
   // reaches whoever is at the terminal and no one else, straight to the sink, because it moves no cursor and a live region
   // would repaint its frame.
   // Every decision lands in the send log, those that write nothing included.
-  // Whether it was sent.
-  private _request<A>(feature: TerminalFeature<A>, value: A): boolean {
+  private _request<A>(feature: TerminalFeature<A>, value: A): void {
     refuseRenderWrite(this._madeIn);
     const send: TerminalSend = !this._attended
       ? { feature: feature.name, bytes: undefined, reason: "not sent: no one is at a terminal" }
@@ -829,7 +828,6 @@ export class Console {
         : pick(feature, value, this._features);
     if (send.bytes !== undefined) this.file.write(send.bytes);
     this._features.onSend?.(send);
-    return send.bytes !== undefined;
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

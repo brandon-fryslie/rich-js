@@ -41,6 +41,7 @@ describe("askTerminalIdentity", () => {
     ["wezterm", "wezterm", "WezTerm 20240203-110809-5046fc22"],
     ["iterm2", "iterm2", "iTerm2 3.5.0"],
     ["ghostty", "ghostty", "ghostty 1.0.0"],
+    ["vte", "vte", "VTE(7802)"],
   ] as const)("identifies %s from its own answer", async (session, name, text) => {
     const { before, after, written } = await identified(SESSIONS[session]);
     expect(written).toContain("\x1b[>0q\x1b[c");
@@ -67,9 +68,26 @@ describe("askTerminalIdentity", () => {
   });
 
   it("changes nothing when the terminal does not implement XTVERSION", async () => {
-    const { before, learned, after } = await identified(SESSIONS.vte);
+    const { before, learned, after } = await identified(SESSIONS.alacritty);
     expect(learned).toBeUndefined();
     expect(after).toBe(before);
+  });
+
+  it("does not ask a VTE old enough to draw the query as text", async () => {
+    const { before, learned, after, written } = await identified(SESSIONS.oldVte);
+    expect(written).not.toContain("\x1b[>0q");
+    expect(learned).toBeUndefined();
+    expect(after).toBe(before);
+  });
+
+  it("learns nothing from an answer that says what was already known", async () => {
+    const host = replayHost(SESSIONS.kitty);
+    const app = new App({ host, surface: "inline", clock: fakeClock(), view: () => new RichText("x") });
+    const done = app.run();
+    app.terminalFeatures = (await askTerminalIdentity(app))!;
+    expect(await askTerminalIdentity(app)).toBeUndefined();
+    app.stop();
+    await done;
   });
 
   it("lets strict send foot its own notification once foot names itself", async () => {

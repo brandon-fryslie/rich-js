@@ -23,6 +23,7 @@ import {
   type TerminalSend,
 } from "../../src/core/terminal-capabilities.js";
 import { identifyTerminal, readVersionAnswer, type Intermediary } from "../../src/core/terminal-identity.js";
+import { pointerShape } from "../../src/core/terminal-requests.js";
 import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState } from "../../src/core/terminal-state.js";
 import { App } from "../../src/host/app.js";
 import { Progress } from "../../src/renderables/progress.js";
@@ -51,12 +52,15 @@ describe("commitTerminalState", () => {
   const features = { capabilities: declareCapabilities(["OSC 9;4"], "other"), policy: "strict" as const, layers: [] };
 
   it("sends nothing for a frame that declares what the terminal already shows", () => {
-    const shown = { progress: { state: "normal" as const, percent: 50.2 } };
-    expect(commitTerminalState({ sent: shown, refused: undefined }, { progress: { state: "normal", percent: 49.9 } }, features).sends).toEqual([]);
+    const shown = { ...EMPTY_TERMINAL_STATE, progress: { state: "normal" as const, percent: 50.2 } };
+    const committed = { sent: shown, refused: {} };
+    const steady = commitTerminalState(committed, { ...shown, progress: { state: "normal", percent: 49.9 } }, features);
+    expect(steady.sends).toEqual([]);
+    expect(steady.next).toBe(committed);
   });
 
   it.each([[150, 160], [Number.NaN, Number.NaN], [-5, 0]])("sends nothing between %s%% and %s%%, which are sent as the same bytes", (from, to) => {
-    expect(commitTerminalState({ sent: { progress: { state: "normal", percent: from } }, refused: undefined }, { progress: { state: "normal", percent: to } }, features).sends).toEqual([]);
+    expect(commitTerminalState({ sent: { ...EMPTY_TERMINAL_STATE, progress: { state: "normal", percent: from } }, refused: {} }, { progress: { state: "normal", percent: to } }, features).sends).toEqual([]);
   });
 
   it("re-sends everything against an empty terminal, as one that forgot it needs", () => {
@@ -66,14 +70,27 @@ describe("commitTerminalState", () => {
 
   it("remembers a refused change as unsent, deciding it once per features and again under new ones", () => {
     const refusing = { capabilities: declareCapabilities([], "other"), policy: "strict" as const, layers: [] };
-    const wanted = { progress: { state: "indeterminate" as const } };
+    const wanted = { ...EMPTY_TERMINAL_STATE, progress: { state: "indeterminate" as const } };
     const first = commitTerminalState(NOTHING_COMMITTED, wanted, refusing);
     expect(first.sends.map((send) => send.bytes)).toEqual([undefined]);
-    expect(first.next.sent).toBe(EMPTY_TERMINAL_STATE);
-    expect(commitTerminalState(first.next, wanted, refusing).sends).toEqual([]);
+    expect(first.next.sent).toEqual(EMPTY_TERMINAL_STATE);
+    const again = commitTerminalState(first.next, wanted, refusing);
+    expect(again.sends).toEqual([]);
+    expect(again.next).toBe(first.next);
     const allowed = commitTerminalState(first.next, wanted, features);
     expect(allowed.sends.map((send) => send.bytes)).toEqual(["\x1b]9;4;3\x1b\\"]);
-    expect(allowed.next.sent).toBe(wanted);
+    expect(allowed.next.sent).toEqual(wanted);
+  });
+
+  it("decides the pointer apart from the progress, and leaves a part it is not given as it is", () => {
+    const tmux = { ...features, layers: [{ kind: "tmux" as const, evidence: "declared" as const, passthrough: "unknown" as const }] };
+    const first = commitTerminalState(NOTHING_COMMITTED, { pointer: pointerShape("text") }, tmux);
+    expect(first.sends.map((send) => send.feature)).toEqual(["pointer"]);
+    expect(first.next.refused.pointer?.wanted).toBe("text");
+    const progress = commitTerminalState(first.next, { progress: { state: "indeterminate" } }, features);
+    expect(progress.sends.map((send) => send.feature)).toEqual(["progress"]);
+    expect(progress.next.refused.pointer?.wanted).toBe("text");
+    expect(commitTerminalState(progress.next, { pointer: pointerShape("text") }, features).sends.map((send) => send.bytes)).toEqual(["\x1b]22;text\x1b\\"]);
   });
 
   it("sends nothing under new features when what is wanted is what was sent", () => {
@@ -279,6 +296,12 @@ describe("identifiedBy", () => {
     expect(readVersionAnswer("XTerm(388)")).toBeUndefined();
   });
 
+  it("reads VTE's answer as vte, and zellij's only in the shape it sends", () => {
+    expect(readVersionAnswer("VTE(7802)")).toEqual({ kind: "terminal", name: "vte", text: "VTE(7802)" });
+    expect(readVersionAnswer("Zellij(0.41.2)")).toMatchObject({ kind: "layer", layer: "zellij" });
+    expect(readVersionAnswer("Zellij 0.41.2")).toBeUndefined();
+  });
+
   it("drops an inferred screen layer when the terminal answers, since screen neither answers nor forwards XTVERSION", () => {
     const known = inferredIn({ TERM: "screen-256color", STY: "1.pts" });
     expect(known.layers.map((layer) => layer.kind)).toEqual(["screen"]);
@@ -292,8 +315,8 @@ describe("identifiedBy", () => {
     expect(identifiedBy(answer("kitty(0.35.2)"), withLayers([editor])).layers).toEqual([editor]);
   });
 
-  it("keeps a layer the program declared, whatever answered", () => {
-    const tmux: Layer = { kind: "tmux", evidence: "declared", passthrough: "declared" };
+  it.each<Evidence>(["declared", "confirmed"])("keeps a layer known as %s, whatever answered", (evidence) => {
+    const tmux: Layer = { kind: "tmux", evidence, passthrough: "declared" };
     expect(identifiedBy(answer("kitty(0.35.2)"), withLayers([tmux])).layers).toEqual([tmux]);
   });
 
@@ -303,13 +326,23 @@ describe("identifiedBy", () => {
   });
 
   it("puts a multiplexer that answers for itself innermost, once", () => {
-    const zellij = identifiedBy(answer("Zellij 0.41.2"), inferredIn({ TERM: "screen-256color", STY: "1.pts" }));
+    const zellij = identifiedBy(answer("Zellij(0.41.2)"), inferredIn({ TERM: "screen-256color", STY: "1.pts" }));
     expect(zellij.layers).toEqual([{ kind: "zellij", evidence: "identified", passthrough: "unknown" }, { kind: "screen", evidence: "inferred", passthrough: "unknown" }]);
-    expect(identifiedBy(answer("Zellij 0.41.2"), zellij).layers).toEqual(zellij.layers);
+    expect(identifiedBy(answer("Zellij(0.41.2)"), zellij)).toEqual(zellij);
   });
 
-  it("leaves a multiplexer the program declared where it was declared", () => {
-    const tmux: Layer = { kind: "tmux", evidence: "declared", passthrough: "declared" };
+  it("takes the terminal for other when a multiplexer the environment never saw answers, since its TERM named none past it", () => {
+    // kitty started inside a zellij that set no ZELLIJ: TERM is zellij's, and reads as kitty.
+    const known = inferredIn({ TERM: "xterm-kitty" });
+    expect(known.capabilities.terminal.name).toBe("kitty");
+    const learned = identifiedBy(answer("Zellij(0.41.2)"), known);
+    expect(learned.capabilities.terminal).toMatchObject({ name: "other", evidence: "inferred" });
+    const declared = { name: "kitty" as const, evidence: "declared" as const, source: "the program" };
+    expect(identifiedBy(answer("Zellij(0.41.2)"), withLayers([], declared)).capabilities.terminal).toEqual(declared);
+  });
+
+  it.each<Evidence>(["declared", "confirmed"])("leaves a multiplexer known as %s where it was known", (evidence) => {
+    const tmux: Layer = { kind: "tmux", evidence, passthrough: "declared" };
     const editor: Layer = { kind: "editor", evidence: "inferred", passthrough: "unknown" };
     expect(identifiedBy(answer("tmux 3.4"), withLayers([editor, tmux])).layers).toEqual([editor, tmux]);
   });

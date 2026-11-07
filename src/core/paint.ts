@@ -22,7 +22,7 @@ import { Segment } from "./segment.js";
 import type { CaretShape } from "./style.js";
 import type { TerminalFeatures } from "./terminal-capabilities.js";
 import type { TerminalDeclaration } from "./terminal-requests.js";
-import { NOTHING_COMMITTED, commitTerminalState, declaredState, type Committed } from "./terminal-state.js";
+import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState, type Committed, type TerminalState } from "./terminal-state.js";
 
 /**
  * Where a frame is painted. `alternate` is the whole terminal, in the
@@ -223,10 +223,10 @@ class DeclaredState {
     this.pending = [];
   }
 
-  /** The frame's declarations committed: `handBack` commits none, so what a frame set is taken away. */
-  commit(declarations: readonly TerminalDeclaration[] = this.pending.splice(0)): string {
+  /** The frame's declarations committed, or `wanted`: `handBack` commits the empty state, so what a frame set is taken away. */
+  commit(wanted: Partial<TerminalState> = declaredState(this.pending.splice(0))): string {
     const features = this.featuresOf();
-    const { next, sends } = commitTerminalState(this.committed, declaredState(declarations), features);
+    const { next, sends } = commitTerminalState(this.committed, wanted, features);
     this.committed = next;
     let bytes = "";
     for (const decided of sends) {
@@ -242,7 +242,7 @@ class DeclaredState {
 
   handBack(): string {
     this.pending = [];
-    return this.commit([]);
+    return this.commit(EMPTY_TERMINAL_STATE);
   }
 
   /** The terminal is believed to show nothing, with nothing sent or logged: what was committed never reached it. */
@@ -293,6 +293,15 @@ export class SurfaceRenderer implements Renderer {
    */
   caret(destination: OutputTarget): boolean {
     return destination.textOrder !== "logical";
+  }
+
+  /**
+   * Bring the terminal to `wanted` now, between frames — a pointer shape set
+   * while the frame stands — through the same commit a frame's declarations
+   * take, so what was sent and what was refused have one record.
+   */
+  settle(wanted: Partial<TerminalState>): void {
+    this.write(this.state.commit(wanted));
   }
 
   /** Take the terminal: the surface entered, the cursor hidden. */

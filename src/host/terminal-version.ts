@@ -14,25 +14,35 @@
  * `readVersionAnswer` and `identifiedBy`, which stay pure.
  */
 
-import { identifiedBy, type TerminalFeatures } from "../core/terminal-capabilities.js";
-import { readVersionAnswer } from "../core/terminal-identity.js";
+import { identifiedBy, type Layer, type TerminalFeatures } from "../core/terminal-capabilities.js";
+import { readVersionAnswer, readsVersionQuery } from "../core/terminal-identity.js";
 import type { App } from "./app.js";
 
 const XTVERSION = "\x1b[>0q";
 // The answer is a DCS whose body begins `>|`.
 const ANSWER_PREFIX = ">|";
 
+const sameLayers = (a: readonly Layer[], b: readonly Layer[]): boolean =>
+  a.length === b.length && a.every((layer, i) => layer.kind === b[i]!.kind && layer.evidence === b[i]!.evidence && layer.passthrough === b[i]!.passthrough);
+
 /**
  * Ask the terminal `app` runs on who it is, and return `app`'s terminal
  * features with the answer weighed in, to set as `app.terminalFeatures`.
  * `undefined` when it learned nothing: the terminal did not implement
- * XTVERSION, or named itself off the table `readVersionAnswer` reads.
+ * XTVERSION, named itself off the table `readVersionAnswer` reads, or said
+ * what was already known — or is a VTE old enough to draw the query as text,
+ * which is not asked at all.
  */
 export async function askTerminalIdentity(app: App): Promise<TerminalFeatures | undefined> {
+  if (!readsVersionQuery(app.terminalIdentity)) return undefined;
   const { replies } = await app.ask([XTVERSION]);
   const body = replies.find((reply) => reply.kind === "dcs" && reply.body.startsWith(ANSWER_PREFIX))?.body;
   const answer = body === undefined ? undefined : readVersionAnswer(body.slice(ANSWER_PREFIX.length));
   if (answer === undefined) return undefined;
   const features = app.terminalFeatures;
-  return { ...features, ...identifiedBy(answer, features) };
+  const learned = identifiedBy(answer, features);
+  const was = features.capabilities.terminal;
+  const now = learned.capabilities.terminal;
+  if (now.name === was.name && now.evidence === was.evidence && sameLayers(learned.layers, features.layers)) return undefined;
+  return { ...features, ...learned };
 }

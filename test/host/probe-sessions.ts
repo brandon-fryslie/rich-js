@@ -27,6 +27,10 @@ export const SESSIONS = {
   },
   // kitty started from a tmux pane inherits TMUX and TERM_PROGRAM=tmux.
   kittyFromTmux: { source: DOCUMENTED, env: { TERM: "xterm-kitty", TERM_PROGRAM: "tmux", TMUX: "/tmp/tmux-501/default,1,0" }, answers: answer("kitty(0.35.2)"), da1: DA1 },
-  // VTE does not implement XTVERSION: DA1 alone.
-  vte: { source: "a terminal without XTVERSION", env: { TERM: "xterm-256color", VTE_VERSION: "7600" }, answers: new Map(), da1: DA1 },
+  // VTE answers with its VTE_VERSION.
+  vte: { source: "documented shape: VTE's XTVERSION reply, VTE(<VTE_VERSION>)", env: { TERM: "xterm-256color", VTE_VERSION: "7802" }, answers: answer("VTE(7802)"), da1: DA1 },
+  // VTE 0.52, before the parser that consumes an unknown CSI: it would draw the query, so it is never asked.
+  oldVte: { source: "VTE 0.52's environment; never asked", env: { TERM: "xterm-256color", VTE_VERSION: "5202" }, answers: new Map(), da1: DA1 },
+  // Alacritty does not implement XTVERSION (vtdn.dev/docs/dcs/xtversion): DA1 alone.
+  alacritty: { source: "documented: vtdn.dev/docs/dcs/xtversion lists no XTVERSION for Alacritty", env: { TERM: "alacritty" }, answers: new Map(), da1: DA1 },
 } satisfies Record<string, ProbeSession>;

@@ -158,12 +158,12 @@ export type TerminalProgress =
 /**
  * What a renderable on the frame says the terminal should show while it is
  * drawn: its share of the progress — a count against a total, or work of no
- * known size. Shares from every declarer on a frame are summed.
+ * known size — or the pointer's shape. Shares from every declarer on a frame
+ * are summed; of the pointer shapes declared, the last is shown.
  */
-export type TerminalDeclaration = {
-  readonly kind: "progress";
-  readonly share: { readonly completed: number; readonly total: number } | "indeterminate";
-};
+export type TerminalDeclaration =
+  | { readonly kind: "progress"; readonly share: { readonly completed: number; readonly total: number } | "indeterminate" }
+  | { readonly kind: "pointer"; readonly shape: ParsedPointerShape };
 
 /** The whole percent OSC 9;4 carries: clamped to 0–100, and 0 for no number at all. */
 export function shownPercent(percent: number): number {

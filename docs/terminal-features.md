@@ -53,8 +53,9 @@ layer is there at all, and `passthrough`, how it is known that it forwards a
 wrapped sequence. A layer found in the environment is `inferred` and its
 passthrough is one nothing has confirmed, and no policy acts on that, so nothing that needs tmux's or screen's
 passthrough is sent until the program passes the layer in with its passthrough
-`declared`. A layer the program passes in is `declared` by being passed, so it
-names only its `kind` and `passthrough`.
+`declared`. A layer the program passes in without `evidence` is `declared` by
+being passed; one that carries it — a console's own `terminalFeatures`, handed
+back — keeps it.
 
 ## Asking the terminal who it is
 
@@ -63,16 +64,20 @@ an `App` runs on with XTVERSION (`CSI > 0 q`) and returns the app's features
 with the answer weighed in, to set as `app.terminalFeatures`, or `undefined`
 when it learned nothing. A terminal that
 names itself (`kitty(0.35.2)`, `foot(1.16.2)`, `WezTerm …`, `iTerm2 …`,
-`ghostty …`) becomes `identified`, which `strict` acts on, so foot gets OSC 777
+`ghostty …`, `VTE(7802)`) becomes `identified`, which `strict` acts on, so foot gets OSC 777
 and kitty OSC 99 instead of the OSC 9 fallback. Its answer also proves no tmux,
 zellij or screen sits in front of it, so such a layer the environment inferred
-is dropped. What the program declared is never replaced or dropped by an
-answer. A terminal that does not implement XTVERSION answers DA1 alone, and one
-that names itself off that list says nothing a choice turns on: either way the
-result is `undefined`.
+is dropped. Nothing known more strongly than `identified` — declared by the
+program, or confirmed by a probe — is replaced or dropped by an answer. A
+terminal that does not implement XTVERSION answers DA1 alone, one that names
+itself off that list says nothing a choice turns on, and one that says only what
+was already known changes nothing: each way the result is `undefined`. A VTE
+older than 0.54, which draws a query it does not know as text, is not asked.
 
 Under tmux or zellij, the multiplexer answers for itself and becomes the
-innermost layer. The terminal past it cannot be asked. A query wrapped in
+innermost layer. Where the environment had not seen that multiplexer, the
+terminal it named was read off the multiplexer's own `TERM`, so it becomes
+`other`, unless the program declared it. The terminal past it cannot be asked. A query wrapped in
 tmux's passthrough reaches it, but tmux takes the reply for one of its own and
 hands its body to the pane as keystrokes
 ([tmux#5530](https://github.com/tmux/tmux/issues/5530)), so no wrapped query is

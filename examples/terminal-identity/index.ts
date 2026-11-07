@@ -37,13 +37,23 @@ const app = new App({
 const environment = describe(app.terminalFeatures);
 
 app.onKey(() => app.stop());
+// Settled now, so a frame that throws while the ask is out is held here, not
+// left an unhandled rejection; it is rethrown when awaited below.
 const running = app.run();
+const ended = running.then(
+  () => undefined,
+  (error: unknown) => ({ error }),
+);
 const learned = await askTerminalIdentity(app);
-if (learned === undefined) {
-  asked = "nothing learned";
-} else {
-  app.terminalFeatures = learned;
-  asked = describe(learned);
+// A key may have stopped the app while the ask was out.
+if (app.phase === "running") {
+  if (learned === undefined) {
+    asked = "nothing learned";
+  } else {
+    app.terminalFeatures = learned;
+    asked = describe(learned);
+  }
+  app.refresh();
 }
-app.refresh();
-await running;
+const outcome = await ended;
+if (outcome !== undefined) throw outcome.error;
