@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "2c45a91f45d52f53d61870445221f5d38ceb0cfa",
+      "timestamp": "2026-11-07T01:07:15.801Z",
+      "commits": [
+        {
+          "sha": "2c45a91f45d52f53d61870445221f5d38ceb0cfa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:05:28-07:00",
+          "message": "decodeAnsi: one VT500 lexing pass every byte reader consumes (rich-control-codes-xh4n.gux) (#590)\n\n* decodeAnsi reads its bytes in one VT500 lexing pass that the line split, the link reader and every escape consume (rich-control-codes-xh4n.gux)\n\nA sequence a C0 control interrupts is now the sequence a terminal reads\nwherever it is read: a NEL or CNL so interrupted ends the line, an OSC 8\nan interrupted ESC introduces opens its link, and a CSI an ESC or C1\ncancels draws nothing. A cut-off string is a lexeme of its own, so no\ncontrol can land in its payload; escapeTokens, INTERRUPTED and\nOPEN_ESCAPE are gone.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* An escape the bytes end inside stays on the line it began, and the lexer's string stops are osc8's (rich-control-codes-xh4n.gux review)\n\n* The lexer reads ground text as runs, and an open escape carries its lexeme index on its state (rich-control-codes-xh4n.gux review)\n\n* Ground runs read the census's line breaks through a lookahead, a test pins how a line feed meets each escape, and the hold bound says what it holds (rich-control-codes-xh4n.gux review)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-586",
       "ref": "refs/pull/586/merge",
       "sha": "47ca96b3ba18f6a02e4db471dabf56dcf75c0d88",
@@ -41,64 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T08:38:27-07:00",
           "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-590",
-      "ref": "refs/pull/590/merge",
-      "sha": "07ebece4f413fe05748af5067ba5b70173bbb530",
-      "timestamp": "2026-11-07T00:51:46.819Z",
-      "commits": [
-        {
-          "sha": "07ebece4f413fe05748af5067ba5b70173bbb530",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:49:50Z",
-          "message": "Merge ad5ed6db0cc6ffa316d06191a0056659a159a6cc into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
-        },
-        {
-          "sha": "ad5ed6db0cc6ffa316d06191a0056659a159a6cc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:49:39-07:00",
-          "message": "Ground runs read the census's line breaks through a lookahead, a test pins how a line feed meets each escape, and the hold bound says what it holds (rich-control-codes-xh4n.gux review)\n"
-        },
-        {
-          "sha": "3b88694e632a685cbeb3a31c810a73687ba2949f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:37:19-07:00",
-          "message": "The lexer reads ground text as runs, and an open escape carries its lexeme index on its state (rich-control-codes-xh4n.gux review)\n"
-        },
-        {
-          "sha": "1ec3b047dd47a050cbddd218c257ebb03dacec33",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:24:44-07:00",
-          "message": "An escape the bytes end inside stays on the line it began, and the lexer's string stops are osc8's (rich-control-codes-xh4n.gux review)\n"
-        },
-        {
-          "sha": "ec73144849fac3cd5dfe9dcc5c6884c73f77d744",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:14:11-07:00",
-          "message": "decodeAnsi reads its bytes in one VT500 lexing pass that the line split, the link reader and every escape consume (rich-control-codes-xh4n.gux)\n\nA sequence a C0 control interrupts is now the sequence a terminal reads\nwherever it is read: a NEL or CNL so interrupted ends the line, an OSC 8\nan interrupted ESC introduces opens its link, and a CSI an ESC or C1\ncancels draws nothing. A cut-off string is a lexeme of its own, so no\ncontrol can land in its payload; escapeTokens, INTERRUPTED and\nOPEN_ESCAPE are gone.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "120efcd8094b0b4600dfab9a06ba71d8a046ed42",
-      "timestamp": "2026-11-07T00:04:12.354Z",
-      "commits": [
-        {
-          "sha": "120efcd8094b0b4600dfab9a06ba71d8a046ed42",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:01:46-07:00",
-          "message": "A C0 control inside a CSI or an escape runs ahead of it and the sequence goes on, as a VT500 parser does (rich-control-codes-xh4n.8qs) (#589)\n\n* A C0 control inside a CSI or an escape runs ahead of it and the sequence goes on, as a VT500 parser does (rich-control-codes-xh4n.8qs)\n\n* A control inside a sequence runs in the tokenizer, after any string the sequence cuts off; a C0 break there ends the line and carries the sequence on (rich-control-codes-xh4n.8qs)\n\nReplaces the executedFirst text rewrite, which moved a BEL or FF into a cut-off\nstring's payload. decodeLine now follows the rule too, and LF joins VT and FF.\nSequence patterns come from one builder; RUN_IN_SEQUENCE derives from ABORTS.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A DEL inside a sequence is no token, so REP still repeats; a held break relocates by the census (rich-control-codes-xh4n.8qs)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A line break inside a sequence is left to the lexing pass (rich-control-codes-xh4n.gux); the carry linesOf held is removed (rich-control-codes-xh4n.8qs)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
