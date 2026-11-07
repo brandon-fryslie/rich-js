@@ -4,15 +4,29 @@
     {
       "version": "pr-598",
       "ref": "refs/pull/598/merge",
-      "sha": "bc5d08dbe869e8724f8a8bb6af23585df49f145d",
-      "timestamp": "2026-11-07T07:49:28.356Z",
+      "sha": "dab9233104f8fded7206df31952c59a1ace34017",
+      "timestamp": "2026-11-07T07:54:22.216Z",
       "commits": [
         {
-          "sha": "bc5d08dbe869e8724f8a8bb6af23585df49f145d",
+          "sha": "dab9233104f8fded7206df31952c59a1ace34017",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:46:48-07:00",
-          "message": "Merge 6132257fc2942b6e3c53460cc7aada22dcc8b3d2 into e478624c449683fc23820c28a7138de9727967e3\n"
+          "timestamp": "2026-11-07T07:51:31Z",
+          "message": "Merge 6e387b1f40632826e392fa5b2a230a306eef55a3 into e478624c449683fc23820c28a7138de9727967e3\n"
+        },
+        {
+          "sha": "6e387b1f40632826e392fa5b2a230a306eef55a3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:51:21-07:00",
+          "message": "One writtenOver check: what a window wrote must hold a gallery frame, and a depth rebuild must keep 1 fps (rich-palette-xovz.u60)\n"
+        },
+        {
+          "sha": "09d7ce9636efff7b054a91c914f5cbf336f618c6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:49:14-07:00",
+          "message": "The no-color checks require a painted frame, so an empty window cannot pass them (rich-palette-xovz.u60)\n"
         },
         {
           "sha": "6132257fc2942b6e3c53460cc7aada22dcc8b3d2",
