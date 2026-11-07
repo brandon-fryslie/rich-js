@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-593",
+      "ref": "refs/pull/593/merge",
+      "sha": "6d7e7373f83a9a2fd173a6ce92cdc68e0544a396",
+      "timestamp": "2026-11-07T05:39:31.242Z",
+      "commits": [
+        {
+          "sha": "6d7e7373f83a9a2fd173a6ce92cdc68e0544a396",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:36:55-07:00",
+          "message": "Merge a8a807a9ee565abaf3afbe89070d113fd2ec6454 into 5571ed0e73f74691307c8cf1ffafa4832709aff5\n"
+        },
+        {
+          "sha": "a8a807a9ee565abaf3afbe89070d113fd2ec6454",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:35:38-07:00",
+          "message": "A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-592",
       "ref": "refs/pull/592/merge",
       "sha": "140a24113b92a4630f3ecd8cb146778951482344",
