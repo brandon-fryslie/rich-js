@@ -47,7 +47,7 @@ describe("declaredState", () => {
 });
 
 describe("commitTerminalState", () => {
-  const features = { capabilities: declareCapabilities(["OSC 9;4"]), policy: "strict" as const, layers: [] };
+  const features = { capabilities: declareCapabilities(["OSC 9;4"], "other"), policy: "strict" as const, layers: [] };
 
   it("sends nothing for a frame that declares what the terminal already shows", () => {
     const shown = { progress: { state: "normal" as const, percent: 50.2 } };
@@ -110,7 +110,7 @@ describe("pick", () => {
 
   it("wraps once per layer, innermost first, so tmux in tmux doubles every ESC twice", () => {
     const layers: Layer[] = [{ kind: "tmux", passthrough: "declared" }, { kind: "tmux", passthrough: "declared" }];
-    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers });
     const once = `${ESC}Ptmux;${ESC}${ESC}]x${ESC}${ESC}\\${ESC}\\`;
     expect(sent.bytes).toBe(`${ESC}Ptmux;${once.replaceAll(ESC, ESC + ESC)}${ESC}\\`);
     expect(sent.reason).toBe("TEST through tmux passthrough, tmux passthrough: declared by the program is declared, strict");
@@ -118,7 +118,7 @@ describe("pick", () => {
 
   it("gives the layer the program writes to the outermost envelope, so tmux in screen is screen's DCS inside tmux's", () => {
     const layers: Layer[] = [{ kind: "tmux", passthrough: "declared" }, { kind: "screen", passthrough: "declared" }];
-    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers });
     const forScreen = `${ESC}P${ESC}]x\x07${ESC}\\`;
     expect(sent.bytes).toBe(`${ESC}Ptmux;${forScreen.replaceAll(ESC, ESC + ESC)}${ESC}\\`);
     expect(sent.reason).toBe("TEST through tmux passthrough, screen passthrough: declared by the program is declared, strict");
@@ -126,12 +126,12 @@ describe("pick", () => {
 
   it("says why a sequence screen would cut is not sent", () => {
     const long: Encoding<string> = { ...encoding("ignored", "passthrough"), encode: () => "y".repeat(800) };
-    const sent = pick({ name: "test", encodings: [long] }, "", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers: [{ kind: "screen", passthrough: "declared" }] });
+    const sent = pick({ name: "test", encodings: [long] }, "", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers: [{ kind: "screen", passthrough: "declared" }] });
     expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: through screen: 800 bytes > 768" });
   });
 
   it.each<Intermediary>(["zellij", "editor"])("names %s as the layer a passthrough cannot cross", (kind) => {
-    const sent = pick({ name: "test", encodings: [encoding("ignored", "impossible")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers: [{ kind, passthrough: "declared" }] });
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "impossible")] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers: [{ kind, passthrough: "declared" }] });
     expect(sent.reason).toBe(`fallback: TEST: ${kind} does not pass it`);
   });
 
@@ -179,23 +179,23 @@ describe("route", () => {
   it("refuses a wrapped sequence a native layer would have to carry", () => {
     const native = { ...encoding("ignored", "passthrough"), routes: { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "native" } as const };
     const layers: Layer[] = [{ kind: "editor", passthrough: "declared" }, { kind: "tmux", passthrough: "declared" }];
-    const sent = pick({ name: "test", encodings: [native] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
+    const sent = pick({ name: "test", encodings: [native] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers });
     expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: editor does not pass a wrapped sequence" });
   });
 
   it("refuses screen inside tmux, since screen would end tmux's envelope at its ST", () => {
     const layers: Layer[] = [{ kind: "screen", passthrough: "declared" }, { kind: "tmux", passthrough: "declared" }];
-    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers });
     expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: screen cannot carry another layer's passthrough" });
   });
 
   it("trusts an inferred passthrough under bestGuess even for a misread encoding: a closed one only drops it", () => {
-    const sent = pick({ name: "test", encodings: [encoding("misread", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "bestGuess", layers: [{ kind: "tmux", passthrough: "inferred" }] });
+    const sent = pick({ name: "test", encodings: [encoding("misread", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "bestGuess", layers: [{ kind: "tmux", passthrough: "inferred" }] });
     expect(sent.bytes).toBe(`${ESC}Ptmux;${ESC}${ESC}]x${ESC}${ESC}\\${ESC}\\`);
   });
 
   it("says a layer has no passthrough rather than blaming screen", () => {
-    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers: [{ kind: "zellij", passthrough: "declared" }] });
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers: [{ kind: "zellij", passthrough: "declared" }] });
     expect(sent.reason).toBe("fallback: TEST: zellij has no passthrough");
   });
 });

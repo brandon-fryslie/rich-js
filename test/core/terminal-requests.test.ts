@@ -90,6 +90,12 @@ describe("Console.notify", () => {
     expect(second).toBe(`i=${id}:p=body;ok${ST}`);
   });
 
+  it("keeps the terminal it inferred when the program declares only an encoding", () => {
+    const { console, written } = terminal(KITTY, { terminalFeatures: { policy: "bestGuess", capabilities: declareCapabilities(["OSC 9;4"]) } });
+    console.notify("A");
+    expect(written()).toContain(`${ESC}]99;`);
+  });
+
   it("gives each kitty notification its own id, so a second does not replace the first", () => {
     const { console, written } = terminal(KITTY, GUESS);
     console.notify("A");
@@ -158,6 +164,13 @@ describe("inside tmux", () => {
 
   it("sends OSC 9 behind tmux whatever TERM tmux was told to set", () => {
     const { console, written } = terminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" }, PASSES("tmux"));
+    console.notify("n");
+    expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;n${ESC}${ESC}\\${ST}`);
+  });
+
+  it("takes a tmux pane's TERM for tmux's setting, naming no terminal past it, under bestGuess too", () => {
+    expect(identifyTerminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" })).toMatchObject({ terminal: "other", intermediary: "tmux", namedBy: undefined });
+    const { console, written } = terminal({ TERM: "xterm-ghostty", TERM_PROGRAM: "tmux", TMUX: "x" }, { terminalFeatures: { ...PASSES("tmux").terminalFeatures, policy: "bestGuess" } });
     console.notify("n");
     expect(written()).toBe(`${ESC}Ptmux;${ESC}${ESC}]9;n${ESC}${ESC}\\${ST}`);
   });

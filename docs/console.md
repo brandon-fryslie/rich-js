@@ -711,8 +711,8 @@ tmux and screen take the title themselves, as the pane's, and pass the
 clipboard, the pointer and a notification on only through their passthrough:
 tmux only with `allow-passthrough` on, screen only when the request fits its
 buffer, so a long clipboard write is not sent. Nothing in the environment says
-whether passthrough is on, so under `strict` none of the three is sent through a
-multiplexer until the program declares the layer's passthrough. zellij and an
+whether passthrough is on, so under either policy none of the three is sent
+through tmux or screen until the program declares the layer's passthrough. zellij and an
 editor's terminal have no passthrough, and what they do with a request is
 theirs. A terminal may refuse a clipboard write; most ask first or need it
 enabled.

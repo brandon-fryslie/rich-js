@@ -48,6 +48,11 @@ screen ends its wrap at the first string terminator, so it cannot carry another
 layer's wrap, and a sequence that would need it to is not sent. Neither can a
 `native` layer, which re-emits only the sequence itself.
 
+A layer found in the environment is one whose passthrough nothing has
+confirmed, and no policy acts on that, so nothing that needs tmux's or screen's
+passthrough is sent until the program passes the layer in with its passthrough
+`declared`.
+
 ## The send log
 
 Every decision is reported to `onSend`, including the ones that write nothing,

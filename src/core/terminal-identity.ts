@@ -59,7 +59,9 @@ const TERM_PROGRAMS: ReadonlyMap<string, TerminalName> = new Map([["iTerm.app", 
 type Named = readonly [TerminalName, string | undefined];
 
 function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
-  const term = env["TERM"] ?? "";
+  // A tmux or screen pane's TERM is the multiplexer's own setting (tmux's
+  // `default-terminal`), so it names no terminal past it.
+  const term = intermediary === "tmux" || intermediary === "screen" ? "" : env["TERM"] ?? "";
   for (const [name, terminal] of TERM_NAMES) if (term.match(name) !== null) return [terminal, `TERM=${term}`];
   // kitty sets no TERM_PROGRAM. A terminal that borrows kitty's TERM (WezTerm
   // can) names itself, and so does one started from kitty, whose KITTY_WINDOW_ID

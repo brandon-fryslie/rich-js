@@ -8,8 +8,8 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
-import { CLIPBOARD, NOTIFICATION, POINTER, pointerShape, titleSequence, type PointerShape } from "./terminal-requests.js";
-import { inferCapabilities, pick, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
+import { BELL, CLIPBOARD, NOTIFICATION, POINTER, TITLE, pointerShape, type PointerShape } from "./terminal-requests.js";
+import { inferCapabilities, pick, type TerminalCapabilities, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -130,12 +130,12 @@ export interface ConsoleOptions {
   terminal?: TerminalColors;
   /**
    * What this console may send the terminal itself, and the log of what it
-   * did (`TerminalFeatures`). Each part not given is the environment's:
-   * capabilities and layers inferred from it, the `strict` policy, no log.
-   * State what the terminal reads (`declareCapabilities`) to have it sent on
-   * your word; `bestGuess` acts on inference where a miss is ignored.
+   * did (`TerminalFeatures`). Each part not given is the environment's — the
+   * terminal and layers inferred from it, no declared encodings, the `strict`
+   * policy, no log. State what the terminal reads (`declareCapabilities`) to
+   * have it sent on your word; `bestGuess` acts on inference where a miss is ignored.
    */
-  terminalFeatures?: Partial<TerminalFeatures>;
+  terminalFeatures?: Partial<Omit<TerminalFeatures, "capabilities">> & { capabilities?: Partial<TerminalCapabilities> };
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
@@ -450,7 +450,10 @@ export class Console {
     // terminal derive from `_features`, declared or inferred.
     const inferred = inferCapabilities(identifyTerminal(environment.env));
     this._features = {
-      capabilities: options?.terminalFeatures?.capabilities ?? inferred.capabilities,
+      capabilities: {
+        terminal: options?.terminalFeatures?.capabilities?.terminal ?? inferred.capabilities.terminal,
+        declared: options?.terminalFeatures?.capabilities?.declared ?? inferred.capabilities.declared,
+      },
       layers: options?.terminalFeatures?.layers ?? inferred.layers,
       policy: options?.terminalFeatures?.policy ?? "strict",
       onSend: options?.terminalFeatures?.onSend,
@@ -784,47 +787,45 @@ export class Console {
    * because a bell moves no cursor, and a live region would repaint its frame.
    */
   bell(): void {
-    this._request("bell", () => ({ feature: "bell", bytes: "\x07", reason: "BEL: every terminal reads it" }));
+    this._request(BELL, undefined);
   }
 
   /**
    * Sets the terminal window's title (OSC 2), Rich's `Console.set_window_title`.
-   * Never wrapped for a multiplexer: tmux and screen take OSC 2 themselves, as
-   * the pane's title, and pass it on as their own settings say.
+   * Never wrapped for a multiplexer, which takes it as the pane's (`TITLE`).
    */
   setWindowTitle(title: string): void {
-    this._request("title", () => ({ feature: "title", bytes: titleSequence(title), reason: "OSC 2: every terminal and multiplexer reads it" }));
+    this._request(TITLE, title);
   }
 
   /** Puts `text` on the system clipboard (OSC 52), where the terminal allows it. */
   copyToClipboard(text: string): void {
-    this._request("clipboard", () => pick(CLIPBOARD, text, this._features));
+    this._request(CLIPBOARD, text);
   }
 
   /** Sets the mouse pointer's shape over the terminal (OSC 22). */
   setPointerShape(shape: PointerShape): void {
-    const parsed = pointerShape(shape);
-    this._request("pointer", () => pick(POINTER, parsed, this._features));
+    this._request(POINTER, pointerShape(shape));
   }
 
   /** Raises a desktop notification, in the protocol this console's terminal reads. */
   notify(title: string, body?: string): void {
     // Random, so no other console or run shares it: kitty updates in place a
     // notification whose id it has seen.
-    this._request("notification", () => pick(NOTIFICATION, { title, body, id: Math.random().toString(36).slice(2, 12) }, this._features));
+    this._request(NOTIFICATION, { title, body, id: Math.random().toString(36).slice(2, 12) });
   }
 
   // [LAW:single-enforcer] Every request to the terminal goes through here: it
   // reaches whoever is at the terminal and no one else, straight to the sink, because it moves no cursor and a live region
   // would repaint its frame.
   // Every decision lands in the send log, those that write nothing included.
-  private _request(feature: string, decide: () => TerminalSend): void {
+  private _request<A>(feature: TerminalFeature<A>, value: A): void {
     refuseRenderWrite(this._madeIn);
     const send: TerminalSend = !this._attended
-      ? { feature, bytes: undefined, reason: "not sent: no one is at a terminal" }
+      ? { feature: feature.name, bytes: undefined, reason: "not sent: no one is at a terminal" }
       : this._capture.get() !== null
-        ? { feature, bytes: undefined, reason: "not sent: output is being captured" }
-        : decide();
+        ? { feature: feature.name, bytes: undefined, reason: "not sent: output is being captured" }
+        : pick(feature, value, this._features);
     if (send.bytes !== undefined) this.file.write(send.bytes);
     this._features.onSend?.(send);
   }

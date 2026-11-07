@@ -72,7 +72,7 @@ export interface Layer {
 
 /**
  * How a layer treats an encoding: `native`, it understands it and re-emits
- * it to its clients (tmux and OSC 52, OSC 8, titles); `passthrough`, it
+ * it to its clients (tmux and OSC 8, titles); `passthrough`, it
  * reaches the terminal only wrapped; `impossible`, it does not reach it.
  */
 export type Route = "native" | "passthrough" | "impossible";
@@ -142,9 +142,16 @@ export function inferCapabilities(identity: TerminalIdentity): { capabilities: T
   };
 }
 
-/** Capabilities a program states: the encodings, by name, its terminal reads. */
-export function declareCapabilities(encodings: Iterable<string>, terminal: TerminalName = "other"): TerminalCapabilities {
-  return { terminal: { name: terminal, evidence: "declared", source: "declared by the program" }, declared: new Set(encodings) };
+/**
+ * Capabilities a program states: the encodings, by name, its terminal reads,
+ * and, only when it says so, which terminal that is. Stating an encoding says
+ * nothing of the terminal's name, so a console keeps the one it inferred.
+ */
+export function declareCapabilities(encodings: Iterable<string>): Pick<TerminalCapabilities, "declared">;
+export function declareCapabilities(encodings: Iterable<string>, terminal: TerminalName): TerminalCapabilities;
+export function declareCapabilities(encodings: Iterable<string>, terminal?: TerminalName): Partial<TerminalCapabilities> {
+  const declared = new Set(encodings);
+  return terminal === undefined ? { declared } : { terminal: { name: terminal, evidence: "declared", source: "declared by the program" }, declared };
 }
 
 // What says the terminal reads `encoding`, and whether `policy` acts on it, in

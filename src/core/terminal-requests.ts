@@ -11,10 +11,21 @@ import { ESC, ST, utf8, type TerminalFeature } from "./terminal-capabilities.js"
 
 const OSC = `${ESC}]`;
 
+// Every layer reads these itself: tmux and screen take OSC 2 as the pane's title
+// and pass it on as their own settings say, so neither is ever wrapped.
+const NATIVE = { tmux: "native", screen: "native", zellij: "native", editor: "native" } as const;
+
+/** BEL: the terminal's bell. */
+export const BELL: TerminalFeature<void> = {
+  name: "bell",
+  encodings: [{ name: "BEL", terminals: "any", failure: "ignored", routes: NATIVE, encode: () => "\x07" }],
+};
+
 /** OSC 2: the window title. */
-export function titleSequence(title: string): string {
-  return `${OSC}2;${stripOscControls(title)}${ST}`;
-}
+export const TITLE: TerminalFeature<string> = {
+  name: "title",
+  encodings: [{ name: "OSC 2", terminals: "any", failure: "ignored", routes: NATIVE, encode: (title) => `${OSC}2;${stripOscControls(title)}${ST}` }],
+};
 
 /**
  * The shapes a pointer takes over a cell, by their CSS `cursor` names, which
@@ -32,7 +43,7 @@ const POINTER_SHAPES = [
  * a TypeScript caller, and OSC 22 carries the name raw, so a BEL in a cast
  * string would end it and start a sequence of the caller's choosing. Every road
  * a shape takes to the terminal parses it here first, whether or not anything
- * is then written; `pointerSequence` takes only what this returns.
+ * is then written; `POINTER` encodes only what this returns.
  */
 export function pointerShape(value: unknown): ParsedPointerShape {
   if ((POINTER_SHAPES as readonly unknown[]).includes(value)) return value as ParsedPointerShape;
