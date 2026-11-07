@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "e8ccaa344a8e212c55b5d252d065534fb5b7a315",
+      "timestamp": "2026-11-07T06:34:34.359Z",
+      "commits": [
+        {
+          "sha": "e8ccaa344a8e212c55b5d252d065534fb5b7a315",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T23:31:56-07:00",
+          "message": "A filled row places its right-to-left line itself, so no option travels to tell text where it stands (rich-control-codes-xh4n.yws) (#593)\n\n* A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A holder that sets its own rows settles them, and one that splices rows fills them first (rich-control-codes-xh4n.yws)\n\nReview of #593: a Tree's root label and a Syntax line moved to the right\nedge under a filler; a change between two right-to-left texts and a row\nunder an open overlay lost their place mid-transition; the caret was found\nbefore the leading fill. Tree and Syntax settle their rows, ChangeFrame and\nWidgetApp fill before splicing, paint finds the caret on the placed row,\nand leadingFill walks a row once without allocating.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A change's spliced row carries the new row's stamp, so whoever holds the change places it (rich-control-codes-xh4n.yws)\n\nReview of #593 (medium): filling both sides inside ChangeFrame made a\nchange act as a filler, so a crossfade label in a Tree moved to the right\nedge. The spliced row now stands as the new row does, its old side filled\nto the new row's width, and Segment.rowEdge is the one reader of the stamp.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A row's stamp records the cells its text drew, so a window or crop cut from it is never moved (rich-control-codes-xh4n.yws)\n\nReview of #593 (high, second pass): a scroll window cut from a\nright-to-left row kept the row's stamp and was pushed toward its\nholder's right edge; a change from right-to-left to left-to-right text\nkept the old cells' stamp mid-change. RowEdge carries the row's drawn\nlength in place of an identity field nobody read, rowEdge refuses a row\nthat no longer has it, Segment.stamped clears when the new row names no\nedge, and text stamps through it. Stale comment and blank lines left by\nthe PASSES_EDGE removal go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-595",
       "ref": "refs/pull/595/merge",
       "sha": "1b10f3957f8ca75cbb694d942316ff9a4b6189d1",
@@ -20,64 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T23:24:39-07:00",
           "message": "Disabled text is written under the slot muted text takes at every indexed depth (rich-palette-xovz.qg7)\n\nAt 256 and sixteen colors, slotted held foreground-muted only to textFloor, so\nmuted and disabled often shared a slot or inverted (VGA defaults over bundled\npalettes x every role ground: 932/3427 missed the 0.25 margin at sixteen, 9 at\n256). Disabled text, which has no floor, now takes a slot HELD_PAST_MARGIN under\nmuted's, or muted's color dimmed where none is; under dimmed muted, its floor\nstands in for the contrast. Raising muted instead would lift it to body-text\nstrength at sixteen colors.\n\nink() already took the frame's depth (themed-widget.ts), and widget labels at\nindexed depths are covered by test/widgets/terminal-contrast.test.ts.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-593",
-      "ref": "refs/pull/593/merge",
-      "sha": "496743293593236d54d041df59fde8884b469b92",
-      "timestamp": "2026-11-07T06:18:20.105Z",
-      "commits": [
-        {
-          "sha": "496743293593236d54d041df59fde8884b469b92",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T06:15:47Z",
-          "message": "Merge ad5f156b189e9db6352dc08f5c4eb957c724190d into 26fcad51796093755a144e645a8c4841fbffb321\n"
-        },
-        {
-          "sha": "ad5f156b189e9db6352dc08f5c4eb957c724190d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:15:35-07:00",
-          "message": "A row's stamp records the cells its text drew, so a window or crop cut from it is never moved (rich-control-codes-xh4n.yws)\n\nReview of #593 (high, second pass): a scroll window cut from a\nright-to-left row kept the row's stamp and was pushed toward its\nholder's right edge; a change from right-to-left to left-to-right text\nkept the old cells' stamp mid-change. RowEdge carries the row's drawn\nlength in place of an identity field nobody read, rowEdge refuses a row\nthat no longer has it, Segment.stamped clears when the new row names no\nedge, and text stamps through it. Stale comment and blank lines left by\nthe PASSES_EDGE removal go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "25d157596940456ddeaebe8768af40d501749211",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:00:07-07:00",
-          "message": "A change's spliced row carries the new row's stamp, so whoever holds the change places it (rich-control-codes-xh4n.yws)\n\nReview of #593 (medium): filling both sides inside ChangeFrame made a\nchange act as a filler, so a crossfade label in a Tree moved to the right\nedge. The spliced row now stands as the new row does, its old side filled\nto the new row's width, and Segment.rowEdge is the one reader of the stamp.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "e113f9acdfd6efa81c67457ccfa30958a73e4ae2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:49:03-07:00",
-          "message": "A holder that sets its own rows settles them, and one that splices rows fills them first (rich-control-codes-xh4n.yws)\n\nReview of #593: a Tree's root label and a Syntax line moved to the right\nedge under a filler; a change between two right-to-left texts and a row\nunder an open overlay lost their place mid-transition; the caret was found\nbefore the leading fill. Tree and Syntax settle their rows, ChangeFrame and\nWidgetApp fill before splicing, paint finds the caret on the placed row,\nand leadingFill walks a row once without allocating.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "a8a807a9ee565abaf3afbe89070d113fd2ec6454",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T22:35:38-07:00",
-          "message": "A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "f956e44774e89083fad22c344a844ad11160747e",
-      "timestamp": "2026-11-07T06:18:06.786Z",
-      "commits": [
-        {
-          "sha": "f956e44774e89083fad22c344a844ad11160747e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:16:11-07:00",
-          "message": "foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227) (#594)\n\n* foreground-muted is held past the disabled text textOn draws on every ground, by one floor textOn and buildPalette both read (rich-palette-xovz.227)\n\n* Review: floorOn is the public floor, keyed by heldPast's type; docs state muted's ordering; indexed depths deferred to qg7 (rich-palette-xovz.227)\n\n* Docs: muted's ordering past disabled is held at truecolor (rich-palette-xovz.227)"
         }
       ]
     }
