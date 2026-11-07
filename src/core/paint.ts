@@ -135,19 +135,18 @@ function caretIn(rows: readonly Segment[][]): Caret | undefined {
   return undefined;
 }
 
-const fitRows = (frame: Segment[][], screen: Screen): Segment[][] =>
-  // A frame's rows are filled by the screen, so a right-to-left row its text left unplaced stands at its start edge.
-  frame.map((line) => Segment.adjustLineLength(Segment.withLeadingFill(line, screen.cols), screen.cols, undefined, false));
-
 /**
  * `frame` fitted to the screen, and its caret where the terminal can show it.
- * The caret is found before the fit, so one past the screen's edge — a row
- * wider than the screen, cut — stands on the last column rather than going
+ * A frame's rows are filled by the screen, so a right-to-left row its text
+ * left unplaced stands at its start edge, and the caret is found on the row
+ * as placed. It is found before the cut, so one past the screen's edge — a
+ * row wider than the screen — stands on the last column rather than going
  * unshown.
  */
 function fitted(frame: Segment[][], screen: Screen): { rows: Segment[][]; caret: Caret | undefined } {
-  const caret = caretIn(frame);
-  const rows = fitRows(frame, screen);
+  const placed = frame.map((line) => Segment.withLeadingFill(line, screen.cols));
+  const caret = caretIn(placed);
+  const rows = placed.map((line) => Segment.adjustLineLength(line, screen.cols, undefined, false));
   return { rows, caret: caret && { ...caret, col: Math.min(caret.col, Math.max(screen.cols - 1, 0)) } };
 }
 

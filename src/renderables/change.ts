@@ -98,9 +98,11 @@ class ChangeFrame implements Renderable, Measurable {
   ) {}
 
   render(options: RenderOptions): Iterable<Segment> {
-    const before = Segment.splitLines(render(this.from, options));
+    // Both sides are filled before they are spliced, so a right-to-left row stands where it will once the change is done.
+    const filled = (lines: Segment[][]) => lines.map((line) => Segment.withLeadingFill(line, options.maxWidth));
+    const before = filled(Segment.splitLines(render(this.from, options)));
     const drawn = [...render(this.to, options)];
-    const after = Segment.splitLines(drawn);
+    const after = filled(Segment.splitLines(drawn));
     // [LAW:one-source-of-truth] The new renderable's rows are the shape of every frame, its last row ending as it ends.
     const lengths = after.map((line) => Segment.getLineLength(line));
     const ended = drawn.filter((segment) => !segment.isControl).at(-1)?.text.endsWith("\n") ?? false;

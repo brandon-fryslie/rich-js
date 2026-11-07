@@ -826,4 +826,20 @@ describe("a filled row stands a right-to-left text at its start edge, through an
     tree.add(HEBREW);
     expect(drawn(new Padding(tree, 0), 30)[1]).toBe(`└── ${SHOWN}${" ".repeat(22)}`);
   });
+
+  test("a tree's right-to-left root stays above its children", () => {
+    const tree = new Tree(HEBREW);
+    tree.add("child");
+    expect(drawn(new Padding(tree, 0), 30).slice(0, 2)).toEqual([`${SHOWN}${" ".repeat(26)}`, `└── child${" ".repeat(21)}`]);
+  });
+
+  test("a code line keeps its indent, whatever its direction", () => {
+    const lines = drawn(new Padding(new Syntax(`x = 1\n# ${HEBREW}\ny = 2`, "python"), 0), 30);
+    expect(lines.slice(0, 3).map((line) => line.trimEnd())).toEqual(["x = 1", `${SHOWN} #`, "y = 2"]);
+  });
+
+  test("a change between two right-to-left texts stands where its last frame will", () => {
+    const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText(`${HEBREW} ${HEBREW}`) });
+    for (const t of [0, 1, 2]) expect(drawn(new Padding(change.at(t), 0))[0]!.endsWith(SHOWN)).toBe(true);
+  });
 });

@@ -191,7 +191,8 @@ export class Syntax implements Renderable, Measurable {
       const lineNo = first + i;
       const style = this.highlightLines.has(lineNo) ? highlightStyle : numberStyle;
       // Terminated, so an empty line is one empty row rather than none.
-      const rows = Segment.splitLines([...render(textLines[i]!, lineOptions), Segment.line()]);
+      // Each line keeps its indent, so a right-to-left one stays where the code set it (`Segment.settled`).
+      const rows = Segment.splitLines([...Segment.settled(render(textLines[i]!, lineOptions)), Segment.line()]);
       for (let row = 0; row < rows.length; row++) {
         if (this.lineNumbers) {
           // A wrapped line's continuation rows keep the gutter, unnumbered.

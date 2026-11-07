@@ -295,7 +295,8 @@ export class Tree implements Renderable, Measurable {
         if (piece.length > 0) yield new Segment(piece, guideStyle);
         left -= cellLen(piece);
       }
-      yield* lines[i]!;
+      // A tree sets its own rows at their guides, a root label's included (`Segment.settled`).
+      yield* Segment.settled(lines[i]!);
       yield Segment.line();
     }
   }

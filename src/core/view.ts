@@ -54,7 +54,7 @@ export function hostView(view: View): Renderable {
   return typeof view === "function" ? asked(view) : view;
 }
 
-/** A function view drawn as what it returns, which is handed the edge its frame is. */
+/** A function view drawn as what it returns. */
 const asked = (view: () => Renderable) => ({
   render: (options: RenderOptions): Iterable<Segment> => render(view(), options),
 });
@@ -152,7 +152,7 @@ export function drawView(
   };
   // Made before the render opens: the one time the frame has.
   const frame = frameNow(drawnBy, time);
-  // A frame is the screen's rows, filled as a printed line's are.
+  // Its rows are filled where they meet the screen (`paint.ts`), as a printed line's are by the print.
   const lines = draw(view, { ...options, frame, onValidity });
   const validity = frameValidity(lines, told);
   // The frame as the sample of the view it is, on the timeline's clock; the

@@ -262,7 +262,8 @@ export class WidgetApp implements FrameSource, FrameHost {
     // hidden widget has no footprint on the frame, and so paints none.
     const drawing = { ...options, onVisibility };
     const lines = tracked(this.reaction, () => {
-      const base = Segment.splitLines(render(view, drawing));
+      // Filled before an overlay is painted over a row, so a right-to-left row stands where it does with no overlay open.
+      const base = Segment.splitLines(render(view, drawing)).map((line) => Segment.withLeadingFill(line, drawing.maxWidth));
       for (const widget of present.keys()) paintOverlay(base, widget, drawing);
       return base;
     });

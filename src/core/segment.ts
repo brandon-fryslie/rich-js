@@ -4,7 +4,7 @@
  */
 
 import { cellLen, cutCells, graphemes, splitText, asCellCol, type CellCol } from "./cells.js";
-import { Style } from "./style.js";
+import { Style, type RowEdge } from "./style.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 
 // --- ControlType ---
@@ -301,10 +301,17 @@ export class Segment {
    * places a right-to-left one alike, and no option travels down to tell it.
    */
   static leadingFill(line: Segment[], width: number): number {
-    const inked = line.filter((segment) => segment.cellLength > 0);
-    const edge = inked[0]?.style?.edge;
-    if (edge === undefined || inked.some((segment) => segment.style?.edge !== edge)) return 0;
-    return Math.max(Math.min(edge.width, width) - Segment.getLineLength(line), 0);
+    let edge: RowEdge | undefined;
+    let length = 0;
+    for (const segment of line) {
+      const cells = segment.cellLength;
+      if (cells === 0) continue;
+      // The first inked piece without the row's stamp ends the walk: almost every row is one.
+      if (segment.style?.edge === undefined || (edge !== undefined && segment.style.edge !== edge)) return 0;
+      edge = segment.style.edge;
+      length += cells;
+    }
+    return edge === undefined ? 0 : Math.max(Math.min(edge.width, width) - length, 0);
   }
 
   /**
