@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-586",
+      "ref": "refs/pull/586/merge",
+      "sha": "7231318211999529ab4fb30caa51f999da98867b",
+      "timestamp": "2026-11-07T00:29:23.137Z",
+      "commits": [
+        {
+          "sha": "7231318211999529ab4fb30caa51f999da98867b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:26:49Z",
+          "message": "Merge 1c30a79baef58c92c8007e05e901780d90850267 into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
+        },
+        {
+          "sha": "1c30a79baef58c92c8007e05e901780d90850267",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:26:39-07:00",
+          "message": "Widget contrast is a setting, and sixteen colors draw the theme's own (rich-unfiled-791c.yyzs)\n\nA themed widget takes `contrast`, the TextFit its text meets a floor with:\nslide by default, TEXT_FITS.asIs to turn checking off, setContrast to change\nit live. Widgets resolve colors at the frame's depth through one\nThemedWidget.ink; at an indexed depth a pair is written in the theme's own\nsixteen rather than rounded against stock VGA, and muted text is the slot\neach theme states (ThemePaletteData.ansiMuted, TerminalTheme.mutedSlot), so\na placeholder no longer looks typed at 16 colors. mutedInk owns the muted\nlook; a disabled TextInput's continuation marker is drawn disabled. The\ncontrast test names muted glyphs by scene, not by color.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "9040e524396b20e86b6ea693720aa982b93e4a77",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T08:38:27-07:00",
+          "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-590",
       "ref": "refs/pull/590/merge",
       "sha": "9388f6c41a14872fd01e2310a69c4fb1198cca86",
@@ -42,28 +71,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T17:01:46-07:00",
           "message": "A C0 control inside a CSI or an escape runs ahead of it and the sequence goes on, as a VT500 parser does (rich-control-codes-xh4n.8qs) (#589)\n\n* A C0 control inside a CSI or an escape runs ahead of it and the sequence goes on, as a VT500 parser does (rich-control-codes-xh4n.8qs)\n\n* A control inside a sequence runs in the tokenizer, after any string the sequence cuts off; a C0 break there ends the line and carries the sequence on (rich-control-codes-xh4n.8qs)\n\nReplaces the executedFirst text rewrite, which moved a BEL or FF into a cut-off\nstring's payload. decodeLine now follows the rule too, and LF joins VT and FF.\nSequence patterns come from one builder; RUN_IN_SEQUENCE derives from ABORTS.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A DEL inside a sequence is no token, so REP still repeats; a held break relocates by the census (rich-control-codes-xh4n.8qs)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A line break inside a sequence is left to the lexing pass (rich-control-codes-xh4n.gux); the carry linesOf held is removed (rich-control-codes-xh4n.8qs)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-586",
-      "ref": "refs/pull/586/merge",
-      "sha": "8f02a313a780f8008fdc5a6c7f483d89d7c9d402",
-      "timestamp": "2026-11-06T15:40:27.527Z",
-      "commits": [
-        {
-          "sha": "8f02a313a780f8008fdc5a6c7f483d89d7c9d402",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:38:38-07:00",
-          "message": "Merge 9040e524396b20e86b6ea693720aa982b93e4a77 into 80644906c32a0f0fac5b1a61d7aaa72b5f672677\n"
-        },
-        {
-          "sha": "9040e524396b20e86b6ea693720aa982b93e4a77",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:38:27-07:00",
-          "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n"
         }
       ]
     }
