@@ -4,15 +4,22 @@
     {
       "version": "pr-592",
       "ref": "refs/pull/592/merge",
-      "sha": "32baf5244e5fbaa99bf96ba6eede8bbf46ea4e22",
-      "timestamp": "2026-11-07T05:40:17.919Z",
+      "sha": "dc1814966522d0ae3819f0625971095dbdaddbbc",
+      "timestamp": "2026-11-07T05:46:05.841Z",
       "commits": [
         {
-          "sha": "32baf5244e5fbaa99bf96ba6eede8bbf46ea4e22",
+          "sha": "dc1814966522d0ae3819f0625971095dbdaddbbc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:38:33Z",
-          "message": "Merge 96ed92085a7a7b93fbedcd278085370a536b7498 into 5571ed0e73f74691307c8cf1ffafa4832709aff5\n"
+          "timestamp": "2026-11-07T05:43:59Z",
+          "message": "Merge 3947a37bf4ca069b891d2745c6577b6b165a3baa into 5571ed0e73f74691307c8cf1ffafa4832709aff5\n"
+        },
+        {
+          "sha": "3947a37bf4ca069b891d2745c6577b6b165a3baa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:43:38-07:00",
+          "message": "foreground-muted's per-ground floor reads the one disabledInk textOn draws; the ordering is tested with its margin beside the 3:1 floor (rich-unfiled-791c.tofk)\n"
         },
         {
           "sha": "96ed92085a7a7b93fbedcd278085370a536b7498",
