@@ -8,6 +8,7 @@ import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, NEVER_CHANGES, Style, type ValidityInterval, type StyleSyntaxError, type Theme } from "./style.js";
 import { ColorDepth, type ColorSpec, type TerminalColors } from "./color.js";
 import type { TextOrder } from "./text-order.js";
+import type { TerminalDeclaration } from "./terminal-requests.js";
 // [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
 // type-only. A render option that highlights the text being rendered, when
 // `RichText` is itself rendered under these options, is a recursion in the
@@ -204,6 +205,15 @@ export interface RenderOptions {
    * whatever `frame` reaches.
    */
   onReads?: (t: number, key: string, validity: ValidityInterval) => void;
+  /**
+   * Told what the terminal should show while this frame stands — its progress
+   * indicator — by a renderable that declares it. A declaration is a commit
+   * (`afterPass`), so a measurement, a hidden render and a pass nobody saw
+   * declare nothing, by the rule that already keeps their effects. The
+   * painter that owns the terminal collects them and commits the change.
+   * [LAW:composability] Absent, nobody is listening: a print declares nothing.
+   */
+  declare?: (declaration: TerminalDeclaration) => void;
 }
 
 /** The one field of the render options that says whether the reader wants motion. */

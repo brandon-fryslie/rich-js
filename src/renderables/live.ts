@@ -104,8 +104,8 @@ export class Live implements FrameHost {
     // The final frame is a print, as in Rich, so a recording or a capture
     // holds it with everything else the console wrote.
     this._painter = this._console.isInteractive
-      ? new SurfaceRenderer(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes))
-      : new FinalFrameRenderer((frame) => this._console.print(linesOf(frame)));
+      ? new SurfaceRenderer(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes), this._console.terminalFeatures)
+      : new FinalFrameRenderer((frame) => this._console.print(linesOf(frame)), this._console.terminalFeatures);
   }
 
   /**
@@ -256,7 +256,7 @@ export class Live implements FrameHost {
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
-    return drawView(this._view.get(), this._time(), this, { ...options, height, caret: this._painter.caret(this._console.destination) }, (renderable, drawn) => {
+    return drawView(this._view.get(), this._time(), this, { ...options, height, caret: this._painter.caret(this._console.destination), declare: this._painter.declare }, (renderable, drawn) => {
       const lines = Segment.splitLines(render(renderable, drawn));
       return fitHeight(this._overflow(lines, height.rows), height);
     });

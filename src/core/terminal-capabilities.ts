@@ -1,0 +1,213 @@
+/**
+ * What the library may send a terminal, decided from what it knows about that
+ * terminal and what sits between: one pure decision, `pick`, that every
+ * terminal feature is a row of. A feature lists its encodings best first; each
+ * says which terminals read it, what a terminal without it does on receiving
+ * it, and how each kind of intermediary treats it. `pick` takes the first an
+ * evidence-weighed policy accepts and a route through every layer allows, or
+ * falls back, and says why either way — so the send log can explain every byte,
+ * and every byte not sent.
+ *
+ * Capabilities, not terminal names: a name is evidence toward an encoding, and
+ * how strong that evidence is travels with it. Nothing here performs I/O; the
+ * painter and the console write what `pick` returns.
+ */
+
+import type { Intermediary, TerminalIdentity, TerminalName } from "./terminal-identity.js";
+
+const ESC = "\x1b";
+const ST = `${ESC}\\`;
+// screen's string buffer (`MAXSTR`, ansi.c), in bytes.
+const SCREEN_STRING_MAX = 768;
+
+/**
+ * How a fact about the terminal is known, strongest first. `declared`: the
+ * program stated it. `confirmed`: the terminal answered a probe for it.
+ * `identified`: the terminal named itself and its version (XTVERSION).
+ * `inferred`: the environment suggests it, which an inherited variable or ssh
+ * can make wrong. `unknown`: nothing says either way.
+ */
+export type Evidence = "declared" | "confirmed" | "identified" | "inferred" | "unknown";
+
+/**
+ * What a terminal that lacks an encoding does on receiving it: `ignored`, as
+ * any terminal does an OSC it does not know; `garbage`, drawn as text; or
+ * `misread`, taken for a different request — bare OSC 9 is a notification, so
+ * a terminal without OSC 9;4 progress raises one reading "4;1;50".
+ */
+export type Failure = "ignored" | "garbage" | "misread";
+
+/**
+ * Which evidence a program acts on. `strict`, the default, acts on what the
+ * program declared or the terminal itself said. `bestGuess` also acts on the
+ * environment's inference, for an encoding whose failure is `ignored` — never
+ * for one that would draw garbage or be misread.
+ */
+export type TerminalPolicy = "strict" | "bestGuess";
+
+// [LAW:single-enforcer] The one table of which evidence a policy acts on.
+export function accepts(policy: TerminalPolicy, evidence: Evidence, failure: Failure): boolean {
+  switch (evidence) {
+    case "declared":
+    case "confirmed":
+    case "identified":
+      return true;
+    case "inferred":
+      return policy === "bestGuess" && failure === "ignored";
+    case "unknown":
+      return false;
+  }
+}
+
+/**
+ * One program between this one and the terminal: a multiplexer, or an
+ * editor's terminal. `passthrough` is how it is known that the layer forwards
+ * a wrapped sequence (tmux's `allow-passthrough`, off by default since 3.3).
+ */
+export interface Layer {
+  readonly kind: Intermediary;
+  readonly passthrough: Evidence;
+}
+
+/**
+ * How a layer treats an encoding: `native`, it understands it and re-emits
+ * it to its clients (tmux and OSC 52, OSC 8, titles); `passthrough`, it
+ * reaches the terminal only wrapped; `impossible`, it does not reach it.
+ */
+export type Route = "native" | "passthrough" | "impossible";
+
+/** What is known about the terminal, and how. */
+export interface TerminalCapabilities {
+  /** The terminal at the far end of every layer, and the evidence it is that one. */
+  readonly terminal: { readonly name: TerminalName; readonly evidence: Evidence; readonly source: string };
+  /** Encodings the program stated the terminal reads, whatever its name. */
+  readonly declared: ReadonlySet<string>;
+}
+
+/** Everything `pick` decides from, held by a console and handed to each painter. */
+export interface TerminalFeatures {
+  readonly capabilities: TerminalCapabilities;
+  readonly policy: TerminalPolicy;
+  /** Between this program and the terminal, innermost first. */
+  readonly layers: readonly Layer[];
+  /** Every decision to send, or not, with its reason: the send log. */
+  readonly onSend: ((send: TerminalSend) => void) | undefined;
+}
+
+/** One decision the send log records: the bytes written, or `undefined` and why not. */
+export interface TerminalSend {
+  readonly feature: string;
+  readonly bytes: string | undefined;
+  readonly reason: string;
+}
+
+/** One way to write a feature: a sequence, and what is known of who reads it. */
+export interface Encoding<A> {
+  /** How the send log names it, and how a program declares it: `"OSC 9;4"`. */
+  readonly name: string;
+  /** The terminals known to read it. */
+  readonly terminals: readonly TerminalName[];
+  readonly failure: Failure;
+  readonly routes: Readonly<Record<Intermediary, Route>>;
+  encode(value: A): string;
+}
+
+/** A thing a program asks of a terminal, and the encodings that ask it, best first. */
+export interface TerminalFeature<A> {
+  readonly name: string;
+  readonly encodings: readonly Encoding<A>[];
+}
+
+/**
+ * What the environment's `identity` says, all of it `inferred`: the terminal it names, and
+ * each multiplexer as a layer whose passthrough nothing has confirmed.
+ */
+export function inferCapabilities(identity: TerminalIdentity): { capabilities: TerminalCapabilities; layers: readonly Layer[] } {
+  const named = identity.namedBy;
+  return {
+    capabilities: {
+      terminal: named === undefined
+        ? { name: identity.terminal, evidence: "unknown", source: "no variable names the terminal" }
+        : { name: identity.terminal, evidence: "inferred", source: named },
+      declared: new Set(),
+    },
+    layers: identity.intermediary === undefined ? [] : [{ kind: identity.intermediary, passthrough: "unknown" }],
+  };
+}
+
+/** Capabilities a program states: the encodings, by name, its terminal reads. */
+export function declareCapabilities(encodings: Iterable<string>, terminal: TerminalName = "other"): TerminalCapabilities {
+  return { terminal: { name: terminal, evidence: "declared", source: "declared by the program" }, declared: new Set(encodings) };
+}
+
+function supportOf(encoding: Encoding<unknown>, { terminal, declared }: TerminalCapabilities): { evidence: Evidence; source: string } {
+  if (declared.has(encoding.name)) return { evidence: "declared", source: "declared by the program" };
+  if (encoding.terminals.includes(terminal.name)) return { evidence: terminal.evidence, source: terminal.source };
+  return { evidence: "unknown", source: `${terminal.name} is not known to read it` };
+}
+
+/**
+ * Through which layers `sequence` reaches the terminal: written as is, or the
+ * reason it cannot. `passes` says which layer a passthrough may be trusted
+ * through; a native layer needs no trust.
+ */
+export function route(sequence: string, encoding: Pick<Encoding<unknown>, "routes">, layers: readonly Layer[], passes: (layer: Layer) => boolean): { bytes: string; via: string } | { refused: string } {
+  let bytes = sequence;
+  const via: string[] = [];
+  for (const layer of layers) {
+    const kind = encoding.routes[layer.kind];
+    if (kind === "impossible") return { refused: `${layer.kind} does not pass it` };
+    if (kind === "native") {
+      via.push(`${layer.kind} natively`);
+      continue;
+    }
+    if (!passes(layer)) return { refused: `${layer.kind} passthrough is ${layer.passthrough}` };
+    const wrapped = passthrough(bytes, layer.kind);
+    if (wrapped === undefined) return { refused: `through screen: ${byteLength(bytes)} bytes > ${SCREEN_STRING_MAX}` };
+    bytes = wrapped;
+    via.push(`${layer.kind} passthrough`);
+  }
+  return { bytes, via: via.length === 0 ? "" : ` through ${via.join(", ")}` };
+}
+
+// tmux's DCS passthrough with every ESC doubled; screen's bare DCS, ending in
+// BEL since screen ends its DCS at the first ST, and nothing when it is longer
+// than screen holds, which would leave the terminal in an unended OSC.
+function passthrough(sequence: string, kind: Intermediary): string | undefined {
+  switch (kind) {
+    case "tmux":
+      return `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
+    case "screen": {
+      const inner = sequence.replaceAll(ST, "\x07");
+      return byteLength(inner) > SCREEN_STRING_MAX ? undefined : `${ESC}P${inner}${ST}`;
+    }
+    case "zellij":
+    case "editor":
+      return undefined;
+  }
+}
+
+const byteLength = (text: string): number => new TextEncoder().encode(text).length;
+
+/**
+ * `value` written in the best encoding of `feature` that `features` lets
+ * through, or no bytes; the reason is the send log's either way. Pure.
+ */
+export function pick<A>(feature: TerminalFeature<A>, value: A, features: Pick<TerminalFeatures, "capabilities" | "policy" | "layers">): TerminalSend {
+  const { capabilities, policy, layers } = features;
+  const refusals: string[] = [];
+  for (const encoding of feature.encodings) {
+    const support = supportOf(encoding, capabilities);
+    if (!accepts(policy, support.evidence, encoding.failure)) {
+      refusals.push(`${encoding.name} ${encoding.failure} where unsupported; ${support.source} is ${support.evidence}, ${policy}`);
+      continue;
+    }
+    const routed = route(encoding.encode(value), encoding, layers, (layer) => accepts(policy, layer.passthrough, encoding.failure));
+    if ("refused" in routed) {
+      refusals.push(`${encoding.name}: ${routed.refused}`);
+      continue;
+    }
+    return { feature: feature.name, bytes: routed.bytes, reason: `${encoding.name}${routed.via}: ${support.source} ${support.evidence}, ${policy}` };
+  }
+  return { feature: feature.name, bytes: undefined, reason: `fallback: ${refusals.join("; ")}` };
+}

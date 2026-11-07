@@ -13,7 +13,7 @@ import { Live } from "./live.js";
 import type { Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
 import type { HostFrame, FrameHost, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { afterPass, render } from "../core/protocol.js";
 import { Animation } from "../core/animation.js";
 import type { Timing } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
@@ -637,7 +637,20 @@ export class Progress implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* render(this._table(this._ownFrame(options).time), options);
+    const { time } = this._ownFrame(options);
+    // [LAW:one-source-of-truth] The terminal's own indicator shows the tasks
+    // this display shows, summed: a task with no total, or not yet started,
+    // is work of no known size, as its bar pulses for it.
+    const { declare } = options;
+    if (declare !== undefined) {
+      const shares = this._tasks
+        .get()
+        .map((task) => taskAt(task.get(), time))
+        .filter((task) => task.visible)
+        .map((task) => (task.total === undefined || task.startTime === undefined ? "indeterminate" as const : { completed: Math.min(task.completed, task.total), total: task.total }));
+      afterPass(() => shares.forEach((share) => declare({ kind: "progress", share })));
+    }
+    yield* render(this._table(time), options);
   }
 
   // The frame this display is drawn in, which is only ever its host's: the
