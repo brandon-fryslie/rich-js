@@ -256,9 +256,9 @@ describe("decodeAnsi lines and other escapes", () => {
   });
 
   it("draws no byte of a finished CSI or escape, whatever its parameters, intermediates and final", () => {
-    // The text around each sequence is drawn from letters no sequence below
-    // holds, so a byte of one drawn as text is a byte outside `x`, `y`, the
-    // blanks an edit leaves and the break CNL or NEL makes. G0 goes back to
+    // The text around each sequence is drawn from letters outside ASCII, which
+    // no sequence below holds, so a byte of one drawn as text is a byte outside
+    // `é`, `ü`, the blanks an edit leaves and the break CNL or NEL makes. G0 goes back to
     // ASCII after each, since a designation changes the glyphs drawn after it.
     const finals = (from: number): string[] => Array.from({ length: 0x7f - from }, (_, at) => String.fromCharCode(from + at));
     const csis = ["\x1b[", "\x9b"].flatMap((introducer) =>
@@ -267,7 +267,7 @@ describe("decodeAnsi lines and other escapes", () => {
     const escapes = ["", "#", "(", ")", "(%", " "].flatMap((collected) =>
       finals(0x30).filter((final) => collected !== "" || !"[]P_^X".includes(final)).map((final) => `\x1b${collected}${final}`),
     );
-    const drawn = [...csis, ...escapes].filter((sequence) => !/^[xy \n]*$/u.test(decodeAnsi(`xx${sequence}\x1b(Byy`).plain));
+    const drawn = [...csis, ...escapes].filter((sequence) => !/^[éü \n]*$/u.test(decodeAnsi(`éé${sequence}\x1b(Büü`).plain));
     expect(drawn).toEqual([]);
   });
 
