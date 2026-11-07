@@ -255,6 +255,22 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("a\n\nb\n").plain).toBe("a\n\nb");
   });
 
+  it("draws no byte of a finished CSI or escape, whatever its parameters, intermediates and final", () => {
+    // The text around each sequence is drawn from letters no sequence below
+    // holds, so a byte of one drawn as text is a byte outside `x`, `y`, the
+    // blanks an edit leaves and the break CNL or NEL makes. G0 goes back to
+    // ASCII after each, since a designation changes the glyphs drawn after it.
+    const finals = (from: number): string[] => Array.from({ length: 0x7f - from }, (_, at) => String.fromCharCode(from + at));
+    const csis = ["\x1b[", "\x9b"].flatMap((introducer) =>
+      ["", "1", "1;2", "?25", ">4:2", "38:2::1:2:3", " ", "1 ", " 1", "!"].flatMap((collected) => finals(0x40).map((final) => introducer + collected + final)),
+    );
+    const escapes = ["", "#", "(", ")", "(%", " "].flatMap((collected) =>
+      finals(0x30).filter((final) => collected !== "" || !"[]P_^X".includes(final)).map((final) => `\x1b${collected}${final}`),
+    );
+    const drawn = [...csis, ...escapes].filter((sequence) => !/^[xy \n]*$/u.test(decodeAnsi(`xx${sequence}\x1b(Byy`).plain));
+    expect(drawn).toEqual([]);
+  });
+
   it("runs a line feed inside a CSI or an escape, which goes on, and cuts a string escape's payload at one", () => {
     expect(decodeAnsi("abc\x1b[\nhello").plain).toBe("abc\nello");
     expect(scanUndrawn("abc\x1b[\nhello").undrawn).toBe("\x1b[h");
