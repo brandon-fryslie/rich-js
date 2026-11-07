@@ -218,6 +218,8 @@ describe("animation playground", () => {
     const still = gallery(await q.screen());
     await q.advance(0.05);
     expect(gallery(await q.screen())).toBe(still);
+    // Still because motion is reduced, not because the clock stopped.
+    expect(await q.time()).toBe(10.1);
     await q.stop();
   });
 
