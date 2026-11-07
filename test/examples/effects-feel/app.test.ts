@@ -23,7 +23,7 @@ import {
   type TerminalTheme,
 } from "../../../src/index.js";
 import { cellLen, graphemes } from "../../../src/core/cells.js";
-import { runDemo } from "../../../examples/effects-feel/app.js";
+import { runDemo, type ContrastSampling } from "../../../examples/effects-feel/app.js";
 import { shares } from "../../../src/renderables/effects.js";
 import { textOn } from "../../../src/themes/text-on.js";
 import { JOIN, SEAM_MIN_DELTA_E } from "../../../src/core/strip.js";
@@ -40,11 +40,11 @@ const joined = (style: Style): boolean => {
   return false;
 };
 
-function started(argv: string[] = []) {
+function started(argv: string[] = [], sampling?: ContrastSampling) {
   const settings = parseSettings(["--fps", "30", ...argv])!;
   const base = scriptedHost({ cols: 110, rows: 40 });
   const host = { ...base, env: envAtDepth(base.env, settings.depth) };
-  return { host: base, demo: runDemo(host, settings) };
+  return { host: base, demo: runDemo(host, settings, sampling) };
 }
 
 /** Until the screen has shown `text`, however long the frames take. */
@@ -70,13 +70,13 @@ describe("effects-feel", () => {
     // Frames cost the same each second however loaded the machine is; the
     // measuring gets what is left, and at 30 a second under a loaded suite
     // there was little left. 1 is the rate Claude Code draws at.
-    const { host, demo } = started(["--fps", "1"]);
+    // One period at a dozen moments: what is asserted is that every loop is measured and says so, not how finely.
+    const { host, demo } = started(["--fps", "1"], { periods: 1, samples: 12 });
     await shown(host, FIRST_FRAME);
     // The first frame is up before any loop's contrast is, since measuring
     // one takes hundreds of frames and holding the screen for them is what
     // the demo is not allowed to do.
     expect(host.output()).toContain("measuring contrast…");
-    // Measuring every loop is a second or two of work spread between the frames; more under a loaded suite.
     // The test's own budget is the hang detector; this wait only must not end first.
     await shown(host, measured("wheel"), task.timeout);
     host.type("q");

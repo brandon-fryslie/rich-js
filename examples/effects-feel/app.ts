@@ -115,14 +115,20 @@ const MEASURE_SLICE = 0.008;
  * periods — no loop repeats exactly, so one period is only a slice of the
  * states it reaches — at this many samples each.
  */
-const CONTRAST = { periods: 8, samples: 60 } as const;
+const CONTRAST: ContrastSampling = { periods: 8, samples: 60 };
+
+/** How much of a loop its contrast is measured over: `periods` of it, at `samples` moments each. */
+export interface ContrastSampling {
+  readonly periods: number;
+  readonly samples: number;
+}
 
 /** An element's name for `Effected`. No curve here reads a cell's seed: a subject's `z` keeps it apart. */
 const seedKey = (effect: EffectName, subject: Subject): string => `${effect}:${subject.name}`;
 
-/** `CONTRAST.samples` moments a period, evenly across `CONTRAST.periods` periods of `seconds`. */
-function sampled(seconds: number): number[] {
-  return Array.from({ length: CONTRAST.periods * CONTRAST.samples }, (_, i) => (i / CONTRAST.samples) * seconds);
+/** `sampling.samples` moments a period, evenly across `sampling.periods` periods of `seconds`. */
+function sampled(seconds: number, sampling: ContrastSampling): number[] {
+  return Array.from({ length: sampling.periods * sampling.samples }, (_, i) => (i / sampling.samples) * seconds);
 }
 
 /**
@@ -187,7 +193,7 @@ interface Scene {
   readonly curves: Settings["curves"];
 }
 
-function scene(theme: TerminalTheme, drawnAt: RenderOptions, curves: Settings["curves"]): Scene {
+function scene(theme: TerminalTheme, drawnAt: RenderOptions, curves: Settings["curves"], sampling: ContrastSampling): Scene {
   const drawnWith = { ...drawnAt, terminal: theme };
   const ink = ColorSpec.fromRgba(theme.foregroundColor);
   const paper = ColorSpec.fromRgba(theme.backgroundColor);
@@ -223,8 +229,8 @@ function scene(theme: TerminalTheme, drawnAt: RenderOptions, curves: Settings["c
     for (const loop of LOOPS) {
       const under = (s: DrawnSubject, at: number) =>
         new Effected(s.renderable, loops[loop](s), { key: seedKey(loop, s) }).at(at).render(s.options);
-      const worst = yield* worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
-      contrast[loop] = `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
+      const worst = yield* worstContrast(subjects, under, sampled(curves[loop].seconds, sampling), theme);
+      contrast[loop] = `worst contrast ${ratio(worst)} over ${sampling.periods * curves[loop].seconds}s (at rest ${rest})`;
     }
   }
   return { theme, ink, paper, quiet, heading, subjects, loops, transitions, contrast, measure, curves };
@@ -303,7 +309,7 @@ export interface DemoHandle {
   readonly done: Promise<void>;
 }
 
-export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
+export function runDemo(host: TerminalHost, settings: Settings, sampling: ContrastSampling = CONTRAST): DemoHandle {
   // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
   // [LAW:no-silent-failure] A run judged at one depth and drawn at another is
@@ -335,7 +341,7 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   let stopMeasuring: Unsubscribe = () => {};
   const show = (): void => {
     stopMeasuring();
-    shown = scene(THEMES[at]!, drawnWith, magnifiedLoops(curves, magnitude));
+    shown = scene(THEMES[at]!, drawnWith, magnifiedLoops(curves, magnitude), sampling);
     stopMeasuring = spread(shown.measure(), clock, MEASURE_SLICE);
   };
   show();
