@@ -14,7 +14,8 @@ import { PALETTE_ROLES } from "../../src/themes/buildPalette.js";
 import type { Palette } from "../../src/themes/palette.js";
 import { getThemePalette, listThemePalettes } from "../../src/themes/registry.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
-import { asIs, textFloor, textOn, writeText, type WrittenText } from "../../src/themes/text-on.js";
+import { dimShown } from "../../src/core/export-lines.js";
+import { asIs, textOn, writeText, type WrittenText } from "../../src/themes/text-on.js";
 import { derivedFrom } from "./derived-palette.js";
 
 const BUNDLED = Object.values(terminalThemes).filter((value) => value instanceof TerminalTheme);
@@ -64,11 +65,8 @@ describe("foreground-muted past foreground-disabled on every ground", () => {
 });
 
 // A depth that writes colors by index draws a table's slots, and there the
-// ordering is held between what each is drawn as: on the VGA defaults the
-// depth assumes, and on the theme's own terminal. Dimming only lowers what a
-// slot shows, and muted is dimmed to stand at its floor, so dimmed muted stands
-// at most at the lesser of its floor and its slot. Disabled dimmed is the
-// faintest slot the table has.
+// ordering is held between what each shows — a dimmed slot as an export draws
+// it — on the VGA defaults the depth assumes, and on the theme's own terminal.
 describe.each([["256 colors", ColorDepth.EIGHT_BIT], ["sixteen colors", ColorDepth.STANDARD]] as const)("foreground-muted past foreground-disabled at %s", (_depth, depth) => {
   const cases = BUNDLED.flatMap((theme) => [
     { source: `${theme.palette.name}, no terminal named`, palette: theme.palette, terminal: undefined },
@@ -76,14 +74,16 @@ describe.each([["256 colors", ColorDepth.EIGHT_BIT], ["sixteen colors", ColorDep
   ]);
   it.each(cases)("in $source", ({ palette, terminal }) => {
     const shown = resolveTerminal(terminal, depth);
-    const on = ({ color, bgcolor }: WrittenText): number => contrastRatio(color.getTruecolor(shown, true), bgcolor.getTruecolor(shown, false));
+    const on = ({ color, bgcolor, dim }: WrittenText): number => {
+      const ground = bgcolor.getTruecolor(shown, false);
+      const ink = color.getTruecolor(shown, true);
+      return contrastRatio(dim ? dimShown(ink, ground) : ink, ground);
+    };
     const misses = PALETTE_ROLES.flatMap((role) => {
       const ground = palette.get(role).compositeOver(palette.get("background"));
       const muted = writeText(palette, "foreground-muted", ground, { drawnAt: { depth, terminal } });
       const disabled = writeText(palette, "foreground-disabled", ground, { drawnAt: { depth, terminal } });
-      if (disabled.dim) return on(disabled) <= on(muted) ? [] : [`${role}: dimmed disabled ${on(disabled).toFixed(3)} over muted's slot ${on(muted).toFixed(3)}`];
-      const mutedAt = muted.dim ? Math.min(textFloor("foreground-muted"), on(muted)) : on(muted);
-      return mutedAt >= on(disabled) + 0.25 - 1e-9 ? [] : [`${role}: ${mutedAt.toFixed(3)} vs ${on(disabled).toFixed(3)}`];
+      return on(muted) >= on(disabled) + 0.25 - 1e-9 && on(disabled) > 1 ? [] : [`${role}: muted ${on(muted).toFixed(3)} vs disabled ${on(disabled).toFixed(3)}`];
     });
     expect(misses).toEqual([]);
   });

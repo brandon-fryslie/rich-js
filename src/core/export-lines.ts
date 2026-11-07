@@ -130,6 +130,9 @@ export const escapeAttribute = (value: string): string =>
  */
 const DIM_FADE = 0.4;
 
+/** What a dim `glyph` shows on `ground`: the one reading of SGR dim's strength. */
+export const dimShown = (glyph: ColorRgba, ground: ColorRgba): ColorRgba => blendRgb(glyph, ground, DIM_FADE);
+
 const DEFAULT_COLOR = ColorSpec.default();
 
 /** What an unstyled cell shows under a theme: the canvas, and ink on it. */
@@ -187,7 +190,7 @@ export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
   const ground = style.reverse ? ink : paper;
   const background: Background = style.reverse || !paperSpec.isDefault ? ground : "canvas";
 
-  const faded = style.dim ? blendRgb(glyph, ground, DIM_FADE) : glyph;
+  const faded = style.dim ? dimShown(glyph, ground) : glyph;
 
   return {
     foreground: style.conceal ? ground : faded,

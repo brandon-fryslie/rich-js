@@ -23,6 +23,7 @@
  */
 
 import { ColorDepth, ColorRgba, ColorSpec, resolveTerminal, roundingDistance, type TerminalColors } from "../core/color.js";
+import { dimShown } from "../core/export-lines.js";
 import { Memo, WeakMemo } from "../core/memo.js";
 import { alphaBlend, compositedColor, contrastFor, contrastRatio, ensureContrast } from "./colorMath.js";
 import type { AccentRole, Palette, PaletteRole } from "./palette.js";
@@ -319,7 +320,8 @@ const HELD_PAST_MARGIN = 0.25;
  * past another intent to clear what that one draws there.
  * `textOn` at a depth that writes its own colors, and `buildPalette`, read
  * the ordering here by raising the intent; a depth that writes by index has
- * no room to raise it, so `writeText` lowers the one held under instead.
+ * no room to raise it, so `writeText` there lowers the one held under instead
+ * and does not read this number.
  */
 export function floorOn(intent: TextIntent, foreground: ColorRgba, ground: ColorRgba, drawnAt: DrawnAt = DRAWN_AT_TRUECOLOR): number {
   const rule: IntentRule = INTENTS[intent];
@@ -333,9 +335,7 @@ export function recedesFrom(intent: TextIntent): TextIntent | undefined {
 }
 
 /** The intent held past `intent` (`IntentRule.heldPast`), where one is. */
-function heldUnder(intent: TextIntent): TextIntent | undefined {
-  return TEXT_INTENTS.find((other) => (INTENTS[other] as IntentRule).heldPast === intent);
-}
+const heldUnder = (intent: TextIntent): TextIntent | undefined => HELD_UNDER.get(intent);
 
 /** Whether `name` is a text intent: what a template's string is parsed through. */
 export function isTextIntent(name: string): name is TextIntent {
@@ -344,6 +344,14 @@ export function isTextIntent(name: string): name is TextIntent {
 
 /** Every text intent, in the order the docs list them. */
 export const TEXT_INTENTS = Object.keys(INTENTS) as readonly TextIntent[];
+
+/** Each intent another is held past, to that other: `IntentRule.heldPast` read backwards. */
+const HELD_UNDER: ReadonlyMap<TextIntent, TextIntent> = new Map(
+  TEXT_INTENTS.flatMap((over) => {
+    const held = (INTENTS[over] as IntentRule).heldPast;
+    return held === undefined ? [] : [[held, over] as const];
+  }),
+);
 
 /** The color a fit tints `intent` toward on `ground`: what `TextRequest.tint` is handed. */
 export function textTint(palette: Palette, intent: TextIntent, ground: ColorRgba): ColorRgba {
@@ -363,7 +371,7 @@ export interface WrittenText {
  * palette's background first, as every palette color is. `WrittenText.dim` —
  * text a table has no slot for, drawn in a slot's color dimmed — is an
  * attribute, not a color, so it is `writeText`'s answer only; here such text
- * is its body text's color.
+ * is that slot's undimmed color.
  *
  * @param fit what text missing its floor becomes; `slide` unless stated.
  * @param drawnAt where the pair is drawn; truecolor unless stated.
@@ -407,9 +415,10 @@ const WRITTEN = new WeakMemo<WeakMemo<WeakMemo<Memo<WrittenText>, TerminalColors
  *   is that intent's color with SGR dim — the table has no room for it;
  * - text another intent is held past (`IntentRule.heldPast`) is the slot
  *   nearest its stated color standing `HELD_PAST_MARGIN` less off the ground
- *   than that intent draws — under its floor and off its slot where it is
- *   dimmed — and the faintest visible slot with SGR dim where none does. The
- *   ordering is a floor, so `asIs` drops it here as it does at truecolor.
+ *   than that intent shows, each slot measured plain and then with SGR dim as
+ *   the exporter draws it; where none keeps the margin, the most legible one
+ *   still under it. The ordering is a floor, so `asIs` drops it here as it
+ *   does at truecolor.
  */
 export function writeText(
   palette: Palette,
@@ -479,17 +488,27 @@ function slotted(palette: Palette, text: TextIntent, ground: ColorRgba, fit: Tex
   const under = heldUnder(text);
   if (under !== undefined && fit !== asIs) {
     const over = writeText(palette, under, ground, { fit, drawnAt });
-    const overSlot = contrastRatio(over.color.getTruecolor(terminal, true), groundShown);
-    // Dimming only lowers what a slot shows, and muted is dimmed to stand at
-    // its floor, so dimmed muted stands at the lesser of the two; its own slot,
-    // undimmed, is then above the margin and out.
-    const above = over.dim ? Math.min(textFloor(under), overSlot) : overSlot;
-    const below = visible.filter((s) => contrast(s) <= above - HELD_PAST_MARGIN);
-    const chosen = nearestOf(below, stated(text));
-    if (chosen !== undefined) return { color: chosen[0], bgcolor: groundSpec };
-    // No slot stands that far under: the least legible one the table has, dimmed.
-    const faintest = visible.reduce((a, b) => (contrast(b) < contrast(a) ? b : a));
-    return { color: faintest[0], bgcolor: groundSpec, dim: true };
+    // Each slot is written plain or dimmed, and is measured as it shows —
+    // dimmed as the exporter draws it — never as the ground.
+    const shows = (written: WrittenText): ColorRgba => {
+      const ink = written.color.getTruecolor(terminal, true);
+      return written.dim ? dimShown(ink, groundShown) : ink;
+    };
+    const above = contrastRatio(shows(over), groundShown);
+    const options = [false, true].flatMap((dim) =>
+      visible.map(([spec]): WrittenText => (dim ? { color: spec, bgcolor: groundSpec, dim } : { color: spec, bgcolor: groundSpec })),
+    ).filter((written) => shows(written).hex !== groundShown.hex);
+    const at = (written: WrittenText): number => contrastRatio(shows(written), groundShown);
+    const statedText = stated(text);
+    const nearest = (pool: readonly WrittenText[]): WrittenText | undefined =>
+      pool.reduce<WrittenText | undefined>((best, w) => (best === undefined || roundingDistance(shows(w), statedText) < roundingDistance(shows(best), statedText) ? w : best), undefined);
+    // Plain slots before dimmed ones, the margin under muted kept; where no
+    // option keeps it, the most legible one still under muted; where none is
+    // under it at all, the table has one answer for both.
+    return nearest(options.filter((w) => !w.dim && at(w) <= above - HELD_PAST_MARGIN))
+      ?? nearest(options.filter((w) => w.dim && at(w) <= above - HELD_PAST_MARGIN))
+      ?? options.filter((w) => at(w) < above).reduce<WrittenText | undefined>((best, w) => (best === undefined || at(w) > at(best) ? w : best), undefined)
+      ?? over;
   }
   const body = recedesFrom(text);
   if (body === undefined) return { color: drawn(text)[0], bgcolor: groundSpec };
