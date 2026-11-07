@@ -194,9 +194,9 @@ export interface Renderer {
 
 /**
  * The one owner of what the terminal is believed to hold between frames:
- * the declarations of the frame being drawn, and the commit that sends what
- * changed through `send` — the painter's own write, or `undefined` where the
- * output is not a terminal and nothing is written. Every decision goes to the
+ * the declarations of the frame being drawn, and the commit that returns the
+ * bytes for what changed, for the painter to write with the frame — none where
+ * the output is not a terminal (`terminal` false). Every decision goes to the
  * send log.
  */
 class DeclaredState {
@@ -205,31 +205,37 @@ class DeclaredState {
 
   constructor(
     private readonly features: TerminalFeatures,
-    private readonly send: ((bytes: string) => void) | undefined,
+    private readonly terminal: boolean,
   ) {}
 
   readonly declare = (declaration: TerminalDeclaration): void => {
     this.pending.push(declaration);
   };
 
+  /** A frame is about to be drawn: what an earlier one declared and never painted is dropped. */
+  begin(): void {
+    this.pending = [];
+  }
+
   /** The frame's declarations committed: `handBack` commits none, so what a frame set is taken away. */
-  commit(declarations: readonly TerminalDeclaration[] = this.pending.splice(0)): void {
+  commit(declarations: readonly TerminalDeclaration[] = this.pending.splice(0)): string {
     const { next, sends } = commitTerminalState(this.believed, declaredState(declarations), this.features);
     this.believed = next;
-    const { send } = this;
+    let bytes = "";
     for (const decided of sends) {
-      if (send === undefined) {
+      if (!this.terminal) {
         this.features.onSend?.({ ...decided, bytes: undefined, reason: `not sent: not a terminal (would be ${decided.reason})` });
         continue;
       }
-      if (decided.bytes !== undefined) send(decided.bytes);
+      bytes += decided.bytes ?? "";
       this.features.onSend?.(decided);
     }
+    return bytes;
   }
 
-  handBack(): void {
+  handBack(): string {
     this.pending = [];
-    this.commit([]);
+    return this.commit([]);
   }
 }
 
@@ -257,7 +263,7 @@ export class SurfaceRenderer implements Renderer {
     features: TerminalFeatures,
   ) {
     this.geometry = GEOMETRY[surface];
-    this.state = new DeclaredState(features, write);
+    this.state = new DeclaredState(features, true);
     this.declare = this.state.declare;
   }
 
@@ -288,10 +294,10 @@ export class SurfaceRenderer implements Renderer {
    * (`shownOn`): under reduced motion, nothing in them blinks.
    */
   paint(frame: FrameSource, screen: Screen, destination: OutputTarget): Segment[][] {
+    this.state.begin();
     const { rows: fit, caret } = fitted(frame(), screen);
     const rows = fit.map((row) => row.map((segment) => shownOn(segment, destination)));
-    this.write(SYNC_START + this.over(rows, caret, screen, destination) + SYNC_END);
-    this.state.commit();
+    this.write(SYNC_START + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit());
     return rows;
   }
 
@@ -303,14 +309,13 @@ export class SurfaceRenderer implements Renderer {
   around(text: string, frame: FrameSource, screen: Screen, destination: OutputTarget): string {
     // Drawn before `over` moves the row count, so a frame that throws leaves
     // the painter matching the terminal it left untouched.
+    this.state.begin();
     const { rows, caret } = fitted(frame(), screen);
     const erase = this.over([], undefined, screen, destination);
     const ended = text.endsWith("\n") ? text : `${text}\n`;
     // One synchronized block around all three, so the terminal is released
     // only once the frame is back.
-    const bytes = SYNC_START + erase + ended + this.over(rows, caret, screen, destination) + SYNC_END;
-    this.state.commit();
-    return bytes;
+    return SYNC_START + erase + ended + this.over(rows, caret, screen, destination) + SYNC_END + this.state.commit();
   }
 
   // The bytes that paint `rows` over the last frame. They go out in one
@@ -354,8 +359,7 @@ export class SurfaceRenderer implements Renderer {
   handBack(): void {
     const last = down(this.rows - 1 - this.at);
     const shape = this.shaped === undefined ? "" : DEFAULT_SHAPE;
-    this.write(RESET_STYLE + last + shape + SHOW_CURSOR + this.geometry.below(this.rows) + this.geometry.leave);
-    this.state.handBack();
+    this.write(RESET_STYLE + last + shape + SHOW_CURSOR + this.geometry.below(this.rows) + this.geometry.leave + this.state.handBack());
     this.rows = 0;
     this.at = 0;
     this.shown = false;
@@ -380,7 +384,7 @@ export class FinalFrameRenderer implements Renderer {
     private readonly print: (frame: Segment[][]) => void,
     features: TerminalFeatures,
   ) {
-    this.state = new DeclaredState(features, undefined);
+    this.state = new DeclaredState(features, false);
     this.declare = this.state.declare;
   }
 
@@ -396,7 +400,6 @@ export class FinalFrameRenderer implements Renderer {
 
   paint(frame: FrameSource): void {
     this.last = frame;
-    this.state.commit();
   }
 
   around(text: string): string {
@@ -406,6 +409,7 @@ export class FinalFrameRenderer implements Renderer {
   handBack(): void {
     const frame = this.last;
     this.last = () => [];
+    this.state.begin();
     this.print(frame());
     // The one frame drawn, and so the one declaration made: logged as not sent.
     this.state.commit();

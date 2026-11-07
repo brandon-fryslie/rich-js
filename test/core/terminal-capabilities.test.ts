@@ -110,6 +110,14 @@ describe("pick", () => {
     expect(sent.reason).toBe("TEST through tmux passthrough, tmux passthrough: declared by the program declared, strict");
   });
 
+  it("gives the layer the program writes to the outermost envelope, so tmux in screen is screen's DCS inside tmux's", () => {
+    const layers: Layer[] = [{ kind: "tmux", passthrough: "declared" }, { kind: "screen", passthrough: "declared" }];
+    const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers });
+    const forScreen = `${ESC}P${ESC}]x\x07${ESC}\\`;
+    expect(sent.bytes).toBe(`${ESC}Ptmux;${forScreen.replaceAll(ESC, ESC + ESC)}${ESC}\\`);
+    expect(sent.reason).toBe("TEST through tmux passthrough, screen passthrough: declared by the program declared, strict");
+  });
+
   it("says why a sequence screen would cut is not sent", () => {
     const long: Encoding<string> = { ...encoding("ignored", "passthrough"), encode: () => "y".repeat(800) };
     const sent = pick({ name: "test", encodings: [long] }, "", { capabilities: declareCapabilities(["TEST"]), policy: "strict", layers: [{ kind: "screen", passthrough: "declared" }] });
@@ -128,6 +136,12 @@ describe("pick", () => {
     const sent = pick({ name: "test", encodings: [best, plain] }, "", { capabilities, policy: "bestGuess", layers: [] });
     expect(sent.bytes).toBe("plain");
     expect(sent.reason).toBe("PLAIN: TERM_PROGRAM=iTerm.app inferred, bestGuess");
+  });
+});
+
+describe("identifyTerminal", () => {
+  it.each(["constructor", "toString", "__proto__"])("names no terminal for TERM_PROGRAM=%s", (program) => {
+    expect(identifyTerminal({ TERM: "xterm-256color", TERM_PROGRAM: program })).toEqual({ terminal: "other", intermediary: undefined, namedBy: undefined });
   });
 });
 

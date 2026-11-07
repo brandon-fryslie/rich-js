@@ -154,7 +154,9 @@ function supportOf(encoding: Encoding<unknown>, { terminal, declared }: Terminal
 export function route(sequence: string, encoding: Pick<Encoding<unknown>, "routes">, layers: readonly Layer[], passes: (layer: Layer) => boolean): { bytes: string; via: string } | { refused: string } {
   let bytes = sequence;
   const via: string[] = [];
-  for (const layer of layers) {
+  // The innermost layer reads the bytes first, so its envelope is the outermost:
+  // wrap from the terminal's side inward.
+  for (const layer of [...layers].reverse()) {
     const kind = encoding.routes[layer.kind];
     if (kind === "impossible") return { refused: `${layer.kind} does not pass it` };
     if (kind === "native") {
@@ -167,7 +169,7 @@ export function route(sequence: string, encoding: Pick<Encoding<unknown>, "route
     bytes = wrapped;
     via.push(`${layer.kind} passthrough`);
   }
-  return { bytes, via: via.length === 0 ? "" : ` through ${via.join(", ")}` };
+  return { bytes, via: via.length === 0 ? "" : ` through ${[...via].reverse().join(", ")}` };
 }
 
 // tmux's DCS passthrough with every ESC doubled; screen's bare DCS, ending in
@@ -187,7 +189,8 @@ function passthrough(sequence: string, kind: Intermediary): string | undefined {
   }
 }
 
-const byteLength = (text: string): number => new TextEncoder().encode(text).length;
+const UTF8 = new TextEncoder();
+const byteLength = (text: string): number => UTF8.encode(text).length;
 
 /**
  * `value` written in the best encoding of `feature` that `features` lets

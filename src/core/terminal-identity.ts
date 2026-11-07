@@ -53,7 +53,8 @@ function intermediaryOf(env: Env): Intermediary | undefined {
 }
 
 // The TERM_PROGRAM a terminal writes for its own child, beside the TERM it sets.
-const TERM_PROGRAMS: Readonly<Record<string, TerminalName>> = { "iTerm.app": "iterm2", WezTerm: "wezterm" };
+// A Map, so an inherited key (`constructor`) names nothing.
+const TERM_PROGRAMS: ReadonlyMap<string, TerminalName> = new Map([["iTerm.app", "iterm2"], ["WezTerm", "wezterm"]]);
 
 type Named = readonly [TerminalName, string | undefined];
 
@@ -65,7 +66,8 @@ function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
   // it inherits, so that variable proves nothing.
   if (term === "xterm-kitty" && !env["TERM_PROGRAM"]) return ["kitty", `TERM=${term}`];
   const program = env["TERM_PROGRAM"];
-  if (program !== undefined && TERM_PROGRAMS[program] !== undefined) return [TERM_PROGRAMS[program], `TERM_PROGRAM=${program}`];
+  const programmed = program === undefined ? undefined : TERM_PROGRAMS.get(program);
+  if (programmed !== undefined) return [programmed, `TERM_PROGRAM=${program}`];
   // iTerm2 sets LC_TERMINAL for its child, and ssh forwards LC_* where tmux's
   // TERM_PROGRAM and a remote shell's lose it. It counts beside iTerm2's own
   // TERM, or behind a multiplexer, whose pane has a TERM of its own: a
