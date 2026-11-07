@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-605",
+      "ref": "refs/pull/605/merge",
+      "sha": "d5a097468958bfd0127c51c49c7fb41d4e9b317d",
+      "timestamp": "2026-11-07T12:37:20.198Z",
+      "commits": [
+        {
+          "sha": "d5a097468958bfd0127c51c49c7fb41d4e9b317d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T12:34:26Z",
+          "message": "Merge df7f16834ce4c2f16692e31b90a2796bd974b2d2 into 9078b33c54afb7d014b30e58048804e9a8c7df88\n"
+        },
+        {
+          "sha": "df7f16834ce4c2f16692e31b90a2796bd974b2d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:34:12-07:00",
+          "message": "Review fixes (6ch.sfp, medium pass): a resend keeps the refusal of a later change; a status is the same as another when it writes the same bytes; a part decides one send or none; the commit order is stated where it lives; the not-a-terminal record is built by notSent\n"
+        },
+        {
+          "sha": "6040667fc1e3d019804759b28c19faa61e641a82",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:26:40-07:00",
+          "message": "Review fixes (6ch.sfp, high pass): the title stack is its own part so a pop follows only a push that reached the terminal; commitTerminalState takes a Pick, so undefined reaches only parts that hold it; badge backslashes escaped against iTerm2 interpolation; the cursor color is what the drawn cell shows (a reversed cell's foreground, none for default); App.chrome reset on stop; tmux focus-events off by default stated; wireHex and notSent each defined once\n"
+        },
+        {
+          "sha": "f68d72c00445dca139bd22163e5d3cb315a8e3ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:10:57-07:00",
+          "message": "Declared chrome and cursor state (rich-control-codes-xh4n.6ch.sfp): App.chrome sends the title over the terminal's title stack, and iTerm2's tab color (OSC 6), session status (OSC 21337) and badge, once per change and given back on every exit; a focused TextInput colors the terminal's cursor (OSC 12/112) with its accent; focus reports (CSI ? 1004) and resizes re-send what reached the terminal only through a passthrough, which a tmux reattach forgets\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-606",
       "ref": "refs/pull/606/merge",
       "sha": "ea0d05feef56c0091af25d06319bdcd90e891a02",
@@ -20,35 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-07T05:25:47-07:00",
           "message": "The unclosed-links linearity test starts at 4,000 links, so a saturated suite stays well clear of the hang limit (rich-unfiled-791c.m154)\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-605",
-      "ref": "refs/pull/605/merge",
-      "sha": "88239c5a1898e8c245e64316e6563409e716dd3e",
-      "timestamp": "2026-11-07T12:28:36.950Z",
-      "commits": [
-        {
-          "sha": "88239c5a1898e8c245e64316e6563409e716dd3e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T12:26:49Z",
-          "message": "Merge 6040667fc1e3d019804759b28c19faa61e641a82 into 9078b33c54afb7d014b30e58048804e9a8c7df88\n"
-        },
-        {
-          "sha": "6040667fc1e3d019804759b28c19faa61e641a82",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:26:40-07:00",
-          "message": "Review fixes (6ch.sfp, high pass): the title stack is its own part so a pop follows only a push that reached the terminal; commitTerminalState takes a Pick, so undefined reaches only parts that hold it; badge backslashes escaped against iTerm2 interpolation; the cursor color is what the drawn cell shows (a reversed cell's foreground, none for default); App.chrome reset on stop; tmux focus-events off by default stated; wireHex and notSent each defined once\n"
-        },
-        {
-          "sha": "f68d72c00445dca139bd22163e5d3cb315a8e3ef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:10:57-07:00",
-          "message": "Declared chrome and cursor state (rich-control-codes-xh4n.6ch.sfp): App.chrome sends the title over the terminal's title stack, and iTerm2's tab color (OSC 6), session status (OSC 21337) and badge, once per change and given back on every exit; a focused TextInput colors the terminal's cursor (OSC 12/112) with its accent; focus reports (CSI ? 1004) and resizes re-send what reached the terminal only through a passthrough, which a tmux reattach forgets\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         }
       ]
     },
