@@ -89,15 +89,17 @@ function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
 /**
  * Who answered XTVERSION (`CSI > q`): a terminal, or a multiplexer that
  * answers for itself in place of the terminal past it. `text` is the answer
- * as sent, `kitty(0.35.2)` or `tmux 3.4`.
+ * as sent, `kitty(0.35.2)` or `tmux 3.4`. Only a name on the table is an
+ * answer: one off it names nothing a choice turns on, and may be a
+ * multiplexer the table does not know.
  */
 export type VersionAnswer =
-  | { readonly kind: "terminal"; readonly name: TerminalName; readonly text: string }
+  | { readonly kind: "terminal"; readonly name: Exclude<TerminalName, "other">; readonly text: string }
   | { readonly kind: "layer"; readonly layer: Intermediary; readonly text: string };
 
 // How each answers, as yazi's `Brand::from_csi` (yazi-emulator/src/brand.rs)
 // and vtdn.dev's XTVERSION table record it: a name, then its version.
-const VERSION_NAMES: readonly (readonly [Pattern, TerminalName | { readonly layer: Intermediary }])[] = [
+const VERSION_NAMES: readonly (readonly [Pattern, Exclude<TerminalName, "other"> | { readonly layer: Intermediary }])[] = [
   [pattern(/^kitty\(/), "kitty"],
   [pattern(/^foot\(/), "foot"],
   [pattern(/^WezTerm /), "wezterm"],
@@ -107,13 +109,27 @@ const VERSION_NAMES: readonly (readonly [Pattern, TerminalName | { readonly laye
   [pattern(/^Zellij/), { layer: "zellij" }],
 ];
 
-/** Who `text`, the body of an XTVERSION answer after its `>|`, says answered. */
-export function readVersionAnswer(text: string): VersionAnswer {
+/**
+ * The layers a terminal's own answer could not have come through, so its
+ * answer proves are not there: each multiplexer on the table above, which
+ * answers in the terminal's place, and screen, which neither answers nor
+ * forwards the query.
+ */
+export const HIDES_TERMINAL_VERSION: ReadonlySet<Intermediary> = new Set<Intermediary>([
+  ...VERSION_NAMES.flatMap(([, answered]) => (typeof answered === "string" ? [] : [answered.layer])),
+  "screen",
+]);
+
+/**
+ * Who `text`, the body of an XTVERSION answer after its `>|`, says answered,
+ * or `undefined` for a name off the table, which says nothing.
+ */
+export function readVersionAnswer(text: string): VersionAnswer | undefined {
   for (const [name, answered] of VERSION_NAMES) {
     if (text.match(name) === null) continue;
     return typeof answered === "string" ? { kind: "terminal", name: answered, text } : { kind: "layer", layer: answered.layer, text };
   }
-  return { kind: "terminal", name: "other", text };
+  return undefined;
 }
 
 /** The terminal and intermediary `env` gives evidence for. */

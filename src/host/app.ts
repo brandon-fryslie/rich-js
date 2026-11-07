@@ -295,6 +295,10 @@ export class App implements FrameHost {
   set terminalFeatures(features: TerminalFeatures) {
     this.drawing = { ...this.drawing, terminalFeatures: features };
     this.console = this.drawingConsole();
+    // What the old features decided, refused included, is decided again: the
+    // painter's declarations at the next paint, the pointer's shape now.
+    this.painter.featuresChanged();
+    if (this._phase === "running" && this.pointer !== "default") this.console.setPointerShape(this.pointer);
     this.refresh();
   }
 

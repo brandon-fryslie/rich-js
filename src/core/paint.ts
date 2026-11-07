@@ -201,7 +201,8 @@ export interface Renderer {
  */
 class DeclaredState {
   private pending: TerminalDeclaration[] = [];
-  private believed: TerminalState = EMPTY_TERMINAL_STATE;
+  // `undefined`: unknown, since what was committed was decided under features since replaced.
+  private believed: TerminalState | undefined = EMPTY_TERMINAL_STATE;
 
   constructor(
     // [LAW:one-source-of-truth] Read from whoever holds them at each commit,
@@ -249,6 +250,15 @@ class DeclaredState {
   forget(): void {
     this.pending = [];
     this.believed = EMPTY_TERMINAL_STATE;
+  }
+
+  /**
+   * The features changed: what the old ones refused, or chose an encoding
+   * for, may be decided otherwise now, so the next commit sends what its
+   * frame declares whatever was committed before.
+   */
+  featuresChanged(): void {
+    this.believed = undefined;
   }
 }
 
@@ -390,6 +400,11 @@ export class SurfaceRenderer implements Renderer {
     this.at = 0;
     this.shown = false;
     this.shaped = undefined;
+  }
+
+  /** The features it reads changed: the next paint re-sends what its frame declares, decided under them. */
+  featuresChanged(): void {
+    this.state.featuresChanged();
   }
 }
 

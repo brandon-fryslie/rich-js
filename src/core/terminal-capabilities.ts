@@ -13,7 +13,7 @@
  * painter and the console write what `pick` returns.
  */
 
-import type { Intermediary, TerminalIdentity, TerminalName, VersionAnswer } from "./terminal-identity.js";
+import { HIDES_TERMINAL_VERSION, type Intermediary, type TerminalIdentity, type TerminalName, type VersionAnswer } from "./terminal-identity.js";
 
 /** The wire's escape and string terminator, for every encoder in this layer. */
 export const ESC = "\x1b";
@@ -62,11 +62,13 @@ export function accepts(policy: TerminalPolicy, evidence: Evidence, failure: Fai
 
 /**
  * One program between this one and the terminal: a multiplexer, or an
- * editor's terminal. `passthrough` is how it is known that the layer forwards
- * a wrapped sequence (tmux's `allow-passthrough`, off by default since 3.3).
+ * editor's terminal. `evidence` is how it is known the layer is there at all;
+ * `passthrough`, how it is known that the layer forwards a wrapped sequence
+ * (tmux's `allow-passthrough`, off by default since 3.3).
  */
 export interface Layer {
   readonly kind: Intermediary;
+  readonly evidence: Evidence;
   readonly passthrough: Evidence;
 }
 
@@ -138,33 +140,38 @@ export function inferCapabilities(identity: TerminalIdentity): { capabilities: T
         : { name: identity.terminal, evidence: "inferred", source: named },
       declared: new Set(),
     },
-    layers: identity.intermediary === undefined ? [] : [{ kind: identity.intermediary, passthrough: "unknown" }],
+    layers: identity.intermediary === undefined ? [] : [{ kind: identity.intermediary, evidence: "inferred", passthrough: "unknown" }],
   };
 }
 
-// The multiplexers that answer XTVERSION themselves: a pane inside one hears
-// it, never the terminal past it.
-const ANSWERS_FOR_ITSELF: ReadonlySet<Intermediary> = new Set(["tmux", "zellij"]);
+const STRENGTH: readonly Evidence[] = ["declared", "confirmed", "identified", "inferred", "unknown"];
+// Whether `a` is known more strongly than `b`.
+const stronger = (a: Evidence, b: Evidence): boolean => STRENGTH.indexOf(a) < STRENGTH.indexOf(b);
 
 /**
- * What the terminal's own answer to XTVERSION makes of `known`, or `known`
- * when it gave none — not every terminal implements it, so silence says
- * nothing. A terminal that answers is `identified`, and no multiplexer that
- * answers for itself sits in front of it, whatever the environment inherited.
- * A multiplexer that answers is the innermost layer; the terminal past it
- * stays what was known, since its answer cannot be heard through the
- * multiplexer (tmux#5530: the reply arrives as keystrokes).
+ * What an answer to XTVERSION makes of `known`. Nothing known more strongly
+ * than `identified` is replaced or dropped: what the program declared, or a
+ * probe confirmed, outweighs a name. A terminal that answers is `identified`,
+ * and an answer from it proves no layer that hides it
+ * (`HIDES_TERMINAL_VERSION`) sits in front, so each such layer only inferred
+ * is dropped. A multiplexer that answers is the innermost layer, once; the
+ * terminal past it stays what was known, since its answer cannot be heard
+ * through the multiplexer (tmux#5530: the reply arrives as keystrokes).
  */
-export function identifiedBy(answer: VersionAnswer | undefined, known: { capabilities: TerminalCapabilities; layers: readonly Layer[] }): { capabilities: TerminalCapabilities; layers: readonly Layer[] } {
-  if (answer === undefined) return known;
+export function identifiedBy(answer: VersionAnswer, known: { capabilities: TerminalCapabilities; layers: readonly Layer[] }): { capabilities: TerminalCapabilities; layers: readonly Layer[] } {
   const source = `XTVERSION ${answer.text}`;
   if (answer.kind === "terminal") {
+    const terminal = known.capabilities.terminal;
     return {
-      capabilities: { ...known.capabilities, terminal: { name: answer.name, evidence: "identified", source } },
-      layers: known.layers.filter((layer) => !ANSWERS_FOR_ITSELF.has(layer.kind)),
+      capabilities: stronger(terminal.evidence, "identified") ? known.capabilities : { ...known.capabilities, terminal: { name: answer.name, evidence: "identified", source } },
+      layers: known.layers.filter((layer) => !HIDES_TERMINAL_VERSION.has(layer.kind) || stronger(layer.evidence, "identified")),
     };
   }
-  return { capabilities: known.capabilities, layers: known.layers[0]?.kind === answer.layer ? known.layers : [{ kind: answer.layer, passthrough: "unknown" }, ...known.layers] };
+  const existing = known.layers.find((layer) => layer.kind === answer.layer);
+  const answered: Layer = existing === undefined
+    ? { kind: answer.layer, evidence: "identified", passthrough: "unknown" }
+    : { ...existing, evidence: stronger(existing.evidence, "identified") ? existing.evidence : "identified" };
+  return { capabilities: known.capabilities, layers: [answered, ...known.layers.filter((layer) => layer !== existing)] };
 }
 
 /**

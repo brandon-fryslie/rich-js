@@ -38,7 +38,12 @@ const environment = describe(app.terminalFeatures);
 
 app.onKey(() => app.stop());
 const running = app.run();
-app.terminalFeatures = await askTerminalIdentity(app);
-asked = describe(app.terminalFeatures);
+const learned = await askTerminalIdentity(app);
+if (learned === undefined) {
+  asked = "nothing learned";
+} else {
+  app.terminalFeatures = learned;
+  asked = describe(learned);
+}
 app.refresh();
 await running;

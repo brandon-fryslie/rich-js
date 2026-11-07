@@ -14,6 +14,7 @@ import { askTerminalIdentity } from "../../src/host/terminal-version.js";
 import { pick } from "../../src/core/terminal-capabilities.js";
 import { NOTIFICATION } from "../../src/core/terminal-requests.js";
 import { RichText } from "../../src/core/text.js";
+import { Progress } from "../../src/renderables/progress.js";
 import { fakeClock } from "../core/fake-clock.js";
 import { replayHost, type ProbeSession } from "./replay-host.js";
 import { SESSIONS } from "./probe-sessions.js";
@@ -25,11 +26,12 @@ async function identified(session: ProbeSession) {
   app.onKey((press) => keys.push(press.key));
   const done = app.run();
   const before = app.terminalFeatures;
-  app.terminalFeatures = await askTerminalIdentity(app);
+  const learned = await askTerminalIdentity(app);
+  if (learned !== undefined) app.terminalFeatures = learned;
   const after = app.terminalFeatures;
   app.stop();
   await done;
-  return { before, after, keys, written: host.output() };
+  return { before, learned, after, keys, written: host.output() };
 }
 
 describe("askTerminalIdentity", () => {
@@ -48,11 +50,13 @@ describe("askTerminalIdentity", () => {
   });
 
   it("under tmux, identifies tmux as the innermost layer and leaves the terminal past it inferred", async () => {
-    const { before, after, keys } = await identified(SESSIONS.tmuxInIterm2);
+    const { before, after, keys, written } = await identified(SESSIONS.tmuxInIterm2);
     expect(after.capabilities.terminal).toEqual(before.capabilities.terminal);
     expect(after.capabilities.terminal.evidence).toBe("inferred");
-    expect(after.layers).toEqual([{ kind: "tmux", passthrough: "unknown" }]);
+    expect(after.layers).toEqual([{ kind: "tmux", evidence: "identified", passthrough: "unknown" }]);
     expect(keys).toEqual([]);
+    // tmux would hand a wrapped query's reply to the pane as keystrokes (tmux#5530).
+    expect(written).not.toContain("\x1bPtmux;");
   });
 
   it("drops a tmux layer the environment inherited when the terminal answers for itself", async () => {
@@ -63,8 +67,9 @@ describe("askTerminalIdentity", () => {
   });
 
   it("changes nothing when the terminal does not implement XTVERSION", async () => {
-    const { before, after } = await identified(SESSIONS.vte);
-    expect(after).toEqual(before);
+    const { before, learned, after } = await identified(SESSIONS.vte);
+    expect(learned).toBeUndefined();
+    expect(after).toBe(before);
   });
 
   it("lets strict send foot its own notification once foot names itself", async () => {
@@ -72,5 +77,44 @@ describe("askTerminalIdentity", () => {
     const notification = { title: "Done", body: undefined, id: "1" };
     expect(pick(NOTIFICATION, notification, before).reason).toMatch(/^OSC 9:/);
     expect(pick(NOTIFICATION, notification, after).bytes).toBe("\x1b]777;notify;Done;\x1b\\");
+  });
+});
+
+describe("an App whose features are learned while it runs", () => {
+  const ESC = "\x1b";
+  const later = () => new Promise((resolve) => setTimeout(resolve));
+
+  async function learning(session: ProbeSession, setUp: (app: App) => void): Promise<{ before: string; after: string }> {
+    const host = replayHost(session);
+    let progress: Progress | undefined;
+    const app = new App({ host, surface: "inline", clock: fakeClock(0), view: () => progress! });
+    progress = new Progress({ drawnBy: app });
+    progress.addTask("x", { total: undefined });
+    setUp(app);
+    const done = app.run();
+    await later();
+    const before = host.output();
+    const learned = await askTerminalIdentity(app);
+    expect(learned?.capabilities.terminal.evidence).toBe("identified");
+    app.terminalFeatures = learned!;
+    await later();
+    const after = host.output().slice(before.length);
+    app.stop();
+    await done;
+    return { before, after };
+  }
+
+  // ghostty inferred from TERM: strict refuses OSC 9;4 until ghostty names itself.
+  it("sends the indeterminate progress the inferred features refused", async () => {
+    const { before, after } = await learning(SESSIONS.ghostty, () => undefined);
+    expect(before).not.toContain(`${ESC}]9;4`);
+    expect(after).toContain(`${ESC}]9;4;3${ESC}\\`);
+  });
+
+  // An inherited tmux layer, whose passthrough is unknown, refuses OSC 22 until kitty's answer drops it.
+  it("sends the pointer shape the inferred features refused", async () => {
+    const { before, after } = await learning(SESSIONS.kittyFromTmux, (app) => (app.pointerShape = "pointer"));
+    expect(before).not.toContain(`${ESC}]22;`);
+    expect(after).toContain(`${ESC}]22;pointer`);
   });
 });

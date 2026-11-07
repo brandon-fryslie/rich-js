@@ -48,8 +48,10 @@ screen ends its wrap at the first string terminator, so it cannot carry another
 layer's wrap, and a sequence that would need it to is not sent. Neither can a
 `native` layer, which re-emits only the sequence itself.
 
-A layer found in the environment is one whose passthrough nothing has
-confirmed, and no policy acts on that, so nothing that needs tmux's or screen's
+Each layer carries two pieces of evidence: `evidence`, how it is known the
+layer is there at all, and `passthrough`, how it is known that it forwards a
+wrapped sequence. A layer found in the environment is `inferred` and its
+passthrough is one nothing has confirmed, and no policy acts on that, so nothing that needs tmux's or screen's
 passthrough is sent until the program passes the layer in with its passthrough
 `declared`.
 
@@ -57,13 +59,16 @@ passthrough is sent until the program passes the layer in with its passthrough
 
 `askTerminalIdentity(app)`, from `@promptctl/rich-js/host`, asks the terminal
 an `App` runs on with XTVERSION (`CSI > 0 q`) and returns the app's features
-with the answer weighed in; set it as `app.terminalFeatures`. A terminal that
+with the answer weighed in, to set as `app.terminalFeatures`, or `undefined`
+when it learned nothing. A terminal that
 names itself (`kitty(0.35.2)`, `foot(1.16.2)`, `WezTerm …`, `iTerm2 …`,
 `ghostty …`) becomes `identified`, which `strict` acts on, so foot gets OSC 777
-and kitty OSC 99 instead of the OSC 9 fallback. Its answer also proves no tmux
-or zellij sits in front of it, so a layer the environment inherited is dropped.
-A terminal that does not implement XTVERSION answers DA1 alone, and nothing
-changes.
+and kitty OSC 99 instead of the OSC 9 fallback. Its answer also proves no tmux,
+zellij or screen sits in front of it, so such a layer the environment inferred
+is dropped. What the program declared is never replaced or dropped by an
+answer. A terminal that does not implement XTVERSION answers DA1 alone, and one
+that names itself off that list says nothing a choice turns on: either way the
+result is `undefined`.
 
 Under tmux or zellij, the multiplexer answers for itself and becomes the
 innermost layer. The terminal past it cannot be asked. A query wrapped in
@@ -89,7 +94,7 @@ const console = new Console({
   file: { write: () => {} },
   terminalFeatures: {
     capabilities: declareCapabilities(["OSC 9;4"]),
-    layers: [{ kind: "tmux", passthrough: "declared" }],
+    layers: [{ kind: "tmux", evidence: "declared", passthrough: "declared" }],
     onSend: (send) => log.push(send),
   },
 });

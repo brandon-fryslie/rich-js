@@ -136,7 +136,7 @@ describe("inside tmux", () => {
   // What tmux 3.2+ gives its panes: its own TERM and TERM_PROGRAM, whatever is outside.
   const TMUX: Env = { TERM: "tmux-256color", TERM_PROGRAM: "tmux", TMUX: "/tmp/tmux-501/default,1,0" };
   // A program stating that tmux's `allow-passthrough` is on.
-  const PASSES = (kind: "tmux" | "screen") => ({ terminalFeatures: { layers: [{ kind, passthrough: "declared" }] } } as const);
+  const PASSES = (kind: "tmux" | "screen") => ({ terminalFeatures: { layers: [{ kind, evidence: "declared", passthrough: "declared" }] } } as const);
 
   it("sends none of them under strict when nothing says tmux passes them, and says why", () => {
     const log: TerminalSend[] = [];
@@ -155,7 +155,7 @@ describe("inside tmux", () => {
   it("writes kitty's own notification through a tmux the program says passes it, and logs the route", () => {
     const log: TerminalSend[] = [];
     const { console, written } = terminal(TMUX, {
-      terminalFeatures: { capabilities: declareCapabilities([], "kitty"), layers: [{ kind: "tmux", passthrough: "declared" }], onSend: (send) => log.push(send) },
+      terminalFeatures: { capabilities: declareCapabilities([], "kitty"), layers: [{ kind: "tmux", evidence: "declared", passthrough: "declared" }], onSend: (send) => log.push(send) },
     });
     console.notify("n");
     expect(written()).toMatch(new RegExp(`^${ESC}Ptmux;${ESC}${ESC}\\]99;i=\\w+;n${ESC}${ESC}\\\\${ESC}\\\\$`));

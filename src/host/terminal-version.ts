@@ -24,12 +24,15 @@ const ANSWER_PREFIX = ">|";
 
 /**
  * Ask the terminal `app` runs on who it is, and return `app`'s terminal
- * features with the answer weighed in — unchanged when nothing answered.
- * Set it as `app.terminalFeatures`.
+ * features with the answer weighed in, to set as `app.terminalFeatures`.
+ * `undefined` when it learned nothing: the terminal did not implement
+ * XTVERSION, or named itself off the table `readVersionAnswer` reads.
  */
-export async function askTerminalIdentity(app: App): Promise<TerminalFeatures> {
+export async function askTerminalIdentity(app: App): Promise<TerminalFeatures | undefined> {
   const { replies } = await app.ask([XTVERSION]);
   const body = replies.find((reply) => reply.kind === "dcs" && reply.body.startsWith(ANSWER_PREFIX))?.body;
+  const answer = body === undefined ? undefined : readVersionAnswer(body.slice(ANSWER_PREFIX.length));
+  if (answer === undefined) return undefined;
   const features = app.terminalFeatures;
-  return { ...features, ...identifiedBy(body === undefined ? undefined : readVersionAnswer(body.slice(ANSWER_PREFIX.length)), features) };
+  return { ...features, ...identifiedBy(answer, features) };
 }
