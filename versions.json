@@ -4,15 +4,22 @@
     {
       "version": "pr-598",
       "ref": "refs/pull/598/merge",
-      "sha": "32afff73af02923cae674f35e3e4bed73fbc5421",
-      "timestamp": "2026-11-07T08:21:05.729Z",
+      "sha": "e3b185a933f5bc8cf1f24d2b79de209fc467ee4c",
+      "timestamp": "2026-11-07T08:28:39.674Z",
       "commits": [
         {
-          "sha": "32afff73af02923cae674f35e3e4bed73fbc5421",
+          "sha": "e3b185a933f5bc8cf1f24d2b79de209fc467ee4c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T08:18:50Z",
-          "message": "Merge a2b9d037ae94f9ed440b9517fa7169096b001267 into e478624c449683fc23820c28a7138de9727967e3\n"
+          "timestamp": "2026-11-07T08:26:01Z",
+          "message": "Merge feed60a765768cf5db23b57920006d613262db11 into e478624c449683fc23820c28a7138de9727967e3\n"
+        },
+        {
+          "sha": "feed60a765768cf5db23b57920006d613262db11",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T01:25:30-07:00",
+          "message": "Resume is pinned over half a second; the last depth rebuild is checked to keep 1 fps (rich-palette-xovz.u60)\n"
         },
         {
           "sha": "a2b9d037ae94f9ed440b9517fa7169096b001267",
