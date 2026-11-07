@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-592",
+      "ref": "refs/pull/592/merge",
+      "sha": "32baf5244e5fbaa99bf96ba6eede8bbf46ea4e22",
+      "timestamp": "2026-11-07T05:40:17.919Z",
+      "commits": [
+        {
+          "sha": "32baf5244e5fbaa99bf96ba6eede8bbf46ea4e22",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T05:38:33Z",
+          "message": "Merge 96ed92085a7a7b93fbedcd278085370a536b7498 into 5571ed0e73f74691307c8cf1ffafa4832709aff5\n"
+        },
+        {
+          "sha": "96ed92085a7a7b93fbedcd278085370a536b7498",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T22:38:20-07:00",
+          "message": "foreground-muted is ordered against the disabled text textOn draws, and held no stronger than foreground (rich-unfiled-791c.tofk)\n"
+        },
+        {
+          "sha": "2d4ab7db62fe4817c9274cb8d37748b6cc874199",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T19:16:16-07:00",
+          "message": "foreground-muted is held past foreground-disabled on every ground it is held on, derived and authored alike (rich-unfiled-791c.tofk)\n"
+        },
+        {
+          "sha": "f90ff0d64ad7cbecdeca77244ceb02b11f135605",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:59:08-07:00",
+          "message": "A derived palette's foreground-muted reads stronger than its foreground-disabled, on every bundled base (rich-unfiled-791c.tofk)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-593",
       "ref": "refs/pull/593/merge",
       "sha": "6d7e7373f83a9a2fd173a6ce92cdc68e0544a396",
@@ -20,35 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T22:35:38-07:00",
           "message": "A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-592",
-      "ref": "refs/pull/592/merge",
-      "sha": "140a24113b92a4630f3ecd8cb146778951482344",
-      "timestamp": "2026-11-07T02:18:57.527Z",
-      "commits": [
-        {
-          "sha": "140a24113b92a4630f3ecd8cb146778951482344",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T02:16:27Z",
-          "message": "Merge 2d4ab7db62fe4817c9274cb8d37748b6cc874199 into 5571ed0e73f74691307c8cf1ffafa4832709aff5\n"
-        },
-        {
-          "sha": "2d4ab7db62fe4817c9274cb8d37748b6cc874199",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T19:16:16-07:00",
-          "message": "foreground-muted is held past foreground-disabled on every ground it is held on, derived and authored alike (rich-unfiled-791c.tofk)\n"
-        },
-        {
-          "sha": "f90ff0d64ad7cbecdeca77244ceb02b11f135605",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T18:59:08-07:00",
-          "message": "A derived palette's foreground-muted reads stronger than its foreground-disabled, on every bundled base (rich-unfiled-791c.tofk)\n"
         }
       ]
     },
