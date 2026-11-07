@@ -150,8 +150,8 @@ describe("animation playground", () => {
 
   it("paused, the clock moves and nothing is painted; played, the time goes on from where it held", async () => {
     const p = await playground();
-    // At sixty frames a second, the rate pausing must hold, played a tenth of
-    // a second either side: six frames each, not 180 the test never reads.
+    // At sixty frames a second, the rate pausing must hold, over fractions of a
+    // second: tens of frames, not hundreds the test never reads.
     await p.advance(0.1);
     await p.click("play / pause");
     const held = await p.time();
@@ -160,8 +160,9 @@ describe("animation playground", () => {
     expect(p.host.output().length).toBe(written);
     expect(await p.time()).toBe(held);
     await p.click("play / pause");
-    await p.advance(0.1);
-    expect(await p.time()).toBeCloseTo(held + 0.1, 1);
+    // Half a second, so a resume at any but the speed it held at shows.
+    await p.advance(0.5);
+    expect(await p.time()).toBeCloseTo(held + 0.5, 1);
   });
 
   it("reverses, and plays at a quarter and four times the speed, through the one timeline", async () => {
@@ -242,7 +243,7 @@ describe("animation playground", () => {
     const written = async (depth: string): Promise<string> => {
       const shown = (await p.screen()).join("\n");
       expect(shown).toContain(`·  ${depth}  ·`);
-      // The rebuild a depth click makes carried the rate.
+      // Each depth after the first is a rebuild, which carried the rate.
       expect(shown).toContain("·  1 fps  ·");
       return p.writtenOver(1);
     };
@@ -258,7 +259,9 @@ describe("animation playground", () => {
     await p.click("color depth");
     expect(colorParameters(await written("no color"))).toEqual([]);
     await p.click("color depth");
-    expect((await p.screen()).join("\n")).toContain("·  truecolor  ·");
+    const back = (await p.screen()).join("\n");
+    expect(back).toContain("·  truecolor  ·");
+    expect(back).toContain("·  1 fps  ·");
   });
 
   it("marches the border's ants clockwise: right along the top, left along the bottom", () => {
