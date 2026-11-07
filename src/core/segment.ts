@@ -297,21 +297,33 @@ export class Segment {
    * cell of it is one right-to-left row its text left unplaced (`Style.edge`),
    * as many as stand it at its start edge in the width that text laid it out
    * in, and otherwise none. Pieces of no cells say nothing either way.
-   * [LAW:single-enforcer] The one reader of the stamp, so whoever fills a row
-   * places a right-to-left one alike, and no option travels down to tell it.
+   * Whoever fills a row places a right-to-left one alike through this, and no
+   * option travels down to tell it.
    */
   static leadingFill(line: Segment[], width: number): number {
+    const edge = Segment.rowEdge(line);
+    return edge === undefined ? 0 : Math.max(Math.min(edge.width, width) - Segment.getLineLength(line), 0);
+  }
+
+  /**
+   * The unplaced right-to-left row every cell of `line` is (`Style.edge`), or
+   * none. [LAW:single-enforcer] The one reader of the stamp.
+   */
+  static rowEdge(line: Segment[]): RowEdge | undefined {
     let edge: RowEdge | undefined;
-    let length = 0;
     for (const segment of line) {
-      const cells = segment.cellLength;
-      if (cells === 0) continue;
+      if (segment.cellLength === 0) continue;
       // The first inked piece without the row's stamp ends the walk: almost every row is one.
-      if (segment.style?.edge === undefined || (edge !== undefined && segment.style.edge !== edge)) return 0;
+      if (segment.style?.edge === undefined || (edge !== undefined && segment.style.edge !== edge)) return undefined;
       edge = segment.style.edge;
-      length += cells;
     }
-    return edge === undefined ? 0 : Math.max(Math.min(edge.width, width) - length, 0);
+    return edge;
+  }
+
+  /** `line` as the unplaced right-to-left row `edge` names: a row composed from such rows that stands as one. */
+  static stamped(line: Segment[], edge: RowEdge | undefined): Segment[] {
+    if (edge === undefined) return line;
+    return line.map((segment) => new Segment(segment.text, (segment.style ?? new Style()).withEdge(edge), segment.control));
   }
 
   /**

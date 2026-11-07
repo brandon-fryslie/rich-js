@@ -842,4 +842,11 @@ describe("a filled row stands a right-to-left text at its start edge, through an
     const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText(`${HEBREW} ${HEBREW}`) });
     for (const t of [0, 1, 2]) expect(drawn(new Padding(change.at(t), 0))[0]!.endsWith(SHOWN)).toBe(true);
   });
+
+  test("a change a tree holds stays beside its guide", () => {
+    const change = crossfade({ seconds: 2, ease: EASES.linear, swing: 1 }).effect({ from: new RichText(HEBREW), to: new RichText(HEBREW) });
+    const tree = new Tree("root");
+    tree.add(change.at(1));
+    expect(drawn(new Padding(tree, 0), 30)[1]).toBe(`└── ${SHOWN}${" ".repeat(22)}`);
+  });
 });

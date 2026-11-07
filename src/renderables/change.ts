@@ -98,18 +98,18 @@ class ChangeFrame implements Renderable, Measurable {
   ) {}
 
   render(options: RenderOptions): Iterable<Segment> {
-    // Both sides are filled before they are spliced, so a right-to-left row stands where it will once the change is done.
-    const filled = (lines: Segment[][]) => lines.map((line) => Segment.withLeadingFill(line, options.maxWidth));
-    const before = filled(Segment.splitLines(render(this.from, options)));
+    const before = Segment.splitLines(render(this.from, options));
     const drawn = [...render(this.to, options)];
-    const after = filled(Segment.splitLines(drawn));
+    const after = Segment.splitLines(drawn);
     // [LAW:one-source-of-truth] The new renderable's rows are the shape of every frame, its last row ending as it ends.
     const lengths = after.map((line) => Segment.getLineLength(line));
     const ended = drawn.filter((segment) => !segment.isControl).at(-1)?.text.endsWith("\n") ?? false;
     const width = Math.max(0, ...lengths);
     const at = this.progress(this.t, width);
     const rows = after.flatMap((line, row) => [
-      ...splice(Segment.adjustLineLength(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5),
+      // A spliced row stands as the new one does, so whoever holds the change places it where the change ends (`Segment.rowEdge`).
+      // The old row is filled to the new one's width, so a right-to-left one meets it at their start edge.
+      ...Segment.stamped(splice(Segment.fillRow(before[row] ?? [], lengths[row]!), line, (col) => at(row, col) >= 0.5), Segment.rowEdge(line)),
       ...(row < after.length - 1 || ended ? [Segment.line()] : []),
     ]);
     // The change's own animation says it moves every frame, and reads nothing this frame tells.
