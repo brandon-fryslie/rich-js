@@ -4,15 +4,22 @@
     {
       "version": "pr-599",
       "ref": "refs/pull/599/merge",
-      "sha": "0ba3e7ebf3beac7a840c6d84ece1ac7f1eee1b21",
-      "timestamp": "2026-11-07T08:45:43.721Z",
+      "sha": "86b1de6625319798010333cfbfe3c373b672c864",
+      "timestamp": "2026-11-07T08:56:10.113Z",
       "commits": [
         {
-          "sha": "0ba3e7ebf3beac7a840c6d84ece1ac7f1eee1b21",
+          "sha": "86b1de6625319798010333cfbfe3c373b672c864",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T08:43:35Z",
-          "message": "Merge 3183977a42082f34d6431666173ed7152c1c113e into e478624c449683fc23820c28a7138de9727967e3\n"
+          "timestamp": "2026-11-07T08:53:40Z",
+          "message": "Merge 51a0831923a9fe1d338305ebcf2bfd666378f5c4 into e478624c449683fc23820c28a7138de9727967e3\n"
+        },
+        {
+          "sha": "51a0831923a9fe1d338305ebcf2bfd666378f5c4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T01:53:23-07:00",
+          "message": "Review: textOrderOf takes named fields; CLAUDE.md and terminal-identity's header describe the pick tables; one tmux-TERM test over both policies (rich-control-codes-xh4n.6ch.a28)\n"
         },
         {
           "sha": "3183977a42082f34d6431666173ed7152c1c113e",
