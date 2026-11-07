@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-590",
+      "ref": "refs/pull/590/merge",
+      "sha": "0b541e62dd2491ea1783220ec367bff08e49d428",
+      "timestamp": "2026-11-07T00:16:14.080Z",
+      "commits": [
+        {
+          "sha": "0b541e62dd2491ea1783220ec367bff08e49d428",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:14:26-07:00",
+          "message": "Merge ec73144849fac3cd5dfe9dcc5c6884c73f77d744 into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
+        },
+        {
+          "sha": "ec73144849fac3cd5dfe9dcc5c6884c73f77d744",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:14:11-07:00",
+          "message": "decodeAnsi reads its bytes in one VT500 lexing pass that the line split, the link reader and every escape consume (rich-control-codes-xh4n.gux)\n\nA sequence a C0 control interrupts is now the sequence a terminal reads\nwherever it is read: a NEL or CNL so interrupted ends the line, an OSC 8\nan interrupted ESC introduces opens its link, and a CSI an ESC or C1\ncancels draws nothing. A cut-off string is a lexeme of its own, so no\ncontrol can land in its payload; escapeTokens, INTERRUPTED and\nOPEN_ESCAPE are gone.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "120efcd8094b0b4600dfab9a06ba71d8a046ed42",
