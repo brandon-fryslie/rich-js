@@ -111,6 +111,20 @@ describe("Console.notify", () => {
     expect(written()).toBe(`${ESC}]9; 4;2 hosts down${ST}`);
   });
 
+  it("keeps a bare number off the shape of a ConEmu sub-command", () => {
+    const { console, written } = terminal(ITERM);
+    console.notify("4");
+    expect(written()).toBe(`${ESC}]9; 4${ST}`);
+  });
+
+  it("sends a terminal's own notification through no editor or zellij, which cannot pass it", () => {
+    for (const env of [{ TERM: "xterm-kitty", NVIM: "x" }, { TERM: "xterm-kitty", ZELLIJ: "0" }]) {
+      const { console, written } = terminal(env, GUESS);
+      console.notify("n");
+      expect(written()).toBe(`${ESC}]9;n${ST}`);
+    }
+  });
+
   it("does not take a terminal borrowing kitty's TERM for kitty", () => {
     const { console, written } = terminal({ TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" });
     console.notify("Done");

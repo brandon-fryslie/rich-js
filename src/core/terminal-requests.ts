@@ -60,6 +60,11 @@ export type ParsedPointerShape = PointerShape & { readonly [parsed]: true };
 // tmux's and screen's passthrough, written as is through zellij and an editor.
 const WRAPPED = { tmux: "passthrough", screen: "passthrough", zellij: "native", editor: "native" } as const;
 
+// How a sequence that only some outer terminals read crosses a layer. zellij and
+// an editor have no passthrough and re-emit only what they understand, which a
+// terminal's own protocol is not, so it cannot cross them.
+const OUTER_ONLY = { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "impossible" } as const;
+
 /** OSC 22: the mouse pointer's shape over the terminal, ignored by a terminal without it. */
 export const POINTER: TerminalFeature<ParsedPointerShape> = {
   name: "pointer",
@@ -105,7 +110,7 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
       name: "OSC 99",
       terminals: ["kitty"],
       failure: "ignored",
-      routes: WRAPPED,
+      routes: OUTER_ONLY,
       encode: (notification) => {
         const { title, body, id } = shown(notification);
         return body === undefined
@@ -117,7 +122,7 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
       name: "OSC 777",
       terminals: ["foot", "ghostty"],
       failure: "ignored",
-      routes: WRAPPED,
+      routes: OUTER_ONLY,
       encode: (notification) => {
         const { title, body } = shown(notification);
         // A `;` would end 777's title field.
@@ -133,9 +138,9 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
         const { title, body } = shown(notification);
         const line = body === undefined ? title : `${title}: ${body}`;
         // ConEmu's sub-commands (`9;4;` progress, `9;9;` directory) open with a
-        // number and a `;`, and WezTerm and Windows Terminal read them, so a line
-        // that would read as one is kept off that shape.
-        return `${OSC}9;${/^\d+;/.test(line) ? ` ${line}` : line}${ST}`;
+        // number, then a `;` or nothing, and WezTerm and Windows Terminal read
+        // them, so a line that would read as one is kept off that shape.
+        return `${OSC}9;${/^\d+(;|$)/.test(line) ? ` ${line}` : line}${ST}`;
       },
     },
   ],
@@ -178,7 +183,7 @@ export const PROGRESS: TerminalFeature<TerminalProgress> = {
       name: "OSC 9;4",
       terminals: ["iterm2", "ghostty", "windows-terminal"],
       failure: "misread",
-      routes: { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "impossible" },
+      routes: OUTER_ONLY,
       encode: (progress) => {
         const percent = "percent" in progress ? `;${shownPercent(progress.percent)}` : "";
         return `${OSC}9;4;${PROGRESS_CODE[progress.state]}${percent}${ST}`;
