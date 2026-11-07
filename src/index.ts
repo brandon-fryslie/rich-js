@@ -148,7 +148,7 @@ export { caretMark } from "./core/style.js";
 export type { Attributes, CaretMark, CaretShape, ValidityInterval, StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
 export type { PointerShape } from "./core/terminal-requests.js";
 export { declareCapabilities } from "./core/terminal-capabilities.js";
-export type { Evidence, Layer, TerminalCapabilities, TerminalFeatures, TerminalPolicy, TerminalSend } from "./core/terminal-capabilities.js";
+export type { Evidence, Layer, LayerDeclaration, TerminalCapabilities, TerminalFeaturesOption, TerminalFeatures, TerminalPolicy, TerminalSend } from "./core/terminal-capabilities.js";
 
 export {
   Segment,

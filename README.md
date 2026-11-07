@@ -399,6 +399,7 @@ npm run demo
 | `npm run viewport` | rich-viewport | A selection you move through a list taller than its window with the arrow keys, `j`/`k`, PgUp/PgDn and Home/End, kept in view by `Viewport.ensureVisible`; the mouse wheel scrolls the window, and `q` quits. |
 | `npm run terminal-colors` | terminal-colors | Your terminal asked for its own foreground and background with OSC 10 and OSC 11, shown as swatches, and whether it answered or the colors are assumed. |
 | `npm run terminal-features` | terminal-features | A Progress mirrored in your terminal's own progress indicator (OSC 9;4), then the send log saying why each byte was sent or not. `-- --declare` states your terminal reads it; `-- --tmux` states tmux passes it through. |
+| `npm run terminal-identity` | terminal-identity | Your terminal asked who it is with XTVERSION: what the environment inferred beside what the answer identified, and under tmux, tmux answering for itself. |
 | `npm run terminal-host` | terminal-host | Each key you press printed as the bytes the terminal sends for it, and each resize as the new size — a program written against `TerminalHost` alone. `examples/terminal-host/embed.ts` runs the same program on an xterm.js terminal in your own page. |
 
 `Ctrl-C` quits any demo that stays running.

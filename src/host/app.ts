@@ -34,7 +34,9 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
-import { pointerShape, type PointerShape } from "../core/terminal-requests.js";
+import { pointerShape, type ParsedPointerShape, type PointerShape } from "../core/terminal-requests.js";
+import { identifyTerminal, type TerminalIdentity } from "../core/terminal-identity.js";
+import type { TerminalFeatures } from "../core/terminal-capabilities.js";
 import { Segment } from "../core/segment.js";
 import { SurfaceRenderer, type Surface } from "../core/paint.js";
 import { fitHeight, render, type HostFrame, type FrameHost, type Renderable } from "../core/protocol.js";
@@ -230,8 +232,9 @@ export class App implements FrameHost {
   // the take that asked, since `leave` can run between the answer and its
   // handler, and the hand-back pops exactly what its take pushed.
   private held: { pushed: boolean } | null = null;
-  // The pointer's shape this take has set, given back on hand-back.
-  private pointer: PointerShape = "default";
+  // The pointer's shape the app wants shown, declared on every frame: what the
+  // terminal was actually sent is the painter's commit's to remember.
+  private pointer: ParsedPointerShape = pointerShape("default");
   private readonly keyboard: KeyboardProtocol;
   private _frame: readonly (readonly Segment[])[] = [];
   private readonly painter: SurfaceRenderer;
@@ -262,9 +265,9 @@ export class App implements FrameHost {
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.drawing = drawOptions(options);
     this.console = this.drawingConsole();
-    // A console made again for new colors keeps these options, so the
-    // painter's features are the same whichever console drew the frame.
-    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes), this.console.terminalFeatures, this.host.writesToTerminal);
+    // The painter reads the features of the console that draws now, so what
+    // `terminalFeatures` learns reaches the next commit.
+    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes), () => this.console.terminalFeatures, this.host.writesToTerminal);
   }
 
   /**
@@ -283,6 +286,26 @@ export class App implements FrameHost {
     this.drawing = { ...this.drawing, terminal };
     this.console = this.drawingConsole();
     this.refresh();
+  }
+
+  /** What the app may send its terminal, and how it knows: its console's. */
+  get terminalFeatures(): TerminalFeatures {
+    return this.console.terminalFeatures;
+  }
+
+  /** Decide what to send from `features` from the next send on — what `askTerminalIdentity` learned, say. */
+  set terminalFeatures(features: TerminalFeatures) {
+    if (this._phase === "stopped") throw new Error("App.terminalFeatures: a stopped app has handed its terminal back for good");
+    this.drawing = { ...this.drawing, terminalFeatures: features };
+    this.console = this.drawingConsole();
+    // What the old features refused is still unsent, so the next paint's
+    // commit decides it again under these.
+    this.refresh();
+  }
+
+  /** What the environment the app's host gives says its terminal is (`identifyTerminal`). */
+  get terminalIdentity(): TerminalIdentity {
+    return identifyTerminal(hostEnvironment(this.host).env);
   }
 
   /**
@@ -564,8 +587,9 @@ export class App implements FrameHost {
     const shape = pointerShape(value);
     if (shape === this.pointer) return;
     this.pointer = shape;
-    // Before the run or while suspended, the shape waits for the take that shows it.
-    if (this._phase === "running") this.console.setPointerShape(shape);
+    // Before the run or while suspended, the shape waits for the take that
+    // shows it; while running it is committed now, between frames.
+    if (this._phase === "running") this.painter.settle({ pointer: shape });
   }
 
   // --- the terminal ---
@@ -574,7 +598,6 @@ export class App implements FrameHost {
     this.host.setRawMode(true);
     this.painter.take();
     this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
-    if (this.pointer !== "default") this.console.setPointerShape(this.pointer);
     const take = { pushed: false };
     this.held = take;
     if (this.keyboard !== "kitty") return;
@@ -594,7 +617,7 @@ export class App implements FrameHost {
     this.owedDa1 = 0;
     this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
     this.held = null;
-    if (this.pointer !== "default") this.console.setPointerShape("default");
+    // The hand-back commits the empty state: the pointer's default included.
     this.painter.handBack();
     this.host.setRawMode(false);
   }
@@ -614,7 +637,7 @@ export class App implements FrameHost {
     this.input.reset();
     // A suspended app handed the terminal back when it suspended.
     if (phase === "running") this.leave();
-    this.pointer = "default";
+    this.pointer = pointerShape("default");
     this.host.stop();
     this.settle(outcome);
   }
@@ -705,6 +728,7 @@ export class App implements FrameHost {
     this.refreshQueued = false;
     const options = this.console.options;
     const height = this.painter.height(options.height.rows);
+    this.painter.declare({ kind: "pointer", shape: this.pointer });
     // [LAW:no-ambient-temporal-coupling] The frame owner reads the clock,
     // once a frame; the view is handed the time the timeline maps it to, as
     // data, and what the frame says about when it changes comes back on the

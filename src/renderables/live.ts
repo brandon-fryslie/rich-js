@@ -104,8 +104,8 @@ export class Live implements FrameHost {
     // The final frame is a print, as in Rich, so a recording or a capture
     // holds it with everything else the console wrote.
     this._painter = this._console.isInteractive
-      ? new SurfaceRenderer(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes), this._console.terminalFeatures)
-      : new FinalFrameRenderer((frame) => this._console.print(linesOf(frame)), this._console.terminalFeatures);
+      ? new SurfaceRenderer(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes), () => this._console.terminalFeatures)
+      : new FinalFrameRenderer((frame) => this._console.print(linesOf(frame)), () => this._console.terminalFeatures);
   }
 
   /**

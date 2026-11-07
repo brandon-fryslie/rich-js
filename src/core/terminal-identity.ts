@@ -29,6 +29,8 @@ export interface TerminalIdentity {
   readonly intermediary: Intermediary | undefined;
   /** The variable that named `terminal`, as `NAME=value`: what a choice made on it gives as its reason. */
   readonly namedBy: string | undefined;
+  /** VTE's own `VTE_VERSION` (`7802` for 0.78.2), where it is what named `terminal`. */
+  readonly vteVersion: number | undefined;
 }
 
 const TERM_NAMES: readonly (readonly [Pattern, TerminalName])[] = [
@@ -86,9 +88,70 @@ function terminalOf(env: Env, intermediary: Intermediary | undefined): Named {
   return ["other", undefined];
 }
 
+/**
+ * Who answered XTVERSION (`CSI > q`): a terminal, or a multiplexer that
+ * answers for itself in place of the terminal past it. `text` is the answer
+ * as sent, `kitty(0.35.2)` or `tmux 3.4`. Only a name on the table is an
+ * answer: one off it names nothing a choice turns on, and may be a
+ * multiplexer the table does not know.
+ */
+export type VersionAnswer =
+  | { readonly kind: "terminal"; readonly name: Exclude<TerminalName, "other">; readonly text: string }
+  | { readonly kind: "layer"; readonly layer: Intermediary; readonly text: string };
+
+// How each answers, as yazi's `Brand::from_csi` (yazi-emulator/src/brand.rs)
+// and vtdn.dev's XTVERSION table record it: a name, then its version. VTE
+// answers `VTE(<VTE_VERSION>)`, `VTE(7802)` for 0.78.2. zellij answers for
+// itself, `Zellij(<version>)` (zellij-server/src/panes/grid.rs).
+const VERSION_NAMES: readonly (readonly [Pattern, Exclude<TerminalName, "other"> | { readonly layer: Intermediary }])[] = [
+  [pattern(/^kitty\(/), "kitty"],
+  [pattern(/^foot\(/), "foot"],
+  [pattern(/^WezTerm /), "wezterm"],
+  [pattern(/^iTerm2 /), "iterm2"],
+  [pattern(/^ghostty /), "ghostty"],
+  [pattern(/^VTE\(\d+\)$/), "vte"],
+  [pattern(/^tmux /), { layer: "tmux" }],
+  [pattern(/^Zellij\(/), { layer: "zellij" }],
+];
+
+// VTE before 0.54 drew a CSI it did not know as text, so `CSI > 0 q` showed as
+// `[>0q`. Its ECMA-48 parser, which consumes every well-formed sequence it has
+// no handler for, was imported on 2018-03-27 ("parser: Import new parser",
+// src/parser.cc), after 0.52.0 and in the cycle that shipped as 0.54.
+const VTE_PARSES_EVERY_CSI = 5400;
+
+/** Whether the terminal `identity` names can be asked XTVERSION without drawing the query. */
+export function readsVersionQuery(identity: TerminalIdentity): boolean {
+  return identity.vteVersion === undefined || identity.vteVersion >= VTE_PARSES_EVERY_CSI;
+}
+
+/**
+ * The layers a terminal's own answer could not have come through, so its
+ * answer proves are not there: each multiplexer on the table above, which
+ * answers in the terminal's place, and screen, which neither answers nor
+ * forwards the query.
+ */
+export const HIDES_TERMINAL_VERSION: ReadonlySet<Intermediary> = new Set<Intermediary>([
+  ...VERSION_NAMES.flatMap(([, answered]) => (typeof answered === "string" ? [] : [answered.layer])),
+  "screen",
+]);
+
+/**
+ * Who `text`, the body of an XTVERSION answer after its `>|`, says answered,
+ * or `undefined` for a name off the table, which says nothing.
+ */
+export function readVersionAnswer(text: string): VersionAnswer | undefined {
+  for (const [name, answered] of VERSION_NAMES) {
+    if (text.match(name) === null) continue;
+    return typeof answered === "string" ? { kind: "terminal", name: answered, text } : { kind: "layer", layer: answered.layer, text };
+  }
+  return undefined;
+}
+
 /** The terminal and intermediary `env` gives evidence for. */
 export function identifyTerminal(env: Env): TerminalIdentity {
   const intermediary = intermediaryOf(env);
   const [terminal, namedBy] = terminalOf(env, intermediary);
-  return { terminal, intermediary, namedBy };
+  const vte = terminal === "vte" ? Number.parseInt(env["VTE_VERSION"] ?? "", 10) : Number.NaN;
+  return { terminal, intermediary, namedBy, vteVersion: Number.isNaN(vte) ? undefined : vte };
 }

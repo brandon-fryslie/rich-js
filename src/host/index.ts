@@ -15,6 +15,7 @@ export { hostEnvironment } from "./host-environment.js";
 export { App } from "./app.js";
 export type { AppMouseEvent, AppOptions, AppPhase, Asked, AskOptions, WheelEvent } from "./app.js";
 export { terminalColors } from "./terminal-colors.js";
+export { askTerminalIdentity } from "./terminal-version.js";
 export type { Surface } from "../core/paint.js";
 export { keyName } from "./input.js";
 export type { KeyboardProtocol, KeyEvent, TerminalMouseEvent, TerminalReply } from "./input.js";

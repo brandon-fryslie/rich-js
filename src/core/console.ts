@@ -9,7 +9,7 @@ import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
 import { BELL, CLIPBOARD, NOTIFICATION, POINTER, TITLE, pointerShape, type PointerShape } from "./terminal-requests.js";
-import { inferCapabilities, pick, type TerminalCapabilities, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
+import { heldLayers, inferCapabilities, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -135,7 +135,7 @@ export interface ConsoleOptions {
    * policy, no log. State what the terminal reads (`declareCapabilities`) to
    * have it sent on your word; `bestGuess` acts on inference where a miss is ignored.
    */
-  terminalFeatures?: Partial<Omit<TerminalFeatures, "capabilities">> & { capabilities?: Partial<TerminalCapabilities> };
+  terminalFeatures?: TerminalFeaturesOption;
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
@@ -454,7 +454,7 @@ export class Console {
         terminal: options?.terminalFeatures?.capabilities?.terminal ?? inferred.capabilities.terminal,
         declared: options?.terminalFeatures?.capabilities?.declared ?? inferred.capabilities.declared,
       },
-      layers: options?.terminalFeatures?.layers ?? inferred.layers,
+      layers: options?.terminalFeatures?.layers === undefined ? inferred.layers : heldLayers(options.terminalFeatures.layers),
       policy: options?.terminalFeatures?.policy ?? "strict",
       onSend: options?.terminalFeatures?.onSend,
     };
