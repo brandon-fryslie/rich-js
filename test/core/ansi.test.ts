@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AnsiDecoder, decodeAnsi } from "../../src/core/ansi.js";
+import { AnsiDecoder, decodeAnsi, scanUndrawn } from "../../src/core/ansi.js";
 import { ColorDepth, ColorRgba, ColorSpec, ColorTable, STANDARD_TABLE, TerminalTheme } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
 import { exportLines } from "../../src/core/export-lines.js";
@@ -207,6 +207,38 @@ describe("decodeAnsi links", () => {
     expect(styleAt(red, 2).color?.number).toBe(1);
   });
 
+  it("reads a sequence a control interrupts as the sequence a terminal reads, wherever it is read", () => {
+    // A line break spelled as a sequence still ends the line.
+    expect(decodeAnsi("a\x1b\x07Eb").plain).toBe("a\nb");
+    expect(decodeAnsi("a\x1b[\x072Eb").plain).toBe("a\nb");
+    expect(scanUndrawn("a\x1b\x07Eb").undrawn).toBeNull();
+    // An OSC 8 an interrupted ESC introduces opens a link.
+    const link = decodeAnsi("\x1b\x07]8;;http://x\x1b\\link");
+    expect(styleAt(link, 0).link).toBe("http://x");
+    // A CSI an ESC or a C1 control cancels draws nothing.
+    expect(decodeAnsi("x\x1b[31\x1bmy").plain).toBe("xy");
+    expect(decodeAnsi("x\x1b[31\x84y").plain).toBe("xy");
+  });
+
+  it("runs a line break inside a sequence and finishes the sequence on the next line", () => {
+    const red = decodeAnsi("\x1b[31\nmx");
+    expect(red.plain).toBe("\nx");
+    expect(styleAt(red, 1).color?.number).toBe(1);
+    const after = decodeAnsi("a\x1b\x0c[31mb");
+    expect(after.plain).toBe("a\nb");
+    expect(styleAt(after, 2).color?.number).toBe(1);
+    expect(decodeAnsi("\x1b\n[31\nmx").plain).toBe("\n\nx");
+    expect(styleAt(decodeAnsi("\x1b\n[31\nmx"), 2).color?.number).toBe(1);
+    // A VT inside a string escape's payload ends no line.
+    expect(decodeAnsi("\x1b\n]0;a\x0bb\x07z").plain).toBe("\nz");
+    // A tab ahead of the break moves the cursor on its own line, not the next.
+    const bold = decodeAnsi("ab\x1b[\t\n1mc");
+    expect(bold.plain).toBe("ab\t\nc");
+    expect(styleAt(bold, 4).bold).toBe(true);
+    // A final byte after the break completes the sequence there, as on a terminal.
+    expect(decodeAnsi("ab\x1b[\r\ncd").plain).toBe("ab\nd");
+  });
+
   it("keeps a link open across an SGR reset, as a terminal does", () => {
     const text = decodeAnsi("\x1b]8;;https://x.test\x1b\\\x1b[1mbold\x1b[0m plain\x1b]8;;\x1b\\");
     expect(styleAt(text, 0).bold).toBe(true);
@@ -221,6 +253,23 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(new AnsiDecoder().decode("a\r\n\nb").map((t) => t.plain)).toEqual(["a", "", "b"]);
     expect(new AnsiDecoder().decode("")).toEqual([]);
     expect(decodeAnsi("a\n\nb\n").plain).toBe("a\n\nb");
+  });
+
+  it("runs a line feed inside a CSI or an escape, which goes on, and cuts a string escape's payload at one", () => {
+    expect(decodeAnsi("abc\x1b[\nhello").plain).toBe("abc\nello");
+    expect(scanUndrawn("abc\x1b[\nhello").undrawn).toBe("\x1b[h");
+    expect(decodeAnsi("a\x1b]0;t\nb").plain).toBe("a\nb");
+  });
+
+  it("keeps an escape the bytes end inside on the line it began, across the breaks it ran", () => {
+    expect(new AnsiDecoder().decode("foo\x1b\n").map((t) => t.plain)).toEqual(["foo"]);
+    expect(new AnsiDecoder().decode("foo\x1b[31\n").map((t) => t.plain)).toEqual(["foo"]);
+    expect(scanUndrawn("foo\x1b[31\n")).toMatchObject({ undrawn: null, unread: 3 });
+  });
+
+  it("ends a sequence undrawn at a byte above its grammar, which then draws", () => {
+    expect(decodeAnsi("\x1b[31é").plain).toBe("é");
+    expect(scanUndrawn("\x1b[31é").undrawn).toBe("\x1b[31");
   });
 
   it("returns to the first column at a carriage return, and later text overwrites", () => {

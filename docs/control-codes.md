@@ -91,7 +91,9 @@ which ends it and then acts as itself, as in those terminals' parser. A CAN
 (`\x18`) or SUB (`\x1a`) abandons a string, a CSI or any other escape it lands
 in, and what follows draws as text. Any other C0 control inside a CSI or an escape runs where it
 stands and the sequence goes on past it, as a VT500 parser does: `\x1b[3\r1m` returns
-to the first column and then sets SGR 31. A DEL there does nothing. `ESC E`
+to the first column and then sets SGR 31, and a line break there ends the line and the
+sequence finishes on the next. A DEL there does nothing. The next `ESC` or C1 control
+cancels the sequence, so `\x1b[31\x1bm` sets no color. `ESC E`
 ends a line as NEL does, and so does CNL (`\x1b[nE`), once whatever its count.
 On a terminal CNL passes `n` rows, or none on the bottom row, where it does not
 scroll; the decoder holds no cursor row and no screen height, so it keeps only
