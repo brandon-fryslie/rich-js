@@ -4,15 +4,22 @@
     {
       "version": "pr-590",
       "ref": "refs/pull/590/merge",
-      "sha": "0b541e62dd2491ea1783220ec367bff08e49d428",
-      "timestamp": "2026-11-07T00:16:14.080Z",
+      "sha": "9388f6c41a14872fd01e2310a69c4fb1198cca86",
+      "timestamp": "2026-11-07T00:27:14.348Z",
       "commits": [
         {
-          "sha": "0b541e62dd2491ea1783220ec367bff08e49d428",
+          "sha": "9388f6c41a14872fd01e2310a69c4fb1198cca86",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:14:26-07:00",
-          "message": "Merge ec73144849fac3cd5dfe9dcc5c6884c73f77d744 into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
+          "timestamp": "2026-11-07T00:24:59Z",
+          "message": "Merge 1ec3b047dd47a050cbddd218c257ebb03dacec33 into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
+        },
+        {
+          "sha": "1ec3b047dd47a050cbddd218c257ebb03dacec33",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:24:44-07:00",
+          "message": "An escape the bytes end inside stays on the line it began, and the lexer's string stops are osc8's (rich-control-codes-xh4n.gux review)\n"
         },
         {
           "sha": "ec73144849fac3cd5dfe9dcc5c6884c73f77d744",
