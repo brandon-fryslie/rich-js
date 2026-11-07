@@ -4,15 +4,22 @@
     {
       "version": "pr-590",
       "ref": "refs/pull/590/merge",
-      "sha": "0704e956ed0112cc91648ff8efdad7afe00df174",
-      "timestamp": "2026-11-07T00:40:01.999Z",
+      "sha": "07ebece4f413fe05748af5067ba5b70173bbb530",
+      "timestamp": "2026-11-07T00:51:46.819Z",
       "commits": [
         {
-          "sha": "0704e956ed0112cc91648ff8efdad7afe00df174",
+          "sha": "07ebece4f413fe05748af5067ba5b70173bbb530",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:37:29Z",
-          "message": "Merge 3b88694e632a685cbeb3a31c810a73687ba2949f into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
+          "timestamp": "2026-11-07T00:49:50Z",
+          "message": "Merge ad5ed6db0cc6ffa316d06191a0056659a159a6cc into 120efcd8094b0b4600dfab9a06ba71d8a046ed42\n"
+        },
+        {
+          "sha": "ad5ed6db0cc6ffa316d06191a0056659a159a6cc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T17:49:39-07:00",
+          "message": "Ground runs read the census's line breaks through a lookahead, a test pins how a line feed meets each escape, and the hold bound says what it holds (rich-control-codes-xh4n.gux review)\n"
         },
         {
           "sha": "3b88694e632a685cbeb3a31c810a73687ba2949f",
