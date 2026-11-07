@@ -4,15 +4,29 @@
     {
       "version": "pr-597",
       "ref": "refs/pull/597/merge",
-      "sha": "904e2fda20b37b4925be50ea7da35556e72b1ad3",
-      "timestamp": "2026-11-07T07:25:44.201Z",
+      "sha": "2dfdc9a17be9cf1058409a47b60aa8259c617228",
+      "timestamp": "2026-11-07T07:31:09.307Z",
       "commits": [
         {
-          "sha": "904e2fda20b37b4925be50ea7da35556e72b1ad3",
+          "sha": "2dfdc9a17be9cf1058409a47b60aa8259c617228",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:23:14-07:00",
-          "message": "Merge bb2d5dc380b4071c3fa9ae09efcbfba4f9e0938e into c7018a9f13e300017b50f1a101fd6c39a383350d\n"
+          "timestamp": "2026-11-07T07:28:47Z",
+          "message": "Merge d4ff1831442c30aadc1157315f6f8c4c482907af into c7018a9f13e300017b50f1a101fd6c39a383350d\n"
+        },
+        {
+          "sha": "d4ff1831442c30aadc1157315f6f8c4c482907af",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:28:37-07:00",
+          "message": "Reaching ten seconds is two seeks while playing, and the after-rebuild check asks only that time moved, not a rounded value (rich-palette-xovz.dc2)\n"
+        },
+        {
+          "sha": "7d5acc5bf3bfc218ad6140c2e6d282483244e426",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T00:26:52-07:00",
+          "message": "The reduced-motion leg checks the time went on after the rebuild, so a stopped clock cannot pass for reduced motion (rich-palette-xovz.dc2)\n"
         },
         {
           "sha": "bb2d5dc380b4071c3fa9ae09efcbfba4f9e0938e",
