@@ -873,7 +873,7 @@ describe("the loops never jump", () => {
           values.map((value) => {
             const strength = strengthOf(value);
             let at = drawn[f]!.get(strength);
-            if (at === undefined) drawn[f]!.set(strength, (at = Oklch.fromRgba(drawnColor(move.touch, color, value, 1))));
+            if (at === undefined) drawn[f]!.set(strength, (at = Oklch.fromRgba(drawnColor(move.touch, color, strength, 1))));
             return at;
           }),
         );
