@@ -198,6 +198,12 @@ interface IntentRule {
    * less than it.
    */
   readonly recedesFrom?: "foreground" | "text";
+  /**
+   * The intent this one is held past on every ground: it clears the contrast
+   * that intent's candidate draws there by `HELD_PAST_MARGIN`, as well as its
+   * own floor.
+   */
+  readonly heldPast?: "foreground-disabled";
 }
 
 const RUNGS = [1, 2, 3] as const;
@@ -271,7 +277,12 @@ const accent = (role: AccentRole): IntentRule => ({
  */
 const INTENTS = {
   foreground: fixed("foreground", BODY, []),
-  "foreground-muted": { ...fixed("foreground-muted", RECEDING, ["foreground-muted", "background-muted"]), recedesFrom: "foreground" },
+  "foreground-muted": {
+    ...fixed("foreground-muted", RECEDING, ["foreground-muted", "background-muted"]),
+    recedesFrom: "foreground",
+    // Muted is secondary text and disabled is text that cannot be used.
+    heldPast: "foreground-disabled",
+  },
   "foreground-disabled": disabled(["foreground-disabled"]),
   text: relative("text", []),
   "text-muted": { ...relative("text-muted", ["foreground-muted", "background-muted"]), recedesFrom: "text" },
@@ -287,12 +298,32 @@ const INTENTS = {
 export type TextIntent = keyof typeof INTENTS;
 
 /**
- * The contrast `intent` is held to on any ground. [LAW:one-source-of-truth]
- * `buildPalette` holds a theme's fixed text to these same floors, which is why
- * `textOn` draws that text untouched on the grounds Textual promises it.
+ * The contrast `intent` is held to on any ground before it is held past another
+ * intent: the WCAG floor. What `textOn` holds it to on one ground is `floorOn`.
  */
 export function textFloor(intent: TextIntent): number {
   return INTENTS[intent].floor;
+}
+
+/** The ink each intent an intent may be held past draws in, in a theme whose foreground is `foreground`. */
+const HELD_PAST_INK: Record<NonNullable<IntentRule["heldPast"]>, (foreground: ColorRgba) => ColorRgba> = {
+  "foreground-disabled": disabledInk,
+};
+
+/** How much more contrast an intent holds on a ground than the one it is held past (`IntentRule.heldPast`) draws there. */
+const HELD_PAST_MARGIN = 0.25;
+
+/**
+ * The contrast `intent` is held to on one opaque `ground`, in a theme whose
+ * foreground is `foreground`: its floor (`textFloor`), raised where it is held
+ * past another intent to clear what that one draws there.
+ * [LAW:single-enforcer] `textOn` at a depth that writes its own colors, and
+ * `buildPalette`, both read the ordering here.
+ */
+export function floorOn(intent: TextIntent, foreground: ColorRgba, ground: ColorRgba, drawnAt: DrawnAt = DRAWN_AT_TRUECOLOR): number {
+  const rule: IntentRule = INTENTS[intent];
+  if (rule.heldPast === undefined) return rule.floor;
+  return Math.max(rule.floor, drawnContrast(HELD_PAST_INK[rule.heldPast](foreground), ground, drawnAt) + HELD_PAST_MARGIN);
 }
 
 /** The intent `intent` recedes from, where it recedes from one (`IntentRule.recedesFrom`). */
@@ -393,8 +424,8 @@ export function writeText(
 
 /** `intent`'s color on an opaque `ground`, held to its floor through `fit` in the palette's own colors. */
 function heldTo(palette: Palette, intent: TextIntent, ground: ColorRgba, fit: TextFit, drawnAt: DrawnAt): ColorRgba {
-  const { floor, on } = INTENTS[intent];
-  const { candidate, miss } = on(palette, ground);
+  const floor = floorOn(intent, palette.get("foreground"), ground, drawnAt);
+  const { candidate, miss } = INTENTS[intent].on(palette, ground);
   const drawn = candidate.compositeOver(ground);
   if (readsOn(drawn, ground, floor, drawnAt)) return drawn;
   const { tint, shades } = miss();
