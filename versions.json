@@ -4,15 +4,22 @@
     {
       "version": "pr-599",
       "ref": "refs/pull/599/merge",
-      "sha": "062768bd8936c4ed8f0b658043a609183eff8666",
-      "timestamp": "2026-11-07T08:40:28.174Z",
+      "sha": "0ba3e7ebf3beac7a840c6d84ece1ac7f1eee1b21",
+      "timestamp": "2026-11-07T08:45:43.721Z",
       "commits": [
         {
-          "sha": "062768bd8936c4ed8f0b658043a609183eff8666",
+          "sha": "0ba3e7ebf3beac7a840c6d84ece1ac7f1eee1b21",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T08:37:42Z",
-          "message": "Merge 43746e5884cddb1f95f59dc1a818c0f24c71eb24 into e478624c449683fc23820c28a7138de9727967e3\n"
+          "timestamp": "2026-11-07T08:43:35Z",
+          "message": "Merge 3183977a42082f34d6431666173ed7152c1c113e into e478624c449683fc23820c28a7138de9727967e3\n"
+        },
+        {
+          "sha": "3183977a42082f34d6431666173ed7152c1c113e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T01:43:25-07:00",
+          "message": "Review: a terminal's own notification and progress cannot cross zellij or an editor (OUTER_ONLY); a bare number in OSC 9 is kept off ConEmu's shape (rich-control-codes-xh4n.6ch.a28)\n"
         },
         {
           "sha": "43746e5884cddb1f95f59dc1a818c0f24c71eb24",
