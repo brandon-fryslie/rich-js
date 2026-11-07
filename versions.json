@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-595",
+      "ref": "refs/pull/595/merge",
+      "sha": "1b10f3957f8ca75cbb694d942316ff9a4b6189d1",
+      "timestamp": "2026-11-07T06:26:54.808Z",
+      "commits": [
+        {
+          "sha": "1b10f3957f8ca75cbb694d942316ff9a4b6189d1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T23:24:49-07:00",
+          "message": "Merge ecf77261e5e0adc85280ddf7a73f3a6422c5a2a1 into f956e44774e89083fad22c344a844ad11160747e\n"
+        },
+        {
+          "sha": "ecf77261e5e0adc85280ddf7a73f3a6422c5a2a1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T23:24:39-07:00",
+          "message": "Disabled text is written under the slot muted text takes at every indexed depth (rich-palette-xovz.qg7)\n\nAt 256 and sixteen colors, slotted held foreground-muted only to textFloor, so\nmuted and disabled often shared a slot or inverted (VGA defaults over bundled\npalettes x every role ground: 932/3427 missed the 0.25 margin at sixteen, 9 at\n256). Disabled text, which has no floor, now takes a slot HELD_PAST_MARGIN under\nmuted's, or muted's color dimmed where none is; under dimmed muted, its floor\nstands in for the contrast. Raising muted instead would lift it to body-text\nstrength at sixteen colors.\n\nink() already took the frame's depth (themed-widget.ts), and widget labels at\nindexed depths are covered by test/widgets/terminal-contrast.test.ts.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-593",
       "ref": "refs/pull/593/merge",
       "sha": "496743293593236d54d041df59fde8884b469b92",
