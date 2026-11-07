@@ -255,6 +255,32 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("a\n\nb\n").plain).toBe("a\n\nb");
   });
 
+  it("draws no byte of a finished CSI or escape, whatever its parameters, intermediates and final", () => {
+    // The text around each sequence is drawn from letters outside ASCII, which
+    // no sequence below holds, so a byte of one drawn as text is a byte outside
+    // `é`, `ü`, the blanks an edit leaves and the break CNL or NEL makes. G0 goes back to
+    // ASCII after each, since a designation changes the glyphs drawn after it.
+    const finals = (from: number): string[] => Array.from({ length: 0x7f - from }, (_, at) => String.fromCharCode(from + at));
+    const csis = ["\x1b[", "\x9b"].flatMap((introducer) =>
+      ["", "1", "1;2", "?25", ">4:2", "38:2::1:2:3", " ", "1 ", " 1", "!"].flatMap((collected) => finals(0x40).map((final) => introducer + collected + final)),
+    );
+    const escapes = ["", "#", "(", ")", "(%", " "].flatMap((collected) =>
+      finals(0x30).filter((final) => collected !== "" || !"[]P_^X".includes(final)).map((final) => `\x1b${collected}${final}`),
+    );
+    const drawn = [...csis, ...escapes].filter((sequence) => !/^[éü \n]*$/u.test(decodeAnsi(`éé${sequence}\x1b(Büü`).plain));
+    expect(drawn).toEqual([]);
+  });
+
+  it("performs, and reports none of, every CSI and escape it decodes", () => {
+    const performed = [
+      "\x1b[1;31m", "\x1b[4:3m", "\x1b[2D", "\x9b3C", "\x1b[5G", "\x1b[I", "\x1b[Z", "\x1b[2X", "\x1b[P", "\x1b[3@",
+      "\x1b[3b", "\x1b[K", "\x1b[2K", "\x1b[s", "\x1b[s\x1b[u", "\x1b7", "\x1b7\x1b8", "\x1b(0", "\x1b)B", "\x1b[!p",
+      "\x1b[E", "\x1bE",
+    ];
+    expect(performed.filter((sequence) => scanUndrawn(`x${sequence}y`).undrawn !== null)).toEqual([]);
+    expect(scanUndrawn("x\x1b[ 1my").undrawn).toBe("\x1b[ 1m");
+  });
+
   it("runs a line feed inside a CSI or an escape, which goes on, and cuts a string escape's payload at one", () => {
     expect(decodeAnsi("abc\x1b[\nhello").plain).toBe("abc\nello");
     expect(scanUndrawn("abc\x1b[\nhello").undrawn).toBe("\x1b[h");

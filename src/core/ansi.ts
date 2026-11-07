@@ -48,14 +48,14 @@
  *
  * CNL is the sixth. Rich drops `\x1b[E`, gluing the text after it to the line
  * before; here it ends the line, once whatever its count, since the decoder
- * holds no cursor row or screen height to count rows against (`CNL`). CPL goes
+ * holds no cursor row or screen height to count rows against (`completed`). CPL goes
  * up to a line already decoded, so it stays dropped.
  *
  * Saving the cursor is the seventh. Rich drops `\x1b7` and `\x1b8` (and
  * `\x1b[s`, `\x1b[u`), which curses and `tput sc`/`rc` write, so text drawn
  * after a restore lands after what it overwrote. Here a save holds what a
  * terminal's does — the column, the SGR style and the sets — and a restore
- * brings them back (`CURSOR_SAVE`, `CURSOR_RESTORE`). The column comes back only on the line it
+ * brings them back (`escapeToken`, `csiToken`). The column comes back only on the line it
  * was saved on: on a later one it names a row the decoder no longer holds, as
  * CPL does.
  *
@@ -118,27 +118,31 @@ const BOLD_UNDERLINED = BOLD.add(UNDERLINED);
 
 // A C1 introducer is its ESC form's final byte plus 0x40 (ECMA-48 §5.3), and a
 // terminal that reads C1 reads it as that ESC form (`docs/control-codes.md`).
-const hex = (codes: readonly number[]): string => codes.map((code) => `\\x${code.toString(16).padStart(2, "0")}`).join("");
 /** ECMA-48's C1 set, U+0080 to U+009F. */
 const isC1 = (code: number): boolean => code >= 0x80 && code <= 0x9f;
-const finals = (introducers: string): number[] => [...introducers].map((final) => final.charCodeAt(0));
 const c1Of = (final: string): number => final.charCodeAt(0) + 0x40;
-const either = (introducers: string): string => `(?:\\x1b[${hex(finals(introducers))}]|[${hex([...introducers].map(c1Of))}])`;
-const CSI = either("[");
 /** The final byte of each string escape's ESC form: OSC, DCS, APC, PM, SOS. */
 const STRING_FINALS = "]P_^X";
 const STRING_C1: ReadonlySet<number> = new Set([...STRING_FINALS].map(c1Of));
 const CSI_C1 = c1Of("[");
 const ST_C1 = c1Of("\\");
 const ABORT = pattern(new RegExp(`[${ABORTS}]`, "u"));
-// What ends a string escape's payload here: osc8's stops, and the line feed a capture cuts it at.
-const STRING_END = pattern(new RegExp(`[${STRING_STOPS}\\n]`, "u"));
+// A run of a string escape's payload, to what ends it here: osc8's stops, and the line feed a capture cuts it at.
+const PAYLOAD_RUN = pattern(new RegExp(`[^${STRING_STOPS}\\n]+`, "u"));
+// A run of the bytes a sequence collects ahead of its final byte: a CSI's
+// parameters and intermediates, below 0x40, and an escape's intermediates,
+// below 0x30, each from 0x20, since a C0 control runs where it stands.
+const INTERMEDIATE = String.raw`[\x20-\x2f]`;
+const CSI_COLLECTS = pattern(/[\x20-\x3f]+/u);
+const ESCAPE_COLLECTS = pattern(new RegExp(`${INTERMEDIATE}+`, "u"));
+// A CSI's collected bytes: parameters, then intermediates, and no parameter after an intermediate.
+const CSI_FIELDS = pattern(new RegExp(`^(?<params>${String.raw`[\x30-\x3f]`}*)(?<intermediates>${INTERMEDIATE}*)$`, "u"));
 
 // The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
-const ESC_LINE_BREAKS = hex(
+const ESC_LINE_BREAKS: ReadonlySet<string> = new Set(
   CONTROL_CODES.filter((row) => row.disposition === "line-break").flatMap((row) =>
     Array.from({ length: row.last - row.first + 1 }, (_, at) => row.first + at).filter(isC1),
-  ).map((code) => code - 0x40),
+  ).map((code) => String.fromCharCode(code - 0x40)),
 );
 
 const TAB_STOP = 8;
@@ -186,18 +190,6 @@ const EDITS = { X: eraseCells, P: deleteCells, "@": insertCells } as const satis
 
 type Edit = keyof typeof EDITS;
 
-/**
- * Save and restore the cursor: DECSC `\x1b7` and DECRC `\x1b8`, and SCOSC
- * `\x1b[s` and SCORC `\x1b[u`, each exactly — with parameters `s` is DECSLRM's
- * margins, and `u` with a parameter or a marker is kitty's keyboard protocol,
- * both left to the undrawn "any other CSI". `\x1b#8` carries an intermediate, so
- * it is not `\x1b8`.
- */
-const CURSOR_SAVE = String.raw`\x1b7|${CSI}s`;
-const CURSOR_RESTORE = String.raw`\x1b8|${CSI}u`;
-
-const finalClass = (table: object): string => `[${hex(finals(Object.keys(table).join("")))}]`;
-
 const REPEAT_FINAL = "b";
 
 /**
@@ -208,56 +200,113 @@ const REPEAT_FINAL = "b";
 const repeatable = (cluster: string): boolean => cluster !== "\t" && !/\p{Cc}/u.test(cluster) && cellLen(cluster) > 0;
 
 /**
- * What a `text` or a `sequence` the lexer hands on does. In order — each CSI
- * in its `ESC` form or its C1 one — a carriage return; a cursor save (`save`)
- * or restore (`restore`), ahead of the "any other" CSI and escape that would
- * otherwise take them; a move along the line (`motion`) or an edit of it
- * (`edit`), or REP (`repeat`), each reading the first parameter (`count`) as a
- * terminal does; an SGR sequence (`sgr`, its parameters — a private marker such
- * as the `>` of `\x1b[>4;2m` makes it some other CSI); erase in line (`mode`); a
- * soft reset, DECSTR, or a full reset, RIS (`reset`); a G0 or G1 designation
- * (`designate`, its `charset`, such as `\x1b(B` or `\x1b)0`); an ST with no
- * string to end, which a terminal does nothing with (`inert`); the undrawn
- * escapes (`undrawn`) — any other CSI, and any other escape, ECMA-48's
- * intermediates and one final byte (`\x1b#8`, `\x1b(%5`); a character struck
- * over itself (`struck`), over an underscore first or not (`underscore`); a
- * character struck over an underscore alone (`underlined`); a backspace; SO or
- * SI (`shift`); and every control a line may not hold or a terminal draws
- * nothing for (`control`): undrawn when it is a C1 control, which a terminal
- * performs, and silent otherwise.
+ * What text the lexer hands on does, in order: a carriage return; an ST with no
+ * string to end, which a terminal does nothing with (`inert`); SO or SI
+ * (`shift`); a character struck over itself (`struck`), over an underscore
+ * first or not (`underscore`); a character struck over an underscore alone
+ * (`underlined`); a backspace; and every control a line may not hold or a
+ * terminal draws nothing for (`control`): undrawn when it is a C1 control,
+ * which a terminal performs, and silent otherwise. No CSI or escape reaches it:
+ * the lexer parsed each into its fields, and `csiToken` and `escapeToken` read them.
  */
-const ESCAPES = [
-  String.raw`\r|(?<save>${CURSOR_SAVE})|(?<restore>${CURSOR_RESTORE})|${CSI}(?<count>[0-9]*)(?:;[0-9;]*)?(?:(?<motion>${finalClass(MOTIONS)})|(?<edit>${finalClass(EDITS)})|(?<repeat>${REPEAT_FINAL}))|${CSI}(?<sgr>[0-9;:]*)m|${CSI}(?<mode>[012]?)K|(?<reset>${CSI}!p|\x1bc)|\x1b(?<designate>[()])(?<charset>[0-~])|(?<inert>\x1b\\|\x9c)|(?<undrawn>${CSI}[ -?]*[@-~]|\x1b[ -/]*[0-~])|(?<shift>[\x0e\x0f])`,
+const TEXT_EFFECTS = [
+  String.raw`\r|(?<inert>\x9c)|(?<shift>[\x0e\x0f])`,
   String.raw`(?<underscore>_\x08)?(?<struck>\P{Cc})(?:\x08\k<struck>)+|_\x08(?<underlined>\P{Cc})|\x08`,
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
 
-const escapes = (): RegExp => new RegExp(ESCAPES, "gu");
+/** Parameters a count is read from: digits and `;`, with no private marker and no sub-parameter. */
+const COUNTED = pattern(/^[0-9;]*$/u);
+/** SGR's parameters, `:` sub-parameters among them; a private marker such as the `>` of `\x1b[>4;2m` makes it some other CSI. */
+const SGR_PARAMS = pattern(/^[0-9;:]*$/u);
+const ERASE_PARAMS = pattern(/^[012]?$/u);
 
-// CNL after its introducer. On a terminal it passes `count` rows, or none on
-// the bottom row, where it does not scroll; the decoder holds no cursor row and
-// no screen height, so no count has an answer it could give, and CNL decodes as
-// NEL does: what follows is on a line of its own. Its count (`rows`) is read
-// once, by the same match.
-const CNL = "(?<rows>[0-9]*)(?:;[0-9;]*)?E";
+/**
+ * A CSI's first parameter as the count a terminal reads, absent or zero being 1,
+ * or undefined when its parameters are not a count's.
+ */
+function countOf(params: string): number | undefined {
+  if (!COUNTED.test(params)) return undefined;
+  const end = params.indexOf(";");
+  return Number(end === -1 ? params : params.slice(0, end)) || 1;
+}
 
-/** A CSI or an escape that ends a line: CNL, and the ESC form of each C1 line break. */
-const SEQUENCE_BREAK = pattern(new RegExp(`^(?:${CSI}${CNL}|\\x1b[${ESC_LINE_BREAKS}])$`, "u"));
+/**
+ * A CSI, in its `ESC [` form or its C1 one, whole, as the lexer parsed it: its
+ * bytes (`escape`), its parameter bytes, 0x30 to 0x3F, the intermediates after
+ * them, 0x20 to 0x2F, and its final byte.
+ */
+interface Csi {
+  readonly kind: "csi";
+  readonly escape: string;
+  readonly params: string;
+  readonly intermediates: string;
+  readonly final: string;
+}
+
+/** An escape that is no CSI and no string escape, whole: its bytes, its intermediates and its final byte. */
+interface Escape {
+  readonly kind: "escape";
+  readonly escape: string;
+  readonly intermediates: string;
+  readonly final: string;
+}
+
+/**
+ * [LAW:single-enforcer] What an escape does, read off the fields the lexer
+ * parsed it into, so the grammar has one definition: save and restore the
+ * cursor, DECSC `\x1b7` and DECRC `\x1b8`, exactly, since `\x1b#8` carries an
+ * intermediate and is not `\x1b8`; the full reset RIS (`\x1bc`); a G0 or G1
+ * designation (`\x1b(B`, `\x1b)0`); and an ST with no string to end, which does
+ * nothing. Any other escape (`\x1b#8`, `\x1b(%5`) is undrawn.
+ */
+function escapeToken({ escape, intermediates, final }: Escape): Token {
+  if (intermediates === "(" || intermediates === ")") return { kind: "designate", set: intermediates === "(" ? 0 : 1, charset: charsetOf(final) };
+  if (intermediates !== "") return { kind: "undrawn", escape };
+  if (final === "7" || final === "8") return { kind: "cursor", save: final === "7", escape };
+  if (final === "c") return { kind: "reset", soft: false, escape };
+  return final === "\\" ? { kind: "silent" } : { kind: "undrawn", escape };
+}
+
+/**
+ * [LAW:single-enforcer] What a CSI does, read off the fields the lexer parsed
+ * it into. Save and restore the cursor are SCOSC `\x1b[s` and SCORC `\x1b[u`,
+ * each exactly — with parameters `s` is DECSLRM's margins, and `u` with a
+ * parameter or a marker is kitty's keyboard protocol, both undrawn. A move
+ * along the line (`MOTIONS`), an edit of it (`EDITS`) and REP read the first
+ * parameter as a count. Then SGR, erase in line and the soft reset DECSTR
+ * (`\x1b[!p`). Any other CSI is undrawn.
+ */
+function csiToken({ escape, params, intermediates, final }: Csi): Token {
+  const undrawn: Token = { kind: "undrawn", escape };
+  if (intermediates !== "") return intermediates === "!" && params === "" && final === "p" ? { kind: "reset", soft: true, escape } : undrawn;
+  if (params === "" && (final === "s" || final === "u")) return { kind: "cursor", save: final === "s", escape };
+  if (final === "m") return SGR_PARAMS.test(params) ? { kind: "sgr", params } : undrawn;
+  if (final === "K") return ERASE_PARAMS.test(params) ? { kind: "erase", mode: (params || "0") as EraseMode } : undrawn;
+  const count = countOf(params);
+  if (count === undefined) return undrawn;
+  if (Object.hasOwn(MOTIONS, final)) return { kind: "move", motion: final as Motion, count };
+  if (Object.hasOwn(EDITS, final)) return { kind: "edit", edit: final as Edit, count };
+  return final === REPEAT_FINAL ? { kind: "repeat", count, escape } : undrawn;
+}
 
 /**
  * What the lexer reads bytes as, each a unit a terminal's parser acts on.
  * `text` is bytes a terminal draws or runs where they stand: a run outside any
- * sequence, or one control a CSI or an escape runs inside itself. `sequence` is
- * a CSI or an escape, whole, without the controls it ran, which come ahead of
+ * sequence, or one control a CSI or an escape runs inside itself. `csi` and
+ * `escape` are one whole, without the controls it ran, which come ahead of
  * it, or the DEL it ignored. `string` is a string escape, run to its terminator or cut
  * off where its payload ended. `break` ends a line, and says whether a terminal
  * performs it other than as CR LF, where the decoder starts the next line
  * (`relocates`). A sequence an abort or another sequence cancels is `silent`,
- * and one a byte outside its grammar ends, or the end of the bytes, `undrawn`.
+ * and one a byte outside its grammar ends, or the end of the bytes, `undrawn`,
+ * as is a CSI with a parameter byte after an intermediate, which its grammar
+ * has no place for.
  */
 type Lexeme =
   | { readonly kind: "text"; readonly text: string }
-  | { readonly kind: "sequence"; readonly escape: string }
+  | Csi
+  | Escape
   | { readonly kind: "string"; readonly escape: string }
   | { readonly kind: "break"; readonly end: string; readonly relocates: boolean }
   | Extract<Token, { readonly kind: "silent" | "undrawn" }>;
@@ -303,12 +352,29 @@ function breakOf(char: string): Extract<Lexeme, { readonly kind: "break" }> | un
   return { kind: "break", end: char, relocates: char !== "\n" && char !== "\x85" };
 }
 
-/** A CSI or an escape completed by its final byte: a line break when it is one, a sequence otherwise. */
-function completed(escape: string): Lexeme {
-  const found = SEQUENCE_BREAK.exec(escape);
-  if (found === null) return { kind: "sequence", escape };
-  const { rows } = found.groups!;
-  return { kind: "break", end: escape, relocates: Number(rows) > 1 };
+/**
+ * A CSI or an escape completed by its final byte, its collected bytes split
+ * into parameters and intermediates: a line break when it is one, undrawn when
+ * a CSI's parameter byte follows an intermediate, which a VT500 parser ignores,
+ * and a sequence otherwise.
+ * The breaks are CNL and the ESC form of each C1 line break. On a terminal CNL
+ * passes `count` rows, or none on the bottom row, where it does not scroll; the
+ * decoder holds no cursor row and no screen height, so no count has an answer
+ * it could give, and CNL decodes as NEL does: what follows is on a line of its
+ * own.
+ */
+function completed(introducer: string, csi: boolean, collected: string, final: string): Lexeme {
+  const escape = introducer + collected + final;
+  if (!csi) {
+    if (collected === "" && ESC_LINE_BREAKS.has(final)) return { kind: "break", end: escape, relocates: false };
+    return { kind: "escape", escape, intermediates: collected, final };
+  }
+  const fields = CSI_FIELDS.exec(collected)?.groups;
+  if (fields === undefined) return { kind: "undrawn", escape };
+  const { params = "", intermediates = "" } = fields;
+  const count = final === "E" && intermediates === "" ? countOf(params) : undefined;
+  if (count !== undefined) return { kind: "break", end: escape, relocates: count > 1 };
+  return { kind: "csi", escape, params, intermediates, final };
 }
 
 /**
@@ -344,12 +410,27 @@ function lex(bytes: string): Lexed {
     flush();
     lexemes.push(lexeme);
   };
-  // Reads `char`, at `at`, in the current state, and says whether it took it;
-  // one it did not take ended the state, and is read again from where it left.
-  const step = (char: string, at: number): boolean => {
+  const run = new RegExp(GROUND_RUN.source, "uy");
+  const csiRun = new RegExp(CSI_COLLECTS.source, "uy");
+  const escapeRun = new RegExp(ESCAPE_COLLECTS.source, "uy");
+  const payloadRun = new RegExp(PAYLOAD_RUN.source, "uy");
+  // The length of the run `scan` matches at `at`, 0 where it matches none.
+  const ran = (scan: RegExp, at: number): number => {
+    scan.lastIndex = at;
+    return scan.test(bytes) ? scan.lastIndex - at : 0;
+  };
+  // Reads from `at` in the current state, and says how many bytes it took; at
+  // 0 the byte ended the state, and is read again from where it left.
+  const step = (at: number): number => {
+    const char = bytes[at]!;
     const code = char.charCodeAt(0);
     switch (state.kind) {
       case "ground": {
+        const length = ran(run, at);
+        if (length > 0) {
+          text += bytes.slice(at, at + length);
+          return length;
+        }
         const lineBreak = breakOf(char);
         if (lineBreak !== undefined) emit(lineBreak);
         else if (char === "\x1b" || code === CSI_C1 || STRING_C1.has(code)) {
@@ -357,43 +438,45 @@ function lex(bytes: string): Lexed {
           const lexeme = lexemes.length;
           state = STRING_C1.has(code) ? { kind: "string", start: at, lexeme, introducer: char, payload: at + 1, escaped: false } : sequenceAt(at, lexeme, char, code === CSI_C1);
         } else text += char;
-        return true;
+        return 1;
       }
       case "sequence": {
         const { start, lexeme, introducer, csi, collected } = state;
+        const collects = ran(csi ? csiRun : escapeRun, at);
+        if (collects > 0) {
+          state = { ...state, collected: collected + bytes.slice(at, at + collects) };
+          return collects;
+        }
         const cancelled = char === "\x1b" || isC1(code);
         if (cancelled || ABORT.test(char)) {
           emit({ kind: "silent" });
           state = GROUND;
-          return !cancelled;
+          return cancelled ? 0 : 1;
         }
-        if (code === 0x7f) return true;
+        if (code === 0x7f) return 1;
         if (code < 0x20) {
           emit(breakOf(char) ?? { kind: "text", text: char });
-          return true;
-        }
-        // A CSI collects parameters and intermediates to a final byte at 0x40
-        // or after, and an escape intermediates to one at 0x30 or after.
-        if (code < (csi ? 0x40 : 0x30)) {
-          state = { ...state, collected: collected + char };
-          return true;
+          return 1;
         }
         if (code > 0x7e) {
           emit({ kind: "undrawn", escape: introducer + collected });
           state = GROUND;
-          return false;
+          return 0;
         }
         if (!csi && collected === "" && char === "[") state = sequenceAt(start, lexeme, introducer + char, true);
         else if (!csi && collected === "" && STRING_FINALS.includes(char)) state = { kind: "string", start, lexeme, introducer: introducer + char, payload: at + 1, escaped: false };
         else {
-          emit(completed(introducer + collected + char));
+          emit(completed(introducer, csi, collected, char));
           state = GROUND;
         }
-        return true;
+        return 1;
       }
       case "string": {
         const { introducer, payload, escaped } = state;
-        if (!escaped && !STRING_END.test(char)) return true;
+        if (!escaped) {
+          const length = ran(payloadRun, at);
+          if (length > 0) return length;
+        }
         const terminated = (escaped && char === "\\") || (!escaped && (char === "\x07" || code === ST_C1));
         // Any other stop, but for an abort or the ESC that may begin ST, ends the payload before it.
         const cut = escaped || (char !== "\x1b" && !ABORT.test(char));
@@ -401,25 +484,17 @@ function lex(bytes: string): Lexed {
           emit({ kind: "string", escape: introducer + bytes.slice(payload, terminated ? at + 1 : escaped ? at - 1 : at) });
           // The ESC that cut the string off begins the sequence `char` goes on.
           state = !terminated && escaped ? sequenceAt(at - 1, lexemes.length, "\x1b", false) : GROUND;
-          return terminated;
+          return terminated ? 1 : 0;
         }
         if (ABORT.test(char)) {
           emit({ kind: "silent" });
           state = GROUND;
         } else if (char === "\x1b") state = { ...state, escaped: true };
-        return true;
+        return 1;
       }
     }
   };
-  const run = new RegExp(GROUND_RUN.source, "uy");
-  for (let at = 0; at < bytes.length; ) {
-    run.lastIndex = at;
-    const ground = state.kind === "ground" ? run.exec(bytes) : null;
-    if (ground !== null) {
-      text += ground[0];
-      at = run.lastIndex;
-    } else if (step(bytes[at]!, at)) at += 1;
-  }
+  for (let at = 0; at < bytes.length; ) at += step(at);
   const open = state;
   if (open.kind === "ground") {
     flush();
@@ -431,60 +506,57 @@ function lex(bytes: string): Lexed {
   return { lexemes, unread: open.start, open: open.lexeme };
 }
 
-/** `bytes`, a `text` or a `sequence` the lexer handed on, as what each part of them does. */
-function* drawnTokens(bytes: string): Generator<Token> {
-  let at = 0;
-  for (const match of bytes.matchAll(escapes())) {
-    const { save, restore, count, motion, edit, repeat, sgr, mode, reset, designate, charset, inert, undrawn, control, shift, underscore, struck, underlined } = match.groups!;
-    const escape = match[0];
-    if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
-    if (undrawn !== undefined || (control !== undefined && isC1(control.charCodeAt(0)))) yield { kind: "undrawn", escape };
-    else if (control !== undefined || inert !== undefined) yield { kind: "silent" };
-    if (escape === "\r") yield { kind: "move", motion: "G", count: 1 };
-    if (save !== undefined || restore !== undefined) yield { kind: "cursor", save: save !== undefined, escape };
-    if (motion !== undefined) yield { kind: "move", motion: motion as Motion, count: Number(count) || 1 };
-    if (edit !== undefined) yield { kind: "edit", edit: edit as Edit, count: Number(count) || 1 };
-    if (repeat !== undefined) yield { kind: "repeat", count: Number(count) || 1, escape };
-    if (sgr !== undefined) yield { kind: "sgr", params: sgr };
-    if (reset !== undefined) yield { kind: "reset", soft: reset !== "\x1bc", escape };
-    if (designate !== undefined) yield { kind: "designate", set: designate === "(" ? 0 : 1, charset: charsetOf(charset!) };
-    if (shift !== undefined) yield { kind: "shift", set: shift === "\x0e" ? 1 : 0 };
-    if (mode !== undefined) yield { kind: "erase", mode: (mode || "0") as EraseMode };
-    if (struck !== undefined) yield { kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED };
-    if (underlined !== undefined) yield { kind: "overstrike", character: underlined, emphasis: UNDERLINED };
-    if (match[0] === "\b") yield { kind: "move", motion: "D", count: 1 };
-    at = match.index + match[0].length;
-  }
-  if (at < bytes.length) yield { kind: "text", text: bytes.slice(at) };
+/**
+ * What hands `apply` what each part of a `text` the lexer handed on does, in
+ * order.
+ */
+function textTokenizer(apply: (token: Token) => void): (bytes: string) => void {
+  // Built once per tokenizer, since a line holds a text between every two
+  // sequences, and held where nothing but the scan below can move its cursor.
+  const effects = new RegExp(TEXT_EFFECTS, "gu");
+  return (bytes) => {
+    let at = 0;
+    effects.lastIndex = 0;
+    for (let match = effects.exec(bytes); match !== null; match = effects.exec(bytes)) {
+      const { inert, control, shift, underscore, struck, underlined } = match.groups!;
+      const escape = match[0];
+      if (match.index > at) apply({ kind: "text", text: bytes.slice(at, match.index) });
+      if (control !== undefined && isC1(control.charCodeAt(0))) apply({ kind: "undrawn", escape });
+      else if (control !== undefined || inert !== undefined) apply({ kind: "silent" });
+      if (escape === "\r") apply({ kind: "move", motion: "G", count: 1 });
+      if (shift !== undefined) apply({ kind: "shift", set: shift === "\x0e" ? 1 : 0 });
+      if (struck !== undefined) apply({ kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED });
+      if (underlined !== undefined) apply({ kind: "overstrike", character: underlined, emphasis: UNDERLINED });
+      if (escape === "\b") apply({ kind: "move", motion: "D", count: 1 });
+      at = match.index + escape.length;
+    }
+    if (at < bytes.length) apply({ kind: "text", text: bytes.slice(at) });
+  };
 }
 
 /**
- * What `lexeme` does. A string escape that is one whole OSC 8 sequence opens or
- * closes a link, and any other is undrawn; a line break inside one line, which
- * only `decodeLine` is handed, draws nothing.
+ * What `lexeme`, any but text, does. A string escape that is one whole OSC 8
+ * sequence opens or closes a link, and any other is undrawn; a line break
+ * inside one line, which only `decodeLine` is handed, draws nothing.
  *
  * [LAW:one-source-of-truth] OSC 8 is read by the reader `osc8.ts` owns, so
  * the terminators a link may end with cannot differ between writing and
  * reading it back.
  */
-function* tokens(lexeme: Lexeme): Generator<Token> {
+function tokenOf(lexeme: Exclude<Lexeme, { readonly kind: "text" }>): Token {
   switch (lexeme.kind) {
-    case "text":
-      yield* drawnTokens(lexeme.text);
-      return;
-    case "sequence":
-      yield* drawnTokens(lexeme.escape);
-      return;
+    case "csi":
+      return csiToken(lexeme);
+    case "escape":
+      return escapeToken(lexeme);
     case "string": {
       const [link] = osc8Sequences(lexeme.escape);
-      yield link?.length === lexeme.escape.length ? { kind: "link", uri: link.uri } : { kind: "undrawn", escape: lexeme.escape };
-      return;
+      return link?.length === lexeme.escape.length ? { kind: "link", uri: link.uri } : { kind: "undrawn", escape: lexeme.escape };
     }
     case "break":
-      yield { kind: "silent" };
-      return;
+      return { kind: "silent" };
     default:
-      yield lexeme;
+      return lexeme;
   }
 }
 
@@ -874,7 +946,7 @@ function drawLine(stream: Stream, line: readonly Lexeme[], start: LineState): Dr
   const report = (escape: string): void => {
     undrawn ??= escape;
   };
-  for (const lexeme of line) for (const token of tokens(lexeme)) {
+  const apply = (token: Token): void => {
     const preceding = last;
     last = undefined;
     switch (token.kind) {
@@ -976,6 +1048,11 @@ function drawLine(stream: Stream, line: readonly Lexeme[], start: LineState): Dr
       case "silent":
         break;
     }
+  };
+  const textTokens = textTokenizer(apply);
+  for (const lexeme of line) {
+    if (lexeme.kind !== "text") apply(tokenOf(lexeme));
+    else textTokens(lexeme.text);
   }
   return { cells, end: { column, savedColumn, last }, undrawn };
 }
