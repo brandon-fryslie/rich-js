@@ -271,6 +271,16 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(drawn).toEqual([]);
   });
 
+  it("performs, and reports none of, every CSI and escape it decodes", () => {
+    const performed = [
+      "\x1b[1;31m", "\x1b[4:3m", "\x1b[2D", "\x9b3C", "\x1b[5G", "\x1b[I", "\x1b[Z", "\x1b[2X", "\x1b[P", "\x1b[3@",
+      "\x1b[3b", "\x1b[K", "\x1b[2K", "\x1b[s", "\x1b[s\x1b[u", "\x1b7", "\x1b7\x1b8", "\x1b(0", "\x1b)B", "\x1b[!p",
+      "\x1b[E", "\x1bE",
+    ];
+    expect(performed.filter((sequence) => scanUndrawn(`x${sequence}y`).undrawn !== null)).toEqual([]);
+    expect(scanUndrawn("x\x1b[ 1my").undrawn).toBe("\x1b[ 1m");
+  });
+
   it("runs a line feed inside a CSI or an escape, which goes on, and cuts a string escape's payload at one", () => {
     expect(decodeAnsi("abc\x1b[\nhello").plain).toBe("abc\nello");
     expect(scanUndrawn("abc\x1b[\nhello").undrawn).toBe("\x1b[h");

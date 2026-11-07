@@ -48,14 +48,14 @@
  *
  * CNL is the sixth. Rich drops `\x1b[E`, gluing the text after it to the line
  * before; here it ends the line, once whatever its count, since the decoder
- * holds no cursor row or screen height to count rows against (`CNL`). CPL goes
+ * holds no cursor row or screen height to count rows against (`completed`). CPL goes
  * up to a line already decoded, so it stays dropped.
  *
  * Saving the cursor is the seventh. Rich drops `\x1b7` and `\x1b8` (and
  * `\x1b[s`, `\x1b[u`), which curses and `tput sc`/`rc` write, so text drawn
  * after a restore lands after what it overwrote. Here a save holds what a
  * terminal's does — the column, the SGR style and the sets — and a restore
- * brings them back (`CURSOR_SAVE`, `CURSOR_RESTORE`). The column comes back only on the line it
+ * brings them back (`sequenceToken`). The column comes back only on the line it
  * was saved on: on a later one it names a row the decoder no longer holds, as
  * CPL does.
  *
@@ -132,8 +132,11 @@ const PAYLOAD_RUN = pattern(new RegExp(`[^${STRING_STOPS}\\n]+`, "u"));
 // A run of the bytes a sequence collects ahead of its final byte: a CSI's
 // parameters and intermediates, below 0x40, and an escape's intermediates,
 // below 0x30, each from 0x20, since a C0 control runs where it stands.
+const INTERMEDIATE = String.raw`[\x20-\x2f]`;
 const CSI_COLLECTS = pattern(/[\x20-\x3f]+/u);
-const ESCAPE_COLLECTS = pattern(/[\x20-\x2f]+/u);
+const ESCAPE_COLLECTS = pattern(new RegExp(`${INTERMEDIATE}+`, "u"));
+// A CSI's collected bytes: parameters, then intermediates, and no parameter after an intermediate.
+const CSI_FIELDS = pattern(new RegExp(`^(?<params>[\x30-\x3f]*)(?<intermediates>${INTERMEDIATE}*)$`, "u"));
 
 // The ESC form of each C1 control `CONTROL_CODES` breaks a line at: `ESC E`, NEL.
 const ESC_LINE_BREAKS: ReadonlySet<string> = new Set(
@@ -212,16 +215,18 @@ const TEXT_EFFECTS = [
   `(?<control>${controlClass((disposition) => disposition !== "keep" && disposition !== "zeroWidth")})`,
 ].join("|");
 
-const textEffects = (): RegExp => new RegExp(TEXT_EFFECTS, "gu");
-
 /** Parameters a count is read from: digits and `;`, with no private marker and no sub-parameter. */
 const COUNTED = pattern(/^[0-9;]*$/u);
 /** SGR's parameters, `:` sub-parameters among them; a private marker such as the `>` of `\x1b[>4;2m` makes it some other CSI. */
 const SGR_PARAMS = pattern(/^[0-9;:]*$/u);
 const ERASE_PARAMS = pattern(/^[012]?$/u);
 
-/** A CSI's first parameter as the count a terminal reads: absent or zero is 1. */
-function countOf(params: string): number {
+/**
+ * A CSI's first parameter as the count a terminal reads, absent or zero being 1,
+ * or undefined when its parameters are not a count's.
+ */
+function countOf(params: string): number | undefined {
+  if (!COUNTED.test(params)) return undefined;
   const end = params.indexOf(";");
   return Number(end === -1 ? params : params.slice(0, end)) || 1;
 }
@@ -267,10 +272,11 @@ function sequenceToken({ escape, csi, params, intermediates, final }: Sequence):
   if (params === "" && (final === "s" || final === "u")) return { kind: "cursor", save: final === "s", escape };
   if (final === "m") return SGR_PARAMS.test(params) ? { kind: "sgr", params } : undrawn;
   if (final === "K") return ERASE_PARAMS.test(params) ? { kind: "erase", mode: (params || "0") as EraseMode } : undrawn;
-  if (!COUNTED.test(params)) return undrawn;
-  if (Object.hasOwn(MOTIONS, final)) return { kind: "move", motion: final as Motion, count: countOf(params) };
-  if (Object.hasOwn(EDITS, final)) return { kind: "edit", edit: final as Edit, count: countOf(params) };
-  return final === REPEAT_FINAL ? { kind: "repeat", count: countOf(params), escape } : undrawn;
+  const count = countOf(params);
+  if (count === undefined) return undrawn;
+  if (Object.hasOwn(MOTIONS, final)) return { kind: "move", motion: final as Motion, count };
+  if (Object.hasOwn(EDITS, final)) return { kind: "edit", edit: final as Edit, count };
+  return final === REPEAT_FINAL ? { kind: "repeat", count, escape } : undrawn;
 }
 
 /**
@@ -333,8 +339,10 @@ function breakOf(char: string): Extract<Lexeme, { readonly kind: "break" }> | un
 }
 
 /**
- * A CSI or an escape completed by its final byte, its collected bytes split at
- * the first intermediate: a line break when it is one, a sequence otherwise.
+ * A CSI or an escape completed by its final byte, its collected bytes split
+ * into parameters and intermediates: a line break when it is one, undrawn when
+ * a CSI's parameter byte follows an intermediate, which a VT500 parser ignores,
+ * and a sequence otherwise.
  * The breaks are CNL and the ESC form of each C1 line break. On a terminal CNL
  * passes `count` rows, or none on the bottom row, where it does not scroll; the
  * decoder holds no cursor row and no screen height, so no count has an answer
@@ -343,11 +351,12 @@ function breakOf(char: string): Extract<Lexeme, { readonly kind: "break" }> | un
  */
 function completed(introducer: string, csi: boolean, collected: string, final: string): Lexeme {
   const escape = introducer + collected + final;
-  const split = csi ? collected.search(/[\x20-\x2f]/u) : 0;
-  const params = split === -1 ? collected : collected.slice(0, split);
-  const intermediates = split === -1 ? "" : collected.slice(split);
-  if (intermediates === "" && (csi ? final === "E" && COUNTED.test(params) : ESC_LINE_BREAKS.has(final))) {
-    return { kind: "break", end: escape, relocates: csi && countOf(params) > 1 };
+  const fields = csi ? CSI_FIELDS.exec(collected)?.groups : { params: "", intermediates: collected };
+  if (fields === undefined) return { kind: "undrawn", escape };
+  const { params = "", intermediates = "" } = fields;
+  const count = csi && final === "E" ? countOf(params) : undefined;
+  if (intermediates === "" && (csi ? count !== undefined : ESC_LINE_BREAKS.has(final))) {
+    return { kind: "break", end: escape, relocates: count !== undefined && count > 1 };
   }
   return { kind: "sequence", escape, csi, params, intermediates, final };
 }
@@ -482,28 +491,31 @@ function lex(bytes: string): Lexed {
 }
 
 /**
- * `bytes`, a `text` the lexer handed on, as what each part of them does, each
- * handed to `apply` in order. `effects` is a `textEffects()` its caller builds
- * once for every text it draws, since a line holds a text between every two
- * sequences.
+ * What hands `apply` what each part of a `text` the lexer handed on does, in
+ * order.
  */
-function textTokens(bytes: string, effects: RegExp, apply: (token: Token) => void): void {
-  let at = 0;
-  effects.lastIndex = 0;
-  for (let match = effects.exec(bytes); match !== null; match = effects.exec(bytes)) {
-    const { inert, control, shift, underscore, struck, underlined } = match.groups!;
-    const escape = match[0];
-    if (match.index > at) apply({ kind: "text", text: bytes.slice(at, match.index) });
-    if (control !== undefined && isC1(control.charCodeAt(0))) apply({ kind: "undrawn", escape });
-    else if (control !== undefined || inert !== undefined) apply({ kind: "silent" });
-    if (escape === "\r") apply({ kind: "move", motion: "G", count: 1 });
-    if (shift !== undefined) apply({ kind: "shift", set: shift === "\x0e" ? 1 : 0 });
-    if (struck !== undefined) apply({ kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED });
-    if (underlined !== undefined) apply({ kind: "overstrike", character: underlined, emphasis: UNDERLINED });
-    if (escape === "\b") apply({ kind: "move", motion: "D", count: 1 });
-    at = match.index + escape.length;
-  }
-  if (at < bytes.length) apply({ kind: "text", text: bytes.slice(at) });
+function textTokenizer(apply: (token: Token) => void): (bytes: string) => void {
+  // Built once per tokenizer, since a line holds a text between every two
+  // sequences, and held where nothing but the scan below can move its cursor.
+  const effects = new RegExp(TEXT_EFFECTS, "gu");
+  return (bytes) => {
+    let at = 0;
+    effects.lastIndex = 0;
+    for (let match = effects.exec(bytes); match !== null; match = effects.exec(bytes)) {
+      const { inert, control, shift, underscore, struck, underlined } = match.groups!;
+      const escape = match[0];
+      if (match.index > at) apply({ kind: "text", text: bytes.slice(at, match.index) });
+      if (control !== undefined && isC1(control.charCodeAt(0))) apply({ kind: "undrawn", escape });
+      else if (control !== undefined || inert !== undefined) apply({ kind: "silent" });
+      if (escape === "\r") apply({ kind: "move", motion: "G", count: 1 });
+      if (shift !== undefined) apply({ kind: "shift", set: shift === "\x0e" ? 1 : 0 });
+      if (struck !== undefined) apply({ kind: "overstrike", character: struck, emphasis: underscore === undefined ? BOLD : BOLD_UNDERLINED });
+      if (underlined !== undefined) apply({ kind: "overstrike", character: underlined, emphasis: UNDERLINED });
+      if (escape === "\b") apply({ kind: "move", motion: "D", count: 1 });
+      at = match.index + escape.length;
+    }
+    if (at < bytes.length) apply({ kind: "text", text: bytes.slice(at) });
+  };
 }
 
 /**
@@ -1019,10 +1031,10 @@ function drawLine(stream: Stream, line: readonly Lexeme[], start: LineState): Dr
         break;
     }
   };
-  const effects = textEffects();
+  const textTokens = textTokenizer(apply);
   for (const lexeme of line) {
     if (lexeme.kind !== "text") apply(tokenOf(lexeme));
-    else textTokens(lexeme.text, effects, apply);
+    else textTokens(lexeme.text);
   }
   return { cells, end: { column, savedColumn, last }, undrawn };
 }
