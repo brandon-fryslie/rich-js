@@ -1269,6 +1269,16 @@ describe("underline kinds and color", () => {
     expect(new Style({ underline: true }).underline).toBe("single");
   });
 
+  it("refuses an underline that is not a kind where the style is made, naming it", () => {
+    expect(() => new Style({ underline: "wavy" as never })).toThrow(/underline must be one of .*got "wavy"/);
+    expect(() => new Style({ underline: 1 as never })).toThrow(/got 1/);
+  });
+
+  it("writes a curly underline as a single one where the terminal draws no styled kinds", () => {
+    expect(Style.parse("curlyUnderline").toSgrCodes(ColorDepth.TRUECOLOR, { styles: false, color: false })).toBe("4");
+    expect(Style.parse("doubleUnderline").toSgrCodes(ColorDepth.TRUECOLOR, { styles: false, color: false })).toBe("21");
+  });
+
   it("lets the later style decide the kind whole", () => {
     expect(Style.parse("curlyUnderline").add(Style.parse("doubleUnderline")).underline).toBe("double");
     expect(Style.parse("doubleUnderline").add(Style.parse("not curlyUnderline")).underline).toBe(false);

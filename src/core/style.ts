@@ -58,19 +58,32 @@ export type Underline = UnderlineKind | false | undefined;
  * Each underline kind's SGR code, its `n` in kitty's `4:n`, the word a definition spells it with, and
  * the attribute its code is written after — Rich's order, where `21` follows
  * `9` — so a byte pinned against the reference holds. A curly, dotted or
- * dashed one is kitty's `4:n`, which a terminal without it gets as `4`
- * (`UnderlineSupport`).
+ * dashed one is `styled`: kitty's `4:n`, which a terminal without it gets as
+ * `4` (`UnderlineSupport`).
  *
  * [LAW:one-source-of-truth] The encoder, `decodeAnsi`, `Style.parse`,
  * `Style.toString` and the template bindings all read this table.
  */
-export const UNDERLINE: Readonly<Record<UnderlineKind, { readonly sgr: string; readonly sub: number; readonly spelling: string; readonly after: AttributeName }>> = {
-  single: { sgr: "4", sub: 1, spelling: "underline", after: "italic" },
-  double: { sgr: "21", sub: 2, spelling: "doubleUnderline", after: "strike" },
-  curly: { sgr: "4:3", sub: 3, spelling: "curlyUnderline", after: "italic" },
-  dotted: { sgr: "4:4", sub: 4, spelling: "dottedUnderline", after: "italic" },
-  dashed: { sgr: "4:5", sub: 5, spelling: "dashedUnderline", after: "italic" },
+export const UNDERLINE: Readonly<Record<UnderlineKind, { readonly sgr: string; readonly sub: number; readonly styled: boolean; readonly spelling: string; readonly after: AttributeName }>> = {
+  single: { sgr: "4", sub: 1, styled: false, spelling: "underline", after: "italic" },
+  double: { sgr: "21", sub: 2, styled: false, spelling: "doubleUnderline", after: "strike" },
+  curly: { sgr: "4:3", sub: 3, styled: true, spelling: "curlyUnderline", after: "italic" },
+  dotted: { sgr: "4:4", sub: 4, styled: true, spelling: "dottedUnderline", after: "italic" },
+  dashed: { sgr: "4:5", sub: 5, styled: true, spelling: "dashedUnderline", after: "italic" },
 };
+
+/**
+ * An underline option as a style holds it, `true` being a single one.
+ *
+ * [LAW:parse-dont-validate] An untyped caller — a playground frame, plain
+ * JavaScript — can hand anything; it fails here, naming the value, rather
+ * than as an undefined table row when the style is encoded.
+ */
+function parseUnderline(option: UnderlineKind | boolean | undefined): Underline {
+  if (option === true) return "single";
+  if (option === false || option === undefined || (UNDERLINE_KINDS as readonly unknown[]).includes(option)) return option;
+  throw new TypeError(`Style underline must be one of ${UNDERLINE_KINDS.join(", ")}, true or false, got ${JSON.stringify(option)}`);
+}
 
 /** Every word a definition may spell an underline with, the short ones included, and its kind. */
 export const UNDERLINE_SPELLINGS: ReadonlyMap<string, UnderlineKind> = new Map([
@@ -331,7 +344,7 @@ export class Style {
     this.bold = options.bold;
     this.dim = options.dim;
     this.italic = options.italic;
-    this.underline = options.underline === true ? "single" : options.underline;
+    this.underline = parseUnderline(options.underline);
     this.underlineColor = resolveColor(options.underlineColor);
     this.blink = options.blink;
     this.rapidBlink = options.rapidBlink;
@@ -588,7 +601,7 @@ export class Style {
   /** The underline `support` draws for this style's: a kind it cannot draw is a single one. */
   drawnUnderline(support: UnderlineSupport): UnderlineKind | undefined {
     const kind = this.underline || undefined;
-    return kind === undefined || support.styles || kind === "single" || kind === "double" ? kind : "single";
+    return kind === undefined || support.styles || !UNDERLINE[kind].styled ? kind : "single";
   }
 
   /**

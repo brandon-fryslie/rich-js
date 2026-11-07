@@ -178,10 +178,13 @@ function runHtml({ text, look, inVisualOrder }: ExportRun): string {
  * The keyframes exist only for a reader who has not asked for reduced motion,
  * so for one who has, the inline `animation` names nothing and the glyph holds
  * still. One rule, so no second rule's order or survival in a host's CSS
- * pipeline can bring the blink back.
+ * pipeline can bring the blink back. It fades the decoration color as well as
+ * the glyph's, so an underline in a color of its own blinks with the run, and
+ * the outline, drawn in `currentColor`, follows the glyph: the run blinks
+ * whole, as the SVG export's does.
  */
 export const HTML_FRAGMENT_CSS =
-  `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent}}}`;
+  `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent;text-decoration-color:transparent}}}`;
 
 /**
  * `segments` under `theme` as one `pre` carrying its canvas, for embedding.

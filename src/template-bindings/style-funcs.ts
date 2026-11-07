@@ -40,7 +40,7 @@ function attrFunc(style: Style): TemplateFunc {
 
 // --- Color sinks ---
 //
-// `fg` and `bg` are the only two color-applying functions, and they are the
+// `fg`, `bg` and `underlineColor` are the only color-applying functions, and they are the
 // terminal step of the color pipeline: `color` names a color, the functions
 // in `color-funcs.ts` transform it, these paint it onto text.
 //
@@ -171,7 +171,7 @@ const linkFunc: TemplateFunc = {
 // --- Public assembly ---
 
 /**
- * Text-styling registrations: the two color sinks (`fg`, `bg`), text
+ * Text-styling registrations: the three color sinks (`fg`, `bg`, `underlineColor`), text
  * attributes (canonical names, short aliases, and `not_*` negations), the
  * hyperlink cell-splitter (`link`), and the multi-attribute `style` spec.
  *

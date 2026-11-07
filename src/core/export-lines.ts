@@ -184,16 +184,18 @@ export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
   const ground = style.reverse ? ink : paper;
   const background: Background = style.reverse || !paperSpec.isDefault ? ground : "canvas";
 
-  const faded = style.dim ? dimShown(glyph, ground) : glyph;
+  // A dim run's ink fades, the line's own color with the glyph's.
+  const fade = (shown: ColorRgba): ColorRgba => (style.dim ? dimShown(shown, ground) : shown);
+  const line = drawn.underlineColor;
 
   return {
-    foreground: style.conceal ? ground : faded,
+    foreground: style.conceal ? ground : fade(glyph),
     background,
     bold: style.bold === true,
     italic: style.italic === true,
     underline: style.underline || "none",
     // A concealed run hides its lines with its glyph, so they take its color.
-    underlineColor: style.conceal || drawn.underlineColor === undefined || drawn.underlineColor.isDefault ? null : drawn.underlineColor.getTruecolor(theme, true),
+    underlineColor: style.conceal || line === undefined || line.isDefault ? null : fade(line.getTruecolor(theme, true)),
     strike: style.strike === true,
     overline: style.overline === true,
     blink: style.rapidBlink ? "fast" : style.blink ? "slow" : "none",

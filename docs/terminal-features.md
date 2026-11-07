@@ -134,9 +134,10 @@ state your terminal reads OSC 9;4 (iTerm2, Ghostty, Windows Terminal), and
 Curly, dotted and dashed underlines (SGR `4:3`–`4:5`) and an underline's own
 color (SGR 58) are [styles](./style.md#underlines), drawn on every run that
 carries one, so they are not sent once like a request. A console decides once,
-when it is made, whether its terminal draws each, and logs both decisions as
-`underline style` and `underline color`. kitty, WezTerm, foot, Ghostty,
-Alacritty, iTerm2 and VTE read them. A terminal that does not would draw
+when it is made, whether its terminal draws each, and holds the answer on its
+output target as `underlines`; nothing is sent, so neither decision reaches
+`onSend`. kitty, WezTerm, foot, Ghostty, Alacritty, iTerm2, VTE and Windows
+Terminal read them. A terminal that does not would draw
 `4:3` as italic, so `bestGuess` does not act on the environment's word for
 them. tmux and zellij parse them and redraw them for each client, and screen
 and an editor's terminal do not carry them. Where a console does not send

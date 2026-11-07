@@ -602,7 +602,7 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   ...ATTRIBUTE_NAMES.map((name): [number, SgrOp] => [ATTRIBUTE_SGR[name], adding({ [name]: true })]),
   // [LAW:one-source-of-truth] An underline kind's plain code is the one
   // `Style.toSgrCodes` writes; a style holds one kind, so each replaces another.
-  ...UNDERLINE_KINDS.filter((kind) => !UNDERLINE[kind].sgr.includes(":")).map((kind): [number, SgrOp] => [Number(UNDERLINE[kind].sgr), adding({ underline: kind })]),
+  ...UNDERLINE_KINDS.filter((kind) => !UNDERLINE[kind].styled).map((kind): [number, SgrOp] => [Number(UNDERLINE[kind].sgr), adding({ underline: kind })]),
   [22, adding({ bold: false, dim: false })],
   [23, adding({ italic: false })],
   // ECMA-48: 24 is "neither singly nor doubly underlined", 25 "steady" at

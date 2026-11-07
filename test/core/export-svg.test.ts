@@ -132,6 +132,11 @@ describe("encodeSvg looks", () => {
     );
   });
 
+  it("blinks a framed run's outline with its glyph, inside the one blinking group", () => {
+    const svg = styled("blink frame");
+    expect(svg).toMatch(/<g class="[^"]+">(?:(?!<\/g>).)*<rect [^>]*fill="none" stroke=/);
+  });
+
   it("outlines a frame square and an encircle rounded, in the foreground color", () => {
     expect(rects(styled("frame"))).toEqual([
       `x="0" y="1.5" width="12.2" height="24.65" rx="0" fill="none" stroke="${INK.hex}" stroke-width="1"`,

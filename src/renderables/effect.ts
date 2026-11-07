@@ -791,23 +791,25 @@ function movedSpecs(from: CellColors, to: CellColors, depth: ColorDepth, termina
   return { fg: ColorSpec.matchMove(from.fg, glyph, depth, terminal, true), bg: ColorSpec.matchMove(from.bg, ground, depth, terminal, false) };
 }
 
-/**
- * Whether two cells' colors are written alike. A slot with no color is not
- * the default color: it writes nothing, so a style a container lays beneath
- * (`Segment.applyStyle`) still shows through it, where `39`/`49` would not.
- */
 const GLYPH_UNDERLINE = new Style({ underlineColor: ColorSpec.default() });
 
 /**
  * `style` drawn in the colors an effect moved it to. An underline colored
  * apart from the glyph is ink too: once the effect moves the glyph's ink, the
  * line is drawn in it, so a cell faded to the ground leaves no line behind.
+ * A style with no underline color of its own already draws its line in the
+ * glyph's, and gains no `59`.
  */
 function repainted(style: Style, writes: DrawnColors, wire: DrawnColors): Style {
   const moved = style.add(Style.fromColor(writes.color, writes.bgcolor));
-  return slotWritesAlike(writes.color, wire.color, true) ? moved : moved.add(GLYPH_UNDERLINE);
+  return style.underlineColor === undefined || slotWritesAlike(writes.color, wire.color, true) ? moved : moved.add(GLYPH_UNDERLINE);
 }
 
+/**
+ * Whether two cells' colors are written alike. A slot with no color is not
+ * the default color: it writes nothing, so a style a container lays beneath
+ * (`Segment.applyStyle`) still shows through it, where `39`/`49` would not.
+ */
 function writesAlike(a: DrawnColors, b: DrawnColors): boolean {
   return slotWritesAlike(a.color, b.color, true) && slotWritesAlike(a.bgcolor, b.bgcolor, false);
 }

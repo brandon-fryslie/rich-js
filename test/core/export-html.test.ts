@@ -94,10 +94,17 @@ describe("encodeHtml runs", () => {
     );
   });
 
-  it("blinks slow and fast against keyframes that hide the glyph", () => {
+  it("blinks slow and fast against keyframes that hide the glyph and its lines", () => {
     expect(cssOf(html(Style.parse("blink")))).toContain("animation:rich-blink 1s step-end infinite");
     expect(cssOf(html(Style.parse("rapidBlink")))).toContain("animation:rich-blink 0.5s step-end infinite");
-    expect(html(Style.parse("blink"))).toContain("@keyframes rich-blink{50%{color:transparent}}");
+    expect(html(Style.parse("blink"))).toContain("@keyframes rich-blink{50%{color:transparent;text-decoration-color:transparent}}");
+  });
+
+  it("blinks a run whole: an underline in its own color, and the outline drawn in the glyph's", () => {
+    const colored = html(Style.parse("blink curlyUnderline underlineColor red"));
+    expect(colored).toMatch(/text-decoration-color:#[0-9a-f]{6};animation:rich-blink/);
+    // The frame is `currentColor`, which the keyframes fade.
+    expect(cssOf(html(Style.parse("blink frame")))).toContain("animation:rich-blink 1s step-end infinite;box-shadow:inset 0 0 0 1px currentColor");
   });
 
   // Moving under reduced motion is a browser behaviour, pinned in
@@ -105,7 +112,7 @@ describe("encodeHtml runs", () => {
   // from losing its gate without a browser in the loop.
   it("defines the blink keyframes only for a reader who has not asked for reduced motion", () => {
     expect(HTML_FRAGMENT_CSS).toBe(
-      "@media (prefers-reduced-motion:no-preference){@keyframes rich-blink{50%{color:transparent}}}",
+      "@media (prefers-reduced-motion:no-preference){@keyframes rich-blink{50%{color:transparent;text-decoration-color:transparent}}}",
     );
   });
 

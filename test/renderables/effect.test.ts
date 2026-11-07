@@ -332,6 +332,9 @@ describe("Effected — attributes", () => {
     const keepsInk: Effect = () => Animation.constant<EffectFrame>((look) => ({ ...look, bg: RED }));
     const [kept] = [...effected(fixed(line), keepsInk).render({ maxWidth: 10 })];
     expect(kept!.style?.underlineColor?.name).toBe("green");
+    // A line already in the glyph's ink follows it with no underline color written.
+    const [plain] = [...effected(fixed(new Segment("ab", Style.parse("blue underline"))), toRed).render({ maxWidth: 10 })];
+    expect(plain!.style?.underlineColor).toBeUndefined();
   });
 
   it("blinks an underline on as the kind the cell draws, or a single one", () => {

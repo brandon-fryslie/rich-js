@@ -213,7 +213,8 @@ function textSvg({ text, column, cells }: Chunk, baseline: number, inVisualOrder
  * One run: its glyphs, then its lines and outline over them, in a group whose
  * class carries the look — so the lines take the glyph's `fill`, and blink
  * with it as the group's opacity, whatever paint a line names itself. The
- * outline is a stroke, so it names its color itself.
+ * outline is a stroke, so it names its color itself, and blinks with the run
+ * too, as the HTML export's `currentColor` outline does.
  */
 function runSvg(run: PlacedRun, className: string): string {
   const { look } = run;
