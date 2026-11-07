@@ -289,7 +289,7 @@ const GROUND: LexState = { kind: "ground" };
 const sequenceAt = (start: number, lexeme: number, introducer: string, csi: boolean): LexState => ({ kind: "sequence", start, lexeme, introducer, csi, collected: "" });
 
 // A run of ground text: everything but what begins an escape or breaks a line.
-const GROUND_RUN = pattern(new RegExp(`[^\\x1b\\x80-\\x9f\\n${controlClass((disposition) => disposition === "line-break").slice(1, -1)}]+`, "u"));
+const GROUND_RUN = pattern(new RegExp(`(?:(?!${controlClass((disposition) => disposition === "line-break")})[^\\x1b\\x80-\\x9f\\n])+`, "u"));
 
 /**
  * `char` as a line break, outside a sequence or run inside one: LF and the

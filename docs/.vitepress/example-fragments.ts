@@ -28,9 +28,10 @@ export interface Drawn {
 }
 
 /**
- * The most an escape may hold before it is complete. VTE takes a link's URI up
- * to 2083 bytes (the OSC 8 spec); one still open at twice that is no link a
- * terminal draws, and holding it bounds what each later write re-reads.
+ * The most an escape may hold before it is complete, the line breaks a CSI or
+ * an escape runs included. VTE takes a link's URI up to 2083 bytes (the OSC 8
+ * spec), the longest escape an example means to write; one still open at twice
+ * that is a stray introducer, and holding it bounds what each later write re-reads.
  */
 const LONGEST_OPEN_ESCAPE = 4096;
 

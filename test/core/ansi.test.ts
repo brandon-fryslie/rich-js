@@ -255,6 +255,12 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("a\n\nb\n").plain).toBe("a\n\nb");
   });
 
+  it("runs a line feed inside a CSI or an escape, which goes on, and cuts a string escape's payload at one", () => {
+    expect(decodeAnsi("abc\x1b[\nhello").plain).toBe("abc\nello");
+    expect(scanUndrawn("abc\x1b[\nhello").undrawn).toBe("\x1b[h");
+    expect(decodeAnsi("a\x1b]0;t\nb").plain).toBe("a\nb");
+  });
+
   it("keeps an escape the bytes end inside on the line it began, across the breaks it ran", () => {
     expect(new AnsiDecoder().decode("foo\x1b\n").map((t) => t.plain)).toEqual(["foo"]);
     expect(new AnsiDecoder().decode("foo\x1b[31\n").map((t) => t.plain)).toEqual(["foo"]);
