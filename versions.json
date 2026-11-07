@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-595",
-      "ref": "refs/pull/595/merge",
-      "sha": "40ed563c0ee11205efb7c4bd0b73b5c66176885f",
-      "timestamp": "2026-11-07T06:57:05.551Z",
-      "commits": [
-        {
-          "sha": "40ed563c0ee11205efb7c4bd0b73b5c66176885f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T06:55:14Z",
-          "message": "Merge 91798e340e0b275257408bcdb7f0c38caddc6e7f into e8ccaa344a8e212c55b5d252d065534fb5b7a315\n"
-        },
-        {
-          "sha": "91798e340e0b275257408bcdb7f0c38caddc6e7f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:53:51-07:00",
-          "message": "Disabled text is the slot, plain or dimmed, nearest its stated color under muted, so it stays grey and never vanishes (rich-palette-xovz.qg7)\n\nReview (high, second): trying plain slots first put disabled text on hue slots\n(olive, teal, navy at 1.3:1) where a dimmed grey kept the margin. Plain and\ndimmed options are now ranked together; the legacy Windows console offers no\ndim. dimShown moves beside blendRgb in core/color; nearestOf is generic over\nwhat a slot is written as; HELD_UNDER refuses an intent held past twice.\nDeferred: rich-palette-xovz.dhr (textOn drops dim), .ixu (fit identity).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "a3dcfd00d3e8d59efc5f569e6ade49b28b569e25",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:43:22-07:00",
-          "message": "Disabled text is held under what muted text shows as an export draws dim, never vanishing into the ground (rich-palette-xovz.qg7)\n\nReview (medium): the bound assumed dimmed muted stood at its floor, and the\nfallback dimmed the faintest slot to near-invisibility. dimShown in\nexport-lines is now the one reading of SGR dim's strength; writeText weighs\nevery slot plain then dimmed against it, and the test measures through it.\nHELD_UNDER is built once; floorOn and textOn docs say what indexed depths do.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "05442b4be4d211cfbebcd42c0ce3897062060edd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:34:40-07:00",
-          "message": "Disabled text goes under what dimmed muted text can show, not its assumed floor, and asIs drops the ordering at every depth (rich-palette-xovz.qg7)\n\nReview (high): where muted was dimmed, disabled was measured under textFloor\nalone and could take muted's own slot undimmed (catppuccin-latte at sixteen\ncolors). The bound is now the lesser of the floor and the slot; with no slot\nunder it, disabled is the faintest slot dimmed, not muted's color. The over\nlookup goes through the writeText memo.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "ecf77261e5e0adc85280ddf7a73f3a6422c5a2a1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:24:39-07:00",
-          "message": "Disabled text is written under the slot muted text takes at every indexed depth (rich-palette-xovz.qg7)\n\nAt 256 and sixteen colors, slotted held foreground-muted only to textFloor, so\nmuted and disabled often shared a slot or inverted (VGA defaults over bundled\npalettes x every role ground: 932/3427 missed the 0.25 margin at sixteen, 9 at\n256). Disabled text, which has no floor, now takes a slot HELD_PAST_MARGIN under\nmuted's, or muted's color dimmed where none is; under dimmed muted, its floor\nstands in for the contrast. Raising muted instead would lift it to body-text\nstrength at sixteen colors.\n\nink() already took the frame's depth (themed-widget.ts), and widget labels at\nindexed depths are covered by test/widgets/terminal-contrast.test.ts.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e8ccaa344a8e212c55b5d252d065534fb5b7a315",
-      "timestamp": "2026-11-07T06:34:34.359Z",
+      "sha": "c7018a9f13e300017b50f1a101fd6c39a383350d",
+      "timestamp": "2026-11-07T07:12:38.694Z",
       "commits": [
         {
-          "sha": "e8ccaa344a8e212c55b5d252d065534fb5b7a315",
+          "sha": "c7018a9f13e300017b50f1a101fd6c39a383350d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T23:31:56-07:00",
-          "message": "A filled row places its right-to-left line itself, so no option travels to tell text where it stands (rich-control-codes-xh4n.yws) (#593)\n\n* A right-to-left row says where it stands on the frame, and whoever fills the row places it, so no option travels to tell text (rich-control-codes-xh4n.yws)\n\nText stamps an unplaced right-to-left row with Style.edge (the row and the\nwidth it was laid out in); Segment.leadingFill is the one reader, and Padding,\nLayout, Viewport, scroll, Console.print and paint's frame fit read it.\nPASSES_EDGE, passingOptions, fillingOptions, renderFilling and renderPassing\nare deleted, so a user's own wrapper hands the row on with nothing to know.\nPretty, JSON, Traceback and the strips set their own lines (Segment.settled).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A holder that sets its own rows settles them, and one that splices rows fills them first (rich-control-codes-xh4n.yws)\n\nReview of #593: a Tree's root label and a Syntax line moved to the right\nedge under a filler; a change between two right-to-left texts and a row\nunder an open overlay lost their place mid-transition; the caret was found\nbefore the leading fill. Tree and Syntax settle their rows, ChangeFrame and\nWidgetApp fill before splicing, paint finds the caret on the placed row,\nand leadingFill walks a row once without allocating.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A change's spliced row carries the new row's stamp, so whoever holds the change places it (rich-control-codes-xh4n.yws)\n\nReview of #593 (medium): filling both sides inside ChangeFrame made a\nchange act as a filler, so a crossfade label in a Tree moved to the right\nedge. The spliced row now stands as the new row does, its old side filled\nto the new row's width, and Segment.rowEdge is the one reader of the stamp.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* A row's stamp records the cells its text drew, so a window or crop cut from it is never moved (rich-control-codes-xh4n.yws)\n\nReview of #593 (high, second pass): a scroll window cut from a\nright-to-left row kept the row's stamp and was pushed toward its\nholder's right edge; a change from right-to-left to left-to-right text\nkept the old cells' stamp mid-change. RowEdge carries the row's drawn\nlength in place of an identity field nobody read, rowEdge refuses a row\nthat no longer has it, Segment.stamped clears when the new row names no\nedge, and text stamps through it. Stale comment and blank lines left by\nthe PASSES_EDGE removal go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-11-07T00:10:55-07:00",
+          "message": "Disabled text is written under the slot muted text takes at every indexed depth (rich-palette-xovz.qg7) (#595)\n\n* Disabled text is written under the slot muted text takes at every indexed depth (rich-palette-xovz.qg7)\n\nAt 256 and sixteen colors, slotted held foreground-muted only to textFloor, so\nmuted and disabled often shared a slot or inverted (VGA defaults over bundled\npalettes x every role ground: 932/3427 missed the 0.25 margin at sixteen, 9 at\n256). Disabled text, which has no floor, now takes a slot HELD_PAST_MARGIN under\nmuted's, or muted's color dimmed where none is; under dimmed muted, its floor\nstands in for the contrast. Raising muted instead would lift it to body-text\nstrength at sixteen colors.\n\nink() already took the frame's depth (themed-widget.ts), and widget labels at\nindexed depths are covered by test/widgets/terminal-contrast.test.ts.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Disabled text goes under what dimmed muted text can show, not its assumed floor, and asIs drops the ordering at every depth (rich-palette-xovz.qg7)\n\nReview (high): where muted was dimmed, disabled was measured under textFloor\nalone and could take muted's own slot undimmed (catppuccin-latte at sixteen\ncolors). The bound is now the lesser of the floor and the slot; with no slot\nunder it, disabled is the faintest slot dimmed, not muted's color. The over\nlookup goes through the writeText memo.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Disabled text is held under what muted text shows as an export draws dim, never vanishing into the ground (rich-palette-xovz.qg7)\n\nReview (medium): the bound assumed dimmed muted stood at its floor, and the\nfallback dimmed the faintest slot to near-invisibility. dimShown in\nexport-lines is now the one reading of SGR dim's strength; writeText weighs\nevery slot plain then dimmed against it, and the test measures through it.\nHELD_UNDER is built once; floorOn and textOn docs say what indexed depths do.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Disabled text is the slot, plain or dimmed, nearest its stated color under muted, so it stays grey and never vanishes (rich-palette-xovz.qg7)\n\nReview (high, second): trying plain slots first put disabled text on hue slots\n(olive, teal, navy at 1.3:1) where a dimmed grey kept the margin. Plain and\ndimmed options are now ranked together; the legacy Windows console offers no\ndim. dimShown moves beside blendRgb in core/color; nearestOf is generic over\nwhat a slot is written as; HELD_UNDER refuses an intent held past twice.\nDeferred: rich-palette-xovz.dhr (textOn drops dim), .ixu (fit identity).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
