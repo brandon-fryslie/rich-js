@@ -1614,8 +1614,9 @@ describe("TextInput", () => {
 
 describe("a word motion takes time linear in the word it crosses", () => {
   // Stepping a cluster at a time, each step segmenting the value again, a motion across one long word was quadratic.
-  // The size is the smallest that clears the helper's floor: five pairs at 256,000 and 1,024,000 cost 11-15s of CPU
-  // per motion and crossed the 30s hang limit in a saturated full suite (rich-unfiled-791c.jac3).
+  // Alone, a motion at 64,000 takes 6-7 ms (delete) to 24-38 ms (move) against the helper's 5 ms floor, and a pair at
+  // 256,000 under a second; in a saturated full suite five pairs there cost 11-15s of CPU and crossed the 30s hang
+  // limit (rich-unfiled-791c.jac3). A runner fast enough to put a delete under the floor grows the size itself.
   const across = (motion: (t: TextInput) => void, from: "start" | "end") => (n: number) => {
     const t = new TextInput({ value: "a".repeat(n) });
     t.cursorPosition = asCodePoint(from === "start" ? 0 : n);
