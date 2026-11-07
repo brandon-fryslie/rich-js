@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "232f3d19717511535c3dd0fc726033a441060feb",
+      "timestamp": "2026-11-07T01:54:46.196Z",
+      "commits": [
+        {
+          "sha": "232f3d19717511535c3dd0fc726033a441060feb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-06T18:52:37-07:00",
+          "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs) (#586)\n\n* De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n\n* Widget contrast is a setting, and sixteen colors draw the theme's own (rich-unfiled-791c.yyzs)\n\nA themed widget takes `contrast`, the TextFit its text meets a floor with:\nslide by default, TEXT_FITS.asIs to turn checking off, setContrast to change\nit live. Widgets resolve colors at the frame's depth through one\nThemedWidget.ink; at an indexed depth a pair is written in the theme's own\nsixteen rather than rounded against stock VGA, and muted text is the slot\neach theme states (ThemePaletteData.ansiMuted, TerminalTheme.mutedSlot), so\na placeholder no longer looks typed at 16 colors. mutedInk owns the muted\nlook; a disabled TextInput's continuation marker is drawn disabled. The\ncontrast test names muted glyphs by scene, not by color.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Widget ink reads the frame's terminal, holds a stated muted slot to its floor (rich-unfiled-791c.yyzs)\n\nMedium review of 1c30a79ba. At an indexed depth a widget's pair is chosen\namong the colors RenderOptions.terminal shows (resolveTerminal, as Effect\nand ProgressBar do), and the muted slot is that terminal's: mutedSlot moves\nto TerminalColors, validated 0-15, and a terminal whose sixteen are all its\nforeground is refused. Grounds are never written as the default. The stated\nslot is muted text's candidate at sixteen colors only, held to the floor and\nhanded to the fit on a miss. Receding from body text belongs to the intent\n(recedesFrom in text-on.ts), so text-muted has it too. Slot OKLab is taken\nonce per terminal and depth.\n\nBREAKING: WidgetBase.ground and ThemedWidget.disabledInk are functions of\nthe frame's drawing (colorSystem, terminal), not getters; a subclass\noverriding either takes the argument.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* Widget ink at indexed depths: grey grounds stay grey, muted recedes or dims (rich-unfiled-791c.yyzs)\n\nExtra-high review of c048ae96b. terminal-contrast now runs every scene at\nsixteen and 256 colors, with no terminal named and on the theme's own, and\ncaught each defect before the fix. A ground is the indexed slot that stands\nfor it, scored by deltaE_OK plus a cost for chroma it lacks, so a dark grey\nnever becomes VGA maroon or navy, and it is never written as the default.\nNo text is written in its ground's color. Muted text recedes: a slot other\nthan the default and its body text's, with less contrast than body text;\nwhere none recedes and reads, it is body text with SGR dim. The fit's tint is\nthe intent's (textTint). The monochrome refusal leaves TerminalColors. Where\nno slot reads, text is the most legible slot. Sorts are min-scans but for\nthe shades a fit reads on a miss; ground is hoisted out of the line map.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* One contrast engine: writeText in text-on.ts writes a pair at every depth (rich-unfiled-791c.yyzs)\n\ntextOn's floor, fit, recede, hue-cost ground, never-on-its-ground and dim\nfallback are one function, writeText, which returns the written pair\n(ColorSpec text and ground, plus dim). textOn is it read in RGBA, as the\nterminal shows the text's slot. widgets/ink.ts is a memoised caller and\nslotted is gone from it. The template textOn returns the written color's\nname, so at sixteen colors a template writes the slot a widget does.\nDrawnAt.terminal widens to TerminalColors.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* One rounding rule: roundingDistance in core ranks every slot, writeText rounds by it (rich-unfiled-791c.yyzs)\n\nHigh review of a4045b654. ColorTable.match, matchReadable, matchWhere,\nColorSpec.matchOn and matchMove rank by roundingDistance: RGB distance plus\na cost for HSV chroma an entry has past slack and twice the value's own, so\na grey stays grey while a dull green may round to a teal. writeText rounds\nits ground and candidates by it and its private nearest is gone; at 256\ncolors it rounds into the writer's table (16-255). readsOn on textOn's\ncolor holds the floor again, tested on every bundled theme at sixteen and\n256 colors. The default foreground is a candidate only when a terminal is\nnamed. The template textOn returns the hex of the slot shown, which\ncomposes and rounds back to that slot. A truecolor ground is written drawn\non the palette background. writeText is memoised once and ink's cache is\ngone. The terminal-contrast hue check is per cell: a grey ground stays grey.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* writeText refuses a table with no color off its ground, by name (rich-unfiled-791c.yyzs)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-591",
       "ref": "refs/pull/591/merge",
       "sha": "f727ac5cdd0a8e76f6f48887d6638ff31bfe1212",
@@ -34,85 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-06T18:23:41-07:00",
           "message": "decodeAnsi reads each escape's meaning off the lexer's one parse, so the CSI and escape grammar is defined once (rich-control-codes-xh4n.7c0)\n\nA sequence lexeme carries its introducer kind, parameters, intermediates and\nfinal byte, and sequenceToken dispatches on those fields; ESCAPES' CSI and\nescape alternatives and SEQUENCE_BREAK are gone, and the text regex keeps only\nwhat text does. The lexer reads ground text, collected bytes and string\npayloads in sticky runs, and drawLine builds its text regex once per line with\nno generator per lexeme.\n\nBench (/tmp/probe590/bench.ts, interleaved min of 15, vs master at 0.30.0):\nSGR decode 376 vs 416 ms, scan 234 vs 272; plain decode 266 vs 365, scan 66 vs 182.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-586",
-      "ref": "refs/pull/586/merge",
-      "sha": "44b6d8826f121b0ea0f89fcd6d27e7f0156b827c",
-      "timestamp": "2026-11-07T01:39:43.631Z",
-      "commits": [
-        {
-          "sha": "44b6d8826f121b0ea0f89fcd6d27e7f0156b827c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T01:37:05Z",
-          "message": "Merge 60629724cc811cd958eda81f89cce4a477831e44 into 2c45a91f45d52f53d61870445221f5d38ceb0cfa\n"
-        },
-        {
-          "sha": "60629724cc811cd958eda81f89cce4a477831e44",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T18:36:56-07:00",
-          "message": "writeText refuses a table with no color off its ground, by name (rich-unfiled-791c.yyzs)\n"
-        },
-        {
-          "sha": "3b121224a78528bde1b161653dd22f1145e238e3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T18:34:57-07:00",
-          "message": "One rounding rule: roundingDistance in core ranks every slot, writeText rounds by it (rich-unfiled-791c.yyzs)\n\nHigh review of a4045b654. ColorTable.match, matchReadable, matchWhere,\nColorSpec.matchOn and matchMove rank by roundingDistance: RGB distance plus\na cost for HSV chroma an entry has past slack and twice the value's own, so\na grey stays grey while a dull green may round to a teal. writeText rounds\nits ground and candidates by it and its private nearest is gone; at 256\ncolors it rounds into the writer's table (16-255). readsOn on textOn's\ncolor holds the floor again, tested on every bundled theme at sixteen and\n256 colors. The default foreground is a candidate only when a terminal is\nnamed. The template textOn returns the hex of the slot shown, which\ncomposes and rounds back to that slot. A truecolor ground is written drawn\non the palette background. writeText is memoised once and ink's cache is\ngone. The terminal-contrast hue check is per cell: a grey ground stays grey.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "a4045b654fcf1c7bba83df94c55c11615dde85a2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T18:15:17-07:00",
-          "message": "One contrast engine: writeText in text-on.ts writes a pair at every depth (rich-unfiled-791c.yyzs)\n\ntextOn's floor, fit, recede, hue-cost ground, never-on-its-ground and dim\nfallback are one function, writeText, which returns the written pair\n(ColorSpec text and ground, plus dim). textOn is it read in RGBA, as the\nterminal shows the text's slot. widgets/ink.ts is a memoised caller and\nslotted is gone from it. The template textOn returns the written color's\nname, so at sixteen colors a template writes the slot a widget does.\nDrawnAt.terminal widens to TerminalColors.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "091b7a841826cba9969d8d2faa85de69f126d1b4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:54:36-07:00",
-          "message": "Widget ink at indexed depths: grey grounds stay grey, muted recedes or dims (rich-unfiled-791c.yyzs)\n\nExtra-high review of c048ae96b. terminal-contrast now runs every scene at\nsixteen and 256 colors, with no terminal named and on the theme's own, and\ncaught each defect before the fix. A ground is the indexed slot that stands\nfor it, scored by deltaE_OK plus a cost for chroma it lacks, so a dark grey\nnever becomes VGA maroon or navy, and it is never written as the default.\nNo text is written in its ground's color. Muted text recedes: a slot other\nthan the default and its body text's, with less contrast than body text;\nwhere none recedes and reads, it is body text with SGR dim. The fit's tint is\nthe intent's (textTint). The monochrome refusal leaves TerminalColors. Where\nno slot reads, text is the most legible slot. Sorts are min-scans but for\nthe shades a fit reads on a miss; ground is hoisted out of the line map.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "c048ae96b644ed9070de1c28b4a95da6a114e115",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:36:10-07:00",
-          "message": "Widget ink reads the frame's terminal, holds a stated muted slot to its floor (rich-unfiled-791c.yyzs)\n\nMedium review of 1c30a79ba. At an indexed depth a widget's pair is chosen\namong the colors RenderOptions.terminal shows (resolveTerminal, as Effect\nand ProgressBar do), and the muted slot is that terminal's: mutedSlot moves\nto TerminalColors, validated 0-15, and a terminal whose sixteen are all its\nforeground is refused. Grounds are never written as the default. The stated\nslot is muted text's candidate at sixteen colors only, held to the floor and\nhanded to the fit on a miss. Receding from body text belongs to the intent\n(recedesFrom in text-on.ts), so text-muted has it too. Slot OKLab is taken\nonce per terminal and depth.\n\nBREAKING: WidgetBase.ground and ThemedWidget.disabledInk are functions of\nthe frame's drawing (colorSystem, terminal), not getters; a subclass\noverriding either takes the argument.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "1c30a79baef58c92c8007e05e901780d90850267",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T17:26:39-07:00",
-          "message": "Widget contrast is a setting, and sixteen colors draw the theme's own (rich-unfiled-791c.yyzs)\n\nA themed widget takes `contrast`, the TextFit its text meets a floor with:\nslide by default, TEXT_FITS.asIs to turn checking off, setContrast to change\nit live. Widgets resolve colors at the frame's depth through one\nThemedWidget.ink; at an indexed depth a pair is written in the theme's own\nsixteen rather than rounded against stock VGA, and muted text is the slot\neach theme states (ThemePaletteData.ansiMuted, TerminalTheme.mutedSlot), so\na placeholder no longer looks typed at 16 colors. mutedInk owns the muted\nlook; a disabled TextInput's continuation marker is drawn disabled. The\ncontrast test names muted glyphs by scene, not by color.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "9040e524396b20e86b6ea693720aa982b93e4a77",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T08:38:27-07:00",
-          "message": "De-emphasized widget text is drawn in foreground-muted, held to its 3:1 floor, not terminal dim (rich-unfiled-791c.yyzs)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "2c45a91f45d52f53d61870445221f5d38ceb0cfa",
-      "timestamp": "2026-11-07T01:07:15.801Z",
-      "commits": [
-        {
-          "sha": "2c45a91f45d52f53d61870445221f5d38ceb0cfa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-06T18:05:28-07:00",
-          "message": "decodeAnsi: one VT500 lexing pass every byte reader consumes (rich-control-codes-xh4n.gux) (#590)\n\n* decodeAnsi reads its bytes in one VT500 lexing pass that the line split, the link reader and every escape consume (rich-control-codes-xh4n.gux)\n\nA sequence a C0 control interrupts is now the sequence a terminal reads\nwherever it is read: a NEL or CNL so interrupted ends the line, an OSC 8\nan interrupted ESC introduces opens its link, and a CSI an ESC or C1\ncancels draws nothing. A cut-off string is a lexeme of its own, so no\ncontrol can land in its payload; escapeTokens, INTERRUPTED and\nOPEN_ESCAPE are gone.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* An escape the bytes end inside stays on the line it began, and the lexer's string stops are osc8's (rich-control-codes-xh4n.gux review)\n\n* The lexer reads ground text as runs, and an open escape carries its lexeme index on its state (rich-control-codes-xh4n.gux review)\n\n* Ground runs read the census's line breaks through a lookahead, a test pins how a line feed meets each escape, and the hold bound says what it holds (rich-control-codes-xh4n.gux review)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
