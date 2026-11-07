@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "ba1f926de931afe7e301e891e21d863ca6d21da7",
+      "timestamp": "2026-11-07T11:11:01.923Z",
+      "commits": [
+        {
+          "sha": "ba1f926de931afe7e301e891e21d863ca6d21da7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-07T04:09:17-07:00",
+          "message": "The loop-jump tests draw each fill once per strength, not once per field value per frame (rich-animation-27tq.0wj) (#601)\n\n* The loop-jump tests draw each fill once per strength, not once per field value per frame\n\nThe 1 fps jump watch keyed its drawn-color cache on the raw field value,\nwhich a continuous field (shimmer, sparkle) almost never repeats, while\ndrawnColor snaps every value to one of 96 strengths. About three quarters\nof the test went on recomputing colors it had already drawn: shimmer 6.4s\nalone, sparkle 4.2s, pulse ~4s, which a loaded full suite stretched past\nthe 30s hang limit. Keyed by the strength drawnColor itself draws at\n(strengthOf, now exported beside it), they run in 0.3-1.2s with the same\nassertions over the same colors.\n\n* The jump watch draws each fill at the strength it keys on"
+        }
+      ]
+    },
+    {
       "version": "pr-602",
       "ref": "refs/pull/602/merge",
       "sha": "555fc65ea74b97703b194bedad16ea4cf1f5b064",
@@ -20,50 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-07T04:05:59-07:00",
           "message": "Underline kinds and color as Style fields (rich-control-codes-xh4n.6ch.nc7): Style.underline holds one kind (single, double, curly, dotted, dashed) so the later style decides it whole, doubleUnderline gone; underlineColor (SGR 58); one UNDERLINE table read by the encoder, decodeAnsi, parse, toString and template bindings; whether a destination draws 4:3-4:5 and 58 is picked once per console (style-effects.ts) and held on OutputTarget.underlines, a plain underline and no color otherwise; HTML and SVG draw wavy, dotted, dashed and colored lines\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-601",
-      "ref": "refs/pull/601/merge",
-      "sha": "9f4affcf4168020654cda4a7903a4551803e7a11",
-      "timestamp": "2026-11-07T10:55:45.745Z",
-      "commits": [
-        {
-          "sha": "9f4affcf4168020654cda4a7903a4551803e7a11",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T10:53:30Z",
-          "message": "Merge c80c5acedcceb8ede8cd627b4ef79659ba4537db into 2e6ed8da6b799ab74285f8791c0a4f794f736655\n"
-        },
-        {
-          "sha": "c80c5acedcceb8ede8cd627b4ef79659ba4537db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T03:53:20-07:00",
-          "message": "The jump watch draws each fill at the strength it keys on\n"
-        },
-        {
-          "sha": "3a31bcd24df6cbb4de5754b6214e34ced87e2595",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T03:45:01-07:00",
-          "message": "The loop-jump tests draw each fill once per strength, not once per field value per frame\n\nThe 1 fps jump watch keyed its drawn-color cache on the raw field value,\nwhich a continuous field (shimmer, sparkle) almost never repeats, while\ndrawnColor snaps every value to one of 96 strengths. About three quarters\nof the test went on recomputing colors it had already drawn: shimmer 6.4s\nalone, sparkle 4.2s, pulse ~4s, which a loaded full suite stretched past\nthe 30s hang limit. Keyed by the strength drawnColor itself draws at\n(strengthOf, now exported beside it), they run in 0.3-1.2s with the same\nassertions over the same colors.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "2e6ed8da6b799ab74285f8791c0a4f794f736655",
-      "timestamp": "2026-11-07T10:45:58.129Z",
-      "commits": [
-        {
-          "sha": "2e6ed8da6b799ab74285f8791c0a4f794f736655",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T03:43:36-07:00",
-          "message": "The terminal identifies itself with XTVERSION (rich-control-codes-xh4n.6ch.zgr) (#600)\n\n* The terminal identifies itself: askTerminalIdentity asks XTVERSION and raises what the env inferred to identified; tmux answers for itself, so no passthrough-wrapped probe is sent (tmux#5530); painters read features from their console; a replay host answers recorded probe sessions (rich-control-codes-xh4n.6ch.zgr)\n\n* Review fixes (rich-control-codes-xh4n.6ch.zgr): learned features re-send what the old ones refused; an XTVERSION answer never outweighs declared or confirmed evidence, drops only inferred tmux/zellij/screen layers, never duplicates a layer; an unrecognized answer learns nothing; askTerminalIdentity returns undefined when nothing was learned; Layer carries its own evidence\n\n* Medium-pass fixes (rich-control-codes-xh4n.6ch.zgr): the painter remembers what the terminal was actually sent, so a refused change is decided again under new features and nothing is re-sent that already went (featuresChanged and the undefined state are gone); App tracks the pointer shape sent the same way, and its terminalFeatures setter refuses a stopped app as pointerShape does; identifiedBy keeps a declared multiplexer where it was declared; a layer passed in names no evidence and the console holds it as declared; evidence strength is a Record, no indexOf. zellij stays in HIDES_TERMINAL_VERSION: verified it answers XTVERSION itself as Zellij(<version>) in zellij-server/src/panes/grid.rs\n\n* High-pass fixes (rich-control-codes-xh4n.6ch.zgr): the pointer shape is terminal state the painter commits, one sent/refused record for it and progress (App's pointerSent/showPointer and setPointerShape's boolean gone); VTE answers VTE(<n>) and a VTE before 0.54 is not asked; askTerminalIdentity returns undefined when the answer changes nothing; refusals decided once per features object handed over; one option shape, a layer without evidence held declared; a multiplexer the env never saw resets the terminal to other; any layer stronger than identified keeps its place; Zellij( pattern; a steady commit allocates nothing; the demo guards its race"
         }
       ]
     },
