@@ -58,7 +58,7 @@ export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 // console declares them. This list is both the type and what is copied: the
 // host alone decides the console's size, colors and sink, so no other
 // property of the options object reaches it, whatever the object carries.
-const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "textOrder", "terminal", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
+const DRAW_OPTIONS = ["asciiOnly", "reducedMotion", "textOrder", "terminal", "theme", "onStyleError", "markup", "highlight", "highlighter", "terminalFeatures"] as const;
 type DrawOption = (typeof DRAW_OPTIONS)[number];
 type DrawOptions = Readonly<Pick<ConsoleOptions, DrawOption>>;
 
@@ -253,7 +253,6 @@ export class App implements FrameHost {
       options.host.inputChunks,
     );
     this.surface = options.surface;
-    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes));
     this.view = hostView(options.view);
     this._clock = options.clock ?? systemClock();
     this._epoch = this._clock.now();
@@ -263,6 +262,9 @@ export class App implements FrameHost {
     this.quitKeys = new Set((options.quitKeys ?? DEFAULT_QUIT_KEYS).map(parseKeyName));
     this.drawing = drawOptions(options);
     this.console = this.drawingConsole();
+    // A console made again for new colors keeps these options, so the
+    // painter's features are the same whichever console drew the frame.
+    this.painter = new SurfaceRenderer(options.surface, (bytes) => this.host.write(bytes), this.console.terminalFeatures, this.host.writesToTerminal);
   }
 
   /**
@@ -709,7 +711,7 @@ export class App implements FrameHost {
     // clock. The app set the budget, so the app shapes what comes back: no
     // deeper than the terminal — a taller frame would scroll the rows the
     // painter goes back over — and, as a region, exactly that deep.
-    const drawn = drawView(this.view, this._time(), this, { ...options, height, caret: this.painter.caret(this.console.destination) }, (renderable, under) =>
+    const drawn = drawView(this.view, this._time(), this, { ...options, height, caret: this.painter.caret(this.console.destination), declare: this.painter.declare }, (renderable, under) =>
       fitHeight(Segment.splitLines(render(renderable, under)).slice(0, height.rows), height),
     );
     const frame = this.painter.paint(() => drawn.lines, { rows: height.rows, cols: options.maxWidth }, this.console.destination);

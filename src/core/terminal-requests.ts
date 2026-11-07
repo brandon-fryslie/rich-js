@@ -8,13 +8,10 @@
  */
 
 import { stripOscControls } from "./osc8.js";
+import { ESC, ST, utf8, type Encoding, type TerminalFeature } from "./terminal-capabilities.js";
 import type { TerminalIdentity } from "./terminal-identity.js";
 
-const ESC = "\x1b";
 const OSC = `${ESC}]`;
-const ST = `${ESC}\\`;
-// screen's string buffer (`MAXSTR`, ansi.c), in bytes.
-const SCREEN_STRING_MAX = 768;
 
 /** OSC 2: the window title. */
 export function titleSequence(title: string): string {
@@ -60,7 +57,7 @@ export function pointerSequence(shape: ParsedPointerShape): string {
 
 /** OSC 52: `text` put on the system clipboard, as base64 of its UTF-8 bytes. */
 export function clipboardSequence(text: string): string {
-  const bytes = new TextEncoder().encode(text);
+  const bytes = utf8(text);
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return `${OSC}52;c;${btoa(binary)}${ST}`;
@@ -98,23 +95,57 @@ export function notificationSequence(title: string, body: string | undefined, id
 }
 
 /**
- * `sequence` as it must be written to reach the terminal through `identity`'s
- * intermediary: inside tmux its DCS passthrough with every ESC doubled, which
- * tmux forwards when `allow-passthrough` is on; inside screen its bare DCS, or
- * nothing when it is longer than screen holds; elsewhere unchanged. Zellij has no passthrough.
+ * How the requests not yet chosen by capability — clipboard, pointer,
+ * notification — reach the terminal: wrapped for tmux's and screen's
+ * passthrough, whose setting is trusted as it always was, and written as is
+ * through zellij and an editor.
  */
-export function throughIntermediary(sequence: string, identity: TerminalIdentity): string {
-  switch (identity.intermediary) {
-    case "tmux":
-      return `${ESC}Ptmux;${sequence.replaceAll(ESC, ESC + ESC)}${ST}`;
-    case "screen": {
-      // screen ends its DCS at the first ST, so the sequence inside ends in BEL,
-      // and cuts one past its buffer, leaving the terminal in an unended OSC that
-      // swallows what follows: a request that would not fit is not sent.
-      const inner = sequence.replaceAll(ST, "\x07");
-      return new TextEncoder().encode(inner).length > SCREEN_STRING_MAX ? "" : `${ESC}P${inner}${ST}`;
-    }
-    default:
-      return sequence;
-  }
+export const MULTIPLEXER_WRAPPED: Pick<Encoding<unknown>, "routes"> = {
+  routes: { tmux: "passthrough", screen: "passthrough", zellij: "native", editor: "native" },
+};
+
+/**
+ * Where a task stands, as the terminal's own progress indicator shows it — in
+ * the tab, the dock, the taskbar. `none` takes the indicator away.
+ */
+export type TerminalProgress =
+  | { readonly state: "normal" | "error" | "paused"; readonly percent: number }
+  | { readonly state: "indeterminate" }
+  | { readonly state: "none" };
+
+/**
+ * What a renderable on the frame says the terminal should show while it is
+ * drawn: its share of the progress — a count against a total, or work of no
+ * known size. Shares from every declarer on a frame are summed.
+ */
+export type TerminalDeclaration = {
+  readonly kind: "progress";
+  readonly share: { readonly completed: number; readonly total: number } | "indeterminate";
+};
+
+/** The whole percent OSC 9;4 carries: clamped to 0–100, and 0 for no number at all. */
+export function shownPercent(percent: number): number {
+  return Number.isNaN(percent) ? 0 : Math.round(Math.min(100, Math.max(0, percent)));
 }
+
+const PROGRESS_CODE ={ none: 0, normal: 1, error: 2, indeterminate: 3, paused: 4 } as const;
+
+/**
+ * ConEmu's OSC 9;4, which iTerm2 (3.6), Ghostty (1.2) and Windows Terminal
+ * read. A terminal that reads only bare OSC 9 takes it for a notification.
+ */
+export const PROGRESS: TerminalFeature<TerminalProgress> = {
+  name: "progress",
+  encodings: [
+    {
+      name: "OSC 9;4",
+      terminals: ["iterm2", "ghostty", "windows-terminal"],
+      failure: "misread",
+      routes: { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "impossible" },
+      encode: (progress) => {
+        const percent = "percent" in progress ? `;${shownPercent(progress.percent)}` : "";
+        return `${OSC}9;4;${PROGRESS_CODE[progress.state]}${percent}${ST}`;
+      },
+    },
+  ],
+};

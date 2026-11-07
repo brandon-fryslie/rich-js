@@ -128,7 +128,7 @@ describe("inside tmux", () => {
   });
 
   it("takes a terminal started inside tmux for that terminal, not for tmux", () => {
-    expect(identifyTerminal({ TERM: "xterm-kitty", TMUX: "x" })).toEqual({ terminal: "kitty", intermediary: undefined });
+    expect(identifyTerminal({ TERM: "xterm-kitty", TMUX: "x" })).toMatchObject({ terminal: "kitty", intermediary: undefined });
   });
 
   it("sends nothing through screen that screen would cut", () => {
@@ -184,7 +184,13 @@ describe("no one at a terminal", () => {
 describe("identifyTerminal", () => {
   it.each([
     [{ TERM: "xterm-kitty" }, "kitty", undefined],
-    [{ TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" }, "other", undefined],
+    [{ TERM: "xterm-kitty", TERM_PROGRAM: "WezTerm" }, "wezterm", undefined],
+    [{ TERM: "xterm-256color", TERM_PROGRAM: "iTerm.app" }, "iterm2", undefined],
+    [{ TERM: "xterm-256color", LC_TERMINAL: "iTerm2" }, "iterm2", undefined],
+    [{ TERM: "tmux-256color", TERM_PROGRAM: "tmux", TMUX: "x", LC_TERMINAL: "iTerm2" }, "iterm2", "tmux"],
+    // kitty started from an iTerm2 shell inherits LC_TERMINAL and sets its own TERM.
+    [{ TERM: "xterm-kitty", LC_TERMINAL: "iTerm2" }, "kitty", undefined],
+    [{ TERM: "alacritty", LC_TERMINAL: "iTerm2" }, "alacritty", undefined],
     [{ TERM: "xterm-ghostty", TERM_PROGRAM: "ghostty" }, "ghostty", undefined],
     [{ TERM: "foot-extra" }, "foot", undefined],
     [{ TERM: "xterm-256color", VTE_VERSION: "7600" }, "vte", undefined],
@@ -194,7 +200,7 @@ describe("identifyTerminal", () => {
     [{ TERM: "xterm-kitty", NVIM: "x" }, "kitty", "editor"],
     [{ TERM: "xterm-256color", TERM_PROGRAM: "tmux", TMUX: "x" }, "other", "tmux"],
   ] as const)("%j is %s behind %s", (env, terminal, intermediary) => {
-    expect(identifyTerminal(env)).toEqual({ terminal, intermediary });
+    expect(identifyTerminal(env)).toMatchObject({ terminal, intermediary });
   });
 });
 

@@ -13,7 +13,7 @@ import { Live } from "./live.js";
 import type { Clock } from "../core/clock.js";
 import { Table, type ColumnOptions } from "./table.js";
 import type { HostFrame, FrameHost, Renderable, RenderOptions } from "../core/protocol.js";
-import { render } from "../core/protocol.js";
+import { afterPass, render } from "../core/protocol.js";
 import { Animation } from "../core/animation.js";
 import type { Timing } from "../core/easing.js";
 import { Timeline } from "../core/timeline.js";
@@ -637,7 +637,21 @@ export class Progress implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* render(this._table(this._ownFrame(options).time), options);
+    const { time } = this._ownFrame(options);
+    // [LAW:one-source-of-truth] The terminal's own indicator shows the tasks
+    // this display shows, summed: a task with no total, or not yet started,
+    // is work of no known size, as its bar pulses for it.
+    const tasks = this._tasks
+      .get()
+      .map((held) => held.get())
+      .filter((state) => state.visible)
+      .map((state) => taskAt(state, time));
+    const { declare } = options;
+    if (declare !== undefined) {
+      const shares = tasks.map((task) => (task.total === undefined || task.startTime === undefined ? "indeterminate" as const : { completed: Math.min(task.completed, task.total), total: task.total }));
+      afterPass(() => shares.forEach((share) => declare({ kind: "progress", share })));
+    }
+    yield* render(this._table(tasks), options);
   }
 
   // The frame this display is drawn in, which is only ever its host's: the
@@ -658,9 +672,9 @@ export class Progress implements Renderable {
     return frame;
   }
 
-  // Rich's `make_tasks_table`: each column laid out as it says, at `now` on
-  // this display's clock.
-  private _table(now: number): Table {
+  // Rich's `make_tasks_table`: each column laid out as it says, for the
+  // visible tasks as they stand at one moment of this display's clock.
+  private _table(tasks: readonly Task[]): Table {
     const table = Table.grid({ expand: this.expand });
     for (const col of this._columns) {
       table.addColumn(undefined, col.tableColumn);
@@ -669,10 +683,7 @@ export class Progress implements Renderable {
     // [LAW:effects-at-boundaries] One moment a frame, handed to every column
     // as the task's `elapsed`; a column that moves places an animation, which
     // draws at that same moment, the frame's.
-    for (const held of this._tasks.get()) {
-      const state = held.get();
-      if (!state.visible) continue;
-      const task = taskAt(state, now);
+    for (const task of tasks) {
       table.addRow(...this._columns.map((col) => col.render(task)));
     }
     return table;

@@ -10,6 +10,7 @@
 import { describe, it, expect } from "vitest";
 
 import { SurfaceRenderer } from "../../src/core/paint.js";
+import { declareCapabilities } from "../../src/core/terminal-capabilities.js";
 import { Segment, ControlType } from "../../src/core/segment.js";
 import { Style, caretMark, caretMarkOn } from "../../src/core/style.js";
 import type { OutputTarget } from "../../src/core/color.js";
@@ -25,7 +26,7 @@ const field = (before: Segment[] = []): Segment[][] => [[...before, new Segment(
 
 function painter(): { renderer: SurfaceRenderer; out: () => string } {
   let bytes = "";
-  const renderer = new SurfaceRenderer("inline", (written) => (bytes += written));
+  const renderer = new SurfaceRenderer("inline", (written) => (bytes += written), { capabilities: declareCapabilities([]), policy: "strict", layers: [], onSend: undefined });
   renderer.take();
   return { renderer, out: () => bytes };
 }

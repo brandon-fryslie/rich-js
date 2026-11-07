@@ -63,6 +63,9 @@ const ORDER_OF: Readonly<Record<TerminalName, TextOrder>> = {
   ghostty: "visual",
   "windows-terminal": "visual",
   kitty: "words",
+  // Each for its reason under `detectTextOrder`: iTerm2 reorders through isolates, WezTerm's bidi is a setting.
+  iterm2: "plain",
+  wezterm: "plain",
   vte: "logical",
   other: "plain",
 };

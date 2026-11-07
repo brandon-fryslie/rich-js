@@ -8,7 +8,8 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal, type TerminalIdentity } from "./terminal-identity.js";
-import { clipboardSequence, notificationSequence, pointerSequence, pointerShape, throughIntermediary, titleSequence, type PointerShape } from "./terminal-requests.js";
+import { clipboardSequence, MULTIPLEXER_WRAPPED, notificationSequence, pointerSequence, pointerShape, titleSequence, type PointerShape } from "./terminal-requests.js";
+import { inferCapabilities, route, type TerminalFeatures } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalColors, TerminalTheme } from "./color.js";
@@ -127,6 +128,14 @@ export interface ConsoleOptions {
    * color depth assumes.
    */
   terminal?: TerminalColors;
+  /**
+   * What this console may send the terminal itself, and the log of what it
+   * did (`TerminalFeatures`). Each part not given is the environment's:
+   * capabilities and layers inferred from it, the `strict` policy, no log.
+   * State what the terminal reads (`declareCapabilities`) to have it sent on
+   * your word; `bestGuess` acts on inference where a miss is ignored.
+   */
+  terminalFeatures?: Partial<TerminalFeatures>;
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
@@ -404,6 +413,7 @@ export class Console {
   private readonly _isTerminal: boolean;
   private readonly _attended: boolean;
   private readonly _identity: TerminalIdentity;
+  private readonly _features: TerminalFeatures;
   private readonly _interactive: boolean;
   private readonly _file: ConsoleSink | undefined;
   // [LAW:one-source-of-truth] The resolved output stream, not the `stderr`
@@ -439,6 +449,13 @@ export class Console {
     // [LAW:one-source-of-truth] The one reading of which terminal this is: the
     // text order below and every request to the terminal derive from it.
     this._identity = identifyTerminal(environment.env);
+    const inferred = inferCapabilities(this._identity);
+    this._features = {
+      capabilities: options?.terminalFeatures?.capabilities ?? inferred.capabilities,
+      layers: options?.terminalFeatures?.layers ?? inferred.layers,
+      policy: options?.terminalFeatures?.policy ?? "strict",
+      onSend: options?.terminalFeatures?.onSend,
+    };
     // [LAW:dataflow-not-control-flow] `isTTY` and `env` are forwarded
     // unconditionally, so detection stays inside the console's injected
     // environment rather than the ambient process's.
@@ -503,6 +520,11 @@ export class Console {
    */
   get destination(): OutputTarget {
     return this._destination;
+  }
+
+  /** What this console may send the terminal, for any painter that sends on its behalf (`Live`, `App`). */
+  get terminalFeatures(): TerminalFeatures {
+    return this._features;
   }
 
   // [LAW:one-source-of-truth] Output target lookup matches `_write`'s:
@@ -763,7 +785,7 @@ export class Console {
    * because a bell moves no cursor, and a live region would repaint its frame.
    */
   bell(): void {
-    this._request(() => "\x07");
+    this._request("bell", () => "\x07");
   }
 
   /**
@@ -772,12 +794,12 @@ export class Console {
    * the pane's title, and pass it on as their own settings say.
    */
   setWindowTitle(title: string): void {
-    this._request(() => titleSequence(title));
+    this._request("title", () => titleSequence(title));
   }
 
   /** Puts `text` on the system clipboard (OSC 52), where the terminal allows it. */
   copyToClipboard(text: string): void {
-    this._request(() => throughIntermediary(clipboardSequence(text), this._identity));
+    this._requestWrapped("clipboard", () => clipboardSequence(text));
   }
 
   /**
@@ -786,22 +808,44 @@ export class Console {
    */
   setPointerShape(shape: PointerShape): void {
     const parsed = pointerShape(shape);
-    this._request(() => throughIntermediary(pointerSequence(parsed), this._identity));
+    this._requestWrapped("pointer", () => pointerSequence(parsed));
   }
 
   /** Raises a desktop notification, in the protocol this console's terminal reads. */
   notify(title: string, body?: string): void {
     // Random, so no other console or run shares it: kitty updates in place a
     // notification whose id it has seen.
-    this._request(() => throughIntermediary(notificationSequence(title, body, this._identity, Math.random().toString(36).slice(2, 12)), this._identity));
+    this._requestWrapped("notification", () => notificationSequence(title, body, this._identity, Math.random().toString(36).slice(2, 12)));
   }
 
   // [LAW:single-enforcer] Every request to the terminal goes through here: it
   // reaches whoever is at the terminal and no one else, straight to the sink, because it moves no cursor and a live region
   // would repaint its frame.
-  private _request(bytes: () => string): void {
+  // Every decision lands in the send log, those that write nothing included.
+  private _request(feature: string, bytes: () => string | { refused: string }): void {
     refuseRenderWrite(this._madeIn);
-    if (this._attended && this._capture.get() === null) this.file.write(bytes());
+    const decided = this._decide(bytes);
+    if (typeof decided !== "string") {
+      this._features.onSend?.({ feature, bytes: undefined, reason: decided.refused });
+      return;
+    }
+    this.file.write(decided);
+    this._features.onSend?.({ feature, bytes: decided, reason: "sent as asked" });
+  }
+
+  private _decide(bytes: () => string | { refused: string }): string | { refused: string } {
+    if (!this._attended) return { refused: "not sent: no one is at a terminal" };
+    if (this._capture.get() !== null) return { refused: "not sent: output is being captured" };
+    return bytes();
+  }
+
+  // A request wrapped for each multiplexer's passthrough, whose setting is
+  // trusted as it always was; choosing these by capability is the events work.
+  private _requestWrapped(feature: string, sequence: () => string): void {
+    this._request(feature, () => {
+      const routed = route(sequence(), MULTIPLEXER_WRAPPED, this._features.layers, () => true);
+      return "refused" in routed ? { refused: `not sent: ${routed.refused}` } : routed.bytes;
+    });
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

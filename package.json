@@ -90,6 +90,7 @@
     "themes-and-color-studio": "node scripts/build-demos.ts && node dist-demo/examples/themes-and-color-studio/node.js",
     "terminal-host": "node scripts/build-demos.ts && node dist-demo/examples/terminal-host/main.js",
     "terminal-colors": "node scripts/build-demos.ts && node dist-demo/examples/terminal-colors/index.js",
+    "terminal-features": "node scripts/build-demos.ts && node dist-demo/examples/terminal-features/index.js",
     "test:demos": "playwright test"
   },
   "keywords": [
