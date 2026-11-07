@@ -41,6 +41,9 @@ kind of layer treats it:
 - `impossible`: it cannot cross the layer.
 
 Each passthrough layer adds one wrap, so tmux inside tmux doubles every ESC twice.
+screen ends its wrap at the first string terminator, so it cannot carry another
+layer's wrap, and a sequence that would need it to is not sent. Neither can a
+`native` layer, which re-emits only the sequence itself.
 
 ## The send log
 
@@ -69,7 +72,8 @@ progress.updateTask(task, { completed: 2 });
 progress.refresh();
 progress.stop();
 
-for (const send of log) globalThis.console.log(`${send.feature}: ${send.bytes === undefined ? "not sent" : "sent"} (${send.reason})`);
+const out = new Console();
+for (const send of log) out.print(`${send.feature}: ${send.bytes === undefined ? "not sent" : "sent"} (${send.reason})`, { markup: false });
 ```
 
 ## Progress
