@@ -386,6 +386,10 @@ grep -qE '^  <ExportName>: ' test/coverage/coverage-allowlist.ts
 
 A hand-maintained list of what a machine already computes will be wrong, and it will read as authoritative while it is wrong. The README once carried a "not yet exercised" table next to this check; every row in it was false.
 
+### Performance is a count of work, never a clock
+
+A performance ticket's done-when names the bottleneck it removes — a quadratic step, a per-frame allocation, a repeated parse, a count of work done — and never a wall-clock time. A clock reads the machine's load as much as the code, so a red run says nothing about the code and a green run ends the search, and the wrong number then outlives the fix it was meant to check. Tests of a complexity bound count the work (calls, items visited, frames drawn) instead of timing it. Load tests are banned: a test whose result depends on how busy the machine is is removed, not retuned.
+
 ### Key patterns
 
 - **Immutable + cached**: `ColorRgba`, `ColorSpec`, `Style`, and `Segment` are immutable. `ColorSpec.parse` and `Style.parse` are memoized through the bounded `Memo`, as are nearest-color matches; each `ColorSpec` caches its own downgrades.
