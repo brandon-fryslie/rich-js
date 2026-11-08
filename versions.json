@@ -4,15 +4,22 @@
     {
       "version": "pr-608",
       "ref": "refs/pull/608/merge",
-      "sha": "03d4c77ca6530a0c64c887d2910b15dfd0fb2b86",
-      "timestamp": "2026-11-08T14:01:23.437Z",
+      "sha": "7fd977f14d81aec62836e784e85edbe2c3a6b61c",
+      "timestamp": "2026-11-08T14:13:20.744Z",
       "commits": [
         {
-          "sha": "03d4c77ca6530a0c64c887d2910b15dfd0fb2b86",
+          "sha": "7fd977f14d81aec62836e784e85edbe2c3a6b61c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T13:59:06Z",
-          "message": "Merge 43ab523df67532a45539d626fe9f05df02cbefc8 into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+          "timestamp": "2026-11-08T14:10:44Z",
+          "message": "Merge d9b7298c52ebcb727fe82d42ccd9c26c03bdb798 into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+        },
+        {
+          "sha": "d9b7298c52ebcb727fe82d42ccd9c26c03bdb798",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-08T07:10:28-07:00",
+          "message": "Review fixes, round three: prints write no zone; click reports are App.notify's (6ch.hds)\n\nWIP. Lint passes and the 381 targeted tests pass. The full suite and the docs\nbuild were started in the background and did not finish (logs:\n/tmp/rich-608-fix3-test.log, /tmp/rich-608-fix3-docs.log). Re-run `npm test`\nand `npm run docs:build` before merging.\n\n- A print writes no OSC 133 zone. A print is output, not a command a shell\n  ran, and a zone per print truncated the shell's own command-output zone. This\n  reverses the ticket's \"top-level prints\" clause; the prompt zones stay.\n- Each Prompt attempt is its own command: a refused answer aborts it, and the\n  next attempt opens its own prompt and input zones.\n- Click reports (buttons and reportClicks) are App.notify's. Console.notify\n  refuses them, and the app withdraws the notifications it asked to hear on\n  stop and on suspend (OSC 99 p=close), so no click is typed at the shell.\n- The app's drawing console is a DrawingConsole subclass, the only one that\n  raises a click report.\n- SEMANTIC_MARK lists iTerm2, kitty and Ghostty. WezTerm and foot wait for the\n  probes (6ch.xy8).\n- reportClicks that is not a boolean is a TypeError.\n"
         },
         {
           "sha": "43ab523df67532a45539d626fe9f05df02cbefc8",
