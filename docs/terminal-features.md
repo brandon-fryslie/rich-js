@@ -181,6 +181,40 @@ the passthrough stays lost until the app next takes the terminal. Only those
 are sent again. What tmux took natively it re-emits itself, and a bare
 terminal forgets nothing when its window loses focus.
 
+## Events
+
+Events are requests the program makes once, not state a frame keeps: a
+notification, an attention request, a shell-integration mark. They go through
+the console, which sends each only to a terminal someone is at, and never into
+a capture or a pipe.
+
+`Console.notify` raises a notification and returns its id. kitty takes an
+urgency on it; elsewhere the notification is shown as it would have been
+without one. Buttons and a click report are an app's to ask for: `App.notify`
+raises the notification the same way, takes both, and returns the id a click
+names. A click on the notification or one of its buttons comes back to the app
+as `onNotificationClick`, with that id and the 1-based button or none. kitty
+types a click report at whatever reads the terminal next once no app hears it,
+so the app withdraws each notification it asked to hear as it leaves the
+terminal, by stopping or suspending, and a `Console` refuses the click options
+outright. An urgency kitty does not know, a button with no label, or a report
+flag that is not a boolean is a `TypeError` on every terminal, so a bad call
+fails the same way wherever it runs.
+
+`Console.requestAttention` asks iTerm2 to bounce the dock icon, fire its
+fireworks, cancel a bounce, or bring the window forward. A `Progress` that
+finishes or fails does not request attention itself: a renderable cannot send
+during a render, so the program calls `requestAttention` when its task ends.
+
+`Console.mark` writes OSC 133 zones for shell integration. `Prompt` writes them
+for its own command: each attempt at an answer opens its prompt and input zones
+before it asks, so the prompt text its input draws is part of the input. An
+accepted answer closes the command with exit 0. A refused one aborts it with a
+bare `D`, which carries no exit, and the next attempt opens its own zones; an
+answer that never comes is aborted the same way. A `Console.print` writes no
+zone. A print is output, not a command a shell ran, and a zone around it would
+tell the terminal that a command had finished.
+
 ## Underlines
 
 Curly, dotted and dashed underlines (SGR `4:3`–`4:5`) and an underline's own

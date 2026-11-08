@@ -8,7 +8,7 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
-import { BELL, CLIPBOARD, NOTIFICATION, POINTER, TITLE, pointerShape, type PointerShape } from "./terminal-requests.js";
+import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, NOTIFICATION_CLOSE, POINTER, SEMANTIC_MARK, TITLE, parseAttention, parseMark, parseNotification, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
 import { underlineSupport } from "./style-effects.js";
 import { heldLayers, inferCapabilities, notSent, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
@@ -397,6 +397,21 @@ function resolveGetSize(
 const NO_HIGHLIGHT = new NullHighlighter();
 
 
+/** `Console.notify`'s options: kitty's urgency, where a terminal takes it. */
+export interface NotifyOptions {
+  readonly urgency?: NotificationUrgency;
+}
+
+/**
+ * `App.notify`'s options: `NotifyOptions`, and the buttons and click report an
+ * app asks for. Only an app asks for them, because a click is reported to
+ * whatever reads the terminal next when no app is there to hear it.
+ */
+export interface AppNotifyOptions extends NotifyOptions {
+  readonly buttons?: readonly string[];
+  readonly reportClicks?: boolean;
+}
+
 export class Console {
   private readonly _destination: OutputTarget;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
@@ -578,6 +593,9 @@ export class Console {
   // --- Print ---
 
   print(...args: unknown[]): void {
+    // [LAW:no-silent-failure] Refused whether or not it writes: a print whose draw is empty
+    // would otherwise pass a render it was not made in, where any other print is refused.
+    refuseRenderWrite(this._madeIn);
     this._writeSegments(emit(this._draw(args, this.options)));
   }
 
@@ -816,11 +834,45 @@ export class Console {
     this._request(POINTER, pointerShape(shape));
   }
 
-  /** Raises a desktop notification, in the protocol this console's terminal reads. */
-  notify(title: string, body?: string): void {
+  /**
+   * Raises a desktop notification, in the protocol this console's terminal
+   * reads, and returns its id. `urgency` is kitty's to take; elsewhere the
+   * notification is shown as it would have been without it. Buttons and a click
+   * report are `App.notify`'s, and this refuses them.
+   */
+  notify(title: string, body?: string, options: NotifyOptions = {}): string {
+    const { buttons, reportClicks } = options as AppNotifyOptions;
+    if (buttons !== undefined || reportClicks !== undefined) {
+      throw new TypeError("Console.notify takes no buttons or click report: a click is heard only by an app, so those are App.notify's");
+    }
+    return this.raise(title, body, options);
+  }
+
+  /**
+   * What `notify` raises, with the click options too: for the app that hears the
+   * clicks on what it raises, and returns the id a click names.
+   */
+  protected raise(title: string, body: string | undefined, options: AppNotifyOptions): string {
     // Random, so no other console or run shares it: kitty updates in place a
     // notification whose id it has seen.
-    this._request(NOTIFICATION, { title, body, id: Math.random().toString(36).slice(2, 12) });
+    const id = Math.random().toString(36).slice(2, 12);
+    this._request(NOTIFICATION, parseNotification({ title, body, id, urgency: options.urgency, buttons: options.buttons, reportClicks: options.reportClicks }));
+    return id;
+  }
+
+  /** Withdraws a notification `raise` made, so a click on it is no longer reported (kitty's `p=close`). */
+  protected withdraw(id: string): void {
+    this._request(NOTIFICATION_CLOSE, id);
+  }
+
+  /** Asks for the reader's attention through the dock or taskbar (iTerm2's RequestAttention). */
+  requestAttention(attention: Attention): void {
+    this._request(ATTENTION, parseAttention(attention));
+  }
+
+  /** Marks a point in a prompt's life for the terminal's shell-integration zones (OSC 133). */
+  mark(value: SemanticMark): void {
+    this._request(SEMANTIC_MARK, parseMark(value));
   }
 
   // [LAW:single-enforcer] Every request to the terminal goes through here: it

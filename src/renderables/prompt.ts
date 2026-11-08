@@ -124,13 +124,32 @@ async function run<T>(promptText: string, input: PromptInput, kind: PromptKind<T
   }
   const console = options.console ?? new Console();
   const prompt = makePrompt(promptText, kind, options);
+  // Each attempt is one command for the terminal's shell integration: its prompt
+  // and input zones open together, before the input is asked, so the prompt's
+  // text and the reader's typing fall inside them. An accepted answer closes the
+  // command with exit 0; a refused one aborts it, and the next attempt opens its own.
   while (true) {
-    // A copy, because a `RichText` is mutable and the same prompt is asked
-    // again on every retry.
-    const answer = await input(prompt.copy(), console);
-    if (answer === "" && options.default !== undefined) return options.default;
-    const value = kind.process(answer);
-    if (!(value instanceof InvalidResponse)) return value;
+    let value: T | InvalidResponse;
+    try {
+      console.mark("prompt");
+      console.mark("input");
+      // A copy, because a `RichText` is mutable and the same prompt is asked
+      // again on every retry.
+      const answer = await input(prompt.copy(), console);
+      value = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
+    } catch (error) {
+      // Any way out without an answer ends the command unanswered, so the terminal
+      // never reads what follows as the input to a command that never finished. An
+      // answer that cannot be processed is one such way out.
+      console.mark("abort");
+      throw error;
+    }
+    if (!(value instanceof InvalidResponse)) {
+      console.mark("output");
+      console.mark({ done: 0 });
+      return value;
+    }
+    console.mark("abort");
     // The message is this module's markup, read as markup whatever the
     // console's own `markup` setting.
     console.print(renderMarkup(value.message));

@@ -73,6 +73,7 @@ describe("Console output during a render", () => {
     ["a recorded print", { record: true }, false, (c) => c.print("x")],
     ["a captured print", {}, true, (c) => c.print("x")],
     ["a log", {}, false, (c) => c.log("x")],
+    ["an empty print", {}, false, (c) => c.print("", { end: "" })],
   ])("is refused alike for %s, and writes nothing", (_, overrides, capturing, write) => {
     const { console: c, chunks } = makeConsole(overrides);
     if (capturing) c.beginCapture();
