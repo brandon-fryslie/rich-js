@@ -6,14 +6,31 @@
  * terminal. Encoding only: no I/O; which encoding, if any, is `pick`'s.
  */
 
+import type { ColorRgba } from "./color.js";
 import { stripOscControls } from "./osc8.js";
 import { ESC, ST, utf8, type TerminalFeature } from "./terminal-capabilities.js";
 
 const OSC = `${ESC}]`;
 
+// `text` as base64 of its UTF-8 bytes, which OSC 52 and iTerm2's OSC 1337 carry.
+function base64(text: string): string {
+  let binary = "";
+  for (const byte of utf8(text)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 // Every layer reads these itself: tmux and screen take OSC 2 as the pane's title
 // and pass it on as their own settings say, so neither is ever wrapped.
 const NATIVE = { tmux: "native", screen: "native", zellij: "native", editor: "native" } as const;
+
+// How clipboard, pointer and notification sequences cross a layer: wrapped for
+// tmux's and screen's passthrough, written as is through zellij and an editor.
+const WRAPPED = { tmux: "passthrough", screen: "passthrough", zellij: "native", editor: "native" } as const;
+
+// How a sequence that only some outer terminals read crosses a layer. zellij and
+// an editor have no passthrough and re-emit only what they understand, which a
+// terminal's own protocol is not, so it cannot cross them.
+const OUTER_ONLY = { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "impossible" } as const;
 
 /** BEL: the terminal's bell. */
 export const BELL: TerminalFeature<void> = {
@@ -25,6 +42,98 @@ export const BELL: TerminalFeature<void> = {
 export const TITLE: TerminalFeature<string> = {
   name: "title",
   encodings: [{ name: "OSC 2", terminals: "any", failure: "ignored", routes: NATIVE, encode: (title) => `${OSC}2;${stripOscControls(title)}${ST}` }],
+};
+
+// A multiplexer keeps a title per pane and has no stack of the outer
+// terminal's to push onto, so the push cannot cross one.
+const NO_LAYER = { tmux: "impossible", screen: "impossible", zellij: "impossible", editor: "impossible" } as const;
+
+/**
+ * XTWINOPS 22/23: the title the terminal showed before a program set its
+ * own, saved and given back — xterm's title stack, which kitty, foot and
+ * iTerm2 keep. A terminal without one ignores it, and the program's title then
+ * stays after it.
+ */
+export const TITLE_STACK: TerminalFeature<"push" | "pop"> = {
+  name: "title stack",
+  encodings: [{ name: "XTWINOPS 22/23", terminals: "any", failure: "ignored", routes: NO_LAYER, encode: (op) => `${ESC}[${op === "push" ? 22 : 23};0t` }],
+};
+
+/** A color as these sequences carry it, `#rrggbb` with no alpha: two colors that write the same are the same to the terminal. */
+export const wireHex = (color: ColorRgba): string => color.hex.slice(0, 7);
+
+/** iTerm2's OSC 6: the tab's color, `undefined` the tab's own. */
+export const TAB_COLOR: TerminalFeature<ColorRgba | undefined> = {
+  name: "tab color",
+  encodings: [
+    {
+      name: "OSC 6",
+      terminals: ["iterm2"],
+      failure: "ignored",
+      routes: OUTER_ONLY,
+      encode: (color) => color === undefined
+        ? `${OSC}6;1;bg;*;default${ST}`
+        : (["red", "green", "blue"] as const).map((channel) => `${OSC}6;1;bg;${channel};brightness;${color[channel]}${ST}`).join(""),
+    },
+  ],
+};
+
+/**
+ * What a tab says of the session in it, as iTerm2 draws it under the tab's
+ * title: a dot's color, a line of text and that text's color. A field left out
+ * is shown cleared.
+ */
+export interface SessionStatus {
+  readonly indicator?: ColorRgba;
+  readonly text?: string;
+  readonly color?: ColorRgba;
+}
+
+/** iTerm2's OSC 21337, every field written so the status is replaced whole; `undefined` clears it. */
+export const SESSION_STATUS: TerminalFeature<SessionStatus | undefined> = {
+  name: "session status",
+  encodings: [
+    {
+      name: "OSC 21337",
+      terminals: ["iterm2"],
+      failure: "ignored",
+      routes: OUTER_ONLY,
+      encode: (status) => {
+        // A `;` would end the field.
+        const text = stripOscControls(status?.text ?? "").replaceAll(";", ",");
+        const color = (value: ColorRgba | undefined): string => (value === undefined ? "" : wireHex(value));
+        return `${OSC}21337;indicator=${color(status?.indicator)};status=${text};status-color=${color(status?.color)}${ST}`;
+      },
+    },
+  ],
+};
+
+/**
+ * iTerm2's badge, drawn large behind the session's text, as base64 of its
+ * UTF-8 bytes; `""` clears it. The text is shown as written: iTerm2 reads a
+ * badge as an interpolated string, where `\(…)` evaluates an expression, so
+ * every backslash is escaped as `\\`.
+ */
+export const BADGE: TerminalFeature<string> = {
+  name: "badge",
+  encodings: [
+    {
+      name: "OSC 1337 SetBadgeFormat",
+      terminals: ["iterm2"],
+      failure: "ignored",
+      routes: OUTER_ONLY,
+      encode: (badge) => `${OSC}1337;SetBadgeFormat=${base64(stripOscControls(badge).replaceAll("\\", "\\\\"))}${ST}`,
+    },
+  ],
+};
+
+// tmux keeps a cursor colour per pane (3.3) and re-emits it; xterm.js reads it in an editor.
+const CURSOR_ROUTES = { tmux: "native", screen: "passthrough", zellij: "impossible", editor: "native" } as const;
+
+/** OSC 12: the cursor's color, and OSC 112, the terminal's own back. */
+export const CURSOR_COLOR: TerminalFeature<ColorRgba | undefined> = {
+  name: "cursor color",
+  encodings: [{ name: "OSC 12", terminals: "any", failure: "ignored", routes: CURSOR_ROUTES, encode: (color) => (color === undefined ? `${OSC}112${ST}` : `${OSC}12;${wireHex(color)}${ST}`) }],
 };
 
 /**
@@ -56,15 +165,6 @@ declare const parsed: unique symbol;
 /** A `PointerShape` that `pointerShape` has checked at runtime. */
 export type ParsedPointerShape = PointerShape & { readonly [parsed]: true };
 
-// How clipboard, pointer and notification sequences cross a layer: wrapped for
-// tmux's and screen's passthrough, written as is through zellij and an editor.
-const WRAPPED = { tmux: "passthrough", screen: "passthrough", zellij: "native", editor: "native" } as const;
-
-// How a sequence that only some outer terminals read crosses a layer. zellij and
-// an editor have no passthrough and re-emit only what they understand, which a
-// terminal's own protocol is not, so it cannot cross them.
-const OUTER_ONLY = { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "impossible" } as const;
-
 /** OSC 22: the mouse pointer's shape over the terminal, ignored by a terminal without it. */
 export const POINTER: TerminalFeature<ParsedPointerShape> = {
   name: "pointer",
@@ -80,11 +180,7 @@ export const CLIPBOARD: TerminalFeature<string> = {
       terminals: "any",
       failure: "ignored",
       routes: WRAPPED,
-      encode: (text) => {
-        let binary = "";
-        for (const byte of utf8(text)) binary += String.fromCharCode(byte);
-        return `${OSC}52;c;${btoa(binary)}${ST}`;
-      },
+      encode: (text) => `${OSC}52;c;${base64(text)}${ST}`,
     },
   ],
 };
@@ -158,12 +254,28 @@ export type TerminalProgress =
 /**
  * What a renderable on the frame says the terminal should show while it is
  * drawn: its share of the progress — a count against a total, or work of no
- * known size — or the pointer's shape. Shares from every declarer on a frame
- * are summed; of the pointer shapes declared, the last is shown.
+ * known size — the pointer's shape, the window's chrome, or the color of the
+ * terminal's cursor where the frame shows it. Shares from every declarer on a
+ * frame are summed; of every other part, the last declared is shown, each
+ * field of the chrome on its own.
  */
 export type TerminalDeclaration =
   | { readonly kind: "progress"; readonly share: { readonly completed: number; readonly total: number } | "indeterminate" }
-  | { readonly kind: "pointer"; readonly shape: ParsedPointerShape };
+  | { readonly kind: "pointer"; readonly shape: ParsedPointerShape }
+  | { readonly kind: "chrome"; readonly chrome: Chrome }
+  | { readonly kind: "cursor"; readonly color: ColorRgba };
+
+/**
+ * What the window and tab around a program show while it runs: the title, and
+ * in iTerm2 the tab's color, the session's status under the tab's title, and
+ * a badge behind the text. A field left out is the terminal's own.
+ */
+export interface Chrome {
+  readonly title?: string;
+  readonly tabColor?: ColorRgba;
+  readonly status?: SessionStatus;
+  readonly badge?: string;
+}
 
 /** The whole percent OSC 9;4 carries: clamped to 0–100, and 0 for no number at all. */
 export function shownPercent(percent: number): number {

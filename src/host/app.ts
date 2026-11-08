@@ -34,7 +34,8 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
-import { pointerShape, type ParsedPointerShape, type PointerShape } from "../core/terminal-requests.js";
+import { pointerShape, type Chrome, type ParsedPointerShape, type PointerShape } from "../core/terminal-requests.js";
+import { chromeState } from "../core/terminal-state.js";
 import { identifyTerminal, type TerminalIdentity } from "../core/terminal-identity.js";
 import type { TerminalFeatures } from "../core/terminal-capabilities.js";
 import { Segment } from "../core/segment.js";
@@ -133,6 +134,13 @@ const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = 
 // Bracketed paste: the terminal marks a paste, so it arrives as one event and
 // never as the keys it holds. Both surfaces, since a paste has no position.
 const BRACKETED_PASTE = { on: "\x1b[?2004h", off: "\x1b[?2004l" } as const;
+
+// Focus reports: the terminal says when its window takes focus and loses it.
+// tmux with `focus-events on` (off by default) reports focus-in when a client
+// attaches, which is the moment a passthrough's state — forgotten by the new
+// client's terminal — is sent again; without it, only a reattach that changes
+// the size is seen. A terminal without them ignores both.
+const FOCUS_REPORTS = { on: "\x1b[?1004h", off: "\x1b[?1004l" } as const;
 
 // The kitty keyboard protocol, where a program asks for it (`keyboard`): asked
 // for (`CSI ? u`), pushed only where the terminal answers, popped on hand-back.
@@ -235,6 +243,8 @@ export class App implements FrameHost {
   // The pointer's shape the app wants shown, declared on every frame: what the
   // terminal was actually sent is the painter's commit's to remember.
   private pointer: ParsedPointerShape = pointerShape("default");
+  // The chrome the app wants shown, declared on every frame as the pointer is.
+  private _chrome: Chrome = {};
   private readonly keyboard: KeyboardProtocol;
   private _frame: readonly (readonly Segment[])[] = [];
   private readonly painter: SurfaceRenderer;
@@ -252,7 +262,15 @@ export class App implements FrameHost {
   constructor(options: AppOptions) {
     this.host = options.host;
     this.input = new InputParser(
-      { key: (press) => this.key(press), mouse: (event) => this.mouse(event), reply: (reply) => this.reply(reply), paste: (text) => this.hear(this.pasteHandlers, text) },
+      {
+        key: (press) => this.key(press),
+        mouse: (event) => this.mouse(event),
+        reply: (reply) => this.reply(reply),
+        paste: (text) => this.hear(this.pasteHandlers, text),
+        focus: (focused) => {
+          if (focused) this.reattached();
+        },
+      },
       options.host.inputChunks,
     );
     this.surface = options.surface;
@@ -448,7 +466,11 @@ export class App implements FrameHost {
       this.host.start();
       this.subscriptions = [
         this.host.onData((chunk) => this.input.feed(chunk)),
-        this.host.onResize(() => this.refresh()),
+        // A reattached tmux client is often a terminal of another size.
+        this.host.onResize(() => {
+          this.reattached();
+          this.refresh();
+        }),
         // The program is ending under the app — by a signal, a crash, or an
         // exit the app's own code never saw. Ending hands the terminal back,
         // and the program then ends as it was going to.
@@ -592,12 +614,38 @@ export class App implements FrameHost {
     if (this._phase === "running") this.painter.settle({ pointer: shape });
   }
 
+  /**
+   * What the window and tab show while the app runs (`Chrome`): its title,
+   * and in iTerm2 the tab's color, the session's status and a badge. A field
+   * left out is the terminal's own, and every field is given back when the app
+   * stops or suspends — the title from the terminal's title stack, where it
+   * keeps one. Set as a whole: the chrome set last is what is shown, sent at
+   * once while running and otherwise when the app next takes the terminal. A
+   * stopped app refuses one.
+   */
+  get chrome(): Chrome {
+    return this._chrome;
+  }
+
+  set chrome(chrome: Chrome) {
+    if (this._phase === "stopped") throw new Error("App.chrome: a stopped app has handed its terminal back for good");
+    this._chrome = { ...chrome };
+    if (this._phase === "running") this.painter.settle(chromeState(this._chrome));
+  }
+
+  // tmux reported focus-in, or the terminal changed size: what reached the
+  // terminal only through a passthrough is sent again, since a client that
+  // reattached shows none of it.
+  private reattached(): void {
+    if (this._phase === "running") this.painter.resend();
+  }
+
   // --- the terminal ---
 
   private enter(): void {
     this.host.setRawMode(true);
     this.painter.take();
-    this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on);
+    this.host.write(POINTER[this.surface].on + BRACKETED_PASTE.on + FOCUS_REPORTS.on);
     const take = { pushed: false };
     this.held = take;
     if (this.keyboard !== "kitty") return;
@@ -615,7 +663,7 @@ export class App implements FrameHost {
     this.asking?.finish("left");
     // Whatever answers the terminal sends from here reach whoever holds it next.
     this.owedDa1 = 0;
-    this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + BRACKETED_PASTE.off + POINTER[this.surface].off);
+    this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + FOCUS_REPORTS.off + BRACKETED_PASTE.off + POINTER[this.surface].off);
     this.held = null;
     // The hand-back commits the empty state: the pointer's default included.
     this.painter.handBack();
@@ -638,6 +686,7 @@ export class App implements FrameHost {
     // A suspended app handed the terminal back when it suspended.
     if (phase === "running") this.leave();
     this.pointer = pointerShape("default");
+    this._chrome = {};
     this.host.stop();
     this.settle(outcome);
   }
@@ -729,6 +778,7 @@ export class App implements FrameHost {
     const options = this.console.options;
     const height = this.painter.height(options.height.rows);
     this.painter.declare({ kind: "pointer", shape: this.pointer });
+    this.painter.declare({ kind: "chrome", chrome: this._chrome });
     // [LAW:no-ambient-temporal-coupling] The frame owner reads the clock,
     // once a frame; the view is handed the time the timeline maps it to, as
     // data, and what the frame says about when it changes comes back on the

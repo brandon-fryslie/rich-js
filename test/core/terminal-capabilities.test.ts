@@ -25,7 +25,7 @@ import {
 import { identifyTerminal, readVersionAnswer, type Intermediary, type TerminalName } from "../../src/core/terminal-identity.js";
 import { pointerShape } from "../../src/core/terminal-requests.js";
 import { underlineSupport } from "../../src/core/style-effects.js";
-import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState } from "../../src/core/terminal-state.js";
+import { EMPTY_TERMINAL_STATE, NOTHING_COMMITTED, commitTerminalState, declaredState, type Committed } from "../../src/core/terminal-state.js";
 import { App } from "../../src/host/app.js";
 import { Progress } from "../../src/renderables/progress.js";
 import { scriptedHost } from "../host/scripted-host.js";
@@ -88,14 +88,14 @@ describe("commitTerminalState", () => {
 
   it("sends nothing for a frame that declares what the terminal already shows", () => {
     const shown = { ...EMPTY_TERMINAL_STATE, progress: { state: "normal" as const, percent: 50.2 } };
-    const committed = { sent: shown, refused: {} };
+    const committed: Committed = { sent: shown, refused: {}, wrapped: new Set() };
     const steady = commitTerminalState(committed, { ...shown, progress: { state: "normal", percent: 49.9 } }, features);
     expect(steady.sends).toEqual([]);
     expect(steady.next).toBe(committed);
   });
 
   it.each([[150, 160], [Number.NaN, Number.NaN], [-5, 0]])("sends nothing between %s%% and %s%%, which are sent as the same bytes", (from, to) => {
-    expect(commitTerminalState({ sent: { ...EMPTY_TERMINAL_STATE, progress: { state: "normal", percent: from } }, refused: {} }, { progress: { state: "normal", percent: to } }, features).sends).toEqual([]);
+    expect(commitTerminalState({ sent: { ...EMPTY_TERMINAL_STATE, progress: { state: "normal", percent: from } }, refused: {}, wrapped: new Set() }, { progress: { state: "normal", percent: to } }, features).sends).toEqual([]);
   });
 
   it("re-sends everything against an empty terminal, as one that forgot it needs", () => {
@@ -196,7 +196,7 @@ describe("pick", () => {
   it("says why a sequence screen would cut is not sent", () => {
     const long: Encoding<string> = { ...encoding("ignored", "passthrough"), encode: () => "y".repeat(800) };
     const sent = pick({ name: "test", encodings: [long] }, "", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers: [{ kind: "screen", evidence: "declared", passthrough: "declared" }] });
-    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: through screen: 800 bytes > 768" });
+    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: through screen: 800 bytes > 768", wrapped: false });
   });
 
   it.each<Intermediary>(["zellij", "editor"])("names %s as the layer a passthrough cannot cross", (kind) => {
@@ -249,13 +249,13 @@ describe("route", () => {
     const native = { ...encoding("ignored", "passthrough"), routes: { tmux: "passthrough", screen: "passthrough", zellij: "impossible", editor: "native" } as const };
     const layers: Layer[] = [{ kind: "editor", evidence: "declared", passthrough: "declared" }, { kind: "tmux", evidence: "declared", passthrough: "declared" }];
     const sent = pick({ name: "test", encodings: [native] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers });
-    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: editor does not pass a wrapped sequence" });
+    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: editor does not pass a wrapped sequence", wrapped: false });
   });
 
   it("refuses screen inside tmux, since screen would end tmux's envelope at its ST", () => {
     const layers: Layer[] = [{ kind: "screen", evidence: "declared", passthrough: "declared" }, { kind: "tmux", evidence: "declared", passthrough: "declared" }];
     const sent = pick({ name: "test", encodings: [encoding("ignored", "passthrough")] }, "x", { capabilities: declareCapabilities(["TEST"], "other"), policy: "strict", layers });
-    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: screen cannot carry another layer's passthrough" });
+    expect(sent).toEqual({ feature: "test", bytes: undefined, reason: "fallback: TEST: screen cannot carry another layer's passthrough", wrapped: false });
   });
 
   it("trusts an inferred passthrough under bestGuess even for a misread encoding: a closed one only drops it", () => {

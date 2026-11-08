@@ -115,12 +115,20 @@ export function heldLayers(layers: readonly (Layer | LayerDeclaration)[]): reado
   return layers.map((layer) => ("evidence" in layer ? layer : { ...layer, evidence: "declared" }));
 }
 
-/** One decision the send log records: the bytes written, or `undefined` and why not. */
+/**
+ * One decision the send log records: the bytes written, or `undefined` and
+ * why not, and whether they cross a layer only inside its passthrough
+ * envelope — which a tmux reattach forgets, so it must be sent again.
+ */
 export interface TerminalSend {
   readonly feature: string;
   readonly bytes: string | undefined;
   readonly reason: string;
+  readonly wrapped: boolean;
 }
+
+/** A decision to write nothing, and why. */
+export const notSent = (feature: string, reason: string): TerminalSend => ({ feature, bytes: undefined, reason, wrapped: false });
 
 /**
  * One way to write a feature: a sequence, and what is known of who reads it —
@@ -293,12 +301,13 @@ export function pick<A>(feature: TerminalFeature<A>, value: A, features: Pick<Te
     }
     // A closed passthrough drops the envelope (tmux's `allow-passthrough off`):
     // that miss is `ignored`, whatever the terminal would make of the sequence.
-    const routed = route(encoding.encode(value), encoding, layers, (layer) => accepts(policy, layer.passthrough, "ignored"));
+    const sequence = encoding.encode(value);
+    const routed = route(sequence, encoding, layers, (layer) => accepts(policy, layer.passthrough, "ignored"));
     if ("refused" in routed) {
       refusals.push(`${encoding.name}: ${routed.refused}`);
       continue;
     }
-    return { feature: feature.name, bytes: routed.bytes, reason: `${encoding.name}${routed.via}: ${support.why}` };
+    return { feature: feature.name, bytes: routed.bytes, reason: `${encoding.name}${routed.via}: ${support.why}`, wrapped: routed.bytes !== sequence };
   }
-  return { feature: feature.name, bytes: undefined, reason: `fallback: ${refusals.join("; ")}` };
+  return notSent(feature.name, `fallback: ${refusals.join("; ")}`);
 }

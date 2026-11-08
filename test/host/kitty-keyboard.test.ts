@@ -18,7 +18,7 @@ const POP = "\x1b[<u";
 
 function keysOf(bytes: string): string[] {
   const heard: string[] = [];
-  const parser = new InputParser({ key: (press) => heard.push(keyName(press)), mouse: () => {}, reply: (reply) => heard.push(`reply:${reply.body}`), paste: () => {} }, "whole-keys");
+  const parser = new InputParser({ key: (press) => heard.push(keyName(press)), mouse: () => {}, reply: (reply) => heard.push(`reply:${reply.body}`), paste: () => {}, focus: () => {} }, "whole-keys");
   parser.feed(bytes);
   return heard;
 }
