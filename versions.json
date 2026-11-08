@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-608",
+      "ref": "refs/pull/608/merge",
+      "sha": "307ee7e2a7707667fe7f3c9c39a1da6fce48f92b",
+      "timestamp": "2026-11-08T13:33:19.836Z",
+      "commits": [
+        {
+          "sha": "307ee7e2a7707667fe7f3c9c39a1da6fce48f92b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-08T06:31:27-07:00",
+          "message": "Merge ff7986a13cdd7affa693a64c7d4c9ebbd32ba8f8 into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+        },
+        {
+          "sha": "ff7986a13cdd7affa693a64c7d4c9ebbd32ba8f8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-08T06:31:02-07:00",
+          "message": "Events: kitty's notification urgency, buttons and click report (an App event), iTerm2's attention requests and StealFocus, and OSC 133 zones around each print and each Prompt.ask (rich-control-codes-xh4n.6ch.hds)\n\nAttention and notification bytes are checked against kitty's desktop-notification page and iTerm2's escape-codes page. The OSC 133 byte form is from the FinalTerm convention: the semantic-prompts spec could not be fetched, and the recorded probes (6ch.xy8) confirm it.\n\nNot in this commit: opt-in recording of events (the ticket's recordings rule). Nothing opts in yet, so events are never recorded, and whether they belong in exports is an open design question.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-607",
       "ref": "refs/pull/607/merge",
       "sha": "0554855882ad15edb6bfa9c12c598d1c1b6179a0",
