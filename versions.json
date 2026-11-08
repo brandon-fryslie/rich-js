@@ -2,38 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-605",
-      "ref": "refs/pull/605/merge",
-      "sha": "d5a097468958bfd0127c51c49c7fb41d4e9b317d",
-      "timestamp": "2026-11-07T12:37:20.198Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "450cef48ae894c0ed570c071e032d152737bcdef",
+      "timestamp": "2026-11-08T13:21:08.316Z",
       "commits": [
         {
-          "sha": "d5a097468958bfd0127c51c49c7fb41d4e9b317d",
+          "sha": "450cef48ae894c0ed570c071e032d152737bcdef",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T12:34:26Z",
-          "message": "Merge df7f16834ce4c2f16692e31b90a2796bd974b2d2 into 9078b33c54afb7d014b30e58048804e9a8c7df88\n"
+          "timestamp": "2026-11-08T06:18:38-07:00",
+          "message": "Declared chrome and cursor state, re-sent on tmux reattach (rich-control-codes-xh4n.6ch.sfp) (#605)\n\n* Declared chrome and cursor state (rich-control-codes-xh4n.6ch.sfp): App.chrome sends the title over the terminal's title stack, and iTerm2's tab color (OSC 6), session status (OSC 21337) and badge, once per change and given back on every exit; a focused TextInput colors the terminal's cursor (OSC 12/112) with its accent; focus reports (CSI ? 1004) and resizes re-send what reached the terminal only through a passthrough, which a tmux reattach forgets\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review fixes (6ch.sfp, high pass): the title stack is its own part so a pop follows only a push that reached the terminal; commitTerminalState takes a Pick, so undefined reaches only parts that hold it; badge backslashes escaped against iTerm2 interpolation; the cursor color is what the drawn cell shows (a reversed cell's foreground, none for default); App.chrome reset on stop; tmux focus-events off by default stated; wireHex and notSent each defined once\n\n* Review fixes (6ch.sfp, medium pass): a resend keeps the refusal of a later change; a status is the same as another when it writes the same bytes; a part decides one send or none; the commit order is stated where it lives; the not-a-terminal record is built by notSent\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         },
         {
-          "sha": "df7f16834ce4c2f16692e31b90a2796bd974b2d2",
+          "sha": "0f10dfae7f5735091bcb140c0cb3de42e86a054c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:34:12-07:00",
-          "message": "Review fixes (6ch.sfp, medium pass): a resend keeps the refusal of a later change; a status is the same as another when it writes the same bytes; a part decides one send or none; the commit order is stated where it lives; the not-a-terminal record is built by notSent\n"
-        },
-        {
-          "sha": "6040667fc1e3d019804759b28c19faa61e641a82",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:26:40-07:00",
-          "message": "Review fixes (6ch.sfp, high pass): the title stack is its own part so a pop follows only a push that reached the terminal; commitTerminalState takes a Pick, so undefined reaches only parts that hold it; badge backslashes escaped against iTerm2 interpolation; the cursor color is what the drawn cell shows (a reversed cell's foreground, none for default); App.chrome reset on stop; tmux focus-events off by default stated; wireHex and notSent each defined once\n"
-        },
-        {
-          "sha": "f68d72c00445dca139bd22163e5d3cb315a8e3ef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:10:57-07:00",
-          "message": "Declared chrome and cursor state (rich-control-codes-xh4n.6ch.sfp): App.chrome sends the title over the terminal's title stack, and iTerm2's tab color (OSC 6), session status (OSC 21337) and badge, once per change and given back on every exit; a focused TextInput colors the terminal's cursor (OSC 12/112) with its accent; focus reports (CSI ? 1004) and resizes re-send what reached the terminal only through a passthrough, which a tmux reattach forgets\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+          "timestamp": "2026-11-08T06:17:07-07:00",
+          "message": "The colour-depth and pause playground tests play at one frame a second, so they no longer paint hundreds of unread gallery frames (rich-palette-xovz.u60) (#598)\n\n* The colour-depth and pause playground tests play at one frame a second, so they no longer paint hundreds of unread gallery frames (rich-palette-xovz.u60)\n\n* The no-color checks require a painted frame, so an empty window cannot pass them (rich-palette-xovz.u60)\n\n* One writtenOver check: what a window wrote must hold a gallery frame, and a depth rebuild must keep 1 fps (rich-palette-xovz.u60)\n\n* One frame per colour depth; pause is pinned at sixty frames a second over a tenth of a second; the rate and frame checks say what they read (rich-palette-xovz.u60)\n\n* Resume is pinned over half a second; the last depth rebuild is checked to keep 1 fps (rich-palette-xovz.u60)"
         }
       ]
     },
@@ -56,71 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-07T05:25:47-07:00",
           "message": "The unclosed-links linearity test starts at 4,000 links, so a saturated suite stays well clear of the hang limit (rich-unfiled-791c.m154)\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "9078b33c54afb7d014b30e58048804e9a8c7df88",
-      "timestamp": "2026-11-07T12:21:14.238Z",
-      "commits": [
-        {
-          "sha": "9078b33c54afb7d014b30e58048804e9a8c7df88",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T05:19:19-07:00",
-          "message": "The markdown linearity and effects-feel contrast tests do a fraction of the work (rich-unfiled-791c.f6wx) (#604)\n\n* The markdown linearity and effects-feel contrast tests do a fraction of the work, so a saturated suite stays clear of the hang limit (rich-unfiled-791c.f6wx)\n\nMarkdown: each expectLinearTime starts just above the helper's floor (7.3s -> 0.9s calm).\neffects-feel: runDemo takes the contrast sampling as a defaulted argument; the one test that waits for every loop to be measured asks for one period at 12 moments (6.2s -> under 1.5s). Mutant (a loop left unmeasured) and quadratic-reader mutant both went red.\n\n* ContrastSampling is declared before CONTRAST and described once (rich-unfiled-791c.f6wx)\n\n* A contrast sampling with no moments is refused instead of reported as an infinite contrast (rich-unfiled-791c.f6wx)"
-        }
-      ]
-    },
-    {
-      "version": "pr-598",
-      "ref": "refs/pull/598/merge",
-      "sha": "e3b185a933f5bc8cf1f24d2b79de209fc467ee4c",
-      "timestamp": "2026-11-07T08:28:39.674Z",
-      "commits": [
-        {
-          "sha": "e3b185a933f5bc8cf1f24d2b79de209fc467ee4c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T08:26:01Z",
-          "message": "Merge feed60a765768cf5db23b57920006d613262db11 into e478624c449683fc23820c28a7138de9727967e3\n"
-        },
-        {
-          "sha": "feed60a765768cf5db23b57920006d613262db11",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T01:25:30-07:00",
-          "message": "Resume is pinned over half a second; the last depth rebuild is checked to keep 1 fps (rich-palette-xovz.u60)\n"
-        },
-        {
-          "sha": "a2b9d037ae94f9ed440b9517fa7169096b001267",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T01:18:31-07:00",
-          "message": "One frame per colour depth; pause is pinned at sixty frames a second over a tenth of a second; the rate and frame checks say what they read (rich-palette-xovz.u60)\n"
-        },
-        {
-          "sha": "6e387b1f40632826e392fa5b2a230a306eef55a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:51:21-07:00",
-          "message": "One writtenOver check: what a window wrote must hold a gallery frame, and a depth rebuild must keep 1 fps (rich-palette-xovz.u60)\n"
-        },
-        {
-          "sha": "09d7ce9636efff7b054a91c914f5cbf336f618c6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:49:14-07:00",
-          "message": "The no-color checks require a painted frame, so an empty window cannot pass them (rich-palette-xovz.u60)\n"
-        },
-        {
-          "sha": "6132257fc2942b6e3c53460cc7aada22dcc8b3d2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-07T00:46:37-07:00",
-          "message": "The colour-depth and pause playground tests play at one frame a second, so they no longer paint hundreds of unread gallery frames (rich-palette-xovz.u60)\n"
         }
       ]
     }
