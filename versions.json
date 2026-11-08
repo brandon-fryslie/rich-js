@@ -4,15 +4,22 @@
     {
       "version": "pr-608",
       "ref": "refs/pull/608/merge",
-      "sha": "3990f80c2d5b9f9e33387c8bd9ddac7107cf20aa",
-      "timestamp": "2026-11-08T13:52:48.023Z",
+      "sha": "03d4c77ca6530a0c64c887d2910b15dfd0fb2b86",
+      "timestamp": "2026-11-08T14:01:23.437Z",
       "commits": [
         {
-          "sha": "3990f80c2d5b9f9e33387c8bd9ddac7107cf20aa",
+          "sha": "03d4c77ca6530a0c64c887d2910b15dfd0fb2b86",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T13:50:32Z",
-          "message": "Merge 178ceef85d435b00359fc93b32ec553cecb47f5f into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+          "timestamp": "2026-11-08T13:59:06Z",
+          "message": "Merge 43ab523df67532a45539d626fe9f05df02cbefc8 into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+        },
+        {
+          "sha": "43ab523df67532a45539d626fe9f05df02cbefc8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-08T06:58:54-07:00",
+          "message": "Review fixes, round two: every request checks its argument (6ch.hds)\n\n- requestAttention and mark take their argument through a parse on every\n  road, as pointerShape does. An unknown attention is a TypeError rather than\n  `RequestAttention=undefined`; a mark's exit must be a whole number from 0\n  to 255, the range OSC 133 carries, so no NaN or -1 reaches the bytes.\n- Notification text is checked where it is given: a title, body or label\n  that is not text is a TypeError naming it, not a raw .replace failure.\n- A prompt's abort covers only the exits before its answer. The marks that\n  close an accepted answer sit outside the try, so a failure writing them is\n  reported as itself, and the prompt and input marks are inside it, so a\n  failure opening the zones still ends the command and leaves prompt mode.\n- print is refused in a render pass it was not made in whether or not it\n  writes. An empty print there had passed silently; the refusal is the same\n  for every print now.\n"
         },
         {
           "sha": "178ceef85d435b00359fc93b32ec553cecb47f5f",
