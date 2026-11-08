@@ -2,52 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-608",
-      "ref": "refs/pull/608/merge",
-      "sha": "f8fd0cae2f9dd8c9a47f34c2d3d40e46e9224374",
-      "timestamp": "2026-11-08T14:20:49.891Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "a1270ebef668812b149ea9113eac48cb6de585c3",
+      "timestamp": "2026-11-08T14:35:57.870Z",
       "commits": [
         {
-          "sha": "f8fd0cae2f9dd8c9a47f34c2d3d40e46e9224374",
+          "sha": "a1270ebef668812b149ea9113eac48cb6de585c3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T14:18:11Z",
-          "message": "Merge 8ea2b3dd586728bf80e01273893cd117fe071aab into 450cef48ae894c0ed570c071e032d152737bcdef\n"
-        },
-        {
-          "sha": "8ea2b3dd586728bf80e01273893cd117fe071aab",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T07:17:59-07:00",
-          "message": "Review fix: an answer that cannot be processed ends its command (6ch.hds)\n\nProcessing an answer ran outside the try that marks an abort, so a throw from\nit (a PromptInput that answers with a non-string, say) left the input zone\nopen. The terminal then read the output after it as input to a command that\nnever finished. Processing now sits inside the try, so the abort mark and the\nrethrow cover it. The closing output and done marks stay outside it.\n\nTest: the new case in \"Prompt's zones\" fails on the previous prompt module\n(one test failed, the done mark missing) and passes on this one.\n"
-        },
-        {
-          "sha": "d9b7298c52ebcb727fe82d42ccd9c26c03bdb798",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T07:10:28-07:00",
-          "message": "Review fixes, round three: prints write no zone; click reports are App.notify's (6ch.hds)\n\nWIP. Lint passes and the 381 targeted tests pass. The full suite and the docs\nbuild were started in the background and did not finish (logs:\n/tmp/rich-608-fix3-test.log, /tmp/rich-608-fix3-docs.log). Re-run `npm test`\nand `npm run docs:build` before merging.\n\n- A print writes no OSC 133 zone. A print is output, not a command a shell\n  ran, and a zone per print truncated the shell's own command-output zone. This\n  reverses the ticket's \"top-level prints\" clause; the prompt zones stay.\n- Each Prompt attempt is its own command: a refused answer aborts it, and the\n  next attempt opens its own prompt and input zones.\n- Click reports (buttons and reportClicks) are App.notify's. Console.notify\n  refuses them, and the app withdraws the notifications it asked to hear on\n  stop and on suspend (OSC 99 p=close), so no click is typed at the shell.\n- The app's drawing console is a DrawingConsole subclass, the only one that\n  raises a click report.\n- SEMANTIC_MARK lists iTerm2, kitty and Ghostty. WezTerm and foot wait for the\n  probes (6ch.xy8).\n- reportClicks that is not a boolean is a TypeError.\n"
-        },
-        {
-          "sha": "43ab523df67532a45539d626fe9f05df02cbefc8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T06:58:54-07:00",
-          "message": "Review fixes, round two: every request checks its argument (6ch.hds)\n\n- requestAttention and mark take their argument through a parse on every\n  road, as pointerShape does. An unknown attention is a TypeError rather than\n  `RequestAttention=undefined`; a mark's exit must be a whole number from 0\n  to 255, the range OSC 133 carries, so no NaN or -1 reaches the bytes.\n- Notification text is checked where it is given: a title, body or label\n  that is not text is a TypeError naming it, not a raw .replace failure.\n- A prompt's abort covers only the exits before its answer. The marks that\n  close an accepted answer sit outside the try, so a failure writing them is\n  reported as itself, and the prompt and input marks are inside it, so a\n  failure opening the zones still ends the command and leaves prompt mode.\n- print is refused in a render pass it was not made in whether or not it\n  writes. An empty print there had passed silently; the refusal is the same\n  for every print now.\n"
-        },
-        {
-          "sha": "178ceef85d435b00359fc93b32ec553cecb47f5f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T06:50:20-07:00",
-          "message": "Review fixes for notification, prompt zones and suspended input (6ch.hds)\n\n- A print inside a prompt's zones is the prompt its input draws, not output,\n  so the command stays open until the answer. nodeAsk's own print had been\n  closing it with a C..D pair before the reader typed.\n- A prompt that gets no answer ends its command with a bare OSC 133 D\n  (`mark(\"abort\")`), so the text after it is not read as its input.\n- kitty's `a` is a list whose default is `focus`; `a=report` alone dropped\n  focus-on-click. It now names `a=focus,report`.\n- `parseNotification` checks options where they are given, on every road, as\n  `pointerShape` does: an urgency kitty does not know, or a button with no\n  label, is a TypeError on every terminal rather than `u=undefined` or an\n  empty button on kitty alone. Encoders read the parsed value; `shown` is gone.\n- `hear` delivers only while the app is running, as the mouse and wheel\n  already do. A suspended app delivers no click and no key.\n- The Notification doc comment is back on the interface. SEMANTIC_MARK's\n  comment says what is verified (the iTerm2 FinalTerm forms) and what is not\n  (the other terminals' live probes, 6ch.xy8).\n"
-        },
-        {
-          "sha": "ff7986a13cdd7affa693a64c7d4c9ebbd32ba8f8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T06:31:02-07:00",
-          "message": "Events: kitty's notification urgency, buttons and click report (an App event), iTerm2's attention requests and StealFocus, and OSC 133 zones around each print and each Prompt.ask (rich-control-codes-xh4n.6ch.hds)\n\nAttention and notification bytes are checked against kitty's desktop-notification page and iTerm2's escape-codes page. The OSC 133 byte form is from the FinalTerm convention: the semantic-prompts spec could not be fetched, and the recorded probes (6ch.xy8) confirm it.\n\nNot in this commit: opt-in recording of events (the ticket's recordings rule). Nothing opts in yet, so events are never recorded, and whether they belong in exports is an open design question.\n"
+          "timestamp": "2026-11-08T07:33:40-07:00",
+          "message": "Events: kitty's notification urgency, buttons and click report, iTerm2 attention and StealFocus, OSC 133 prompt zones (6ch.hds) (#608)\n\n* Events: kitty's notification urgency, buttons and click report (an App event), iTerm2's attention requests and StealFocus, and OSC 133 zones around each print and each Prompt.ask (rich-control-codes-xh4n.6ch.hds)\n\nAttention and notification bytes are checked against kitty's desktop-notification page and iTerm2's escape-codes page. The OSC 133 byte form is from the FinalTerm convention: the semantic-prompts spec could not be fetched, and the recorded probes (6ch.xy8) confirm it.\n\nNot in this commit: opt-in recording of events (the ticket's recordings rule). Nothing opts in yet, so events are never recorded, and whether they belong in exports is an open design question.\n\n* Review fixes for notification, prompt zones and suspended input (6ch.hds)\n\n- A print inside a prompt's zones is the prompt its input draws, not output,\n  so the command stays open until the answer. nodeAsk's own print had been\n  closing it with a C..D pair before the reader typed.\n- A prompt that gets no answer ends its command with a bare OSC 133 D\n  (`mark(\"abort\")`), so the text after it is not read as its input.\n- kitty's `a` is a list whose default is `focus`; `a=report` alone dropped\n  focus-on-click. It now names `a=focus,report`.\n- `parseNotification` checks options where they are given, on every road, as\n  `pointerShape` does: an urgency kitty does not know, or a button with no\n  label, is a TypeError on every terminal rather than `u=undefined` or an\n  empty button on kitty alone. Encoders read the parsed value; `shown` is gone.\n- `hear` delivers only while the app is running, as the mouse and wheel\n  already do. A suspended app delivers no click and no key.\n- The Notification doc comment is back on the interface. SEMANTIC_MARK's\n  comment says what is verified (the iTerm2 FinalTerm forms) and what is not\n  (the other terminals' live probes, 6ch.xy8).\n\n* Review fixes, round two: every request checks its argument (6ch.hds)\n\n- requestAttention and mark take their argument through a parse on every\n  road, as pointerShape does. An unknown attention is a TypeError rather than\n  `RequestAttention=undefined`; a mark's exit must be a whole number from 0\n  to 255, the range OSC 133 carries, so no NaN or -1 reaches the bytes.\n- Notification text is checked where it is given: a title, body or label\n  that is not text is a TypeError naming it, not a raw .replace failure.\n- A prompt's abort covers only the exits before its answer. The marks that\n  close an accepted answer sit outside the try, so a failure writing them is\n  reported as itself, and the prompt and input marks are inside it, so a\n  failure opening the zones still ends the command and leaves prompt mode.\n- print is refused in a render pass it was not made in whether or not it\n  writes. An empty print there had passed silently; the refusal is the same\n  for every print now.\n\n* Review fixes, round three: prints write no zone; click reports are App.notify's (6ch.hds)\n\nWIP. Lint passes and the 381 targeted tests pass. The full suite and the docs\nbuild were started in the background and did not finish (logs:\n/tmp/rich-608-fix3-test.log, /tmp/rich-608-fix3-docs.log). Re-run `npm test`\nand `npm run docs:build` before merging.\n\n- A print writes no OSC 133 zone. A print is output, not a command a shell\n  ran, and a zone per print truncated the shell's own command-output zone. This\n  reverses the ticket's \"top-level prints\" clause; the prompt zones stay.\n- Each Prompt attempt is its own command: a refused answer aborts it, and the\n  next attempt opens its own prompt and input zones.\n- Click reports (buttons and reportClicks) are App.notify's. Console.notify\n  refuses them, and the app withdraws the notifications it asked to hear on\n  stop and on suspend (OSC 99 p=close), so no click is typed at the shell.\n- The app's drawing console is a DrawingConsole subclass, the only one that\n  raises a click report.\n- SEMANTIC_MARK lists iTerm2, kitty and Ghostty. WezTerm and foot wait for the\n  probes (6ch.xy8).\n- reportClicks that is not a boolean is a TypeError.\n\n* Review fix: an answer that cannot be processed ends its command (6ch.hds)\n\nProcessing an answer ran outside the try that marks an abort, so a throw from\nit (a PromptInput that answers with a non-string, say) left the input zone\nopen. The terminal then read the output after it as input to a command that\nnever finished. Processing now sits inside the try, so the abort mark and the\nrethrow cover it. The closing output and done marks stay outside it.\n\nTest: the new case in \"Prompt's zones\" fails on the previous prompt module\n(one test failed, the done mark missing) and passes on this one."
         }
       ]
     },
@@ -70,28 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-11-08T06:24:52-07:00",
           "message": "CLAUDE.md: performance is a count of work, never a clock; load tests are banned\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "450cef48ae894c0ed570c071e032d152737bcdef",
-      "timestamp": "2026-11-08T13:21:08.316Z",
-      "commits": [
-        {
-          "sha": "450cef48ae894c0ed570c071e032d152737bcdef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T06:18:38-07:00",
-          "message": "Declared chrome and cursor state, re-sent on tmux reattach (rich-control-codes-xh4n.6ch.sfp) (#605)\n\n* Declared chrome and cursor state (rich-control-codes-xh4n.6ch.sfp): App.chrome sends the title over the terminal's title stack, and iTerm2's tab color (OSC 6), session status (OSC 21337) and badge, once per change and given back on every exit; a focused TextInput colors the terminal's cursor (OSC 12/112) with its accent; focus reports (CSI ? 1004) and resizes re-send what reached the terminal only through a passthrough, which a tmux reattach forgets\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* Review fixes (6ch.sfp, high pass): the title stack is its own part so a pop follows only a push that reached the terminal; commitTerminalState takes a Pick, so undefined reaches only parts that hold it; badge backslashes escaped against iTerm2 interpolation; the cursor color is what the drawn cell shows (a reversed cell's foreground, none for default); App.chrome reset on stop; tmux focus-events off by default stated; wireHex and notSent each defined once\n\n* Review fixes (6ch.sfp, medium pass): a resend keeps the refusal of a later change; a status is the same as another when it writes the same bytes; a part decides one send or none; the commit order is stated where it lives; the not-a-terminal record is built by notSent\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
-        },
-        {
-          "sha": "0f10dfae7f5735091bcb140c0cb3de42e86a054c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T06:17:07-07:00",
-          "message": "The colour-depth and pause playground tests play at one frame a second, so they no longer paint hundreds of unread gallery frames (rich-palette-xovz.u60) (#598)\n\n* The colour-depth and pause playground tests play at one frame a second, so they no longer paint hundreds of unread gallery frames (rich-palette-xovz.u60)\n\n* The no-color checks require a painted frame, so an empty window cannot pass them (rich-palette-xovz.u60)\n\n* One writtenOver check: what a window wrote must hold a gallery frame, and a depth rebuild must keep 1 fps (rich-palette-xovz.u60)\n\n* One frame per colour depth; pause is pinned at sixty frames a second over a tenth of a second; the rate and frame checks say what they read (rich-palette-xovz.u60)\n\n* Resume is pinned over half a second; the last depth rebuild is checked to keep 1 fps (rich-palette-xovz.u60)"
         }
       ]
     },
