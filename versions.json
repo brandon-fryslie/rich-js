@@ -4,15 +4,22 @@
     {
       "version": "pr-608",
       "ref": "refs/pull/608/merge",
-      "sha": "7fd977f14d81aec62836e784e85edbe2c3a6b61c",
-      "timestamp": "2026-11-08T14:13:20.744Z",
+      "sha": "f8fd0cae2f9dd8c9a47f34c2d3d40e46e9224374",
+      "timestamp": "2026-11-08T14:20:49.891Z",
       "commits": [
         {
-          "sha": "7fd977f14d81aec62836e784e85edbe2c3a6b61c",
+          "sha": "f8fd0cae2f9dd8c9a47f34c2d3d40e46e9224374",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T14:10:44Z",
-          "message": "Merge d9b7298c52ebcb727fe82d42ccd9c26c03bdb798 into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+          "timestamp": "2026-11-08T14:18:11Z",
+          "message": "Merge 8ea2b3dd586728bf80e01273893cd117fe071aab into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+        },
+        {
+          "sha": "8ea2b3dd586728bf80e01273893cd117fe071aab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-08T07:17:59-07:00",
+          "message": "Review fix: an answer that cannot be processed ends its command (6ch.hds)\n\nProcessing an answer ran outside the try that marks an abort, so a throw from\nit (a PromptInput that answers with a non-string, say) left the input zone\nopen. The terminal then read the output after it as input to a command that\nnever finished. Processing now sits inside the try, so the abort mark and the\nrethrow cover it. The closing output and done marks stay outside it.\n\nTest: the new case in \"Prompt's zones\" fails on the previous prompt module\n(one test failed, the done mark missing) and passes on this one.\n"
         },
         {
           "sha": "d9b7298c52ebcb727fe82d42ccd9c26c03bdb798",
