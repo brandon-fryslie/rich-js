@@ -129,20 +129,21 @@ async function run<T>(promptText: string, input: PromptInput, kind: PromptKind<T
   // text and the reader's typing fall inside them. An accepted answer closes the
   // command with exit 0; a refused one aborts it, and the next attempt opens its own.
   while (true) {
-    let answer: string;
+    let value: T | InvalidResponse;
     try {
       console.mark("prompt");
       console.mark("input");
       // A copy, because a `RichText` is mutable and the same prompt is asked
       // again on every retry.
-      answer = await input(prompt.copy(), console);
+      const answer = await input(prompt.copy(), console);
+      value = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
     } catch (error) {
       // Any way out without an answer ends the command unanswered, so the terminal
-      // never reads what follows as the input to a command that never finished.
+      // never reads what follows as the input to a command that never finished. An
+      // answer that cannot be processed is one such way out.
       console.mark("abort");
       throw error;
     }
-    const value: T | InvalidResponse = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
     if (!(value instanceof InvalidResponse)) {
       console.mark("output");
       console.mark({ done: 0 });

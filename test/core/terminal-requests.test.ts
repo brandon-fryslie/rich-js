@@ -570,6 +570,14 @@ describe("Prompt's zones", () => {
     expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}after\n`);
   });
 
+  it("ends the command it opened when the answer cannot be processed, so the text after it is not its input", async () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    // A `PromptInput` that breaks its contract: it answers with a number, which has no `trim`.
+    await expect(Prompt.ask("Proceed?", async () => 42 as unknown as string, { console })).rejects.toThrow(TypeError);
+    console.print("after");
+    expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}after\n`);
+  });
+
   it("does not report a valid answer as an abort when the mark that closes it fails", async () => {
     const chunks: string[] = [];
     const { console } = terminal(ITERM, { ...GUESS, file: { write: (chunk: string) => {
