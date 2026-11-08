@@ -4,15 +4,22 @@
     {
       "version": "pr-608",
       "ref": "refs/pull/608/merge",
-      "sha": "307ee7e2a7707667fe7f3c9c39a1da6fce48f92b",
-      "timestamp": "2026-11-08T13:33:19.836Z",
+      "sha": "3990f80c2d5b9f9e33387c8bd9ddac7107cf20aa",
+      "timestamp": "2026-11-08T13:52:48.023Z",
       "commits": [
         {
-          "sha": "307ee7e2a7707667fe7f3c9c39a1da6fce48f92b",
+          "sha": "3990f80c2d5b9f9e33387c8bd9ddac7107cf20aa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T06:31:27-07:00",
-          "message": "Merge ff7986a13cdd7affa693a64c7d4c9ebbd32ba8f8 into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+          "timestamp": "2026-11-08T13:50:32Z",
+          "message": "Merge 178ceef85d435b00359fc93b32ec553cecb47f5f into 450cef48ae894c0ed570c071e032d152737bcdef\n"
+        },
+        {
+          "sha": "178ceef85d435b00359fc93b32ec553cecb47f5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-08T06:50:20-07:00",
+          "message": "Review fixes for notification, prompt zones and suspended input (6ch.hds)\n\n- A print inside a prompt's zones is the prompt its input draws, not output,\n  so the command stays open until the answer. nodeAsk's own print had been\n  closing it with a C..D pair before the reader typed.\n- A prompt that gets no answer ends its command with a bare OSC 133 D\n  (`mark(\"abort\")`), so the text after it is not read as its input.\n- kitty's `a` is a list whose default is `focus`; `a=report` alone dropped\n  focus-on-click. It now names `a=focus,report`.\n- `parseNotification` checks options where they are given, on every road, as\n  `pointerShape` does: an urgency kitty does not know, or a button with no\n  label, is a TypeError on every terminal rather than `u=undefined` or an\n  empty button on kitty alone. Encoders read the parsed value; `shown` is gone.\n- `hear` delivers only while the app is running, as the mouse and wheel\n  already do. A suspended app delivers no click and no key.\n- The Notification doc comment is back on the interface. SEMANTIC_MARK's\n  comment says what is verified (the iTerm2 FinalTerm forms) and what is not\n  (the other terminals' live probes, 6ch.xy8).\n"
         },
         {
           "sha": "ff7986a13cdd7affa693a64c7d4c9ebbd32ba8f8",
