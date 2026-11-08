@@ -345,6 +345,16 @@ describe("Console.mark", () => {
     expect(written()).toBe(`${ESC}]133;D${ST}`);
   });
 
+  it("refuses an exit a shell cannot report, so no digits a terminal would misread are written", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    for (const done of [-1, 1.5, 256, Number.NaN]) {
+      expect(() => console.mark({ done })).toThrow(TypeError);
+    }
+    expect(written()).toBe("");
+    console.mark({ done: 255 });
+    expect(written()).toBe(`${ESC}]133;D;255${ST}`);
+  });
+
   it("writes nothing into a capture, as every request", () => {
     const { console, written } = terminal(ITERM, GUESS);
     console.beginCapture();
@@ -408,6 +418,12 @@ describe("Console.notify's options are checked where they are given", () => {
     const { console } = terminal(KITTY, GUESS);
     expect(() => console.notify("Done", undefined, { buttons: [" "] })).toThrow(TypeError);
   });
+
+  it("names the field that is not text, since a JavaScript caller can pass a number for it", () => {
+    const { console } = terminal(KITTY, GUESS);
+    expect(() => console.notify(1 as never)).toThrow("a notification's title must be text, not number");
+    expect(() => console.notify("Done", undefined, { buttons: ["Yes", 2 as never] })).toThrow("button 2 must be text, not number");
+  });
 });
 
 describe("notificationClick", () => {
@@ -431,6 +447,14 @@ describe("Console.requestAttention focus", () => {
     const { console, written } = terminal(ITERM, GUESS);
     console.requestAttention("focus");
     expect(written()).toBe(`${ESC}]1337;StealFocus${ST}`);
+  });
+});
+
+describe("Console.requestAttention's argument", () => {
+  it("refuses an attention request it does not know, rather than writing RequestAttention=undefined", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    expect(() => console.requestAttention("bounce-once" as never)).toThrow(TypeError);
+    expect(written()).toBe("");
   });
 });
 
@@ -498,5 +522,26 @@ describe("Prompt's zones", () => {
     expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}`);
     console.print("after");
     expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}${ESC}]133;C${ST}after\n${ESC}]133;D;0${ST}`);
+  });
+
+  it("does not report a valid answer as an abort when the mark that closes it fails", async () => {
+    const chunks: string[] = [];
+    const { console } = terminal(ITERM, { ...GUESS, file: { write: (chunk: string) => {
+      if (chunk.includes(`${ESC}]133;C`)) throw new Error("broken pipe");
+      chunks.push(chunk);
+    } } });
+    await expect(Prompt.ask("Proceed?", async () => "yes", { console })).rejects.toThrow("broken pipe");
+    expect(chunks.join("")).not.toContain(`${ESC}]133;D${ST}`);
+  });
+
+  it("ends its command when its input zone cannot open, so the console is not left in prompt mode", async () => {
+    const chunks: string[] = [];
+    const { console } = terminal(ITERM, { ...GUESS, file: { write: (chunk: string) => {
+      if (chunk.includes(`${ESC}]133;B`)) throw new Error("broken pipe");
+      chunks.push(chunk);
+    } } });
+    await expect(Prompt.ask("Proceed?", async () => "yes", { console })).rejects.toThrow("broken pipe");
+    console.print("after");
+    expect(chunks.join("")).toContain(`${ESC}]133;C${ST}after`);
   });
 });

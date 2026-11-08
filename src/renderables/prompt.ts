@@ -128,28 +128,35 @@ async function run<T>(promptText: string, input: PromptInput, kind: PromptKind<T
   // input draws the prompt and reads the answer in one call, so nothing can
   // come between its text and the reader's typing. The output zone opens and
   // the command closes once an answer is accepted, with exit 0.
-  console.mark("prompt");
-  console.mark("input");
+  // Only a way out before the answer is an abort: the marks that close an accepted
+  // answer are not, so a failure writing them is reported as itself.
+  let value: T;
   try {
-    while (true) {
-      // A copy, because a `RichText` is mutable and the same prompt is asked
-      // again on every retry.
-      const answer = await input(prompt.copy(), console);
-      const value: T | InvalidResponse = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
-      if (!(value instanceof InvalidResponse)) {
-        console.mark("output");
-        console.mark({ done: 0 });
-        return value;
-      }
-      // The message is this module's markup, read as markup whatever the
-      // console's own `markup` setting.
-      console.print(renderMarkup(value.message));
-    }
+    console.mark("prompt");
+    console.mark("input");
+    value = await askUntilAnswered(prompt, input, kind, options, console);
   } catch (error) {
     // Any way out without an answer ends the command unanswered, so the terminal
     // never reads what follows as the input to a command that never finished.
     console.mark("abort");
     throw error;
+  }
+  console.mark("output");
+  console.mark({ done: 0 });
+  return value;
+}
+
+// Asks until the answer is one the prompt accepts, printing why each refused one is refused.
+async function askUntilAnswered<T>(prompt: RichText, input: PromptInput, kind: PromptKind<T>, options: AskOptions<T>, console: Console): Promise<T> {
+  while (true) {
+    // A copy, because a `RichText` is mutable and the same prompt is asked
+    // again on every retry.
+    const answer = await input(prompt.copy(), console);
+    const value: T | InvalidResponse = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
+    if (!(value instanceof InvalidResponse)) return value;
+    // The message is this module's markup, read as markup whatever the
+    // console's own `markup` setting.
+    console.print(renderMarkup(value.message));
   }
 }
 

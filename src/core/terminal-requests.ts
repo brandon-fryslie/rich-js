@@ -147,6 +147,13 @@ const POINTER_SHAPES = [
   "move", "grab", "grabbing", "ew-resize", "ns-resize",
 ] as const;
 
+// `value` if it is one of `values`, or a `TypeError` naming it as not `kind`.
+function oneOf<T extends string>(kind: string, values: readonly T[], value: unknown): T {
+  if ((values as readonly unknown[]).includes(value)) return value as T;
+  const named = typeof value === "string" ? JSON.stringify(value) : `a ${typeof value}`;
+  throw new TypeError(`${named} is not ${kind}: one of ${values.join(", ")}`);
+}
+
 /**
  * `value` as a `PointerShape`, or a `TypeError` naming it. The type binds only
  * a TypeScript caller, and OSC 22 carries the name raw, so a BEL in a cast
@@ -155,9 +162,7 @@ const POINTER_SHAPES = [
  * is then written; `POINTER` encodes only what this returns.
  */
 export function pointerShape(value: unknown): ParsedPointerShape {
-  if ((POINTER_SHAPES as readonly unknown[]).includes(value)) return value as ParsedPointerShape;
-  const named = typeof value === "string" ? JSON.stringify(value) : `a ${typeof value}`;
-  throw new TypeError(`${named} is not a pointer shape: one of ${POINTER_SHAPES.join(", ")}`);
+  return oneOf("a pointer shape", POINTER_SHAPES, value) as ParsedPointerShape;
 }
 
 declare const parsed: unique symbol;
@@ -220,6 +225,12 @@ export function notificationClick(body: string): NotificationClick | undefined {
 const URGENCY_CODE = { low: 0, normal: 1, critical: 2 } as const;
 const URGENCY_LEVELS: readonly string[] = Object.keys(URGENCY_CODE);
 
+// `value` stripped of controls as the sequence carries it, or a `TypeError` naming what it is for.
+function text(value: unknown, what: string): string {
+  if (typeof value !== "string") throw new TypeError(`${what} must be text, not ${typeof value}`);
+  return stripOscControls(value);
+}
+
 /** A `Notification` that `parseNotification` has checked at runtime. */
 export type ParsedNotification = Notification & { readonly [parsed]: true };
 
@@ -236,13 +247,13 @@ export function parseNotification(value: Notification): ParsedNotification {
     throw new TypeError(`${JSON.stringify(value.urgency)} is not an urgency: one of ${URGENCY_LEVELS.join(", ")}`);
   }
   return {
-    title: stripOscControls(value.title),
-    body: value.body === undefined ? undefined : stripOscControls(value.body),
+    title: text(value.title, "a notification's title"),
+    body: value.body === undefined ? undefined : text(value.body, "a notification's body"),
     id: value.id,
     urgency: value.urgency,
     // A label holds no U+2028, the separator, which stripping takes out with the other line separators, so a label of only those is empty here.
     buttons: value.buttons?.map((label, index) => {
-      const stripped = stripOscControls(label);
+      const stripped = text(label, `button ${index + 1}`);
       if (stripped === "") throw new TypeError(`button ${index + 1} has no label: every button needs text`);
       return stripped;
     }),
@@ -312,6 +323,19 @@ export type Attention = "bounce" | "fireworks" | "cancel" | "focus";
 
 // iTerm2's RequestAttention argument for each request that takes one.
 const ATTENTION_ARG = { bounce: "yes", fireworks: "fireworks", cancel: "no" } as const;
+const ATTENTIONS: readonly Attention[] = ["bounce", "fireworks", "cancel", "focus"];
+
+/** An `Attention` that `parseAttention` has checked at runtime. */
+export type ParsedAttention = Attention & { readonly [parsed]: true };
+
+/**
+ * `value` as an `Attention`, or a `TypeError` naming it. A JavaScript caller can
+ * pass anything, and an encoder runs only for iTerm2, so the check is here, on
+ * every road, as `pointerShape` makes it: `ATTENTION` encodes only what this returns.
+ */
+export function parseAttention(value: unknown): ParsedAttention {
+  return oneOf("an attention request", ATTENTIONS, value) as ParsedAttention;
+}
 
 /**
  * iTerm2's OSC 1337 attention requests: the dock icon bounces until the app is
@@ -319,7 +343,7 @@ const ATTENTION_ARG = { bounce: "yes", fireworks: "fireworks", cancel: "no" } as
  * brings the window to the front (StealFocus, which takes no argument). A
  * terminal that does not read them ignores them.
  */
-export const ATTENTION: TerminalFeature<Attention> = {
+export const ATTENTION: TerminalFeature<ParsedAttention> = {
   name: "attention",
   encodings: [
     {
@@ -327,7 +351,11 @@ export const ATTENTION: TerminalFeature<Attention> = {
       terminals: ["iterm2"],
       failure: "ignored",
       routes: OUTER_ONLY,
-      encode: (attention) => (attention === "focus" ? `${OSC}1337;StealFocus${ST}` : `${OSC}1337;RequestAttention=${ATTENTION_ARG[attention]}${ST}`),
+      encode: (value) => {
+        // Widened from its brand: a map cannot be indexed by a branded literal.
+        const attention: Attention = value;
+        return attention === "focus" ? `${OSC}1337;StealFocus${ST}` : `${OSC}1337;RequestAttention=${ATTENTION_ARG[attention]}${ST}`;
+      },
     },
   ],
 };
@@ -342,6 +370,23 @@ export const ATTENTION: TerminalFeature<Attention> = {
 export type SemanticMark = "prompt" | "input" | "output" | "abort" | { readonly done: number };
 
 const MARK_CODE = { prompt: "A", input: "B", output: "C" } as const;
+const MARK_NAMES: readonly string[] = ["prompt", "input", "output", "abort"];
+
+/** A `SemanticMark` that `parseMark` has checked at runtime. */
+export type ParsedSemanticMark = SemanticMark & { readonly [parsed]: true };
+
+/**
+ * `value` as a `SemanticMark`, or a `TypeError` naming it: one of the four
+ * names, or `{ done }` with an exit that is a whole number from 0 to 255, the
+ * range OSC 133 carries in decimal digits. `SEMANTIC_MARK` encodes only what this returns.
+ */
+export function parseMark(value: unknown): ParsedSemanticMark {
+  if ((MARK_NAMES as readonly unknown[]).includes(value)) return value as ParsedSemanticMark;
+  const exit = typeof value === "object" && value !== null && "done" in value ? value.done : undefined;
+  if (typeof exit === "number" && Number.isInteger(exit) && exit >= 0 && exit <= 255) return value as ParsedSemanticMark;
+  const named = typeof value === "string" ? JSON.stringify(value) : exit !== undefined ? `{ done: ${String(exit)} }` : `a ${typeof value}`;
+  throw new TypeError(`${named} is not a prompt mark: one of ${MARK_NAMES.join(", ")}, or { done } with an exit from 0 to 255`);
+}
 
 /**
  * OSC 133 zones, which a terminal reads to know where each prompt and its
@@ -352,7 +397,7 @@ const MARK_CODE = { prompt: "A", input: "B", output: "C" } as const;
  * probe has yet confirmed them on the other terminals listed, which the
  * recorded probes (6ch.xy8) are for.
  */
-export const SEMANTIC_MARK: TerminalFeature<SemanticMark> = {
+export const SEMANTIC_MARK: TerminalFeature<ParsedSemanticMark> = {
   name: "semantic mark",
   encodings: [
     {
@@ -360,7 +405,9 @@ export const SEMANTIC_MARK: TerminalFeature<SemanticMark> = {
       terminals: ["iterm2", "kitty", "wezterm", "foot", "ghostty"],
       failure: "ignored",
       routes: OUTER_ONLY,
-      encode: (mark) => {
+      encode: (value) => {
+        // Widened from its brand: a map cannot be indexed by a branded literal.
+        const mark: SemanticMark = value;
         if (mark === "abort") return `${OSC}133;D${ST}`;
         return typeof mark === "string" ? `${OSC}133;${MARK_CODE[mark]}${ST}` : `${OSC}133;D;${mark.done}${ST}`;
       },

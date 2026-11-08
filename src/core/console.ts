@@ -8,7 +8,7 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
-import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, POINTER, SEMANTIC_MARK, TITLE, parseNotification, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
+import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, POINTER, SEMANTIC_MARK, TITLE, parseAttention, parseMark, parseNotification, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
 import { underlineSupport } from "./style-effects.js";
 import { heldLayers, inferCapabilities, notSent, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
@@ -587,6 +587,9 @@ export class Console {
   // --- Print ---
 
   print(...args: unknown[]): void {
+    // [LAW:no-silent-failure] Refused whether or not it writes: a print whose draw is empty
+    // would otherwise pass a render it was not made in, where any other print is refused.
+    refuseRenderWrite(this._madeIn);
     // Each print is one output zone for the terminal's shell integration, opened
     // before its first byte and closed after its last even when drawing throws.
     // Only a print a terminal is reading is zoned, so piped output logs nothing,
@@ -858,11 +861,12 @@ export class Console {
 
   /** Asks for the reader's attention through the dock or taskbar (iTerm2's RequestAttention). */
   requestAttention(attention: Attention): void {
-    this._request(ATTENTION, attention);
+    this._request(ATTENTION, parseAttention(attention));
   }
 
   /** Marks a point in a prompt's life for the terminal's shell-integration zones (OSC 133). */
-  mark(mark: SemanticMark): void {
+  mark(value: SemanticMark): void {
+    const mark = parseMark(value);
     this._inPrompt.set(mark === "prompt" || mark === "input");
     this._request(SEMANTIC_MARK, mark);
   }
