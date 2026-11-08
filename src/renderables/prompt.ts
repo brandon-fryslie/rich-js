@@ -124,13 +124,22 @@ async function run<T>(promptText: string, input: PromptInput, kind: PromptKind<T
   }
   const console = options.console ?? new Console();
   const prompt = makePrompt(promptText, kind, options);
+  // The prompt and input zones open together, before the input is asked: the
+  // input draws the prompt and reads the answer in one call, so nothing can
+  // come between its text and the reader's typing. The output zone opens and
+  // the command closes once an answer is accepted, with exit 0.
+  console.mark("prompt");
+  console.mark("input");
   while (true) {
     // A copy, because a `RichText` is mutable and the same prompt is asked
     // again on every retry.
     const answer = await input(prompt.copy(), console);
-    if (answer === "" && options.default !== undefined) return options.default;
-    const value = kind.process(answer);
-    if (!(value instanceof InvalidResponse)) return value;
+    const value: T | InvalidResponse = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
+    if (!(value instanceof InvalidResponse)) {
+      console.mark("output");
+      console.mark({ done: 0 });
+      return value;
+    }
     // The message is this module's markup, read as markup whatever the
     // console's own `markup` setting.
     console.print(renderMarkup(value.message));

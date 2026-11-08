@@ -34,7 +34,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
 import { Console, type ConsoleOptions } from "../core/console.js";
-import { pointerShape, type Chrome, type ParsedPointerShape, type PointerShape } from "../core/terminal-requests.js";
+import { notificationClick, pointerShape, type Chrome, type NotificationClick, type ParsedPointerShape, type PointerShape } from "../core/terminal-requests.js";
 import { chromeState } from "../core/terminal-state.js";
 import { identifyTerminal, type TerminalIdentity } from "../core/terminal-identity.js";
 import type { TerminalFeatures } from "../core/terminal-capabilities.js";
@@ -253,6 +253,7 @@ export class App implements FrameHost {
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
   private readonly keyHandlers = new Set<(press: KeyEvent) => void>();
   private readonly pasteHandlers = new Set<(text: string) => void>();
+  private readonly clickHandlers = new Set<(click: NotificationClick) => void>();
   private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
   private readonly wheelHandlers = new Set<(wheel: WheelEvent) => boolean>();
   private readonly quitKeys: ReadonlySet<string>;
@@ -556,6 +557,17 @@ export class App implements FrameHost {
   }
 
   /**
+   * A click on a notification raised with `reportClicks` (kitty): the id
+   * `Console.notify` returned, and the button clicked, 1-based, or `undefined`
+   * for the notification itself. It is heard only while the app holds the
+   * terminal; a click after the app has ended is typed at whatever reads next.
+   */
+  onNotificationClick(handler: (click: NotificationClick) => void): Unsubscribe {
+    this.clickHandlers.add(handler);
+    return () => this.clickHandlers.delete(handler);
+  }
+
+  /**
    * Hear every pointer event but the vertical wheel, which is `onWheel`'s,
    * in terminal cells. Only the alternate surface reports the pointer. A
    * handler that throws fails the app.
@@ -694,6 +706,10 @@ export class App implements FrameHost {
   // --- input ---
 
   private reply(reply: TerminalReply): void {
+    // A notification's click is an event, not an answer: it is heard whatever
+    // is being asked, and it is not counted among the replies a question waits for.
+    const click = reply.kind === "osc" ? notificationClick(reply.body) : undefined;
+    if (click !== undefined) return this.hear(this.clickHandlers, click);
     if (this.owedDa1 > 0) {
       if (isDa1Reply(reply)) this.owedDa1--;
       return;

@@ -8,7 +8,7 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
-import { BELL, CLIPBOARD, NOTIFICATION, POINTER, TITLE, pointerShape, type PointerShape } from "./terminal-requests.js";
+import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, POINTER, SEMANTIC_MARK, TITLE, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
 import { underlineSupport } from "./style-effects.js";
 import { heldLayers, inferCapabilities, notSent, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
@@ -397,6 +397,13 @@ function resolveGetSize(
 const NO_HIGHLIGHT = new NullHighlighter();
 
 
+/** `Console.notify`'s options: kitty's urgency, buttons and click report, each where a terminal takes it. */
+export interface NotifyOptions {
+  readonly urgency?: NotificationUrgency;
+  readonly buttons?: readonly string[];
+  readonly reportClicks?: boolean;
+}
+
 export class Console {
   private readonly _destination: OutputTarget;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
@@ -578,7 +585,21 @@ export class Console {
   // --- Print ---
 
   print(...args: unknown[]): void {
-    this._writeSegments(emit(this._draw(args, this.options)));
+    // Each print is one output zone for the terminal's shell integration, opened
+    // before its first byte and closed after its last even when drawing throws.
+    // Only a print a terminal is reading is zoned, so piped output logs nothing.
+    const zoned = this._reachesTerminal;
+    if (zoned) this.mark("output");
+    try {
+      this._writeSegments(emit(this._draw(args, this.options)));
+    } finally {
+      if (zoned) this.mark({ done: 0 });
+    }
+  }
+
+  // Whether a request can reach a terminal at all: someone is at it, and its output is not being captured.
+  private get _reachesTerminal(): boolean {
+    return this._attended && this._capture.get() === null;
   }
 
   // What `print` draws for `args` at `options.maxWidth`.
@@ -816,11 +837,30 @@ export class Console {
     this._request(POINTER, pointerShape(shape));
   }
 
-  /** Raises a desktop notification, in the protocol this console's terminal reads. */
-  notify(title: string, body?: string): void {
+  /**
+   * Raises a desktop notification, in the protocol this console's terminal
+   * reads, and returns its id — what a click reported back names
+   * (`App.onNotificationClick`). `urgency`, `buttons` and `reportClicks` are
+   * kitty's to take; elsewhere the notification is shown as it would have been
+   * without them. A click is reported only while the program still reads the
+   * terminal: once it has exited, the report is typed at whatever reads next.
+   */
+  notify(title: string, body?: string, options: NotifyOptions = {}): string {
     // Random, so no other console or run shares it: kitty updates in place a
     // notification whose id it has seen.
-    this._request(NOTIFICATION, { title, body, id: Math.random().toString(36).slice(2, 12) });
+    const id = Math.random().toString(36).slice(2, 12);
+    this._request(NOTIFICATION, { title, body, id, urgency: options.urgency, buttons: options.buttons, reportClicks: options.reportClicks });
+    return id;
+  }
+
+  /** Asks for the reader's attention through the dock or taskbar (iTerm2's RequestAttention). */
+  requestAttention(attention: Attention): void {
+    this._request(ATTENTION, attention);
+  }
+
+  /** Marks a point in a prompt's life for the terminal's shell-integration zones (OSC 133). */
+  mark(mark: SemanticMark): void {
+    this._request(SEMANTIC_MARK, mark);
   }
 
   // [LAW:single-enforcer] Every request to the terminal goes through here: it

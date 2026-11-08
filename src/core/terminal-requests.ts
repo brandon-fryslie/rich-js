@@ -186,13 +186,48 @@ export const CLIPBOARD: TerminalFeature<string> = {
 };
 
 /** A desktop notification; `id` must differ per notification, or kitty updates the earlier one in place. */
+/** How hard a notification asks for the reader's attention. kitty takes it; a terminal that cannot grade it shows the notification as it would have. */
+export type NotificationUrgency = "low" | "normal" | "critical";
+
 export interface Notification {
   readonly title: string;
   readonly body: string | undefined;
   readonly id: string;
+  readonly urgency?: NotificationUrgency;
+  /** Buttons the notification offers, by label; a click on one is reported back by its 1-based number. kitty only. */
+  readonly buttons?: readonly string[];
+  /** Whether a click on the notification or one of its buttons is reported back to the program (kitty's `a=report`). kitty only. */
+  readonly reportClicks?: boolean;
 }
 
-const shown = ({ title, body, id }: Notification): Notification => ({ title: stripOscControls(title), body: body === undefined ? undefined : stripOscControls(body), id });
+const shown = (notification: Notification): Notification => ({
+  title: stripOscControls(notification.title),
+  body: notification.body === undefined ? undefined : stripOscControls(notification.body),
+  id: notification.id,
+  urgency: notification.urgency,
+  // A label holds no U+2028, the separator, which stripping takes out with the other line separators.
+  buttons: notification.buttons?.map((label) => stripOscControls(label)),
+  reportClicks: notification.reportClicks,
+});
+
+// U+2028 between kitty's button labels: the separator its protocol names.
+const BUTTON_SEPARATOR = " ";
+
+/** What kitty reports back when a notification it was asked to report is clicked: its id, and the 1-based button or `undefined` for the notification itself. */
+export interface NotificationClick {
+  readonly id: string;
+  readonly button: number | undefined;
+}
+
+/** Reads a terminal's OSC body as kitty's click report, `99;i=<id>;` or `99;i=<id>;<button>`, and `undefined` for any other OSC. */
+export function notificationClick(body: string): NotificationClick | undefined {
+  const match = /^99;i=([^;]+);(\d*)$/.exec(body);
+  if (match === null) return undefined;
+  return { id: match[1]!, button: match[2] === "" ? undefined : Number(match[2]) };
+}
+
+// OSC 99's `u=`: 0 low, 1 normal, 2 critical.
+const URGENCY_CODE = { low: 0, normal: 1, critical: 2 } as const;
 
 /**
  * kitty's OSC 99, title then body joined by `id`; OSC 777 for foot and
@@ -208,10 +243,14 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
       failure: "ignored",
       routes: OUTER_ONLY,
       encode: (notification) => {
-        const { title, body, id } = shown(notification);
-        return body === undefined
-          ? `${OSC}99;i=${id};${title}${ST}`
-          : `${OSC}99;i=${id}:d=0;${title}${ST}${OSC}99;i=${id}:p=body;${body}${ST}`;
+        const { title, body, id, urgency, buttons, reportClicks } = shown(notification);
+        // The first chunk carries what kitty reads to start the notification: its urgency and whether clicks come back.
+        const first = [`i=${id}`, ...(urgency === undefined ? [] : [`u=${URGENCY_CODE[urgency]}`]), ...(reportClicks === true ? ["a=report"] : [])];
+        const pieces: [readonly string[], string][] = [[first, title]];
+        if (body !== undefined) pieces.push([[`i=${id}`, "p=body"], body]);
+        if (buttons !== undefined && buttons.length > 0) pieces.push([[`i=${id}`, "p=buttons"], buttons.join(BUTTON_SEPARATOR)]);
+        // kitty shows the notification once its last chunk arrives: every chunk before it says it is not done.
+        return pieces.map(([keys, payload], index) => `${OSC}99;${(index < pieces.length - 1 ? [...keys, "d=0"] : keys).join(":")};${payload}${ST}`).join("");
       },
     },
     {
@@ -238,6 +277,65 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
         // them, so a line that would read as one is kept off that shape.
         return `${OSC}9;${/^\d+(;|$)/.test(line) ? ` ${line}` : line}${ST}`;
       },
+    },
+  ],
+};
+
+/**
+ * How a program asks for the reader's attention through the terminal's dock
+ * or taskbar: `bounce` until the app is focused, `fireworks` once, and `cancel`
+ * stops a bounce already running.
+ */
+export type Attention = "bounce" | "fireworks" | "cancel" | "focus";
+
+// iTerm2's RequestAttention argument for each request that takes one.
+const ATTENTION_ARG = { bounce: "yes", fireworks: "fireworks", cancel: "no" } as const;
+
+/**
+ * iTerm2's OSC 1337 attention requests: the dock icon bounces until the app is
+ * focused, fireworks go off at the cursor, a bounce is cancelled, and `focus`
+ * brings the window to the front (StealFocus, which takes no argument). A
+ * terminal that does not read them ignores them.
+ */
+export const ATTENTION: TerminalFeature<Attention> = {
+  name: "attention",
+  encodings: [
+    {
+      name: "OSC 1337 attention",
+      terminals: ["iterm2"],
+      failure: "ignored",
+      routes: OUTER_ONLY,
+      encode: (attention) => (attention === "focus" ? `${OSC}1337;StealFocus${ST}` : `${OSC}1337;RequestAttention=${ATTENTION_ARG[attention]}${ST}`),
+    },
+  ],
+};
+
+/**
+ * A point in a command-line prompt's life, in the shell-integration zones
+ * OSC 133 names: the prompt (`A`), what the reader types (`B`), the output
+ * that follows (`C`), and the end of it with the exit it finished with (`D`).
+ */
+export type SemanticMark = "prompt" | "input" | "output" | { readonly done: number };
+
+const MARK_CODE = { prompt: "A", input: "B", output: "C" } as const;
+
+/**
+ * OSC 133 zones, which a terminal reads to know where each prompt and its
+ * output begin and end, so it can select, fold and jump between them. A
+ * terminal that does not read them ignores them. Behind tmux they cross
+ * through its passthrough. Unverified: the byte forms are from the FinalTerm
+ * convention, not the semantic-prompts spec, which could not be fetched; the
+ * recorded probes (6ch.xy8) are what confirm them.
+ */
+export const SEMANTIC_MARK: TerminalFeature<SemanticMark> = {
+  name: "semantic mark",
+  encodings: [
+    {
+      name: "OSC 133",
+      terminals: ["iterm2", "kitty", "wezterm", "foot", "ghostty"],
+      failure: "ignored",
+      routes: OUTER_ONLY,
+      encode: (mark) => (typeof mark === "string" ? `${OSC}133;${MARK_CODE[mark]}${ST}` : `${OSC}133;D;${mark.done}${ST}`),
     },
   ],
 };

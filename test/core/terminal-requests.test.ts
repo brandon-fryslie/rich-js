@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import { Console } from "../../src/core/console.js";
 import type { Env } from "../../src/core/env.js";
 import { identifyTerminal } from "../../src/core/terminal-identity.js";
+import { notificationClick } from "../../src/core/terminal-requests.js";
 import { declareCapabilities, type TerminalSend } from "../../src/core/terminal-capabilities.js";
+import { Prompt } from "../../src/renderables/prompt.js";
 
 
 const ESC = "\x1b";
@@ -280,5 +282,173 @@ describe("a pointer shape", () => {
   it("names a value that is not a string by its type", () => {
     const { console } = terminal(KITTY);
     expect(() => console.setPointerShape(1n as never)).toThrow(/^a bigint is not a pointer shape/);
+  });
+});
+
+describe("Console.notify urgency", () => {
+  it("writes kitty's u= on the title's chunk, graded 0 low, 1 normal, 2 critical", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    console.notify("Build failed", "3 tests", { urgency: "critical" });
+    expect(written()).toMatch(/^\x1b\]99;i=\w+:u=2:d=0;Build failed\x1b\\/);
+  });
+
+  it("leaves the urgency out where none is asked, so kitty keeps its default", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    console.notify("Done");
+    expect(written()).not.toContain(":u=");
+  });
+
+  it("is not written where it has no meaning, the notification as it would have been", () => {
+    const { console, written } = terminal(FOOT, GUESS);
+    console.notify("Done", undefined, { urgency: "critical" });
+    expect(written()).toBe(`${ESC}]777;notify;Done;${ST}`);
+  });
+});
+
+describe("Console.requestAttention", () => {
+  it("asks iTerm2 to bounce or to fire its fireworks, and to cancel a bounce", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    console.requestAttention("bounce");
+    console.requestAttention("fireworks");
+    console.requestAttention("cancel");
+    expect(written()).toBe(`${ESC}]1337;RequestAttention=yes${ST}${ESC}]1337;RequestAttention=fireworks${ST}${ESC}]1337;RequestAttention=no${ST}`);
+  });
+
+  it("is refused under strict on the environment's word alone, and says why", () => {
+    const sends: TerminalSend[] = [];
+    const { console, written } = terminal(ITERM, { terminalFeatures: { onSend: (send) => void sends.push(send) } });
+    console.requestAttention("bounce");
+    expect(written()).toBe("");
+    expect(sends.at(-1)?.feature).toBe("attention");
+  });
+
+  it("is not sent to a terminal that does not read it", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    console.requestAttention("bounce");
+    expect(written()).toBe("");
+  });
+});
+
+describe("Console.mark", () => {
+  it("writes OSC 133's zones, the exit a command finished with included", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    console.mark("prompt");
+    console.mark("input");
+    console.mark("output");
+    console.mark({ done: 2 });
+    expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;C${ST}${ESC}]133;D;2${ST}`);
+  });
+
+  it("writes nothing into a capture, as every request", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    console.beginCapture();
+    console.mark("prompt");
+    expect(console.endCapture()).toBe("");
+    expect(written()).toBe("");
+  });
+});
+
+describe("Console.notify buttons and click reports", () => {
+  it("writes a report request on the first chunk, then each button as a chunk of its own, after the body", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    const id = console.notify("Build", "3 failed", { buttons: ["Open log", "Dismiss"], reportClicks: true });
+    expect(written()).toBe(
+      `${ESC}]99;i=${id}:a=report:d=0;Build${ST}${ESC}]99;i=${id}:p=body:d=0;3 failed${ST}${ESC}]99;i=${id}:p=buttons;Open log Dismiss${ST}`,
+    );
+  });
+
+  it("returns the id it wrote, so a click names the notification it came from", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    const id = console.notify("Done", undefined, { reportClicks: true });
+    expect(written()).toBe(`${ESC}]99;i=${id}:a=report;Done${ST}`);
+  });
+
+  it("drops a U+2028 from a label, so a label cannot split into two buttons", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    console.notify("Done", undefined, { buttons: ["a b", "c"] });
+    expect(written()).toContain("p=buttons;ab c\x1b\\");
+  });
+
+  it("asks for no report where none is asked, and writes no button chunk without buttons", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    console.notify("Done", "ok");
+    expect(written()).not.toContain("a=report");
+    expect(written()).not.toContain("p=buttons");
+  });
+
+  it("writes no button or report where the terminal has no such thing", () => {
+    const { console, written } = terminal(FOOT, GUESS);
+    console.notify("Done", "ok", { buttons: ["x"], reportClicks: true });
+    expect(written()).toBe(`${ESC}]777;notify;Done;ok${ST}`);
+  });
+});
+
+describe("notificationClick", () => {
+  it("reads a click on the notification as its id with no button", () => {
+    expect(notificationClick("99;i=abc123;")).toEqual({ id: "abc123", button: undefined });
+  });
+
+  it("reads a click on a button as the button's 1-based number", () => {
+    expect(notificationClick("99;i=abc123;2")).toEqual({ id: "abc123", button: 2 });
+  });
+
+  it("reads any other OSC as no click, OSC 11's color report and a malformed 99 included", () => {
+    expect(notificationClick("11;rgb:1e1e/1e1e/1e1e")).toBeUndefined();
+    expect(notificationClick("99;i=abc;x")).toBeUndefined();
+    expect(notificationClick("99;abc;")).toBeUndefined();
+  });
+});
+
+describe("Console.requestAttention focus", () => {
+  it("writes StealFocus, which takes no argument", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    console.requestAttention("focus");
+    expect(written()).toBe(`${ESC}]1337;StealFocus${ST}`);
+  });
+});
+
+describe("Console's print zones", () => {
+  it("opens an output zone before a print's first byte and closes it with exit 0 after its last", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    console.print("hi");
+    expect(written()).toBe(`${ESC}]133;C${ST}hi\n${ESC}]133;D;0${ST}`);
+  });
+
+  it("closes the zone when drawing throws", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    expect(() => console.print(new (class { render(): never { throw new Error("boom"); } })())).toThrow("boom");
+    expect(written().endsWith(`${ESC}]133;D;0${ST}`)).toBe(true);
+  });
+
+  it("zones nothing into a pipe, and logs nothing for it", () => {
+    const sends: TerminalSend[] = [];
+    const { console, written } = terminal(ITERM, { forceTerminal: false, terminalFeatures: { policy: "bestGuess", onSend: (send) => void sends.push(send) } });
+    console.print("hi");
+    expect(written()).toBe("hi\n");
+    expect(sends).toEqual([]);
+  });
+
+  it("zones nothing into a capture", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    console.beginCapture();
+    console.print("hi");
+    expect(console.endCapture()).toBe("hi\n");
+    expect(written()).toBe("");
+  });
+});
+
+describe("Prompt's zones", () => {
+  it("opens the prompt and input zones before it asks, and closes the command with exit 0 once answered", async () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    const answers = ["nope", "yes"];
+    const value = await Prompt.ask("Proceed?", async () => {
+      // What the input sees: both opened before it reads, neither after. A retry
+      // sees what the refused answer printed after them, so a prefix.
+      expect(written().startsWith(`${ESC}]133;A${ST}${ESC}]133;B${ST}`)).toBe(true);
+      return answers.shift()!;
+    }, { console, choices: ["yes", "no"] });
+    expect(value).toBe("yes");
+    expect(written().endsWith(`${ESC}]133;C${ST}${ESC}]133;D;0${ST}`)).toBe(true);
+    expect(written().split(`${ESC}]133;A`).length - 1).toBe(1);
   });
 });

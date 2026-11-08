@@ -181,6 +181,32 @@ the passthrough stays lost until the app next takes the terminal. Only those
 are sent again. What tmux took natively it re-emits itself, and a bare
 terminal forgets nothing when its window loses focus.
 
+## Events
+
+Events are requests the program makes once, not state a frame keeps: a
+notification, an attention request, a shell-integration mark. They go through
+the console, which sends each only to a terminal someone is at, and never into
+a capture or a pipe.
+
+`Console.notify` raises a notification and returns its id. kitty takes an
+urgency, buttons and a click report on it; a click on the notification or one
+of its buttons comes back to the app as `onNotificationClick`, with the id and
+the 1-based button or none. That report exists only while the program still
+reads the terminal: after it exits, kitty types the report at whatever reads
+next, so a program that asks for clicks must not outlive `App`'s hand-back.
+Elsewhere the notification is shown as it would have been without them.
+
+`Console.requestAttention` asks iTerm2 to bounce the dock icon, fire its
+fireworks, cancel a bounce, or bring the window forward. A `Progress` that
+finishes or fails does not request attention itself: a renderable cannot send
+during a render, so the program calls `requestAttention` when its task ends.
+
+`Console.mark` writes OSC 133 zones for shell integration. `Prompt` opens its
+prompt and input zones before it asks and closes the command once an answer is
+accepted. Every `Console.print` is one output zone, including a `Live`'s final
+frame, so a terminal that folds or selects by zone sees each print as a
+command's output.
+
 ## Underlines
 
 Curly, dotted and dashed underlines (SGR `4:3`–`4:5`) and an underline's own
