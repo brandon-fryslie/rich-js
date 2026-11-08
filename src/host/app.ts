@@ -33,7 +33,7 @@
 
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { ColorDepth, resolveTerminal, type TerminalColors } from "../core/color.js";
-import { Console, type ConsoleOptions } from "../core/console.js";
+import { Console, type AppNotifyOptions, type ConsoleOptions } from "../core/console.js";
 import { notificationClick, pointerShape, type Chrome, type NotificationClick, type ParsedPointerShape, type PointerShape } from "../core/terminal-requests.js";
 import { chromeState } from "../core/terminal-state.js";
 import { identifyTerminal, type TerminalIdentity } from "../core/terminal-identity.js";
@@ -203,6 +203,20 @@ interface Asking {
 
 const isWheelTurn = (event: TerminalMouseEvent): event is WheelTurn => event.type in WHEEL_LINES;
 
+// The console an App draws on, and the only one that raises a notification with
+// a click report: a report is typed at whatever reads the terminal once no app
+// hears it, so the app that hears the clicks is the one that asks for them, and
+// withdraws what it asked for as it leaves the terminal.
+class DrawingConsole extends Console {
+  notifyHeard(title: string, body: string | undefined, options: AppNotifyOptions): string {
+    return this.raise(title, body, options);
+  }
+
+  withdrawHeard(id: string): void {
+    this.withdraw(id);
+  }
+}
+
 export class App implements FrameHost {
   private readonly host: TerminalHost;
   private readonly surface: Surface;
@@ -223,7 +237,7 @@ export class App implements FrameHost {
   // [LAW:one-source-of-truth] The host is the console's whole environment:
   // its size, its colors, where bytes go. Every frame renders with this
   // console's options and is encoded for its destination.
-  private console: Console;
+  private console: DrawingConsole;
   private drawing: Pick<ConsoleOptions, DrawOption>;
   // [LAW:single-enforcer] One ask at a time, through the one input reader:
   // the next waits on the last, and `leave` ends the one in flight.
@@ -254,6 +268,8 @@ export class App implements FrameHost {
   private readonly keyHandlers = new Set<(press: KeyEvent) => void>();
   private readonly pasteHandlers = new Set<(text: string) => void>();
   private readonly clickHandlers = new Set<(click: NotificationClick) => void>();
+  // The notifications `notify` raised with a click report: withdrawn as the app leaves the terminal.
+  private readonly clickReports = new Set<string>();
   private readonly mouseHandlers = new Set<(event: AppMouseEvent) => void>();
   private readonly wheelHandlers = new Set<(wheel: WheelEvent) => boolean>();
   private readonly quitKeys: ReadonlySet<string>;
@@ -349,8 +365,8 @@ export class App implements FrameHost {
   }
 
   // The one way the app builds the console it draws with.
-  private drawingConsole(): Console {
-    return new Console({ ...this.drawing, environment: hostEnvironment(this.host) });
+  private drawingConsole(): DrawingConsole {
+    return new DrawingConsole({ ...this.drawing, environment: hostEnvironment(this.host) });
   }
 
   private askNow(queries: readonly string[], timeout: number): Promise<Asked> {
@@ -568,6 +584,20 @@ export class App implements FrameHost {
   }
 
   /**
+   * Raises a desktop notification, as `Console.notify` does, and with the
+   * buttons and click report only an app asks for. A click on one is heard as
+   * `onNotificationClick` while the app runs. The app withdraws each notification
+   * it asked to hear when it leaves the terminal, so no click reaches whatever
+   * reads the terminal next. Returns the id a click names. Only while running.
+   */
+  notify(title: string, body?: string, options: AppNotifyOptions = {}): string {
+    if (this._phase !== "running") throw new Error(`App.notify: an app notifies while it runs, and this one is ${this._phase}`);
+    const id = this.console.notifyHeard(title, body, options);
+    if (options.reportClicks === true) this.clickReports.add(id);
+    return id;
+  }
+
+  /**
    * Hear every pointer event but the vertical wheel, which is `onWheel`'s,
    * in terminal cells. Only the alternate surface reports the pointer. A
    * handler that throws fails the app.
@@ -673,6 +703,9 @@ export class App implements FrameHost {
 
   private leave(): void {
     this.asking?.finish("left");
+    // A click on a notification this app asked to hear is typed at whatever reads the terminal next, so it is withdrawn as the app leaves.
+    for (const id of this.clickReports) this.console.withdrawHeard(id);
+    this.clickReports.clear();
     // Whatever answers the terminal sends from here reach whoever holds it next.
     this.owedDa1 = 0;
     this.host.write((this.held?.pushed === true ? KITTY_KEYBOARD.pop : "") + FOCUS_REPORTS.off + BRACKETED_PASTE.off + POINTER[this.surface].off);

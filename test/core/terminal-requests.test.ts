@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { Console } from "../../src/core/console.js";
+import { Console, type AppNotifyOptions, type ConsoleOptions } from "../../src/core/console.js";
 import type { Env } from "../../src/core/env.js";
 import { identifyTerminal } from "../../src/core/terminal-identity.js";
 import { notificationClick } from "../../src/core/terminal-requests.js";
@@ -34,6 +34,32 @@ const FOOT: Env = { TERM: "foot" };
 const ITERM: Env = { TERM: "xterm-256color", TERM_PROGRAM: "iTerm.app" };
 // What acts on the environment's word that the terminal is kitty or foot.
 const GUESS = { terminalFeatures: { policy: "bestGuess" } } as const;
+
+// The console an app draws on: the one that raises a notification with a click
+// report, through the same protected road `App.notify` takes.
+class HeardConsole extends Console {
+  notifyHeard(title: string, body: string | undefined, options: AppNotifyOptions): string {
+    return this.raise(title, body, options);
+  }
+
+  withdrawHeard(id: string): void {
+    this.withdraw(id);
+  }
+}
+
+function heardTerminal(env: Env, options: ConsoleOptions = {}): { console: HeardConsole; written: () => string } {
+  const chunks: string[] = [];
+  const console = new HeardConsole({
+    width: 20,
+    colorSystem: null,
+    forceTerminal: true,
+    hyperlinks: false,
+    environment: { env },
+    file: { write: (chunk: string) => void chunks.push(chunk) },
+    ...options,
+  });
+  return { console, written: () => chunks.join("") };
+}
 
 describe("Console.setWindowTitle", () => {
   it("writes OSC 2 with the title", () => {
@@ -364,10 +390,10 @@ describe("Console.mark", () => {
   });
 });
 
-describe("Console.notify buttons and click reports", () => {
+describe("buttons and click reports, which only an app asks for", () => {
   it("writes a report request on the first chunk, then each button as a chunk of its own, after the body", () => {
-    const { console, written } = terminal(KITTY, GUESS);
-    const id = console.notify("Build", "3 failed", { buttons: ["Open log", "Dismiss"], reportClicks: true });
+    const { console, written } = heardTerminal(KITTY, GUESS);
+    const id = console.notifyHeard("Build", "3 failed", { buttons: ["Open log", "Dismiss"], reportClicks: true });
     // kitty's `a` is a list whose default is `focus`: naming `report` alone drops focus-on-click, so both are named.
     expect(written()).toBe(
       `${ESC}]99;i=${id}:a=focus,report:d=0;Build${ST}${ESC}]99;i=${id}:p=body:d=0;3 failed${ST}${ESC}]99;i=${id}:p=buttons;Open log Dismiss${ST}`,
@@ -375,14 +401,14 @@ describe("Console.notify buttons and click reports", () => {
   });
 
   it("returns the id it wrote, so a click names the notification it came from", () => {
-    const { console, written } = terminal(KITTY, GUESS);
-    const id = console.notify("Done", undefined, { reportClicks: true });
+    const { console, written } = heardTerminal(KITTY, GUESS);
+    const id = console.notifyHeard("Done", undefined, { reportClicks: true });
     expect(written()).toBe(`${ESC}]99;i=${id}:a=focus,report;Done${ST}`);
   });
 
   it("drops a U+2028 from a label, so a label cannot split into two buttons", () => {
-    const { console, written } = terminal(KITTY, GUESS);
-    console.notify("Done", undefined, { buttons: ["a b", "c"] });
+    const { console, written } = heardTerminal(KITTY, GUESS);
+    console.notifyHeard("Done", undefined, { buttons: ["a b", "c"] });
     expect(written()).toContain("p=buttons;ab c\x1b\\");
   });
 
@@ -394,8 +420,8 @@ describe("Console.notify buttons and click reports", () => {
   });
 
   it("writes no button or report where the terminal has no such thing", () => {
-    const { console, written } = terminal(FOOT, GUESS);
-    console.notify("Done", "ok", { buttons: ["x"], reportClicks: true });
+    const { console, written } = heardTerminal(FOOT, GUESS);
+    console.notifyHeard("Done", "ok", { buttons: ["x"], reportClicks: true });
     expect(written()).toBe(`${ESC}]777;notify;Done;ok${ST}`);
   });
 });
@@ -409,20 +435,39 @@ describe("Console.notify's options are checked where they are given", () => {
   });
 
   it("refuses a button with no label, so kitty never shows an empty button", () => {
-    const { console, written } = terminal(KITTY, GUESS);
-    expect(() => console.notify("Done", undefined, { buttons: ["Yes", ""] })).toThrow(TypeError);
+    const { console, written } = heardTerminal(KITTY, GUESS);
+    expect(() => console.notifyHeard("Done", undefined, { buttons: ["Yes", ""] })).toThrow(TypeError);
     expect(written()).toBe("");
   });
 
   it("refuses a label that is only line separators, which stripping would leave empty", () => {
-    const { console } = terminal(KITTY, GUESS);
-    expect(() => console.notify("Done", undefined, { buttons: [" "] })).toThrow(TypeError);
+    const { console } = heardTerminal(KITTY, GUESS);
+    expect(() => console.notifyHeard("Done", undefined, { buttons: [" "] })).toThrow(TypeError);
   });
 
   it("names the field that is not text, since a JavaScript caller can pass a number for it", () => {
     const { console } = terminal(KITTY, GUESS);
     expect(() => console.notify(1 as never)).toThrow("a notification's title must be text, not number");
-    expect(() => console.notify("Done", undefined, { buttons: ["Yes", 2 as never] })).toThrow("button 2 must be text, not number");
+    expect(() => heardTerminal(KITTY, GUESS).console.notifyHeard("Done", undefined, { buttons: ["Yes", 2 as never] })).toThrow("button 2 must be text, not number");
+  });
+
+  it("refuses a click report or buttons on a console, which no app hears: App.notify asks for them", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    expect(() => console.notify("Done", undefined, { reportClicks: true } as never)).toThrow("App.notify");
+    expect(() => console.notify("Done", undefined, { buttons: ["Yes"] } as never)).toThrow("App.notify");
+    expect(written()).toBe("");
+  });
+
+  it("refuses a report flag that is not true or false, rather than dropping it without a sound", () => {
+    const { console } = heardTerminal(KITTY, GUESS);
+    expect(() => console.notifyHeard("Done", undefined, { reportClicks: "yes" as never })).toThrow("reportClicks must be true or false, not string");
+  });
+
+  it("withdraws a notification by its id, so a click on it is no longer reported", () => {
+    const { console, written } = heardTerminal(KITTY, GUESS);
+    const id = console.notifyHeard("Done", undefined, { reportClicks: true });
+    console.withdrawHeard(id);
+    expect(written().endsWith(`${ESC}]99;i=${id}:p=close;${ST}`)).toBe(true);
   });
 });
 
@@ -459,16 +504,11 @@ describe("Console.requestAttention's argument", () => {
 });
 
 describe("Console's print zones", () => {
-  it("opens an output zone before a print's first byte and closes it with exit 0 after its last", () => {
+  it("writes no zone around a print, since a print is output and not a command a shell ran", () => {
     const { console, written } = terminal(ITERM, GUESS);
     console.print("hi");
-    expect(written()).toBe(`${ESC}]133;C${ST}hi\n${ESC}]133;D;0${ST}`);
-  });
-
-  it("closes the zone when drawing throws", () => {
-    const { console, written } = terminal(ITERM, GUESS);
-    expect(() => console.print(new (class { render(): never { throw new Error("boom"); } })())).toThrow("boom");
-    expect(written().endsWith(`${ESC}]133;D;0${ST}`)).toBe(true);
+    console.print("there");
+    expect(written()).toBe("hi\nthere\n");
   });
 
   it("zones nothing into a pipe, and logs nothing for it", () => {
@@ -489,21 +529,27 @@ describe("Console's print zones", () => {
 });
 
 describe("Prompt's zones", () => {
-  it("opens the prompt and input zones before it asks, and closes the command with exit 0 once answered", async () => {
+  it("makes each attempt a command: a refused one is aborted, and the accepted one opens and closes its own", async () => {
     const { console, written } = terminal(ITERM, GUESS);
     const answers = ["nope", "yes"];
     const value = await Prompt.ask("Proceed?", async () => {
-      // What the input sees: both opened before it reads, neither after. A retry
-      // sees what the refused answer printed after them, so a prefix.
-      expect(written().startsWith(`${ESC}]133;A${ST}${ESC}]133;B${ST}`)).toBe(true);
+      // What the input sees: this attempt's input zone is the last one opened.
+      expect(written().match(/\x1b\]133;[^\x1b]*\x1b\\/g)?.at(-1)).toBe(`${ESC}]133;B${ST}`);
       return answers.shift()!;
     }, { console, choices: ["yes", "no"] });
     expect(value).toBe("yes");
-    expect(written().endsWith(`${ESC}]133;C${ST}${ESC}]133;D;0${ST}`)).toBe(true);
-    expect(written().split(`${ESC}]133;A`).length - 1).toBe(1);
+    expect(written().match(/\x1b\]133;[^\x1b]*\x1b\\/g)).toEqual([
+      `${ESC}]133;A${ST}`,
+      `${ESC}]133;B${ST}`,
+      `${ESC}]133;D${ST}`,
+      `${ESC}]133;A${ST}`,
+      `${ESC}]133;B${ST}`,
+      `${ESC}]133;C${ST}`,
+      `${ESC}]133;D;0${ST}`,
+    ]);
   });
 
-  it("keeps the prompt its input draws out of an output zone, so the command stays open until the answer", async () => {
+  it("draws the prompt its input writes inside the input zone, so the command stays open until the answer", async () => {
     const { console, written } = terminal(ITERM, GUESS);
     const value = await Prompt.ask("Proceed?", async (prompt, console) => {
       console.print(prompt, { end: "", softWrap: true });
@@ -521,7 +567,7 @@ describe("Prompt's zones", () => {
     }, { console })).rejects.toThrow("closed");
     expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}`);
     console.print("after");
-    expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}${ESC}]133;C${ST}after\n${ESC}]133;D;0${ST}`);
+    expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}after\n`);
   });
 
   it("does not report a valid answer as an abort when the mark that closes it fails", async () => {
@@ -534,7 +580,7 @@ describe("Prompt's zones", () => {
     expect(chunks.join("")).not.toContain(`${ESC}]133;D${ST}`);
   });
 
-  it("ends its command when its input zone cannot open, so the console is not left in prompt mode", async () => {
+  it("ends its command when its input zone cannot open, so the command it began is not left open", async () => {
     const chunks: string[] = [];
     const { console } = terminal(ITERM, { ...GUESS, file: { write: (chunk: string) => {
       if (chunk.includes(`${ESC}]133;B`)) throw new Error("broken pipe");
@@ -542,6 +588,6 @@ describe("Prompt's zones", () => {
     } } });
     await expect(Prompt.ask("Proceed?", async () => "yes", { console })).rejects.toThrow("broken pipe");
     console.print("after");
-    expect(chunks.join("")).toContain(`${ESC}]133;C${ST}after`);
+    expect(chunks.join("")).toBe(`${ESC}]133;A${ST}${ESC}]133;D${ST}after\n`);
   });
 });

@@ -124,36 +124,31 @@ async function run<T>(promptText: string, input: PromptInput, kind: PromptKind<T
   }
   const console = options.console ?? new Console();
   const prompt = makePrompt(promptText, kind, options);
-  // The prompt and input zones open together, before the input is asked: the
-  // input draws the prompt and reads the answer in one call, so nothing can
-  // come between its text and the reader's typing. The output zone opens and
-  // the command closes once an answer is accepted, with exit 0.
-  // Only a way out before the answer is an abort: the marks that close an accepted
-  // answer are not, so a failure writing them is reported as itself.
-  let value: T;
-  try {
-    console.mark("prompt");
-    console.mark("input");
-    value = await askUntilAnswered(prompt, input, kind, options, console);
-  } catch (error) {
-    // Any way out without an answer ends the command unanswered, so the terminal
-    // never reads what follows as the input to a command that never finished.
-    console.mark("abort");
-    throw error;
-  }
-  console.mark("output");
-  console.mark({ done: 0 });
-  return value;
-}
-
-// Asks until the answer is one the prompt accepts, printing why each refused one is refused.
-async function askUntilAnswered<T>(prompt: RichText, input: PromptInput, kind: PromptKind<T>, options: AskOptions<T>, console: Console): Promise<T> {
+  // Each attempt is one command for the terminal's shell integration: its prompt
+  // and input zones open together, before the input is asked, so the prompt's
+  // text and the reader's typing fall inside them. An accepted answer closes the
+  // command with exit 0; a refused one aborts it, and the next attempt opens its own.
   while (true) {
-    // A copy, because a `RichText` is mutable and the same prompt is asked
-    // again on every retry.
-    const answer = await input(prompt.copy(), console);
+    let answer: string;
+    try {
+      console.mark("prompt");
+      console.mark("input");
+      // A copy, because a `RichText` is mutable and the same prompt is asked
+      // again on every retry.
+      answer = await input(prompt.copy(), console);
+    } catch (error) {
+      // Any way out without an answer ends the command unanswered, so the terminal
+      // never reads what follows as the input to a command that never finished.
+      console.mark("abort");
+      throw error;
+    }
     const value: T | InvalidResponse = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
-    if (!(value instanceof InvalidResponse)) return value;
+    if (!(value instanceof InvalidResponse)) {
+      console.mark("output");
+      console.mark({ done: 0 });
+      return value;
+    }
+    console.mark("abort");
     // The message is this module's markup, read as markup whatever the
     // console's own `markup` setting.
     console.print(renderMarkup(value.message));

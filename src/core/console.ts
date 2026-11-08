@@ -8,7 +8,7 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
-import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, POINTER, SEMANTIC_MARK, TITLE, parseAttention, parseMark, parseNotification, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
+import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, NOTIFICATION_CLOSE, POINTER, SEMANTIC_MARK, TITLE, parseAttention, parseMark, parseNotification, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
 import { underlineSupport } from "./style-effects.js";
 import { heldLayers, inferCapabilities, notSent, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
@@ -397,9 +397,17 @@ function resolveGetSize(
 const NO_HIGHLIGHT = new NullHighlighter();
 
 
-/** `Console.notify`'s options: kitty's urgency, buttons and click report, each where a terminal takes it. */
+/** `Console.notify`'s options: kitty's urgency, where a terminal takes it. */
 export interface NotifyOptions {
   readonly urgency?: NotificationUrgency;
+}
+
+/**
+ * `App.notify`'s options: `NotifyOptions`, and the buttons and click report an
+ * app asks for. Only an app asks for them, because a click is reported to
+ * whatever reads the terminal next when no app is there to hear it.
+ */
+export interface AppNotifyOptions extends NotifyOptions {
   readonly buttons?: readonly string[];
   readonly reportClicks?: boolean;
 }
@@ -443,8 +451,6 @@ export class Console {
   // non-empty" — `string | null` makes that unrepresentable.
   private readonly _capture = new State<string | null>(null);
   private readonly _liveRegion = new State<LiveRegion>(NO_LIVE_REGION);
-  // Whether a prompt's zones are open: from its prompt mark until its output or end mark, what is printed is the prompt, not output.
-  private readonly _inPrompt = new State<boolean>(false);
   private readonly _madeIn: Pass | undefined = activePass();
 
   constructor(options?: ConsoleOptions) {
@@ -590,22 +596,7 @@ export class Console {
     // [LAW:no-silent-failure] Refused whether or not it writes: a print whose draw is empty
     // would otherwise pass a render it was not made in, where any other print is refused.
     refuseRenderWrite(this._madeIn);
-    // Each print is one output zone for the terminal's shell integration, opened
-    // before its first byte and closed after its last even when drawing throws.
-    // Only a print a terminal is reading is zoned, so piped output logs nothing,
-    // and a print inside a prompt's zones is the prompt the input draws, not output.
-    const zoned = this._reachesTerminal && !this._inPrompt.get();
-    if (zoned) this.mark("output");
-    try {
-      this._writeSegments(emit(this._draw(args, this.options)));
-    } finally {
-      if (zoned) this.mark({ done: 0 });
-    }
-  }
-
-  // Whether a request can reach a terminal at all: someone is at it, and its output is not being captured.
-  private get _reachesTerminal(): boolean {
-    return this._attended && this._capture.get() === null;
+    this._writeSegments(emit(this._draw(args, this.options)));
   }
 
   // What `print` draws for `args` at `options.maxWidth`.
@@ -845,18 +836,33 @@ export class Console {
 
   /**
    * Raises a desktop notification, in the protocol this console's terminal
-   * reads, and returns its id — what a click reported back names
-   * (`App.onNotificationClick`). `urgency`, `buttons` and `reportClicks` are
-   * kitty's to take; elsewhere the notification is shown as it would have been
-   * without them. A click is reported only while the program still reads the
-   * terminal: once it has exited, the report is typed at whatever reads next.
+   * reads, and returns its id. `urgency` is kitty's to take; elsewhere the
+   * notification is shown as it would have been without it. Buttons and a click
+   * report are `App.notify`'s, and this refuses them.
    */
   notify(title: string, body?: string, options: NotifyOptions = {}): string {
+    const { buttons, reportClicks } = options as AppNotifyOptions;
+    if (buttons !== undefined || reportClicks !== undefined) {
+      throw new TypeError("Console.notify takes no buttons or click report: a click is heard only by an app, so those are App.notify's");
+    }
+    return this.raise(title, body, options);
+  }
+
+  /**
+   * What `notify` raises, with the click options too: for the app that hears the
+   * clicks on what it raises, and returns the id a click names.
+   */
+  protected raise(title: string, body: string | undefined, options: AppNotifyOptions): string {
     // Random, so no other console or run shares it: kitty updates in place a
     // notification whose id it has seen.
     const id = Math.random().toString(36).slice(2, 12);
     this._request(NOTIFICATION, parseNotification({ title, body, id, urgency: options.urgency, buttons: options.buttons, reportClicks: options.reportClicks }));
     return id;
+  }
+
+  /** Withdraws a notification `raise` made, so a click on it is no longer reported (kitty's `p=close`). */
+  protected withdraw(id: string): void {
+    this._request(NOTIFICATION_CLOSE, id);
   }
 
   /** Asks for the reader's attention through the dock or taskbar (iTerm2's RequestAttention). */
@@ -866,9 +872,7 @@ export class Console {
 
   /** Marks a point in a prompt's life for the terminal's shell-integration zones (OSC 133). */
   mark(value: SemanticMark): void {
-    const mark = parseMark(value);
-    this._inPrompt.set(mark === "prompt" || mark === "input");
-    this._request(SEMANTIC_MARK, mark);
+    this._request(SEMANTIC_MARK, parseMark(value));
   }
 
   // [LAW:single-enforcer] Every request to the terminal goes through here: it

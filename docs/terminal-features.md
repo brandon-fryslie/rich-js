@@ -189,27 +189,31 @@ the console, which sends each only to a terminal someone is at, and never into
 a capture or a pipe.
 
 `Console.notify` raises a notification and returns its id. kitty takes an
-urgency, buttons and a click report on it; a click on the notification or one
-of its buttons comes back to the app as `onNotificationClick`, with the id and
-the 1-based button or none. That report exists only while the program still
-reads the terminal: after it exits, kitty types the report at whatever reads
-next, so a program that asks for clicks must not outlive `App`'s hand-back.
-Elsewhere the notification is shown as it would have been without them. An
-urgency kitty does not know, or a button with no label, is a `TypeError` on
-every terminal, so a bad call fails the same way wherever it runs.
+urgency on it; elsewhere the notification is shown as it would have been
+without one. Buttons and a click report are an app's to ask for: `App.notify`
+raises the notification the same way, takes both, and returns the id a click
+names. A click on the notification or one of its buttons comes back to the app
+as `onNotificationClick`, with that id and the 1-based button or none. kitty
+types a click report at whatever reads the terminal next once no app hears it,
+so the app withdraws each notification it asked to hear as it leaves the
+terminal, by stopping or suspending, and a `Console` refuses the click options
+outright. An urgency kitty does not know, a button with no label, or a report
+flag that is not a boolean is a `TypeError` on every terminal, so a bad call
+fails the same way wherever it runs.
 
 `Console.requestAttention` asks iTerm2 to bounce the dock icon, fire its
 fireworks, cancel a bounce, or bring the window forward. A `Progress` that
 finishes or fails does not request attention itself: a renderable cannot send
 during a render, so the program calls `requestAttention` when its task ends.
 
-`Console.mark` writes OSC 133 zones for shell integration. `Prompt` opens its
-prompt and input zones before it asks, so the prompt text its input draws is
-part of the input, and closes the command once an answer is accepted. An answer
-that never comes ends the command with a bare `D`, which carries no exit, so
-what follows is not read as its input. Every other `Console.print` is one
-output zone, including a `Live`'s final frame, so a terminal that folds or
-selects by zone sees each print as a command's output.
+`Console.mark` writes OSC 133 zones for shell integration. `Prompt` writes them
+for its own command: each attempt at an answer opens its prompt and input zones
+before it asks, so the prompt text its input draws is part of the input. An
+accepted answer closes the command with exit 0. A refused one aborts it with a
+bare `D`, which carries no exit, and the next attempt opens its own zones; an
+answer that never comes is aborted the same way. A `Console.print` writes no
+zone. A print is output, not a command a shell ran, and a zone around it would
+tell the terminal that a command had finished.
 
 ## Underlines
 

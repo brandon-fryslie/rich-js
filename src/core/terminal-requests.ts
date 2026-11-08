@@ -246,6 +246,9 @@ export function parseNotification(value: Notification): ParsedNotification {
   if (value.urgency !== undefined && !URGENCY_LEVELS.includes(value.urgency)) {
     throw new TypeError(`${JSON.stringify(value.urgency)} is not an urgency: one of ${URGENCY_LEVELS.join(", ")}`);
   }
+  if (value.reportClicks !== undefined && typeof value.reportClicks !== "boolean") {
+    throw new TypeError(`reportClicks must be true or false, not ${typeof value.reportClicks}`);
+  }
   return {
     title: text(value.title, "a notification's title"),
     body: value.body === undefined ? undefined : text(value.body, "a notification's body"),
@@ -312,6 +315,12 @@ export const NOTIFICATION: TerminalFeature<ParsedNotification> = {
       },
     },
   ],
+};
+
+/** OSC 99's `p=close`: withdraws a notification by its id, so a click on it is no longer reported back. kitty only. */
+export const NOTIFICATION_CLOSE: TerminalFeature<string> = {
+  name: "notification close",
+  encodings: [{ name: "OSC 99 close", terminals: ["kitty"], failure: "ignored", routes: OUTER_ONLY, encode: (id) => `${OSC}99;i=${id}:p=close;${ST}` }],
 };
 
 /**
@@ -393,16 +402,17 @@ export function parseMark(value: unknown): ParsedSemanticMark {
  * output begin and end, so it can select, fold and jump between them. A
  * terminal that does not read them ignores them. Behind tmux they cross
  * through its passthrough. The byte forms are the FinalTerm sequences iTerm2
- * documents (iterm2.com/finalterm.html), the abort's bare `D` included; no
- * probe has yet confirmed them on the other terminals listed, which the
- * recorded probes (6ch.xy8) are for.
+ * documents (iterm2.com/finalterm.html), the abort's bare `D` included. kitty's
+ * and Ghostty's own documentation and source describe the same forms, so they
+ * are listed. WezTerm and foot are not: nothing of theirs settles the `D` form,
+ * and the recorded probes (6ch.xy8) decide them.
  */
 export const SEMANTIC_MARK: TerminalFeature<ParsedSemanticMark> = {
   name: "semantic mark",
   encodings: [
     {
       name: "OSC 133",
-      terminals: ["iterm2", "kitty", "wezterm", "foot", "ghostty"],
+      terminals: ["iterm2", "kitty", "ghostty"],
       failure: "ignored",
       routes: OUTER_ONLY,
       encode: (value) => {

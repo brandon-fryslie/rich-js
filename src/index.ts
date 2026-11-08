@@ -305,6 +305,7 @@ export type {
   ConsoleSink,
   ConsoleStream,
   ConsoleEnvironment,
+  AppNotifyOptions,
   LiveRegion,
   NotifyOptions,
   PrintOptions,
