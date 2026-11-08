@@ -339,6 +339,12 @@ describe("Console.mark", () => {
     expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;C${ST}${ESC}]133;D;2${ST}`);
   });
 
+  it("writes the bare D that aborts a command, which carries no exit", () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    console.mark("abort");
+    expect(written()).toBe(`${ESC}]133;D${ST}`);
+  });
+
   it("writes nothing into a capture, as every request", () => {
     const { console, written } = terminal(ITERM, GUESS);
     console.beginCapture();
@@ -352,15 +358,16 @@ describe("Console.notify buttons and click reports", () => {
   it("writes a report request on the first chunk, then each button as a chunk of its own, after the body", () => {
     const { console, written } = terminal(KITTY, GUESS);
     const id = console.notify("Build", "3 failed", { buttons: ["Open log", "Dismiss"], reportClicks: true });
+    // kitty's `a` is a list whose default is `focus`: naming `report` alone drops focus-on-click, so both are named.
     expect(written()).toBe(
-      `${ESC}]99;i=${id}:a=report:d=0;Build${ST}${ESC}]99;i=${id}:p=body:d=0;3 failed${ST}${ESC}]99;i=${id}:p=buttons;Open log Dismiss${ST}`,
+      `${ESC}]99;i=${id}:a=focus,report:d=0;Build${ST}${ESC}]99;i=${id}:p=body:d=0;3 failed${ST}${ESC}]99;i=${id}:p=buttons;Open log Dismiss${ST}`,
     );
   });
 
   it("returns the id it wrote, so a click names the notification it came from", () => {
     const { console, written } = terminal(KITTY, GUESS);
     const id = console.notify("Done", undefined, { reportClicks: true });
-    expect(written()).toBe(`${ESC}]99;i=${id}:a=report;Done${ST}`);
+    expect(written()).toBe(`${ESC}]99;i=${id}:a=focus,report;Done${ST}`);
   });
 
   it("drops a U+2028 from a label, so a label cannot split into two buttons", () => {
@@ -380,6 +387,26 @@ describe("Console.notify buttons and click reports", () => {
     const { console, written } = terminal(FOOT, GUESS);
     console.notify("Done", "ok", { buttons: ["x"], reportClicks: true });
     expect(written()).toBe(`${ESC}]777;notify;Done;ok${ST}`);
+  });
+});
+
+describe("Console.notify's options are checked where they are given", () => {
+  // A TypeScript caller cannot pass these; a JavaScript one can, and the error belongs to the call, not to whichever terminal reads it.
+  it("refuses an urgency kitty does not know on every terminal, rather than writing u=undefined", () => {
+    const { console, written } = terminal(FOOT, GUESS);
+    expect(() => console.notify("Done", undefined, { urgency: "high" as never })).toThrow(TypeError);
+    expect(written()).toBe("");
+  });
+
+  it("refuses a button with no label, so kitty never shows an empty button", () => {
+    const { console, written } = terminal(KITTY, GUESS);
+    expect(() => console.notify("Done", undefined, { buttons: ["Yes", ""] })).toThrow(TypeError);
+    expect(written()).toBe("");
+  });
+
+  it("refuses a label that is only line separators, which stripping would leave empty", () => {
+    const { console } = terminal(KITTY, GUESS);
+    expect(() => console.notify("Done", undefined, { buttons: [" "] })).toThrow(TypeError);
   });
 });
 
@@ -450,5 +477,26 @@ describe("Prompt's zones", () => {
     expect(value).toBe("yes");
     expect(written().endsWith(`${ESC}]133;C${ST}${ESC}]133;D;0${ST}`)).toBe(true);
     expect(written().split(`${ESC}]133;A`).length - 1).toBe(1);
+  });
+
+  it("keeps the prompt its input draws out of an output zone, so the command stays open until the answer", async () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    const value = await Prompt.ask("Proceed?", async (prompt, console) => {
+      console.print(prompt, { end: "", softWrap: true });
+      return "yes";
+    }, { console });
+    expect(value).toBe("yes");
+    // The prompt sits between B and the output zone, which opens once the answer is accepted and closes at once.
+    expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}Proceed?: ${ESC}]133;C${ST}${ESC}]133;D;0${ST}`);
+  });
+
+  it("ends the command it opened when no answer comes, so the text after it is not its input", async () => {
+    const { console, written } = terminal(ITERM, GUESS);
+    await expect(Prompt.ask("Proceed?", async () => {
+      throw new Error("closed");
+    }, { console })).rejects.toThrow("closed");
+    expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}`);
+    console.print("after");
+    expect(written()).toBe(`${ESC}]133;A${ST}${ESC}]133;B${ST}${ESC}]133;D${ST}${ESC}]133;C${ST}after\n${ESC}]133;D;0${ST}`);
   });
 });

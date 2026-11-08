@@ -8,7 +8,7 @@ import { ColorDepth, resolveOutputTarget } from "./color.js";
 import { isAttended } from "./env.js";
 import { textOrderOf, type TextOrder } from "./text-order.js";
 import { identifyTerminal } from "./terminal-identity.js";
-import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, POINTER, SEMANTIC_MARK, TITLE, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
+import { ATTENTION, BELL, CLIPBOARD, NOTIFICATION, POINTER, SEMANTIC_MARK, TITLE, parseNotification, pointerShape, type Attention, type NotificationUrgency, type PointerShape, type SemanticMark } from "./terminal-requests.js";
 import { underlineSupport } from "./style-effects.js";
 import { heldLayers, inferCapabilities, notSent, pick, type TerminalFeaturesOption, type TerminalFeature, type TerminalFeatures, type TerminalSend } from "./terminal-capabilities.js";
 import type { ColorSystemName, OutputTarget } from "./color.js";
@@ -443,6 +443,8 @@ export class Console {
   // non-empty" — `string | null` makes that unrepresentable.
   private readonly _capture = new State<string | null>(null);
   private readonly _liveRegion = new State<LiveRegion>(NO_LIVE_REGION);
+  // Whether a prompt's zones are open: from its prompt mark until its output or end mark, what is printed is the prompt, not output.
+  private readonly _inPrompt = new State<boolean>(false);
   private readonly _madeIn: Pass | undefined = activePass();
 
   constructor(options?: ConsoleOptions) {
@@ -587,8 +589,9 @@ export class Console {
   print(...args: unknown[]): void {
     // Each print is one output zone for the terminal's shell integration, opened
     // before its first byte and closed after its last even when drawing throws.
-    // Only a print a terminal is reading is zoned, so piped output logs nothing.
-    const zoned = this._reachesTerminal;
+    // Only a print a terminal is reading is zoned, so piped output logs nothing,
+    // and a print inside a prompt's zones is the prompt the input draws, not output.
+    const zoned = this._reachesTerminal && !this._inPrompt.get();
     if (zoned) this.mark("output");
     try {
       this._writeSegments(emit(this._draw(args, this.options)));
@@ -849,7 +852,7 @@ export class Console {
     // Random, so no other console or run shares it: kitty updates in place a
     // notification whose id it has seen.
     const id = Math.random().toString(36).slice(2, 12);
-    this._request(NOTIFICATION, { title, body, id, urgency: options.urgency, buttons: options.buttons, reportClicks: options.reportClicks });
+    this._request(NOTIFICATION, parseNotification({ title, body, id, urgency: options.urgency, buttons: options.buttons, reportClicks: options.reportClicks }));
     return id;
   }
 
@@ -860,6 +863,7 @@ export class Console {
 
   /** Marks a point in a prompt's life for the terminal's shell-integration zones (OSC 133). */
   mark(mark: SemanticMark): void {
+    this._inPrompt.set(mark === "prompt" || mark === "input");
     this._request(SEMANTIC_MARK, mark);
   }
 

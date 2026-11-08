@@ -130,19 +130,26 @@ async function run<T>(promptText: string, input: PromptInput, kind: PromptKind<T
   // the command closes once an answer is accepted, with exit 0.
   console.mark("prompt");
   console.mark("input");
-  while (true) {
-    // A copy, because a `RichText` is mutable and the same prompt is asked
-    // again on every retry.
-    const answer = await input(prompt.copy(), console);
-    const value: T | InvalidResponse = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
-    if (!(value instanceof InvalidResponse)) {
-      console.mark("output");
-      console.mark({ done: 0 });
-      return value;
+  try {
+    while (true) {
+      // A copy, because a `RichText` is mutable and the same prompt is asked
+      // again on every retry.
+      const answer = await input(prompt.copy(), console);
+      const value: T | InvalidResponse = answer === "" && options.default !== undefined ? options.default : kind.process(answer);
+      if (!(value instanceof InvalidResponse)) {
+        console.mark("output");
+        console.mark({ done: 0 });
+        return value;
+      }
+      // The message is this module's markup, read as markup whatever the
+      // console's own `markup` setting.
+      console.print(renderMarkup(value.message));
     }
-    // The message is this module's markup, read as markup whatever the
-    // console's own `markup` setting.
-    console.print(renderMarkup(value.message));
+  } catch (error) {
+    // Any way out without an answer ends the command unanswered, so the terminal
+    // never reads what follows as the input to a command that never finished.
+    console.mark("abort");
+    throw error;
   }
 }
 

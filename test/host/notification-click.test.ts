@@ -48,4 +48,23 @@ describe("a notification's click", () => {
     await done;
     expect(clicks).toEqual([]);
   });
+
+  it("is not heard while the app is suspended and has handed the terminal back", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const app = new App({ host, surface: "alternate", clock: fakeClock(0), view: new RichText("hi") });
+    const clicks: unknown[] = [];
+    const keys: unknown[] = [];
+    app.onNotificationClick((click) => void clicks.push(click));
+    app.onKey((press) => void keys.push(press));
+    const done = app.run();
+    const suspended = app.suspend();
+    host.type(`${ESC}]99;i=abc;1${ST}`);
+    host.type("x");
+    host.resume();
+    await suspended;
+    app.stop();
+    await done;
+    expect(clicks).toEqual([]);
+    expect(keys).toEqual([]);
+  });
 });

@@ -12,7 +12,7 @@ import { describe, it, expect } from "vitest";
 import { App } from "../../src/host/app.js";
 import { askTerminalIdentity } from "../../src/host/terminal-version.js";
 import { pick } from "../../src/core/terminal-capabilities.js";
-import { NOTIFICATION } from "../../src/core/terminal-requests.js";
+import { NOTIFICATION, parseNotification } from "../../src/core/terminal-requests.js";
 import { RichText } from "../../src/core/text.js";
 import { Progress } from "../../src/renderables/progress.js";
 import { fakeClock } from "../core/fake-clock.js";
@@ -92,7 +92,7 @@ describe("askTerminalIdentity", () => {
 
   it("lets strict send foot its own notification once foot names itself", async () => {
     const { before, after } = await identified(SESSIONS.foot);
-    const notification = { title: "Done", body: undefined, id: "1" };
+    const notification = parseNotification({ title: "Done", body: undefined, id: "1" });
     expect(pick(NOTIFICATION, notification, before).reason).toMatch(/^OSC 9:/);
     expect(pick(NOTIFICATION, notification, after).bytes).toBe("\x1b]777;notify;Done;\x1b\\");
   });

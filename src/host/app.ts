@@ -746,9 +746,11 @@ export class App implements FrameHost {
   // [LAW:no-silent-failure] The host calls these handlers, not the program,
   // so one that throws ends the app with its error, as a frame that throws
   // does. A handler that stops the app is the last to hear the event.
+  // Heard only while the app holds the terminal, as the mouse is: a suspended
+  // app has handed it back, and what is read then is no longer its input.
   private hear<E>(handlers: ReadonlySet<(event: E) => void>, event: E): void {
     try {
-      for (const handler of [...handlers]) if (this._phase !== "stopped") handler(event);
+      for (const handler of [...handlers]) if (this._phase === "running") handler(event);
     } catch (error) {
       this.fail(error);
     }

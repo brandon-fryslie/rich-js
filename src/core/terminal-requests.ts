@@ -185,10 +185,10 @@ export const CLIPBOARD: TerminalFeature<string> = {
   ],
 };
 
-/** A desktop notification; `id` must differ per notification, or kitty updates the earlier one in place. */
 /** How hard a notification asks for the reader's attention. kitty takes it; a terminal that cannot grade it shows the notification as it would have. */
 export type NotificationUrgency = "low" | "normal" | "critical";
 
+/** A desktop notification; `id` must differ per notification, or kitty updates the earlier one in place. */
 export interface Notification {
   readonly title: string;
   readonly body: string | undefined;
@@ -199,16 +199,6 @@ export interface Notification {
   /** Whether a click on the notification or one of its buttons is reported back to the program (kitty's `a=report`). kitty only. */
   readonly reportClicks?: boolean;
 }
-
-const shown = (notification: Notification): Notification => ({
-  title: stripOscControls(notification.title),
-  body: notification.body === undefined ? undefined : stripOscControls(notification.body),
-  id: notification.id,
-  urgency: notification.urgency,
-  // A label holds no U+2028, the separator, which stripping takes out with the other line separators.
-  buttons: notification.buttons?.map((label) => stripOscControls(label)),
-  reportClicks: notification.reportClicks,
-});
 
 // U+2028 between kitty's button labels: the separator its protocol names.
 const BUTTON_SEPARATOR = " ";
@@ -228,13 +218,44 @@ export function notificationClick(body: string): NotificationClick | undefined {
 
 // OSC 99's `u=`: 0 low, 1 normal, 2 critical.
 const URGENCY_CODE = { low: 0, normal: 1, critical: 2 } as const;
+const URGENCY_LEVELS: readonly string[] = Object.keys(URGENCY_CODE);
+
+/** A `Notification` that `parseNotification` has checked at runtime. */
+export type ParsedNotification = Notification & { readonly [parsed]: true };
+
+/**
+ * `value` as a `Notification` the encoders may write: an urgency one of
+ * `NotificationUrgency`'s levels, and the title, body and labels stripped of
+ * controls, with no label left empty by it — or a `TypeError` naming what is
+ * wrong. The type binds only a TypeScript caller, and an encoder runs only for
+ * the terminal that reads it, so a bad call is refused here, on every road,
+ * whether or not anything is then written.
+ */
+export function parseNotification(value: Notification): ParsedNotification {
+  if (value.urgency !== undefined && !URGENCY_LEVELS.includes(value.urgency)) {
+    throw new TypeError(`${JSON.stringify(value.urgency)} is not an urgency: one of ${URGENCY_LEVELS.join(", ")}`);
+  }
+  return {
+    title: stripOscControls(value.title),
+    body: value.body === undefined ? undefined : stripOscControls(value.body),
+    id: value.id,
+    urgency: value.urgency,
+    // A label holds no U+2028, the separator, which stripping takes out with the other line separators, so a label of only those is empty here.
+    buttons: value.buttons?.map((label, index) => {
+      const stripped = stripOscControls(label);
+      if (stripped === "") throw new TypeError(`button ${index + 1} has no label: every button needs text`);
+      return stripped;
+    }),
+    reportClicks: value.reportClicks,
+  } as ParsedNotification;
+}
 
 /**
  * kitty's OSC 99, title then body joined by `id`; OSC 777 for foot and
  * Ghostty; and OSC 9, which kitty, Ghostty, iTerm2 and WezTerm read and any
  * other terminal ignores, carrying one line, so title and body are joined there.
  */
-export const NOTIFICATION: TerminalFeature<Notification> = {
+export const NOTIFICATION: TerminalFeature<ParsedNotification> = {
   name: "notification",
   encodings: [
     {
@@ -243,9 +264,10 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
       failure: "ignored",
       routes: OUTER_ONLY,
       encode: (notification) => {
-        const { title, body, id, urgency, buttons, reportClicks } = shown(notification);
+        const { title, body, id, urgency, buttons, reportClicks } = notification;
         // The first chunk carries what kitty reads to start the notification: its urgency and whether clicks come back.
-        const first = [`i=${id}`, ...(urgency === undefined ? [] : [`u=${URGENCY_CODE[urgency]}`]), ...(reportClicks === true ? ["a=report"] : [])];
+        // `a` is a list whose default is `focus`, so naming `report` alone would drop focus-on-click.
+        const first = [`i=${id}`, ...(urgency === undefined ? [] : [`u=${URGENCY_CODE[urgency]}`]), ...(reportClicks === true ? ["a=focus,report"] : [])];
         const pieces: [readonly string[], string][] = [[first, title]];
         if (body !== undefined) pieces.push([[`i=${id}`, "p=body"], body]);
         if (buttons !== undefined && buttons.length > 0) pieces.push([[`i=${id}`, "p=buttons"], buttons.join(BUTTON_SEPARATOR)]);
@@ -259,7 +281,7 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
       failure: "ignored",
       routes: OUTER_ONLY,
       encode: (notification) => {
-        const { title, body } = shown(notification);
+        const { title, body } = notification;
         // A `;` would end 777's title field.
         return `${OSC}777;notify;${title.replaceAll(";", ",")};${body ?? ""}${ST}`;
       },
@@ -270,7 +292,7 @@ export const NOTIFICATION: TerminalFeature<Notification> = {
       failure: "ignored",
       routes: WRAPPED,
       encode: (notification) => {
-        const { title, body } = shown(notification);
+        const { title, body } = notification;
         const line = body === undefined ? title : `${title}: ${body}`;
         // ConEmu's sub-commands (`9;4;` progress, `9;9;` directory) open with a
         // number, then a `;` or nothing, and WezTerm and Windows Terminal read
@@ -314,8 +336,10 @@ export const ATTENTION: TerminalFeature<Attention> = {
  * A point in a command-line prompt's life, in the shell-integration zones
  * OSC 133 names: the prompt (`A`), what the reader types (`B`), the output
  * that follows (`C`), and the end of it with the exit it finished with (`D`).
+ * `abort` is the `D` with no exit, which ends a command that never finished:
+ * a prompt whose answer never came.
  */
-export type SemanticMark = "prompt" | "input" | "output" | { readonly done: number };
+export type SemanticMark = "prompt" | "input" | "output" | "abort" | { readonly done: number };
 
 const MARK_CODE = { prompt: "A", input: "B", output: "C" } as const;
 
@@ -323,9 +347,10 @@ const MARK_CODE = { prompt: "A", input: "B", output: "C" } as const;
  * OSC 133 zones, which a terminal reads to know where each prompt and its
  * output begin and end, so it can select, fold and jump between them. A
  * terminal that does not read them ignores them. Behind tmux they cross
- * through its passthrough. Unverified: the byte forms are from the FinalTerm
- * convention, not the semantic-prompts spec, which could not be fetched; the
- * recorded probes (6ch.xy8) are what confirm them.
+ * through its passthrough. The byte forms are the FinalTerm sequences iTerm2
+ * documents (iterm2.com/finalterm.html), the abort's bare `D` included; no
+ * probe has yet confirmed them on the other terminals listed, which the
+ * recorded probes (6ch.xy8) are for.
  */
 export const SEMANTIC_MARK: TerminalFeature<SemanticMark> = {
   name: "semantic mark",
@@ -335,7 +360,10 @@ export const SEMANTIC_MARK: TerminalFeature<SemanticMark> = {
       terminals: ["iterm2", "kitty", "wezterm", "foot", "ghostty"],
       failure: "ignored",
       routes: OUTER_ONLY,
-      encode: (mark) => (typeof mark === "string" ? `${OSC}133;${MARK_CODE[mark]}${ST}` : `${OSC}133;D;${mark.done}${ST}`),
+      encode: (mark) => {
+        if (mark === "abort") return `${OSC}133;D${ST}`;
+        return typeof mark === "string" ? `${OSC}133;${MARK_CODE[mark]}${ST}` : `${OSC}133;D;${mark.done}${ST}`;
+      },
     },
   ],
 };
