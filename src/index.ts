@@ -97,8 +97,8 @@ export {
 // reaches for to tint a resolved color against itself (e.g. a focused-while-open
 // menu cell lightening its inherited background) without re-deriving from a
 // palette name. Negative levels invert (lighten(c,-n) === darken(c,n)).
-// `rgbToHsl`/`hslToRgb` are the HSL pair `darken` runs on, for a consumer that
-// places colors in HSL (rotating a hue) and holds floors with `ensureContrast`.
+// `rgbToHsl`/`hslToRgb`: sRGB to and from HSL, the space `darken`/`lighten`
+// step lightness in.
 export {
   lighten,
   darken,

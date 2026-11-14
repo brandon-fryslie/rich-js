@@ -105,6 +105,7 @@ function clamp01(v: number): number {
  * RGB↔HSL roundtrip; values may differ by ±1 due to rounding).
  */
 export function darken(color: ColorRgba, levels: number): ColorRgba {
+  if (Number.isNaN(levels)) throw new RangeError("levels must be a number, got NaN");
   const hsl = rgbToHsl(color);
   return hslToRgb({ ...hsl, l: clamp01(hsl.l - LEVEL_STEP * levels) });
 }

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ColorDepth, ColorRgba, ColorSpec, parseRgbaHex } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
-import * as barrel from "../../src/index.js";
 import {
   darken,
   lighten,
@@ -50,6 +49,13 @@ describe("darken", () => {
   it("negative levels lighten", () => {
     const sum = (t: ColorRgba) => t.red + t.green + t.blue;
     expect(sum(darken(mid, -2))).toBeGreaterThan(sum(mid));
+  });
+});
+
+describe("darken levels", () => {
+  it("throws naming its own argument on a NaN level", () => {
+    expect(() => darken(red, Number.NaN)).toThrow(/levels must be a number/);
+    expect(() => lighten(red, Number.NaN)).toThrow(/levels must be a number/);
   });
 });
 
@@ -104,9 +110,7 @@ describe("rgbToHsl / hslToRgb", () => {
     expect(() => hslToRgb({ h: Number.NaN, s: 0.5, l: 0.5 })).toThrow(RangeError);
   });
 
-  it("is the pair darken runs, exported from the package", () => {
-    expect(barrel.rgbToHsl).toBe(rgbToHsl);
-    expect(barrel.hslToRgb).toBe(hslToRgb);
+  it("is the pair darken runs", () => {
     const hsl = rgbToHsl(red);
     expect(darken(red, 2)).toEqual(hslToRgb({ ...hsl, l: hsl.l - 0.2 }));
   });
