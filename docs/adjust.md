@@ -95,7 +95,7 @@ const base = new ColorRgba(200, 50, 50);
 const hsl = rgbToHsl(base);
 for (const turn of [0, 120, 240]) {
   const c = hslToRgb({ ...hsl, h: hsl.h + turn });
-  console.print(`[on ${c.hex}]      [/] ${c.hex}  h=${Math.round((hsl.h + turn) % 360)}`);
+  console.print(`[on ${c.hex}]      [/] ${c.hex}  h=${Math.round(rgbToHsl(c).h)}`);
 }
 ```
 

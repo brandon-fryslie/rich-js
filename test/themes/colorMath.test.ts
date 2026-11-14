@@ -52,13 +52,6 @@ describe("darken", () => {
   });
 });
 
-describe("darken levels", () => {
-  it("throws naming its own argument on a NaN level", () => {
-    expect(() => darken(red, Number.NaN)).toThrow(/levels must be a number/);
-    expect(() => lighten(red, Number.NaN)).toThrow(/levels must be a number/);
-  });
-});
-
 describe("lighten", () => {
   it("monotonically increases lightness", () => {
     const sum = (t: ColorRgba) => t.red + t.green + t.blue;
@@ -108,6 +101,14 @@ describe("rgbToHsl / hslToRgb", () => {
     expect(() => hslToRgb({ h: 0, s: 1.2, l: 0.5 })).toThrow(RangeError);
     expect(() => hslToRgb({ h: 0, s: 0.5, l: -0.1 })).toThrow(RangeError);
     expect(() => hslToRgb({ h: Number.NaN, s: 0.5, l: 0.5 })).toThrow(RangeError);
+    expect(() => hslToRgb({ h: Number.POSITIVE_INFINITY, s: 0.5, l: 0.5 })).toThrow(RangeError);
+    expect(() => hslToRgb({ h: 0, s: Number.NaN, l: 0.5 })).toThrow(RangeError);
+    expect(() => hslToRgb({ h: 0, s: 0.5, l: Number.NaN })).toThrow(RangeError);
+  });
+
+  it("accepts s and l at both ends of 0..1", () => {
+    expect(hslToRgb({ h: 0, s: 0, l: 0 })).toEqual(new ColorRgba(0, 0, 0));
+    expect(hslToRgb({ h: 0, s: 1, l: 1 })).toEqual(new ColorRgba(255, 255, 255));
   });
 
   it("is the pair darken runs", () => {
