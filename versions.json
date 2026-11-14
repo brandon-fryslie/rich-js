@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-609",
+      "ref": "refs/pull/609/merge",
+      "sha": "e84bb0dd268773b178a0470ec73b48e90bc90d09",
+      "timestamp": "2026-11-14T08:21:01.756Z",
+      "commits": [
+        {
+          "sha": "e84bb0dd268773b178a0470ec73b48e90bc90d09",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-14T01:18:46-07:00",
+          "message": "Merge d9a009382fd03430b090ae81e0effd29399a74d2 into a1270ebef668812b149ea9113eac48cb6de585c3\n"
+        },
+        {
+          "sha": "d9a009382fd03430b090ae81e0effd29399a74d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-14T01:18:30-07:00",
+          "message": "Export the HSL pair, rgbToHsl and hslToRgb, and the Hsl type (rich-palette-xovz.yo3)\n\ncc-dump-web places its category colors in HSL and holds floors with\nensureContrast; it now imports the pair darken runs on instead of carrying a\ncopy. Exported, hslToRgb is total over its type: a hue wraps mod 360, and a\nnon-finite hue or s/l outside [0,1] throws RangeError. darken's inputs were\nalready in range, so its output is unchanged.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a1270ebef668812b149ea9113eac48cb6de585c3",
