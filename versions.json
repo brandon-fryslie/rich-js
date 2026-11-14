@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-609",
-      "ref": "refs/pull/609/merge",
-      "sha": "14d7ce3a08646802d3bef3dcc5d7048df2fd253e",
-      "timestamp": "2026-11-14T08:28:40.483Z",
-      "commits": [
-        {
-          "sha": "14d7ce3a08646802d3bef3dcc5d7048df2fd253e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-14T08:26:20Z",
-          "message": "Merge cfde5aac4614f33067e51b1424310473fe344cd8 into a1270ebef668812b149ea9113eac48cb6de585c3\n"
-        },
-        {
-          "sha": "cfde5aac4614f33067e51b1424310473fe344cd8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-14T01:26:11-07:00",
-          "message": "Drop darken's second NaN check; pin hslToRgb's non-finite and boundary inputs; the docs label reads the hue back (rich-palette-xovz.yo3 review)\n"
-        },
-        {
-          "sha": "b29e2e9c273ec71535d19b7542e3fb7cde12bf40",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-14T01:23:34-07:00",
-          "message": "Document the HSL pair on the adjust page; darken names a NaN level itself; drop the barrel-identity assertions (rich-palette-xovz.yo3 review)\n"
-        },
-        {
-          "sha": "d9a009382fd03430b090ae81e0effd29399a74d2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-14T01:18:30-07:00",
-          "message": "Export the HSL pair, rgbToHsl and hslToRgb, and the Hsl type (rich-palette-xovz.yo3)\n\ncc-dump-web places its category colors in HSL and holds floors with\nensureContrast; it now imports the pair darken runs on instead of carrying a\ncopy. Exported, hslToRgb is total over its type: a hue wraps mod 360, and a\nnon-finite hue or s/l outside [0,1] throws RangeError. darken's inputs were\nalready in range, so its output is unchanged.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a1270ebef668812b149ea9113eac48cb6de585c3",
-      "timestamp": "2026-11-08T14:35:57.870Z",
+      "sha": "d40ab5d2c30be0280d88c1b5e925e0370a1b6a21",
+      "timestamp": "2026-11-14T08:44:05.266Z",
       "commits": [
         {
-          "sha": "a1270ebef668812b149ea9113eac48cb6de585c3",
+          "sha": "d40ab5d2c30be0280d88c1b5e925e0370a1b6a21",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-08T07:33:40-07:00",
-          "message": "Events: kitty's notification urgency, buttons and click report, iTerm2 attention and StealFocus, OSC 133 prompt zones (6ch.hds) (#608)\n\n* Events: kitty's notification urgency, buttons and click report (an App event), iTerm2's attention requests and StealFocus, and OSC 133 zones around each print and each Prompt.ask (rich-control-codes-xh4n.6ch.hds)\n\nAttention and notification bytes are checked against kitty's desktop-notification page and iTerm2's escape-codes page. The OSC 133 byte form is from the FinalTerm convention: the semantic-prompts spec could not be fetched, and the recorded probes (6ch.xy8) confirm it.\n\nNot in this commit: opt-in recording of events (the ticket's recordings rule). Nothing opts in yet, so events are never recorded, and whether they belong in exports is an open design question.\n\n* Review fixes for notification, prompt zones and suspended input (6ch.hds)\n\n- A print inside a prompt's zones is the prompt its input draws, not output,\n  so the command stays open until the answer. nodeAsk's own print had been\n  closing it with a C..D pair before the reader typed.\n- A prompt that gets no answer ends its command with a bare OSC 133 D\n  (`mark(\"abort\")`), so the text after it is not read as its input.\n- kitty's `a` is a list whose default is `focus`; `a=report` alone dropped\n  focus-on-click. It now names `a=focus,report`.\n- `parseNotification` checks options where they are given, on every road, as\n  `pointerShape` does: an urgency kitty does not know, or a button with no\n  label, is a TypeError on every terminal rather than `u=undefined` or an\n  empty button on kitty alone. Encoders read the parsed value; `shown` is gone.\n- `hear` delivers only while the app is running, as the mouse and wheel\n  already do. A suspended app delivers no click and no key.\n- The Notification doc comment is back on the interface. SEMANTIC_MARK's\n  comment says what is verified (the iTerm2 FinalTerm forms) and what is not\n  (the other terminals' live probes, 6ch.xy8).\n\n* Review fixes, round two: every request checks its argument (6ch.hds)\n\n- requestAttention and mark take their argument through a parse on every\n  road, as pointerShape does. An unknown attention is a TypeError rather than\n  `RequestAttention=undefined`; a mark's exit must be a whole number from 0\n  to 255, the range OSC 133 carries, so no NaN or -1 reaches the bytes.\n- Notification text is checked where it is given: a title, body or label\n  that is not text is a TypeError naming it, not a raw .replace failure.\n- A prompt's abort covers only the exits before its answer. The marks that\n  close an accepted answer sit outside the try, so a failure writing them is\n  reported as itself, and the prompt and input marks are inside it, so a\n  failure opening the zones still ends the command and leaves prompt mode.\n- print is refused in a render pass it was not made in whether or not it\n  writes. An empty print there had passed silently; the refusal is the same\n  for every print now.\n\n* Review fixes, round three: prints write no zone; click reports are App.notify's (6ch.hds)\n\nWIP. Lint passes and the 381 targeted tests pass. The full suite and the docs\nbuild were started in the background and did not finish (logs:\n/tmp/rich-608-fix3-test.log, /tmp/rich-608-fix3-docs.log). Re-run `npm test`\nand `npm run docs:build` before merging.\n\n- A print writes no OSC 133 zone. A print is output, not a command a shell\n  ran, and a zone per print truncated the shell's own command-output zone. This\n  reverses the ticket's \"top-level prints\" clause; the prompt zones stay.\n- Each Prompt attempt is its own command: a refused answer aborts it, and the\n  next attempt opens its own prompt and input zones.\n- Click reports (buttons and reportClicks) are App.notify's. Console.notify\n  refuses them, and the app withdraws the notifications it asked to hear on\n  stop and on suspend (OSC 99 p=close), so no click is typed at the shell.\n- The app's drawing console is a DrawingConsole subclass, the only one that\n  raises a click report.\n- SEMANTIC_MARK lists iTerm2, kitty and Ghostty. WezTerm and foot wait for the\n  probes (6ch.xy8).\n- reportClicks that is not a boolean is a TypeError.\n\n* Review fix: an answer that cannot be processed ends its command (6ch.hds)\n\nProcessing an answer ran outside the try that marks an abort, so a throw from\nit (a PromptInput that answers with a non-string, say) left the input zone\nopen. The terminal then read the output after it as input to a command that\nnever finished. Processing now sits inside the try, so the abort mark and the\nrethrow cover it. The closing output and done marks stay outside it.\n\nTest: the new case in \"Prompt's zones\" fails on the previous prompt module\n(one test failed, the done mark missing) and passes on this one."
+          "timestamp": "2026-11-14T01:42:11-07:00",
+          "message": "Export the HSL pair, rgbToHsl and hslToRgb, and the Hsl type (rich-palette-xovz.yo3) (#609)\n\n* Export the HSL pair, rgbToHsl and hslToRgb, and the Hsl type (rich-palette-xovz.yo3)\n\ncc-dump-web places its category colors in HSL and holds floors with\nensureContrast; it now imports the pair darken runs on instead of carrying a\ncopy. Exported, hslToRgb is total over its type: a hue wraps mod 360, and a\nnon-finite hue or s/l outside [0,1] throws RangeError. darken's inputs were\nalready in range, so its output is unchanged.\n\n* Document the HSL pair on the adjust page; darken names a NaN level itself; drop the barrel-identity assertions (rich-palette-xovz.yo3 review)\n\n* Drop darken's second NaN check; pin hslToRgb's non-finite and boundary inputs; the docs label reads the hue back (rich-palette-xovz.yo3 review)"
         }
       ]
     },
