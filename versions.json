@@ -4,15 +4,22 @@
     {
       "version": "pr-610",
       "ref": "refs/pull/610/merge",
-      "sha": "71839386a2395a439b371af9ee1054cd3e25f44a",
-      "timestamp": "2026-11-14T09:17:06.141Z",
+      "sha": "55533cb546227de64330d1583fa02ba316c8f4e5",
+      "timestamp": "2026-11-14T09:24:26.451Z",
       "commits": [
         {
-          "sha": "71839386a2395a439b371af9ee1054cd3e25f44a",
+          "sha": "55533cb546227de64330d1583fa02ba316c8f4e5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-14T09:15:14Z",
-          "message": "Merge a306c5de0b818f4cfd023409d6b25bf722e9c9e2 into d40ab5d2c30be0280d88c1b5e925e0370a1b6a21\n"
+          "timestamp": "2026-11-14T09:21:48Z",
+          "message": "Merge e5339b2f753a5051716b3b715b2b5b4782cb58dd into d40ab5d2c30be0280d88c1b5e925e0370a1b6a21\n"
+        },
+        {
+          "sha": "e5339b2f753a5051716b3b715b2b5b4782cb58dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-14T02:21:35-07:00",
+          "message": "The page says a fallback keeps no earlier floor and may miss its own; a test pins the flip to the other pole (rich-palette-xovz.bfb review)\n"
         },
         {
           "sha": "a306c5de0b818f4cfd023409d6b25bf722e9c9e2",
