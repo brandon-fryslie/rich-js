@@ -65,6 +65,29 @@ const strong = ensureContrast(link, panel, 7);
 console.print(`[${strong.hex} on ${panel.hex}] link, AAA  [/]  ${contrastRatio(strong, panel).toFixed(2)}:1`);
 ```
 
+### One color on several grounds — `ensureContrastToward`
+
+`ensureContrast` slides toward the pole the background itself contrasts with, white on a ground darker than relative luminance 0.179 and black on a lighter one. A color held to a floor on two grounds on opposite sides of that cutoff is slid one way by the first call and back by the second, and the second undoes the first floor. `ensureContrastToward(fg, bg, minRatio, toward)` takes the pole as its fourth argument, black or white, so every slide moves the same way and each floor already met stays met. Where `toward` cannot reach `minRatio` on `bg`, the floor wins and the answer is `contrastFor(bg)`. It measures in truecolor and takes no `drawnAt`.
+
+```typescript
+import { ensureContrast, ensureContrastToward, contrastRatio, ColorRgba } from "@promptctl/rich-js";
+
+const background = new ColorRgba(40, 44, 52);    // dark
+const surface    = new ColorRgba(120, 124, 135); // just over the 0.179 cutoff
+const bar        = new ColorRgba(120, 90, 200);
+const white      = new ColorRgba(255, 255, 255); // a dark theme's text pole
+
+const chained = ensureContrast(ensureContrast(bar, background, 3), surface, 3);
+const toward  = ensureContrastToward(ensureContrastToward(bar, background, 3, white), surface, 3, white);
+
+for (const [label, c] of [["ensureContrast      ", chained], ["ensureContrastToward", toward]] as const) {
+  console.print(
+    `${label}  [on ${c.hex}]    [/]  on background ${contrastRatio(c, background).toFixed(2)}:1` +
+      `  on surface ${contrastRatio(c, surface).toFixed(2)}:1`,
+  );
+}
+```
+
 ### Measured where it is drawn — `drawnAt`
 
 `ensureContrast(fg, bg, minRatio, drawnAt = ColorDepth.TRUECOLOR)` takes a fourth argument: the depth the terminal will draw at. At truecolor the colors are drawn as computed. At 256 colors the terminal rounds text and background to its palette **independently**, and two roundings can meet in the middle — a pair that read at 4.5:1 can draw at 2:1. So at `ColorDepth.EIGHT_BIT` the answer is measured on the drawn pair: a color that still clears the floor once rounded is returned unchanged, and one that does not is replaced by the nearest 256-color entry (indices 16–255, never the terminal-defined ANSI 0–15) that clears it — or, when no entry can clear it on that background, by the entry with the most contrast, the same honest fallback as truecolor's black/white. At `STANDARD` the writer picks one of the sixteen ANSI indices and the terminal draws each in its own theme's color, so the pair is measured in the colors of the terminal you name (see `terminal` below). A truecolor answer whose drawn pair clears the floor stands; one that does not is replaced by the color the writer emits as the nearest index that clears it, or the one with the most contrast. Text on its background's own index measures 1:1, so it is always replaced.
