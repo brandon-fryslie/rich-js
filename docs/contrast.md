@@ -2,7 +2,7 @@
 
 When you place text on a colored background, it has to stay readable. rich-js exposes a small **WCAG contrast toolkit** for measuring and fixing contrast — useful any time you compute colors at runtime (themes, adjustment, user-supplied palettes) and can't eyeball every combination.
 
-All four functions operate on `ColorRgba` and are pure.
+Every function here operates on `ColorRgba` and is pure.
 
 ## Measuring contrast
 
@@ -67,7 +67,7 @@ console.print(`[${strong.hex} on ${panel.hex}] link, AAA  [/]  ${contrastRatio(s
 
 ### One color on several grounds — `ensureContrastToward`
 
-`ensureContrast` slides toward the pole the background itself contrasts with, white on a ground darker than relative luminance 0.179 and black on a lighter one. A color held to a floor on two grounds on opposite sides of that cutoff is slid one way by the first call and back by the second, and the second undoes the first floor. `ensureContrastToward(fg, bg, minRatio, toward)` takes the pole as its fourth argument, black or white, so every slide moves the same way and each floor already met stays met. Where `toward` cannot reach `minRatio` on `bg`, the floor wins and the answer is `contrastFor(bg)`. It measures in truecolor and takes no `drawnAt`.
+`ensureContrast` slides toward the pole the background itself contrasts with, white on a ground darker than relative luminance 0.179 and black on a lighter one. A color held to a floor on two grounds on opposite sides of that cutoff is slid one way by the first call and back by the second, and the second undoes the first floor. `ensureContrastToward(fg, bg, minRatio, toward)` takes the pole as its fourth argument instead: black, white, or any color, whose side of 0.179 is the pole it names. Sliding toward white only lightens, so a floor already met on a ground darker than the color stays met; toward black, on one lighter. Where `toward` cannot reach `minRatio` on `bg`, the floor wins and the answer is `contrastFor(bg)`, which may be the other pole. It measures in truecolor on an opaque `bg`: it takes no `drawnAt`, and a translucent background is read as its own bytes, so flatten one first.
 
 ```typescript
 import { ensureContrast, ensureContrastToward, contrastRatio, ColorRgba } from "@promptctl/rich-js";

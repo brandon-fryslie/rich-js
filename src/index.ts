@@ -92,8 +92,9 @@ export {
 // `ensureContrast` keeps a color's hue and only slides its OKLCH lightness to
 // meet the ratio, so themed text stays themed; `contrastFor` picks black/white
 // from scratch when there is no color to preserve.
-// `ensureContrastToward` is `ensureContrast` with the pole named by the caller,
-// so one color held to a floor on several grounds slides one way on all of them.
+// `ensureContrastToward` is the truecolor slide on an opaque ground with the pole
+// named by the caller, so one color held to a floor on several grounds slides
+// one way on all of them.
 // `lighten`/`darken` slide a color's HSL lightness by whole "levels" (each
 // level ≈ 10%), returning a new ColorRgba — the relative transform a consumer
 // reaches for to tint a resolved color against itself (e.g. a focused-while-open

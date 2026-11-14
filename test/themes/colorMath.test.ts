@@ -10,6 +10,7 @@ import {
   contrastFor,
   contrastRatio,
   ensureContrast,
+  ensureContrastToward,
   ensureMinimumDelta,
   compositedColor,
   relativeLuminance,
@@ -242,6 +243,40 @@ describe("ensureContrast", () => {
         expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(Math.min(4.5, best) - 1e-9);
       }
     }
+  });
+});
+
+describe("ensureContrastToward", () => {
+  const dark = new ColorRgba(40, 44, 52);
+  const overCutoff = new ColorRgba(120, 124, 135); // luminance ≈ 0.20, so ensureContrast's pole is black
+  const bar = new ColorRgba(120, 90, 200);
+
+  it("slides toward the named pole, not the one the ground picks", () => {
+    // On a ground just over 0.179 both poles clear 3:1; ensureContrast darkens,
+    // and naming white lightens instead.
+    expect(relativeLuminance(ensureContrast(bar, overCutoff, 3))).toBeLessThan(relativeLuminance(bar));
+    const out = ensureContrastToward(bar, overCutoff, 3, white);
+    expect(relativeLuminance(out)).toBeGreaterThan(relativeLuminance(bar));
+    expect(contrastRatio(out, overCutoff)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("holds one color's floor on two grounds either side of the cutoff", () => {
+    // The case ensureContrast cannot chain: its second slide undoes the first floor.
+    const chained = ensureContrast(ensureContrast(bar, dark, 3), overCutoff, 3);
+    expect(contrastRatio(chained, dark)).toBeLessThan(3);
+    const held = ensureContrastToward(ensureContrastToward(bar, dark, 3, white), overCutoff, 3, white);
+    expect(contrastRatio(held, dark)).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(held, overCutoff)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("returns an opaque color that already clears the floor as it is", () => {
+    expect(ensureContrastToward(white, dark, 4.5, black)).toEqual(white);
+    expect(ensureContrastToward(new ColorRgba(255, 255, 255, 0.9), dark, 4.5, white).alpha).toBe(1);
+  });
+
+  it("answers contrastFor(bg) when the named pole cannot reach the floor", () => {
+    // Toward black on near-black, no lightness clears 4.5:1.
+    expect(ensureContrastToward(bar, dark, 4.5, black)).toEqual(contrastFor(dark));
   });
 });
 
