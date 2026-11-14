@@ -84,6 +84,21 @@ console.print(`[on ${surface.hex}]      [/] surface  [on ${tint.hex}]      [/] t
 
 `a.deltaE(b)` is the perceptual distance between two colors, ΔE_OK: Euclidean distance in OKLab. Around 0.02 is the smallest difference the eye resolves.
 
+## Stepping lightness in HSL — `darken`, `lighten`, `rgbToHsl`, `hslToRgb`
+
+`darken(c, n)` lowers a color's HSL lightness by `0.1` per level, clamped to black, and `lighten(c, n)` is `darken(c, -n)`. They work in HSL, not OKLCH, and `rgbToHsl` and `hslToRgb` are that conversion. An `Hsl` holds `h` in degrees and `s` and `l` in [0, 1]. `rgbToHsl` returns a hue in [0, 360) and drops alpha. `hslToRgb` returns an opaque color. A hue is an angle, so `hslToRgb` takes any finite `h` mod 360. An `s` or `l` outside [0, 1], or a hue that is not finite, throws a `RangeError`.
+
+```ts
+import { rgbToHsl, hslToRgb, ColorRgba } from "@promptctl/rich-js";
+
+const base = new ColorRgba(200, 50, 50);
+const hsl = rgbToHsl(base);
+for (const turn of [0, 120, 240]) {
+  const c = hslToRgb({ ...hsl, h: hsl.h + turn });
+  console.print(`[on ${c.hex}]      [/] ${c.hex}  h=${Math.round(rgbToHsl(c).h)}`);
+}
+```
+
 ## Every palette has every role
 
 A palette holds the same roles whichever way it was made: a bundled theme from `getThemePalette`, the palette of a terminal theme, a `buildPalette` of your own, or an adjustment of any of them. `PaletteRole` is the type naming them, and `get` on one is a color, never `undefined`. Any other string, a misspelt role or one only known at run time, reads `ColorRgba | undefined`, so the compiler refuses it where a color is required.
