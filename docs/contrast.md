@@ -2,7 +2,7 @@
 
 When you place text on a colored background, it has to stay readable. rich-js exposes a small **WCAG contrast toolkit** for measuring and fixing contrast — useful any time you compute colors at runtime (themes, adjustment, user-supplied palettes) and can't eyeball every combination.
 
-All four functions operate on `ColorRgba` and are pure.
+Every function here operates on `ColorRgba` and is pure.
 
 ## Measuring contrast
 
@@ -63,6 +63,29 @@ Key properties:
 // raise the bar to AAA (7:1)
 const strong = ensureContrast(link, panel, 7);
 console.print(`[${strong.hex} on ${panel.hex}] link, AAA  [/]  ${contrastRatio(strong, panel).toFixed(2)}:1`);
+```
+
+### One color on several grounds — `ensureContrastToward`
+
+`ensureContrast` slides toward the pole the background itself contrasts with, white on a ground darker than relative luminance 0.179 and black on a lighter one. A color held to a floor on two grounds on opposite sides of that cutoff can be slid one way by the first call and back by the second, undoing the first floor. `ensureContrastToward(fg, bg, minRatio, toward)` slides toward the pole `toward` stands on: black or white, or a color tinted from one, read by its side of 0.179. A slide toward white only lightens, so a floor already met on a darker ground stays met, and toward black likewise on a lighter one. Where `toward` cannot reach `minRatio`, the answer is `contrastFor(bg)`, the most contrast `bg` allows: it may be the other pole, may fall short of `minRatio`, and keeps no earlier floor. It measures in truecolor and takes an opaque `bg`; flatten a translucent one first.
+
+```typescript
+import { ensureContrast, ensureContrastToward, contrastRatio, ColorRgba } from "@promptctl/rich-js";
+
+const background = new ColorRgba(40, 44, 52);    // dark
+const surface    = new ColorRgba(120, 124, 135); // just over the 0.179 cutoff
+const bar        = new ColorRgba(120, 90, 200);
+const white      = new ColorRgba(255, 255, 255); // a dark theme's text pole
+
+const chained = ensureContrast(ensureContrast(bar, background, 3), surface, 3);
+const toward  = ensureContrastToward(ensureContrastToward(bar, background, 3, white), surface, 3, white);
+
+for (const [label, c] of [["ensureContrast      ", chained], ["ensureContrastToward", toward]] as const) {
+  console.print(
+    `${label}  [on ${c.hex}]    [/]  on background ${contrastRatio(c, background).toFixed(2)}:1` +
+      `  on surface ${contrastRatio(c, surface).toFixed(2)}:1`,
+  );
+}
 ```
 
 ### Measured where it is drawn — `drawnAt`

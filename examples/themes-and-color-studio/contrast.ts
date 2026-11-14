@@ -9,6 +9,7 @@ import {
   darken,
   compositedColor,
   ensureContrast,
+  ensureContrastToward,
   ensureMinimumDelta,
   getThemePalette,
   hslToRgb,
@@ -109,6 +110,27 @@ export function section8Contrast(out: Console): void {
       new RichText(`      after   ${label}  `)
         .append("  Aa text  ", Style.parse(`${fixed.hex} on ${lightBg.hex}`))
         .append(`   ratio ${contrastRatio(fixed, lightBg).toFixed(2)}:1   (${fixed.hex})`),
+    );
+  }
+  out.print(blank());
+
+  // ensureContrastToward: one color held to 3:1 on two grounds either side of
+  // the 0.179 cutoff. ensureContrast picks its pole per ground, so the second
+  // slide undoes the first floor; naming the pole keeps both.
+  out.print(bold("    ensureContrastToward — one color, two grounds, one pole:"));
+  const darkGround = parseRgbHex("282c34");
+  const midGround = parseRgbHex("787c87");
+  const bar = parseRgbHex("785ac8");
+  const perGround = ensureContrast(ensureContrast(bar, darkGround, 3), midGround, 3);
+  const onePole = ensureContrastToward(ensureContrastToward(bar, darkGround, 3, white), midGround, 3, white);
+  for (const [label, held] of [["ensureContrast      ", perGround], ["ensureContrastToward", onePole]] as const) {
+    out.print(
+      new RichText(`      ${label}  `)
+        .append("  Aa  ", Style.parse(`${held.hex} on ${darkGround.hex}`))
+        .append("  Aa  ", Style.parse(`${held.hex} on ${midGround.hex}`))
+        .append(
+          `   ${contrastRatio(held, darkGround).toFixed(2)}:1 / ${contrastRatio(held, midGround).toFixed(2)}:1`,
+        ),
     );
   }
   out.print(blank());
