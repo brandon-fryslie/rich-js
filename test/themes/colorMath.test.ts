@@ -269,7 +269,7 @@ describe("ensureContrastToward", () => {
     expect(contrastRatio(held, overCutoff)).toBeGreaterThanOrEqual(3);
   });
 
-  it("returns an opaque color that already clears the floor as it is", () => {
+  it("returns a color that already clears the floor, flattened over bg", () => {
     expect(ensureContrastToward(white, dark, 4.5, black)).toEqual(white);
     expect(ensureContrastToward(new ColorRgba(255, 255, 255, 0.9), dark, 4.5, white).alpha).toBe(1);
   });
