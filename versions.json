@@ -4,15 +4,29 @@
     {
       "version": "pr-609",
       "ref": "refs/pull/609/merge",
-      "sha": "e84bb0dd268773b178a0470ec73b48e90bc90d09",
-      "timestamp": "2026-11-14T08:21:01.756Z",
+      "sha": "14d7ce3a08646802d3bef3dcc5d7048df2fd253e",
+      "timestamp": "2026-11-14T08:28:40.483Z",
       "commits": [
         {
-          "sha": "e84bb0dd268773b178a0470ec73b48e90bc90d09",
+          "sha": "14d7ce3a08646802d3bef3dcc5d7048df2fd253e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-11-14T01:18:46-07:00",
-          "message": "Merge d9a009382fd03430b090ae81e0effd29399a74d2 into a1270ebef668812b149ea9113eac48cb6de585c3\n"
+          "timestamp": "2026-11-14T08:26:20Z",
+          "message": "Merge cfde5aac4614f33067e51b1424310473fe344cd8 into a1270ebef668812b149ea9113eac48cb6de585c3\n"
+        },
+        {
+          "sha": "cfde5aac4614f33067e51b1424310473fe344cd8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-14T01:26:11-07:00",
+          "message": "Drop darken's second NaN check; pin hslToRgb's non-finite and boundary inputs; the docs label reads the hue back (rich-palette-xovz.yo3 review)\n"
+        },
+        {
+          "sha": "b29e2e9c273ec71535d19b7542e3fb7cde12bf40",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-14T01:23:34-07:00",
+          "message": "Document the HSL pair on the adjust page; darken names a NaN level itself; drop the barrel-identity assertions (rich-palette-xovz.yo3 review)\n"
         },
         {
           "sha": "d9a009382fd03430b090ae81e0effd29399a74d2",
