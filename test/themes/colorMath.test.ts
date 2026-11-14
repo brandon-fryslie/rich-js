@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { ColorDepth, ColorRgba, ColorSpec, parseRgbaHex } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
+import * as barrel from "../../src/index.js";
 import {
   darken,
   lighten,
+  rgbToHsl,
+  hslToRgb,
   alphaBlend,
   contrastFor,
   contrastRatio,
@@ -70,6 +73,42 @@ describe("lighten", () => {
     expect(a.red).toBe(b.red);
     expect(a.green).toBe(b.green);
     expect(a.blue).toBe(b.blue);
+  });
+});
+
+describe("rgbToHsl / hslToRgb", () => {
+  const near = (a: ColorRgba, b: ColorRgba): void => {
+    for (const k of ["red", "green", "blue"] as const) expect(Math.abs(a[k] - b[k])).toBeLessThanOrEqual(1);
+  };
+
+  it("round-trips a color within a channel's rounding", () => {
+    for (const c of [black, white, mid, red, new ColorRgba(18, 200, 117), new ColorRgba(250, 4, 251)]) {
+      near(hslToRgb(rgbToHsl(c)), c);
+    }
+  });
+
+  it("reads hue in degrees and s, l in 0..1", () => {
+    expect(rgbToHsl(new ColorRgba(0, 0, 255))).toEqual({ h: 240, s: 1, l: 0.5 });
+  });
+
+  it("wraps a hue onto the circle, negatives included", () => {
+    const at = (h: number): ColorRgba => hslToRgb({ h, s: 1, l: 0.5 });
+    expect(at(400)).toEqual(at(40));
+    expect(at(-20)).toEqual(at(340));
+    expect(at(360)).toEqual(at(0));
+  });
+
+  it("throws on a saturation or lightness outside 0..1, or a non-finite hue", () => {
+    expect(() => hslToRgb({ h: 0, s: 1.2, l: 0.5 })).toThrow(RangeError);
+    expect(() => hslToRgb({ h: 0, s: 0.5, l: -0.1 })).toThrow(RangeError);
+    expect(() => hslToRgb({ h: Number.NaN, s: 0.5, l: 0.5 })).toThrow(RangeError);
+  });
+
+  it("is the pair darken runs, exported from the package", () => {
+    expect(barrel.rgbToHsl).toBe(rgbToHsl);
+    expect(barrel.hslToRgb).toBe(hslToRgb);
+    const hsl = rgbToHsl(red);
+    expect(darken(red, 2)).toEqual(hslToRgb({ ...hsl, l: hsl.l - 0.2 }));
   });
 });
 

@@ -11,10 +11,12 @@ import {
   ensureContrast,
   ensureMinimumDelta,
   getThemePalette,
+  hslToRgb,
   lighten,
   Oklch,
   parseRgbHex,
   relativeLuminance,
+  rgbToHsl,
   RichText,
   Style,
 } from "@promptctl/rich-js";
@@ -154,6 +156,19 @@ export function section8Contrast(out: Console): void {
         .append(`   ${shifted.hex}   `, Style.parse(`${contrastFor(shifted).hex} on ${shifted.hex}`)),
     );
   }
+  out.print(blank());
+
+  // rgbToHsl / hslToRgb: the HSL pair lighten and darken run on. Stepping the hue
+  // by the golden angle spreads category colors evenly around the wheel; the hue
+  // passes 360 and hslToRgb wraps it.
+  out.print(bold("    rgbToHsl / hslToRgb — the base color's hue stepped by the golden angle:"));
+  const baseHsl = rgbToHsl(baseTint);
+  const walk = new RichText("      ");
+  for (let i = 0; i < 6; i++) {
+    const hued = hslToRgb({ ...baseHsl, h: baseHsl.h + i * 137.508 });
+    walk.append(`  ${hued.hex}  `, Style.parse(`${contrastFor(hued).hex} on ${hued.hex}`));
+  }
+  out.print(walk);
   out.print(blank());
 }
 

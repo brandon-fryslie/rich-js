@@ -97,9 +97,13 @@ export {
 // reaches for to tint a resolved color against itself (e.g. a focused-while-open
 // menu cell lightening its inherited background) without re-deriving from a
 // palette name. Negative levels invert (lighten(c,-n) === darken(c,n)).
+// `rgbToHsl`/`hslToRgb` are the HSL pair `darken` runs on, for a consumer that
+// places colors in HSL (rotating a hue) and holds floors with `ensureContrast`.
 export {
   lighten,
   darken,
+  rgbToHsl,
+  hslToRgb,
   relativeLuminance,
   contrastRatio,
   contrastFor,
@@ -107,6 +111,7 @@ export {
   ensureMinimumDelta,
   compositedColor,
 } from "./themes/colorMath.js";
+export type { Hsl } from "./themes/colorMath.js";
 // A number → a color through ordered stops, interpolated in OKLCH — the one
 // color operation whose input is a measurement rather than a color, so a
 // gradient (or, with the `step` ease, a threshold cascade) stays inside the

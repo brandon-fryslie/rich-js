@@ -15,13 +15,21 @@ import { Oklch, linearToSrgb, srgbToLinear } from "../core/oklch.js";
 
 const LEVEL_STEP = 0.1;
 
-interface Hsl {
-  h: number;
-  s: number;
-  l: number;
+/**
+ * A color in HSL. HSL carries no alpha: `rgbToHsl` drops a color's alpha and
+ * `hslToRgb` returns an opaque color.
+ */
+export interface Hsl {
+  /** Hue in degrees. `rgbToHsl` returns [0, 360); `hslToRgb` wraps any finite hue onto that circle. */
+  readonly h: number;
+  /** Saturation in [0, 1]. */
+  readonly s: number;
+  /** Lightness in [0, 1]: 0 is black, 1 is white. */
+  readonly l: number;
 }
 
-function rgbToHsl(c: ColorRgba): Hsl {
+/** An sRGB color in HSL. Its alpha is dropped. */
+export function rgbToHsl(c: ColorRgba): Hsl {
   const r = c.red / 255;
   const g = c.green / 255;
   const b = c.blue / 255;
@@ -48,8 +56,21 @@ function clampChannel(v: number): number {
   return r < 0 ? 0 : r > 255 ? 255 : r;
 }
 
-function hslToRgb(hsl: Hsl): ColorRgba {
-  const { h, s, l } = hsl;
+function unitField(name: "s" | "l", v: number): number {
+  if (!(v >= 0 && v <= 1)) throw new RangeError(`hslToRgb: ${name} must be in [0, 1], got ${v}`);
+  return v;
+}
+
+/**
+ * An HSL color as opaque sRGB. A hue is an angle, so any finite `h` is taken
+ * mod 360 (400 draws as 40, -20 as 340); a non-finite hue, or `s` or `l`
+ * outside [0, 1], throws a `RangeError`.
+ */
+export function hslToRgb(hsl: Hsl): ColorRgba {
+  if (!Number.isFinite(hsl.h)) throw new RangeError(`hslToRgb: h must be finite, got ${hsl.h}`);
+  const h = ((hsl.h % 360) + 360) % 360;
+  const s = unitField("s", hsl.s);
+  const l = unitField("l", hsl.l);
   if (s === 0) {
     const v = clampChannel(l * 255);
     return new ColorRgba(v, v, v);
@@ -85,8 +106,7 @@ function clamp01(v: number): number {
  */
 export function darken(color: ColorRgba, levels: number): ColorRgba {
   const hsl = rgbToHsl(color);
-  hsl.l = clamp01(hsl.l - LEVEL_STEP * levels);
-  return hslToRgb(hsl);
+  return hslToRgb({ ...hsl, l: clamp01(hsl.l - LEVEL_STEP * levels) });
 }
 
 /**
