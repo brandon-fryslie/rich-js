@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-610",
+      "ref": "refs/pull/610/merge",
+      "sha": "5e2481370f0d56ff5cbf439bc412e922ecd52d7c",
+      "timestamp": "2026-11-14T09:12:06.978Z",
+      "commits": [
+        {
+          "sha": "5e2481370f0d56ff5cbf439bc412e922ecd52d7c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-14T02:09:21-07:00",
+          "message": "Merge 8ae6d3136dd5a2c7a0c688eb3fc4392f07d38604 into d40ab5d2c30be0280d88c1b5e925e0370a1b6a21\n"
+        },
+        {
+          "sha": "8ae6d3136dd5a2c7a0c688eb3fc4392f07d38604",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-11-14T02:09:11-07:00",
+          "message": "Export ensureContrastToward from the package (rich-palette-xovz.bfb)\n\ncc-dump-web holds six category bar colors to a 3:1 floor on a theme's\nbackground and on its surface. ensureContrast picks its pole from each\nground's own luminance, so on grounds either side of the 0.179 cutoff the\nsecond slide undoes the first floor; ensureContrastToward takes the pole, and\nslid toward the theme's text pole both floors hold. The index exports it\nbeside ensureContrast, docs/contrast.md shows the two side by side, and the\ncolor studio demonstrates it, which grows its tour to 451 rows, so its card\nopens at 455. colorMath is unchanged.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d40ab5d2c30be0280d88c1b5e925e0370a1b6a21",
