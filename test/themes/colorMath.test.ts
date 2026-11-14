@@ -277,6 +277,8 @@ describe("ensureContrastToward", () => {
   it("answers contrastFor(bg) when the named pole cannot reach the floor", () => {
     // Toward black on near-black, no lightness clears 4.5:1.
     expect(ensureContrastToward(bar, dark, 4.5, black)).toEqual(contrastFor(dark));
+    // Toward white on white, the answer is the other pole, black.
+    expect(ensureContrastToward(new ColorRgba(200, 200, 220), white, 4.5, white)).toEqual(black);
   });
 });
 
